@@ -29,9 +29,9 @@ suggestions, generic data, and the new workflows.
 | Drop | 8,820 | 29% | eligibility, exclusion and determination cores, `prompt-defaults.ts` (2,197 lines), approvals, debug routes, Edge Config prompt settings |
 
 Keeping the FIE (Full and Individual Evaluation) as a document type moves some
-clinical code from Drop into an optional "type pack" (see Phase 8).
+only its outline and drafting guidance into the catalog (decided: outline only).
 
-**Rough effort:** 40–55 developer-days for one developer working with Claude Code,
+**Rough effort:** 40–54 developer-days for one developer working with Claude Code,
 across nine phases. The first usable build, a blank editor with document types,
 sources and notes, comes after Phases 0–4 (about 20–25 days).
 
@@ -42,17 +42,17 @@ sources and notes, comes after Phases 0–4 (about 20–25 days).
 | # | Decision |
 |---|---|
 | 1 | Start from a pruned copy of the organizer, with fresh git history |
-| 2 | Keep the FIE as one document type |
-| 3 | Small team; keep Clerk and the audit log; drop the formal approval steps |
+| 2 | Keep the FIE as one document type (outline and guidance only) |
+| 3 | Small team, shared team-wide through Clerk Organizations; keep the audit log; drop the formal approval steps |
 | 4 | One continuous TipTap document; AI actions for each section are attached to its heading |
 | 5 | One shared source library organized in folders. Each document gets its own folder, and any source can be linked into any document |
 | 6 | "Data" means any tabular data parsed from PDF, CSV or XLSX. Charts come later |
 | 7 | Rubrics both shape the outline and score the draft on demand |
 | 8 | Export to DOCX, PDF and Markdown |
 | 9 | Catalog built from hand-curated, high-quality sources. ClawHub is used only for individual useful types and is not monitored on a schedule |
-| 10 | The classifier runs after a pause in typing once enough text has changed, and shows a quiet suggestion chip (my recommended approach; see §11 item 2) |
+| 10 | The classifier runs after a 5 s pause once at least 150 words have changed (or the notes change), at most every 2 minutes, and shows a quiet chip |
 | 11 | Generic workflow: score how well sources cover the document type, flag missing sources and data, and propose public web resources. A "restructure to another type" workflow is also needed |
-| 12 | Model mix: Gemini, Claude Haiku/Sonnet for the classifier and cheaper calls, Claude Opus for drafting. Sending drafts to model providers is acceptable |
+| 12 | Model mix: Gemini only for reading uploads (PDF/image text and tables, OCR), Claude Haiku/Sonnet for the classifier and cheaper calls, Claude Opus for drafting. Sending drafts to model providers is acceptable |
 | 13 | New, separate Vercel, Neon and Clerk projects |
 | 14 | Deliverables: this file plus a shareable page |
 | 15–18 | Notes: live dictation into a single running scratchpad in the document modal, as in deskapp. Audio is always discarded. Each section in the editor has a notes area with dictation and a "Draft from notes" or "Rewrite from notes" action |
@@ -103,18 +103,13 @@ maps the task to a provider and model, and environment variables can override it
 | `rubric.check`, `coverage.score`, `restructure.plan`, `assistant` | Claude Sonnet | Needs reasoning across sources and rubric criteria |
 | `draft.section`, `rewrite.section`, `draft.from_notes`, `restructure.apply` | Claude Opus | Prose quality |
 | `web.find_sources` | Claude Sonnet with the web search tool | Proposes public supporting resources with URLs |
-| `extract.text`, `extract.tables` (PDF and images) | Gemini Flash | Already proven in the organizer's extraction pipeline |
-| `transcribe` (optional, later) | Gemini | See the note below |
+| `extract.text`, `extract.tables` (PDFs, images, scans: text transcription/OCR and tables from uploads) | Gemini Flash | Already proven in the organizer's extraction pipeline. Gemini's only role |
 
 Model IDs live in configuration. Default values: `claude-haiku-4-5-20251001`,
 `claude-sonnet-5-5`, `claude-opus-5-5`, and the organizer's `GEMINI_MODEL`.
 
-**Note on transcription.** Live dictation as in deskapp uses the browser's Web
-Speech API (or the native iOS bridge), so no server model is involved and no
-audio leaves the device except to the browser vendor's speech service. Gemini's
-transcription role is therefore optional. One option is a "Clean up dictation"
-pass that adds punctuation and removes filler words. Gemini remains the extractor
-for PDFs and tables.
+**Dictation.** Live dictation as in deskapp uses the browser's Web Speech API (or
+the native iOS bridge). No server model is involved and no audio is kept.
 
 ### 4.3 Data model (Postgres, new `db/schema.sql`)
 
@@ -125,7 +120,7 @@ app_setting (...)
 
 -- Documents
 document (
-  id uuid pk, owner_id text, team_id text null,
+  id uuid pk, team_id text not null, created_by text,   -- team_id = Clerk Organization id
   title text, type_key text null,             -- null = freeform
   type_confidence real null, type_source text, -- 'user' | 'classifier' | 'restructure'
   content_json jsonb,                          -- the whole TipTap document
@@ -145,7 +140,7 @@ document_section (                             -- metadata only; text lives in c
 document_version (id, document_id, content_json, reason, created_at)  -- before restructure or rewrite
 
 -- Source library
-folder (id uuid pk, parent_id uuid null, name text, document_id uuid null, owner_id, team_id)
+folder (id uuid pk, team_id text not null, parent_id uuid null, name text, document_id uuid null, created_by)
 source (
   id uuid pk, folder_id uuid, blob_url text, filename text, mime text, bytes int,
   kind text,                                   -- file | url | note
@@ -476,13 +471,10 @@ suggested data.
 Citation mark and quote verification, the rubric panel with apply-fix, and
 Markdown/DOCX/PDF export with footnotes.
 
-### Phase 8: FIE type pack and the rest of the catalog (3–5 d)
-1. FIE as a document type, outline and narrative guidance only (cheap).
-2. Optional: the full clinical pack (`src/packs/fie/`) bringing back the
-   exclusion and eligibility deterministic cores as `pack:` renderers and
-   workflow nodes. This adds about 2–3 d and roughly 1,700 lines of clinical
-   code. See §11 item 1.
-3. Expand to 25–30 types, including curated ClawHub imports.
+### Phase 8: FIE type and the rest of the catalog (3–4 d)
+1. FIE as a document type: outline and narrative guidance only (decided). The
+   clinical pipeline is not ported.
+2. Expand to 25–30 types, including curated ClawHub imports.
 
 ### Phase 9: Hardening (3–4 d)
 Rate limits per user on model routes, cost dashboard (tokens by task from
@@ -514,7 +506,8 @@ and accessibility checks.
   - `assistant/agent.ts`, `assistant/governance.ts`
   - `assessment/{classify,service}.ts` → `data/`
   - `upload/route.ts`, `upload/complete/route.ts`
-  - `permissions.ts` (roles: owner, editor, viewer)
+  - `permissions.ts` (Clerk Organization roles: admin, member; all documents and
+    sources are shared team-wide)
 - **From deskapp:** `apps/web/src/components/useSpeechToText.ts` (283 lines) and
   the Finish/Cancel dictation pattern in `ChatInput.tsx`.
 - **Rewrite:** `report/template.ts` → `catalog/schema.ts`; `ontology/catalog.ts`;
@@ -543,7 +536,7 @@ and accessibility checks.
 |---|---|
 | Large single documents make autosave and context heavy | Debounced whole-document saves are fine below about 50 pages. Send only the relevant sections plus the outline to models |
 | Concurrent edits by teammates overwrite each other | Optimistic concurrency with a conflict prompt in v1. Yjs/Hocuspocus co-editing is a later option |
-| Web Speech quality varies by browser; Firefox has none | Hide the microphone when unsupported; optional Gemini clean-up pass |
+| Web Speech quality varies by browser; Firefox has none | Hide the microphone when unsupported |
 | Background classification costs | Haiku, a cached catalog prompt, word-delta and rate gating. Estimate under $0.01 per run |
 | Prompt injection from sources or ClawHub content | Sources are passed as delimited data. Tools on workflow nodes are read-only unless the node is `doc.write`. ClawHub imports are sanitized and reviewed by a person |
 | PDF export on Vercel (Chromium size and cold starts) | `@sparticuz/chromium`; client print fallback |
@@ -551,20 +544,16 @@ and accessibility checks.
 
 ---
 
-## 11. Open items
+## 11. Resolved items (October 2026)
 
-1. **FIE depth:** port only the outline and narrative guidance (recommended for
-   v1), or the whole governed clinical pipeline as a pack?
-2. **Classifier trigger:** the answer to question 10 reads "your catalog approach
-   is good", which matches question 9. I am using the recommended default (5 s
-   pause, at least 150 changed words, at most once every 2 minutes, quiet chip).
-   Confirm or adjust.
-3. **Gemini transcription:** with live browser dictation, Gemini has no required
-   transcription role. Should there be an optional "Clean up dictation" pass on
-   Gemini?
-4. **Team model:** Clerk Organizations for the team, with documents and the
-   library shared across the organization (recommended), or per-user ownership
-   with explicit sharing?
+1. **FIE depth:** outline and narrative guidance only.
+2. **Classifier trigger:** 5 s pause and at least 150 changed words, or a notes
+   change; at most once every 2 minutes; quiet chip.
+3. **Gemini:** used only to read uploads (text transcription/OCR from PDFs and
+   images, and table extraction). Dictation uses the browser.
+4. **Team model:** team-wide sharing through Clerk Organizations. Every document,
+   folder, source, data table and workflow belongs to a `team_id`; every member
+   of the organization can see and edit them.
 
 ---
 
