@@ -3,45 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@font-face {
-  font-family: "Lab Grotesque";
-  src: url("/labgrotesque-regular-webfont.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Lab Grotesque";
-  src: url("/labgrotesque-medium-webfont.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Lab Grotesque";
-  src: url("/labgrotesque-bold-webfont.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Lab Grotesque";
-  src: url("/labgrotesque-italic-webfont.woff2") format("woff2");
-  font-weight: 400;
-  font-style: italic;
-}
-
-@font-face {
-  font-family: "Lab Grotesque";
-  src: url("/labgrotesque-mediumitalic-webfont.woff2") format("woff2");
-  font-weight: 500;
-  font-style: italic;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-lab-grotesque);
+  --font-sans: var(--font-app);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -79,7 +44,7 @@
 }
 
 :root {
-  --font-lab-grotesque: "Lab Grotesque", sans-serif;
+  --font-app: "Hanken Grotesk Variable", "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -226,7 +191,7 @@
   }
 
   body {
-    font-family: var(--font-lab-grotesque), system-ui, -apple-system, sans-serif;
+    font-family: var(--font-app);
     @apply bg-background text-foreground;
   }
 }
@@ -428,3 +393,76 @@
 .dark .prose-report th { background: #27272a; }
 .prose-report img { max-width: 100%; height: auto; margin: 0.5rem 0; border-radius: 6px; }
 .prose-report img.ProseMirror-selectednode { outline: 2px solid #14b8a6; }
+/* ---------------------------------------------------------------------------
+   Document screen (src/components/editor). Light lavender-grey ground, white
+   card, one blue accent. Dark mode follows the app's .dark class.
+   ------------------------------------------------------------------------- */
+:root {
+  --doc-bg: #e9edf5;
+  --doc-surface: #ffffff;
+  --doc-toolbar: rgba(250, 251, 253, 0.92);
+  --doc-ink: #0f1720;
+  --doc-muted: #5d6878;
+  --doc-line: #e2e7ef;
+  --doc-accent: #1f5fbf;
+  --doc-accent-line: #9db6dc;
+  --doc-accent-soft: #e8eff9;
+  --doc-filled: #2457c5;
+  --doc-highlight: #fff1a8;
+}
+.dark {
+  --doc-bg: #0e131a;
+  --doc-surface: #151c25;
+  --doc-toolbar: rgba(21, 28, 37, 0.92);
+  --doc-ink: #e5eaf1;
+  --doc-muted: #97a3b4;
+  --doc-line: #253041;
+  --doc-accent: #7eaaf2;
+  --doc-accent-line: #3d5a86;
+  --doc-accent-soft: #1b2738;
+  --doc-filled: #8fb6ff;
+  --doc-highlight: #5b4a10;
+}
+.doc-screen { background: var(--doc-bg); color: var(--doc-ink); }
+
+.doc-prose { font-size: 17px; line-height: 1.7; color: var(--doc-ink); min-height: 50vh; }
+.doc-prose > * + * { margin-top: 0.85em; }
+.doc-prose h1 { font-size: 2rem; line-height: 1.2; font-weight: 650; letter-spacing: -0.015em; margin-top: 1.4em; text-wrap: balance; }
+.doc-prose h2 { font-size: 1.75rem; line-height: 1.25; font-weight: 650; letter-spacing: -0.012em; margin-top: 1.3em; text-wrap: balance; }
+.doc-prose h3 { font-size: 1.25rem; line-height: 1.3; font-weight: 600; margin-top: 1.2em; }
+.doc-prose > h1:first-child, .doc-prose > h2:first-child, .doc-prose > h3:first-child { margin-top: 0; }
+.doc-prose ul { list-style: disc; padding-left: 1.4em; }
+.doc-prose ol { list-style: decimal; padding-left: 1.4em; }
+.doc-prose li > p { margin: 0; }
+.doc-prose li + li { margin-top: 0.15em; }
+.doc-prose blockquote { border-left: 3px solid var(--doc-accent-line); padding-left: 1em; color: var(--doc-muted); }
+.doc-prose code { font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.9em; background: var(--doc-accent-soft); padding: 0.1em 0.3em; border-radius: 4px; }
+.doc-prose pre { background: var(--doc-accent-soft); padding: 0.8em 1em; border-radius: 8px; overflow-x: auto; }
+.doc-prose pre code { background: none; padding: 0; }
+.doc-prose a { color: var(--doc-accent); text-decoration: underline; text-underline-offset: 2px; }
+.doc-prose mark { background: var(--doc-highlight); color: inherit; border-radius: 2px; padding: 0 0.1em; }
+.doc-prose .filled-text { color: var(--doc-filled); }
+.doc-prose hr { border: 0; border-top: 1px solid var(--doc-line); margin: 1.5em 0; }
+.doc-prose table { border-collapse: collapse; width: 100%; font-size: 0.95em; display: block; overflow-x: auto; }
+.doc-prose td, .doc-prose th { border: 1px solid var(--doc-line); padding: 6px 10px; vertical-align: top; min-width: 4em; }
+.doc-prose th { background: var(--doc-accent-soft); text-align: left; font-weight: 600; }
+.doc-prose .selectedCell { background: var(--doc-accent-soft); }
+.doc-prose img { max-width: 100%; height: auto; border-radius: 6px; }
+.doc-prose .is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--doc-muted);
+  opacity: 0.55;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Divider between sections, with "add section" and "delete section" buttons. */
+.section-divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.75rem 8% 1.25rem; user-select: none; }
+.section-divider-line { flex: 1; height: 3px; border-radius: 3px; background: var(--doc-accent-soft); }
+.section-divider-actions { display: flex; gap: 0.25rem; opacity: 0.55; transition: opacity 120ms; }
+.section-divider:hover .section-divider-actions, .section-divider:focus-within .section-divider-actions { opacity: 1; }
+.section-divider-btn { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--doc-muted); }
+.section-divider-btn:hover { background: var(--doc-accent-soft); color: var(--doc-accent); }
+.section-divider-btn:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 1px; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .section-divider-actions { transition: none; } }

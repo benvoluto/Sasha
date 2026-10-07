@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { ModelChoice } from "@/lib/llm/model-choice";
-import { GEMINI_MODEL } from "@/lib/gemini-model";
+import { modelForTier } from "@/lib/llm/tasks";
 import type { PortSpec } from "./types";
 
 export type Category = "Sources" | "Flow" | "AI" | "Text & logic";
@@ -28,7 +28,7 @@ export type NodeSpec<C = Record<string, unknown>> = {
 /** Port and variable names: lowercase, starting with a letter. */
 export const PortName = z.string().regex(/^[a-z][a-z0-9_]{0,39}$/, "lowercase letters, digits and _; start with a letter");
 
-const model = (temperature = 0.3) => ({ provider: "gemini" as const, model: GEMINI_MODEL, temperature });
+const model = (temperature = 0.3) => ({ provider: "anthropic" as const, model: modelForTier("mid"), temperature });
 
 const empty = z.object({});
 

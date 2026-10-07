@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 
+import "@fontsource-variable/hanken-grotesk/wght.css";
+import "@fontsource-variable/hanken-grotesk/wght-italic.css";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ProcessingTracker } from "@/components/processing-tracker";

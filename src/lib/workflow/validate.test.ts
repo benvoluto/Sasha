@@ -47,7 +47,7 @@ describe("validateGraph", () => {
     const g = defaultWorkflowGraph();
     expect(createsCycle(g, "summarize", "sources")).toBe(true);
     expect(createsCycle(g, "sources", "output")).toBe(false);
-    g.nodes.push({ id: "ask", type: "ai.ask", position: { x: 0, y: 0 }, config: { provider: "gemini", model: "m", temperature: 0, prompt: "{{input}}", inputs: ["input"] }, loop: false, expanded: false });
+    g.nodes.push({ id: "ask", type: "ai.ask", position: { x: 0, y: 0 }, config: { provider: "anthropic", model: "m", temperature: 0, prompt: "{{input}}", inputs: ["input"] }, loop: false, expanded: false });
     g.nodes.push({ id: "c", type: "text.combine", position: { x: 0, y: 0 }, config: { template: "{{a}}", inputs: ["a"] }, loop: false, expanded: false });
     g.edges.push({ id: "x1", source: "summarize", sourceHandle: "response", target: "c", targetHandle: "a" });
     g.edges.push({ id: "x2", source: "c", sourceHandle: "text", target: "ask", targetHandle: "input" });

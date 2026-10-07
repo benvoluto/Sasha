@@ -3,7 +3,7 @@ import { z } from "zod";
 import { can } from "@/lib/ontology/governance";
 import { authFromClerk } from "@/lib/ontology/permissions";
 import { RUN_PERMISSION, getDefaultWorkflowId, getWorkflow, listVersions, listWorkflows, saveWorkflow } from "@/lib/workflow/store";
-import { GEMINI_MODEL } from "@/lib/gemini-model";
+import { modelForTier } from "@/lib/llm/tasks";
 import { defaultWorkflowGraph } from "@/lib/workflow/default-graph";
 import { WorkflowGraph } from "@/lib/workflow/types";
 import { validateGraph } from "@/lib/workflow/validate";
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     canEdit: can(caller, "workflow:write"),
     canRun: can(caller, RUN_PERMISSION),
     providers: {
-      gemini: { configured: !!process.env.GEMINI_API_KEY, defaultModel: GEMINI_MODEL },
+      anthropic: { configured: !!process.env.ANTHROPIC_API_KEY, defaultModel: modelForTier("mid") },
       gateway: { configured: !!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) },
     },
     persisted: !!process.env.POSTGRES_URL,

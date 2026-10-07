@@ -11,6 +11,7 @@
 // humans and do not use this; they carry their own system-agent identity.
 
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { DEV_USER, devAuthBypass } from "@/lib/dev-auth";
 import type { Auth } from "./governance";
 
 /** Canonical permission strings. Check these with `can(auth, PERMISSIONS.x)`. */
@@ -68,6 +69,7 @@ export function permissionsForRole(role: Role): string[] {
  * defensive 401, not the primary gate).
  */
 export async function authFromClerk(): Promise<Auth | null> {
+  if (devAuthBypass()) return { agent: DEV_USER.email, permissions: permissionsForRole("admin") };
   const { userId, orgRole } = await auth();
   if (!userId) return null;
 

@@ -114,3 +114,48 @@ CREATE TABLE IF NOT EXISTS app_setting (
   updated_by        TEXT NOT NULL,
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Documents (src/lib/documents/store.ts owns these; keep in step with DOCUMENT_SCHEMA).
+-- team_id is "org:<clerk org id>" or "user:<clerk user id>" for a personal team.
+CREATE TABLE IF NOT EXISTS document (
+  id                 UUID PRIMARY KEY,
+  team_id            TEXT NOT NULL,
+  title              TEXT NOT NULL DEFAULT '',
+  type_key           TEXT,
+  type_confidence    REAL,
+  type_source        TEXT,            -- user | classifier | restructure
+  content_json       JSONB NOT NULL,  -- the whole TipTap document
+  content_text       TEXT NOT NULL DEFAULT '',
+  notes              TEXT NOT NULL DEFAULT '',
+  folder_id          UUID,
+  archived           BOOLEAN NOT NULL DEFAULT false,
+  created_by         TEXT NOT NULL,
+  updated_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_classified_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS document_team_updated_idx ON document (team_id, archived, updated_at DESC);
+
+-- Per-section metadata; the section text lives in document.content_json.
+CREATE TABLE IF NOT EXISTS document_section (
+  document_id        UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,
+  section_id         TEXT NOT NULL,
+  spec_key           TEXT,
+  notes              TEXT NOT NULL DEFAULT '',
+  status             TEXT NOT NULL DEFAULT 'empty',
+  last_generated_at  TIMESTAMPTZ,
+  PRIMARY KEY (document_id, section_id)
+);
+
+-- Snapshots taken before large changes (rewrites, restructures, section deletes).
+CREATE TABLE IF NOT EXISTS document_version (
+  id                 BIGSERIAL PRIMARY KEY,
+  document_id        UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,
+  content_json       JSONB NOT NULL,
+  title              TEXT NOT NULL DEFAULT '',
+  reason             TEXT NOT NULL,
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS document_version_doc_idx ON document_version (document_id, id DESC);

@@ -5,8 +5,8 @@
 // `template_key` picks the outline and the drafting preamble.
 
 import { sql } from "@vercel/postgres";
-import { GoogleGenAI } from "@google/genai";
-import { GEMINI_MODEL } from "@/lib/gemini-model";
+import { claudeConfigured, claudeText } from "@/lib/llm/claude";
+import type { Task } from "@/lib/llm/tasks";
 import { type Auth, type AuditSink, can, defaultAuditSink } from "../governance";
 import { fetchGroupMetadata } from "../group-metadata";
 import { PERMISSIONS } from "../permissions";
@@ -128,37 +128,36 @@ ${ctx.extractedContent.slice(0, MAX_EVIDENCE) || "(no extracted text)"}`;
 const OUTPUT_RULES =
   "Return Markdown for the section BODY only (no top-level heading, no code fences). Use short paragraphs, bullet lists, and GitHub-style Markdown tables where they help.";
 
-async function callGemini(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("no model configured");
-  const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-    config: { temperature: 0.3, maxOutputTokens: 8192 },
-  });
-  return (response.text || "").replace(/```(?:markdown)?/gi, "").replace(/```/g, "").trim();
+/** A Markdown section body from Claude. The system prompt is the stable, cached part. */
+async function callClaude(task: Task, system: string, user: string, agent: string, groupId: string): Promise<string> {
+  if (!claudeConfigured()) throw new Error("no model configured");
+  const { text } = await claudeText({ task, system, user, agent, documentId: groupId });
+  return text.replace(/```(?:markdown)?/gi, "").replace(/```/g, "").trim();
 }
 
 // ---------------------------------------------------------------------------
 // Model draft for the narrative sections
 // ---------------------------------------------------------------------------
 
-async function draftNarrativeSection(template: ReportTemplate, spec: ReportSectionSpec, ctx: ReportContext): Promise<string> {
+async function draftNarrativeSection(
+  template: ReportTemplate,
+  spec: ReportSectionSpec,
+  ctx: ReportContext,
+  meta: { agent: string; groupId: string },
+): Promise<string> {
   const fallback = `_This section is a placeholder. Add the ${spec.heading.toLowerCase()} here._`;
-  if (!process.env.GEMINI_API_KEY) return fallback;
+  if (!claudeConfigured()) return fallback;
 
-  const prompt = `${template.preamble}
+  const system = `${template.preamble}
 
-You are drafting the "${spec.heading}" section of a ${template.title}.
+${OUTPUT_RULES}`;
+  const user = `You are drafting the "${spec.heading}" section of a ${template.title}.
 ${spec.guidance}
-
-${OUTPUT_RULES}
 
 ${sourcesBlock(ctx)}`;
 
   try {
-    const text = await callGemini(prompt);
+    const text = await callClaude("draft.section", system, user, meta.agent, meta.groupId);
     return text.length >= 10 ? text : fallback;
   } catch (error) {
     console.error(`[report] narrative draft failed for ${spec.key}:`, error);
@@ -167,8 +166,13 @@ ${sourcesBlock(ctx)}`;
 }
 
 /** The persisted doc for a section: narrative sections are drafted; static ones carry their guidance text. */
-async function buildSectionDoc(template: ReportTemplate, spec: ReportSectionSpec, ctx: ReportContext): Promise<PMDoc> {
-  if (spec.kind === "narrative") return markdownToTiptap(await draftNarrativeSection(template, spec, ctx));
+async function buildSectionDoc(
+  template: ReportTemplate,
+  spec: ReportSectionSpec,
+  ctx: ReportContext,
+  meta: { agent: string; groupId: string },
+): Promise<PMDoc> {
+  if (spec.kind === "narrative") return markdownToTiptap(await draftNarrativeSection(template, spec, ctx, meta));
   return markdownToTiptap(spec.guidance);
 }
 
@@ -197,7 +201,7 @@ export async function generateSection(groupId: string, sectionKey: string, opts:
   if (!spec) return { error: `unknown section '${sectionKey}'` };
 
   const ctx = await buildReportContext(groupId);
-  const doc = await buildSectionDoc(ensured.template, spec, ctx);
+  const doc = await buildSectionDoc(ensured.template, spec, ctx, { agent: auth.agent, groupId });
   await persistDoc(groupId, sectionKey, doc, auth);
   await audit.write({ agent: auth.agent, action: "generate_report_section", args: { group_id: groupId, section: sectionKey }, result: { ok: true }, allowed: true, groupId });
   return { ok: true };
@@ -228,7 +232,7 @@ export async function generateAll(
     await Promise.all(
       batch.map(async (spec) => {
         try {
-          const doc = await buildSectionDoc(template, spec, ctx);
+          const doc = await buildSectionDoc(template, spec, ctx, { agent: auth.agent, groupId });
           await persistDoc(groupId, spec.key, doc, auth);
           generated++;
         } catch (error) {
@@ -299,16 +303,15 @@ export async function rewriteSection(
   const currentText = current?.content_text?.trim() ?? "";
   if (!currentText) return { error: "this section has no content to rewrite yet; generate it first" };
 
-  if (!process.env.GEMINI_API_KEY) return { error: "no model configured" };
+  if (!claudeConfigured()) return { error: "no model configured" };
 
   const ctx = await buildReportContext(groupId);
-  const prompt = `${template.preamble}
+  const system = `${template.preamble}
 
-You are revising the "${spec.heading}" section of a ${template.title}.
+Apply the revision request to the current draft. Do not add facts that are not in the draft or the sources. ${OUTPUT_RULES}`;
+  const user = `You are revising the "${spec.heading}" section of a ${template.title}.
 
 REVISION REQUEST: ${instruction}
-
-Apply the revision to the CURRENT DRAFT below. Do not add facts that are not in the draft or the sources. ${OUTPUT_RULES}
 
 CURRENT DRAFT:
 ${currentText}
@@ -317,7 +320,7 @@ ${sourcesBlock(ctx)}`;
 
   let markdown: string;
   try {
-    const text = await callGemini(prompt);
+    const text = await callClaude("rewrite.selection", system, user, auth.agent, groupId);
     if (text.length < 10) return { error: "the rewrite came back empty; please try again" };
     markdown = text;
   } catch (error) {

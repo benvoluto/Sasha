@@ -38,7 +38,7 @@ export function CaseDetailView({ groupId, variant = "page" }: { groupId: string;
   const router = useRouter();
   const archiveGroup = useSetAtom(archiveUploadGroupAtom);
   // Close returns to the list: back out of the modal, or navigate for the full page.
-  const close = () => (variant === "modal" ? router.back() : router.push("/"));
+  const close = () => (variant === "modal" ? router.back() : router.push("/library"));
 
   const [group, setGroup] = useState<UploadGroup | null>(null);
   const [mode, setMode] = useState<CaseMode>(() => (searchParams.get("mode") === "report" || searchParams.get("tab") === "report" ? "report" : "case"));

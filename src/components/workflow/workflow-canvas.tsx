@@ -364,10 +364,10 @@ function Editor({
           </select>
           {sourceId && (
             <Link
-              href="/"
+              href="/library"
               onClick={() => requestCaseOpen(sourceId)}
               className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-              title="Back to the document list, with these sources open"
+              title="Back to the source library, with these sources open"
             >
               <FolderOpen className="h-4 w-4" /> Open sources
             </Link>

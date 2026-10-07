@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { devAuthBypass } from "@/lib/dev-auth";
 
 // Everything except Clerk's own auth routes and Next internals requires a
 // signed-in user. Unauthenticated requests to a page are redirected to sign-in;
@@ -16,7 +17,7 @@ function hasValidInternalToken(req: Request): boolean {
 }
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return;
+  if (isPublicRoute(req) || devAuthBypass()) return;
   if (isInternalRoute(req) && hasValidInternalToken(req)) return;
   await auth.protect();
 });

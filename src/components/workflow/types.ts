@@ -14,7 +14,7 @@ export type WorkflowResponse = SavedWorkflow & {
   defaults: WorkflowGraph;
   canEdit: boolean;
   canRun: boolean;
-  providers: { gemini: { configured: boolean; defaultModel: string }; gateway: { configured: boolean } };
+  providers: { anthropic: { configured: boolean; defaultModel: string }; gateway: { configured: boolean } };
   persisted: boolean;
 };
 

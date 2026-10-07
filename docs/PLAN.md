@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status: plan, October 2026. Nothing has been built yet.
+Status (October 2026): Phase 0 and Phase 1 are built. See §12 for progress notes.
 
 ---
 
@@ -98,14 +98,15 @@ maps the task to a provider and model, and environment variables can override it
 
 | Task | Default model | Why |
 |---|---|---|
-| `classify.type` (background classifier) | Claude Haiku 4.5 | Cheap and fast. The catalog summaries sit in a cached system prompt |
-| `suggest.sources`, `suggest.data`, `outline.status`, `title`, `summarize.source` | Claude Haiku 4.5 | Short, structured JSON output |
+| `classify.type` (background classifier) | Claude Haiku 5.5 | Cheap and fast. The catalog summaries sit in a cached system prompt |
+| `suggest.sources`, `suggest.data`, `outline.status`, `title`, `summarize.source` | Claude Haiku 5.5 | Short, structured JSON output |
 | `rubric.check`, `coverage.score`, `restructure.plan`, `assistant` | Claude Sonnet | Needs reasoning across sources and rubric criteria |
 | `draft.section`, `rewrite.section`, `draft.from_notes`, `restructure.apply` | Claude Opus | Prose quality |
 | `web.find_sources` | Claude Sonnet with the web search tool | Proposes public supporting resources with URLs |
 | `extract.text`, `extract.tables` (PDFs, images, scans: text transcription/OCR and tables from uploads) | Gemini Flash | Already proven in the organizer's extraction pipeline. Gemini's only role |
 
-Model IDs live in configuration. Default values: `claude-haiku-4-5-20251001`,
+Model IDs live in configuration (`SASHA_MODEL_FAST`, `SASHA_MODEL_MID`,
+`SASHA_MODEL_DRAFT`). Default values: `claude-haiku-5-5`,
 `claude-sonnet-5-5`, `claude-opus-5-5`, and the organizer's `GEMINI_MODEL`.
 
 **Dictation.** Live dictation as in deskapp uses the browser's Web Speech API (or
@@ -554,6 +555,30 @@ and accessibility checks.
 4. **Team model:** team-wide sharing through Clerk Organizations. Every document,
    folder, source, data table and workflow belongs to a `team_id`; every member
    of the organization can see and edit them.
+
+---
+
+## 12. Progress
+
+**Phase 0 (done).** Pruned copy; clinical modules removed; workflow nodes,
+report templates, assistant tools and permissions made domain-neutral; CI.
+
+**Phase 1 (done).**
+- `document`, `document_section`, `document_version` tables (`src/lib/documents/store.ts`), team-scoped
+  (`org:<clerk org>` or `user:<clerk user>`), optimistic concurrency on `updated_at`, in-memory fallback
+  without `POSTGRES_URL`.
+- API: `/api/documents` (list, create), `/api/documents/[id]` (get, save with conflict detection,
+  delete), `/versions` (snapshots), `/rewrite` (Claude, `rewrite.selection`), `/api/document-types`.
+- Editing screen (`src/components/editor/`): opens on a blank document; header with Docs switcher,
+  title, type picker, Sources, Share, account; toolbar; section headings with stable ids; dividers
+  with add/delete section; Outline and Tools panels; autosave with a conflict banner.
+- Model routing (`src/lib/llm/tasks.ts`, `claude.ts`): Haiku 5.5 / Sonnet 5.5 / Opus 5.5 by task,
+  refusal fallback on Sonnet and Opus, usage in the audit log. Report drafting, the assistant and
+  workflow AI nodes now run on Claude; Gemini only reads uploads.
+- The old case list moved to `/library` until Phase 2 replaces it with the source library.
+- `SASHA_DEV_AUTH_BYPASS=1` (ignored in production) for local development and browser tests.
+- Type picker: Proposal, Memo, General Report and FIE outlines for now; Phase 3 replaces the list
+  with the catalog. Choosing a type on a document with text appends only the missing sections.
 
 ---
 

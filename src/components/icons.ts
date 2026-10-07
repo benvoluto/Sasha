@@ -105,6 +105,22 @@ export {
   Table,
   ArrowUUpLeft as Undo2,
   ArrowUUpRight as Redo2,
+  Highlighter,
+  Code,
+  TextT,
+  Quotes,
+  Minus,
+  Eraser,
+  CaretUpDown,
+  TextAlignJustify as AlignJustify,
+
+  // document screen
+  ShareFat as Share,
+  Sparkle as SparkleIcon,
+  ClipboardText as OutlineIcon,
+  ListChecks as SourcesIcon,
+  Copy,
+  Files as DocsIcon,
 
   // determination workflow
   Play,

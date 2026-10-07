@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useClerk } from '@clerk/nextjs';
-import { ClipboardList, FileText, FileBarChart2, Archive, LayoutTemplate, LogOut, Workflow } from "@/components/icons";
+import { ClipboardList, FileText, Archive, LogOut, Workflow } from "@/components/icons";
 import { Popover, PopoverTrigger, PopoverContent } from '@radix-ui/react-popover';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -10,16 +10,12 @@ import { usePathname } from 'next/navigation';
 // name rather than fabricated org data.
 const WORKSPACE_NAME = 'Sasha';
 
-// Nav sections. Documents, Archived and Workflows have destinations; Notes, Reports and
-// Templates are part of the design but not yet built, so they're shown inactive
-// rather than linking nowhere.
+// Nav sections: the editor, the source library, archived documents and workflows.
 const TABS = [
-  { key: 'cases', label: 'Documents', icon: ClipboardList, href: '/' },
-  { key: 'notes', label: 'Notes', icon: FileText },
-  { key: 'reports', label: 'Reports', icon: FileBarChart2 },
+  { key: 'write', label: 'Write', icon: FileText, href: '/' },
+  { key: 'cases', label: 'Sources', icon: ClipboardList, href: '/library' },
   { key: 'archived', label: 'Archived', icon: Archive, href: '/archived' },
   { key: 'workflow', label: 'Workflows', icon: Workflow, href: '/workflows' },
-  { key: 'templates', label: 'Templates', icon: LayoutTemplate },
 ];
 
 export function CaseNav({ counts }: { counts?: Partial<Record<string, number>> }) {

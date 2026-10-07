@@ -25,44 +25,50 @@ function Field({ title, children }: { title: string; children: React.ReactNode }
 
 function ModelFields({ config, set, disabled }: Omit<Props, 'node'>) {
   const { info } = useCanvas();
-  const provider = config.provider === 'gateway' ? 'gateway' : 'gemini';
-  const missing = provider === 'gateway' ? !info.providers.gateway.configured : !info.providers.gemini.configured;
+  // Workflows saved before Claude replaced Gemini read as Claude.
+  const provider = config.provider === 'gateway' ? 'gateway' : 'anthropic';
+  const missing = provider === 'gateway' ? !info.providers.gateway.configured : !info.providers.anthropic.configured;
   return (
     <div className="grid grid-cols-[1fr_1fr] gap-2">
-      <Field title="Provider">
-        <select
-          className={field}
-          disabled={disabled}
-          value={provider}
-          onChange={(e) => set({ provider: e.target.value, model: e.target.value === 'gemini' ? info.providers.gemini.defaultModel : '' })}
-        >
-          <option value="gemini">Gemini</option>
-          <option value="gateway">AI Gateway</option>
-        </select>
-      </Field>
-      <Field title={`Temperature ${Number(config.temperature ?? 0).toFixed(1)}`}>
-        <input
-          type="range"
-          min={0}
-          max={1.5}
-          step={0.1}
-          disabled={disabled}
-          className="nodrag w-full accent-orange-600"
-          value={Number(config.temperature ?? 0)}
-          onChange={(e) => set({ temperature: Number(e.target.value) })}
-        />
-      </Field>
+      <div className={provider === 'gateway' ? '' : 'col-span-2'}>
+        <Field title="Provider">
+          <select
+            className={field}
+            disabled={disabled}
+            value={provider}
+            onChange={(e) => set({ provider: e.target.value, model: e.target.value === 'anthropic' ? info.providers.anthropic.defaultModel : '' })}
+          >
+            <option value="anthropic">Claude</option>
+            <option value="gateway">AI Gateway</option>
+          </select>
+        </Field>
+      </div>
+      {/* Claude models take no temperature; only gateway models use it. */}
+      {provider === 'gateway' && (
+        <Field title={`Temperature ${Number(config.temperature ?? 0).toFixed(1)}`}>
+          <input
+            type="range"
+            min={0}
+            max={1.5}
+            step={0.1}
+            disabled={disabled}
+            className="nodrag w-full accent-orange-600"
+            value={Number(config.temperature ?? 0)}
+            onChange={(e) => set({ temperature: Number(e.target.value) })}
+          />
+        </Field>
+      )}
       <div className="col-span-2">
         <Field title="Model">
           <input
             className={field}
             disabled={disabled}
             value={String(config.model ?? '')}
-            placeholder={provider === 'gateway' ? 'provider/model' : info.providers.gemini.defaultModel}
+            placeholder={provider === 'gateway' ? 'provider/model' : info.providers.anthropic.defaultModel}
             onChange={(e) => set({ model: e.target.value })}
           />
         </Field>
-        {missing && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{provider === 'gateway' ? 'AI_GATEWAY_API_KEY is not set.' : 'GEMINI_API_KEY is not set.'}</p>}
+        {missing && <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">{provider === 'gateway' ? 'AI_GATEWAY_API_KEY is not set.' : 'ANTHROPIC_API_KEY is not set.'}</p>}
       </div>
     </div>
   );
