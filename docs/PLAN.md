@@ -1,0 +1,589 @@
+# Sasha: viability evaluation and implementation plan
+
+Sasha is a general document-authoring app derived from `benvoluto/proto-v2-organizer`
+(the "Proto V2 organizer" clinical case manager). It opens to a blank document,
+keeps a switchable list of documents, treats uploaded material as a shared
+**source library**, extracts tabular **data**, and uses a catalog of **document
+types** (outlines plus rubrics) to scaffold, classify, check and restructure
+writing.
+
+Status: plan, October 2026. Nothing has been built yet.
+
+---
+
+## 1. Verdict
+
+**Viability: high.** About 65% of the organizer's `src/` (about 31k lines) carries
+over unchanged or with mechanical renaming. The pieces that are hard to build are
+already there and tested: upload, Gemini extraction, TipTap ↔ markdown conversion,
+the workflow canvas and engine, suggestion editing, audit logging, and the patterns
+for quoting and verifying source passages. The new work is product logic: the
+document-type catalog, the single-document editor model, the classifier,
+suggestions, generic data, and the new workflows.
+
+| Bucket | Lines (approx.) | Share | Examples |
+|---|---|---|---|
+| Reuse as-is | 9,240 | 30% | shadcn UI, Clerk auth, Blob upload/presign, Gemini extraction helpers, `markdown-to-tiptap`, workflow `validate`/`edge-routing`/`run-stats`, `text-match`, `passages`, `governance` |
+| Adapt (rename/generalize) | 10,920 | 35% | upload routes, document list (was case list), document modal (was case modal), `report-editor`, `report/service`, workflow `engine`/`registry`/canvas, suggestion list, assistant agent loop |
+| Rewrite | 2,010 | 6% | template → document-type definition, catalog, suggestion generation, assessment → data, default workflow graph |
+| Drop | 8,820 | 29% | eligibility, exclusion and determination cores, `prompt-defaults.ts` (2,197 lines), approvals, debug routes, Edge Config prompt settings |
+
+Keeping the FIE (Full and Individual Evaluation) as a document type moves some
+clinical code from Drop into an optional "type pack" (see Phase 8).
+
+**Rough effort:** 40–55 developer-days for one developer working with Claude Code,
+across nine phases. The first usable build, a blank editor with document types,
+sources and notes, comes after Phases 0–4 (about 20–25 days).
+
+---
+
+## 2. Decisions recorded
+
+| # | Decision |
+|---|---|
+| 1 | Start from a pruned copy of the organizer, with fresh git history |
+| 2 | Keep the FIE as one document type |
+| 3 | Small team; keep Clerk and the audit log; drop the formal approval steps |
+| 4 | One continuous TipTap document; AI actions for each section are attached to its heading |
+| 5 | One shared source library organized in folders. Each document gets its own folder, and any source can be linked into any document |
+| 6 | "Data" means any tabular data parsed from PDF, CSV or XLSX. Charts come later |
+| 7 | Rubrics both shape the outline and score the draft on demand |
+| 8 | Export to DOCX, PDF and Markdown |
+| 9 | Catalog built from hand-curated, high-quality sources. ClawHub is used only for individual useful types and is not monitored on a schedule |
+| 10 | The classifier runs after a pause in typing once enough text has changed, and shows a quiet suggestion chip (my recommended approach; see §11 item 2) |
+| 11 | Generic workflow: score how well sources cover the document type, flag missing sources and data, and propose public web resources. A "restructure to another type" workflow is also needed |
+| 12 | Model mix: Gemini, Claude Haiku/Sonnet for the classifier and cheaper calls, Claude Opus for drafting. Sending drafts to model providers is acceptable |
+| 13 | New, separate Vercel, Neon and Clerk projects |
+| 14 | Deliverables: this file plus a shareable page |
+| 15–18 | Notes: live dictation into a single running scratchpad in the document modal, as in deskapp. Audio is always discarded. Each section in the editor has a notes area with dictation and a "Draft from notes" or "Rewrite from notes" action |
+
+Also in scope: the living outline, source citations, and type switching through a
+restructure workflow.
+
+---
+
+## 3. How the concepts map
+
+| Organizer | Sasha |
+|---|---|
+| Case (Blob `upload-groups/{id}/metadata.json`) | **Document**, a Postgres row |
+| Case list (home page) | **Document list**, a switcher. The home page is a blank new document |
+| Case modal (`case-detail-view.tsx`) | **Document modal**: notes, sources, data, suggestions, outline, workflows |
+| Case documents (referral packet) | **Sources**: a shared library in folders, linked to documents |
+| Assessments (`assessment_result`, psychometric scores) | **Data**: extracted tables with typed columns |
+| FIE report (`report` + `report_section` rows) | **Document body**, one ProseMirror JSON tree plus per-section metadata |
+| `FIE_TEMPLATE` | One **document type** in the catalog |
+| Suggested documents and assessments (clinical rules) | **Suggested sources and data** (type checklist plus notes plus an LLM) |
+| Summary note (sticky note) | **Notes scratchpad** (dictation, feeds the classifier) |
+| Determination workflow (reviewers → agreement → supervisor) | **Workflows**: source coverage, restructure, user-authored |
+| Case Assistant | **Document assistant** (same agent loop, new tools) |
+
+---
+
+## 4. Architecture
+
+### 4.1 Stack (unchanged unless noted)
+- Next.js 15 App Router on Vercel (Node 24), Clerk, Vercel Blob, Neon Postgres, jotai,
+  TipTap 2.27, `@xyflow/react`, zod 4, vitest.
+- **New:** `@anthropic-ai/sdk` (Claude, used directly so prompt caching, the web
+  search tool and citations are available), `docx` (DOCX export), `xlsx`/SheetJS
+  and `papaparse` (tabular parsing), PDF export (see Phase 7).
+- **Removed:** `@vercel/edge-config`, `@vercel/postgres` (deprecated; move to
+  `@neondatabase/serverless`), `import` (an accidental dependency in the organizer).
+
+### 4.2 Model routing (`src/lib/llm/`)
+Every model call goes through one module, `llm.ts`, which grows out of
+`agent-determination/llm.ts`. Each call is tagged with a **task**; a config table
+maps the task to a provider and model, and environment variables can override it.
+
+| Task | Default model | Why |
+|---|---|---|
+| `classify.type` (background classifier) | Claude Haiku 4.5 | Cheap and fast. The catalog summaries sit in a cached system prompt |
+| `suggest.sources`, `suggest.data`, `outline.status`, `title`, `summarize.source` | Claude Haiku 4.5 | Short, structured JSON output |
+| `rubric.check`, `coverage.score`, `restructure.plan`, `assistant` | Claude Sonnet | Needs reasoning across sources and rubric criteria |
+| `draft.section`, `rewrite.section`, `draft.from_notes`, `restructure.apply` | Claude Opus | Prose quality |
+| `web.find_sources` | Claude Sonnet with the web search tool | Proposes public supporting resources with URLs |
+| `extract.text`, `extract.tables` (PDF and images) | Gemini Flash | Already proven in the organizer's extraction pipeline |
+| `transcribe` (optional, later) | Gemini | See the note below |
+
+Model IDs live in configuration. Default values: `claude-haiku-4-5-20251001`,
+`claude-sonnet-5-5`, `claude-opus-5-5`, and the organizer's `GEMINI_MODEL`.
+
+**Note on transcription.** Live dictation as in deskapp uses the browser's Web
+Speech API (or the native iOS bridge), so no server model is involved and no
+audio leaves the device except to the browser vendor's speech service. Gemini's
+transcription role is therefore optional. One option is a "Clean up dictation"
+pass that adds punctuation and removes filler words. Gemini remains the extractor
+for PDFs and tables.
+
+### 4.3 Data model (Postgres, new `db/schema.sql`)
+
+```sql
+-- Reused unchanged
+audit_log (...)              -- agent, action, args, result, allowed, document_id
+app_setting (...)
+
+-- Documents
+document (
+  id uuid pk, owner_id text, team_id text null,
+  title text, type_key text null,             -- null = freeform
+  type_confidence real null, type_source text, -- 'user' | 'classifier' | 'restructure'
+  content_json jsonb,                          -- the whole TipTap document
+  content_text text,                           -- plain text for the classifier and search
+  notes text default '',                       -- the scratchpad (decision 16)
+  folder_id uuid,                              -- the document's own folder
+  status text, archived boolean default false,
+  created_at, updated_at, last_classified_at
+)
+document_section (                             -- metadata only; text lives in content_json
+  document_id uuid, section_id text,           -- stable id stored on the heading node
+  spec_key text null,                          -- the outline item it satisfies
+  notes text default '',                       -- section notes (decision 18)
+  status text,                                 -- empty | drafted | edited | reviewed
+  last_generated_at, primary key (document_id, section_id)
+)
+document_version (id, document_id, content_json, reason, created_at)  -- before restructure or rewrite
+
+-- Source library
+folder (id uuid pk, parent_id uuid null, name text, document_id uuid null, owner_id, team_id)
+source (
+  id uuid pk, folder_id uuid, blob_url text, filename text, mime text, bytes int,
+  kind text,                                   -- file | url | note
+  extracted_text text, extraction_status text, summary text,
+  created_at
+)
+document_source (document_id, source_id, role text null, added_at)  -- the many-to-many link
+source_passage (id, source_id, page int, start int, end int, text)  -- for citations
+
+-- Data
+data_table (id uuid pk, source_id uuid, name text, columns jsonb, row_count int,
+            status text,                       -- active | superseded | hidden
+            extraction_method text)            -- csv | xlsx | gemini-pdf
+data_row (table_id uuid, idx int, values jsonb)
+document_data (document_id, table_id)
+
+-- Suggestions (generalizes case_suggestion_edits)
+suggestion (id, document_id, kind text,        -- source | data | web
+            label text, reason text, spec_ref text null, url text null,
+            origin text,                       -- type | notes | coverage
+            state text)                        -- open | added | dismissed
+
+-- Catalog (seeded from fixtures; editable)
+document_type (key text pk, version int, title text, family text,
+               summary text, definition jsonb, provenance jsonb,
+               enabled boolean, updated_at)
+
+-- Workflows (renamed from determination_workflow / agent_determination_run)
+workflow (id, name, ...)
+workflow_version (workflow_id, version, graph jsonb, ...)
+workflow_run (id, workflow_id, version, document_id, status, steps jsonb,
+              outputs jsonb, checkpoints jsonb, ...)
+```
+
+Identifiers move from Blob `group_id` strings to Postgres UUIDs. Blob stores only
+the file bytes.
+
+### 4.4 Document-type definition (`src/catalog/types/*.json`, zod-validated)
+
+```ts
+DocumentType = {
+  key: "nih-r01-research-strategy", version: 1,
+  title, family: "grant" | "business" | "academic" | "technical" | "policy" | "clinical" | ...,
+  summary,                      // 2–3 sentences; the classifier reads this
+  signals: string[],            // phrases and cues for the classifier
+  audience, tone, preamble,     // replaces the hardcoded FIE prompt preamble
+  sections: [{
+    key, heading, level, order, required: boolean,
+    guidance,                   // drafting guidance for the model
+    lengthHint?,                // e.g. "≤ 1 page"
+    elements: string[],         // required elements for the living outline
+    sourcesNeeded: string[],    // drive suggested sources
+    dataNeeded: string[],       // drive suggested data
+    renderer?: "narrative" | "static" | "pack:<name>"   // pack:fie-exclusion etc.
+  }],
+  rubric: [{ key, criterion, levels: [{ score, descriptor }], appliesTo?: sectionKey[] }],
+  provenance: { source, url, license, retrieved }
+}
+```
+
+`report/template.ts` becomes this type. `report/service.ts` looks the definition up
+from the document's `type_key` instead of always using `FIE_TEMPLATE`.
+
+### 4.5 Editor model (decision 4)
+
+- There is one TipTap document per Sasha document. A custom `SectionHeading`
+  extension extends Heading with a stable `sectionId` attribute and an optional
+  `specKey` attribute. A section is the range from its heading to the next heading
+  at the same or a higher level.
+- A heading gutter (a floating menu anchored to the heading) holds the section
+  actions: Draft, Rewrite (presets from `rewrite-presets.ts`), Check against
+  rubric, Cite sources, and Section notes.
+- **Section notes** panel: a textarea with a microphone button using the
+  `useSpeechToText` hook from deskapp. The action button reads **Draft from
+  notes** when the section body is empty and the section has notes, and **Rewrite
+  from notes** when the section has content and notes.
+- Generated content is inserted as a single undoable transaction, and a
+  `document_version` snapshot is taken first.
+- Autosave sends the whole document with debouncing (about 1.5 s), using
+  optimistic concurrency on `updated_at`. Real-time co-editing is out of scope for
+  v1; see the risks in §10.
+
+---
+
+## 5. The document type catalog
+
+### 5.1 Strategy
+Hand-curate 20–30 high-quality types in our own schema, citing sources that are
+public domain or openly licensed. ClawHub entries are added one at a time when a
+skill contains a real outline or rubric (MIT-0 licence). We store
+`owner/slug/version` with a link back, and ingest only the markdown text, never
+scripts or install steps.
+
+### 5.2 Initial set (v1: 15 types; reach 25–30 by the end of Phase 8)
+
+| Family | Type | Basis (licence) |
+|---|---|---|
+| Grant | NIH Specific Aims + Research Strategy | NIH guidance and review criteria (US government, public domain) |
+| Grant | NSF Project Description + Broader Impacts + Data Management Plan | NSF PAPPG (public domain) |
+| Grant | Foundation letter of inquiry / general proposal | Assembled from common foundation formats; hand-written |
+| Business | Business plan | SBA business plan outline (public domain) |
+| Business | Product requirements document | anthropics/skills `doc-coauthoring` pattern (check its licence), hand-written |
+| Business | Strategy memo / review | ClawHub `strategy-review` rubric (MIT-0), curated |
+| Technical | Tutorial, How-to, Reference, Explanation (4 types) | Diátaxis (CC BY-SA 4.0; definitions paraphrased, attributed) |
+| Technical | Design doc / RFC | anthropics/skills `doc-coauthoring` pattern, hand-written |
+| Technical | Standard operating procedure | EPA QA/G-6 (public domain) |
+| Academic | Research report (IMRaD) | Standard APA/IMRaD section list (a factual structure, hand-written) |
+| Policy | Policy / decision memo | Plain Language guidelines (public domain) plus GSA/18F guides |
+| Career | Resume / CV | ClawHub `resume-cv-builder` (MIT-0), curated |
+| Clinical | Full and Individual Evaluation | Ported from the organizer's `FIE_TEMPLATE` |
+
+**Universal rubric:** every type inherits a short writing rubric built from the
+Federal Plain Language Guidelines and Google's technical writing material
+(clarity, concision, audience fit, structure, evidence). AAC&U VALUE rubrics are
+excluded because their licence is non-commercial (CC BY-NC-SA); they are an option
+if Sasha stays non-commercial.
+
+### 5.3 Pipeline
+`scripts/catalog/` contains:
+- `build.ts`: validates every `types/*.json` against the zod schema, generates
+  `catalog.index.json` (key, title, family, summary, signals), and fails CI on
+  invalid definitions.
+- `import-clawhub.ts <owner/slug>`: fetches one skill's `SKILL.md` through the
+  public API (`/api/v1/skills/{slug}/file`), checks `/verify` and the moderation
+  status, removes URLs and install commands, asks Sonnet to draft a definition in
+  our schema, and writes it to `types/_drafts/` for human review. It is never
+  scheduled (decision 9).
+- An in-app catalog admin page lists, enables, disables and edits types. User-made
+  types (for example "save my outline as a type") are stored in `document_type`.
+
+---
+
+## 6. Feature specs
+
+### 6.1 Home and the document list
+- `/` creates a new, empty, untitled document on the first keystroke (no empty
+  rows) and opens the editor full-screen.
+- A switcher in the header lists documents with search, a type filter, an
+  archived view and recent documents. It replaces `upload-groups-list.tsx`.
+- `/d/[id]` opens a document. The intercepting `@modal` route pattern is reused
+  for the document modal (`/d/[id]/info`).
+
+### 6.2 Document modal (adapted from `case-detail-view.tsx`)
+| Pane | Contents |
+|---|---|
+| **Notes** | One running scratchpad. A microphone button provides live dictation (deskapp `useSpeechToText`, Finish/Cancel as in its `ChatInput.tsx`). Autosaved. No audio is kept |
+| **Type** | Current type, confidence, top 3 alternatives, "Choose type…", and "Restructure to…" |
+| **Outline** | The living outline: the type's sections and required elements with a status for each (missing / partial / done), linked to headings |
+| **Sources** | The document's folder plus linked sources, an "Add from library" picker, the upload dropzone, and suggested sources |
+| **Data** | Extracted tables with a preview, column types, hide/supersede controls, and suggested data |
+| **Workflows** | Run coverage, restructure, or user workflows; run history and the inspector |
+
+### 6.3 Classifier (decision 10)
+- Triggered on the client when (a) typing has paused for 5 s **and** at least 150
+  words have changed since the last run, or (b) the notes change and have been idle
+  for 5 s. At most one run per 2 minutes per document, and never once the user has
+  chosen a type unless the text drifts strongly.
+- `POST /api/documents/[id]/classify` sends Haiku the cached catalog index plus the
+  first ~3k tokens of notes and text. It returns `{ candidates: [{key, confidence,
+  why}], freeform: boolean }`.
+- The UI shows a quiet chip, "Looks like a *Business plan*: apply outline?". Three
+  dismissals of the same type stop that suggestion for the document.
+- When applied to a document that already has text, the restructure flow (§6.7)
+  runs in **merge** mode: the outline is added around the existing content, and no
+  prose is rewritten.
+
+### 6.4 Suggestions (rewrite of the organizer's generation; reuse of its edit store and UI)
+- **Type-driven:** the union of `sourcesNeeded` and `dataNeeded` across the type's
+  sections, minus what linked sources and data already cover. Coverage is judged
+  by Haiku against source summaries.
+- **Notes-driven:** Haiku reads the notes and the type and proposes specific items,
+  for example "Last year's audited financials", each with a reason.
+- **Web-driven:** comes from the coverage workflow (§6.7).
+- `suggestion-list.tsx` and `case-suggestions.ts` are reused (add, dismiss,
+  restore) with the kinds renamed to `source | data | web`.
+
+### 6.5 Sources library (decision 5)
+- Folders form a tree. Each document gets a folder automatically, and uploads from
+  a document land there. A library view (`/library`) lets you browse, move and
+  search all sources and link any source into any document.
+- The upload pipeline is reused: presign, direct upload to Blob, then `complete`,
+  followed by Gemini text extraction, a Haiku summary, and passage chunking for
+  citations. The clinical `runGovernedPipeline` and `extractSubjectInfo` calls are
+  removed.
+- URL sources: paste a URL, the server fetches and extracts it (Readability), and
+  the source is stored with `kind=url`.
+
+### 6.6 Data (decision 6)
+- CSV through `papaparse` and XLSX through SheetJS: every sheet becomes a
+  `data_table`, with header detection and column type inference
+  (number/date/text/currency/percent).
+- PDF: Gemini table extraction to strict JSON, using the multimodal pattern from
+  the organizer's `assessment/extract.ts`. A classifier step ("does this page
+  contain tables?") is reused from `assessment/classify.ts`.
+- The supersede/hide/override and audit rules are reused from
+  `assessment/service.ts`.
+- Insert into document: "Insert table" places a TipTap table snapshot with a
+  citation link back to the `data_table`. Charts are deferred.
+
+### 6.7 Workflows (decision 11; reuses the canvas and engine)
+New node set. The generic organizer nodes are kept: `ai.ask`, `ai.extract`,
+`ai.categorize`, `text.combine`, `logic.if`, `logic.router`, and `checkpoint`
+(renamed from `clinical.checkpoint`).
+
+| Node | Purpose |
+|---|---|
+| `doc.read` | The document text, its sections, and its type definition |
+| `doc.notes` | The notes scratchpad and section notes |
+| `sources.list` / `sources.read` | Linked sources, with summaries and passages |
+| `data.list` | Linked data tables |
+| `type.coverage` | Scores each section's `sourcesNeeded`/`dataNeeded` and each required element as supported / weak / missing, with evidence passages |
+| `web.find` | Sonnet with web search: proposes public resources for the gaps (government data portals, standards, papers), with URLs and why each fits |
+| `rubric.score` | Scores the draft against the type's rubric plus the universal rubric |
+| `doc.write` | Writes to the document (a section, a comment, or the outline status). Takes a version snapshot first |
+| `suggest.emit` | Turns findings into suggestions (source / data / web) |
+
+Built-in workflows:
+1. **Source coverage review:** `doc.read` + `sources.list` + `data.list` →
+   `type.coverage` → `logic.if(gaps)` → `web.find` → `suggest.emit`, plus a report
+   in the inspector.
+2. **Restructure to type:** `doc.read` → plan (Sonnet: map existing content onto
+   the target type's sections, list content that doesn't fit, list gaps) →
+   `checkpoint` (the user approves the mapping) → apply (Opus: move content, add
+   empty sections, add only transitional prose) → `doc.write` with a version
+   snapshot. Modes: **merge** (keep the text, add the outline) and **rewrite**.
+3. **Draft all empty sections:** for each empty section, draft from notes and
+   sources, then `rubric.score`.
+
+The engine's 200 s budget with pause and continue is kept. The tables are renamed
+as in §4.3.
+
+### 6.8 Citations
+- Passages are created when a source is extracted (`source_passage`). Drafting
+  prompts receive numbered passages, and the model returns `[[p:ID]]` markers.
+  The server verifies quotes against passages using the organizer's `passages.ts`.
+  Markers become a `citation` TipTap mark that shows the passage on hover and opens
+  the source.
+- On export, citations become footnotes (DOCX and PDF) or reference links
+  (Markdown).
+
+### 6.9 Rubric check (decision 7)
+- An on-demand "Check" control on a section or the whole document runs
+  `rubric.score` on Sonnet. It returns, for each criterion, a level, evidence and a
+  suggested fix. The results appear in a side panel, and each fix has an "Apply"
+  action (rewrite with that instruction).
+
+### 6.10 Export (decision 8)
+- **Markdown:** a `tiptapToMarkdown` function (new, the inverse of the reused
+  converter).
+- **DOCX:** the `docx` library mapping headings, paragraphs, lists, tables,
+  images and footnotes.
+- **PDF:** server-side HTML (from the reused `tiptapToHtml`) plus print CSS,
+  rendered with `@sparticuz/chromium` and Puppeteer in a Vercel function. If cold
+  starts or bundle size are a problem, the fallback is client-side `window.print()`
+  with print CSS.
+
+---
+
+## 7. Implementation phases
+
+Effort is in developer-days. Each phase ends with tests passing, `lint` and
+`typecheck` clean, and a deploy to a preview.
+
+### Phase 0: Bootstrap (2–3 d)
+1. Copy the organizer into Sasha without history. Delete the Drop set. Move
+   `GroupMetadata` out of `exclusion/evidence.ts` and `llm.ts`/`ModelChoice` out of
+   `agent-determination/` first, so imports don't break.
+2. Rename packages, branding and routes. Remove `@vercel/edge-config`, the `import`
+   dependency, and the hardcoded Blob URL fallback. Update the middleware
+   allowlist.
+3. Create new Vercel, Neon and Clerk projects. Add `.env.example`, update
+   `setup-local-env.sh`, and add a GitHub Actions CI job (lint, typecheck,
+   vitest).
+4. Keep the surviving tests green: markdown-to-tiptap, the workflow engine,
+   validate, edge-routing, run-stats, gemini-files, pdf-chunks,
+   resumable-upload, extracted-text, processing-jobs, text-match, passages.
+
+### Phase 1: Documents and editor (5–6 d)
+1. New schema (§4.3) with migrations. Use plain SQL files and a tiny runner, or
+   drizzle-kit; drizzle is recommended for typed queries.
+2. Document CRUD API, `/` creates a blank document, `/d/[id]` editor, document
+   switcher, archive.
+3. Single-document TipTap editor: `SectionHeading` extension, autosave,
+   `content_text` projection, version snapshots.
+4. `lib/llm` with task routing and the Anthropic SDK; record token usage in
+   `audit_log`.
+
+### Phase 2: Sources library (3–4 d)
+1. Folder tree, `source`, `document_source`, the library page, and the picker for
+   linking sources into documents.
+2. Adapt the upload pipeline (presign/direct/complete → extraction → summary →
+   passages). Add URL sources.
+
+### Phase 3: Document types, outline and section tools (6–8 d)
+1. Catalog schema, `build.ts`, the first 10 types, and the catalog admin page.
+2. "New document of type…" generates the outline, and section headings carry
+   `specKey`.
+3. Living outline pane (element status from Haiku, refreshed on save with
+   debouncing).
+4. Heading gutter actions: Draft and Rewrite on Opus, presets, section notes
+   with dictation, Draft/Rewrite from notes.
+5. Port `report/service.ts` generation onto the type definition
+   (preamble/guidance from data).
+
+### Phase 4: Notes, classifier and suggestions (4–5 d)
+1. Document modal shell (adapted `case-detail-view`, `case-shell`, `case-nav`) and
+   the Notes pane with the `useSpeechToText` port (including the native bridge
+   contract, for a future iOS shell).
+2. Classifier endpoint and client trigger, chip UI, dismiss memory.
+3. Suggestion generation (type plus notes) on the reused suggestion UI and edit
+   store.
+
+**Milestone A (end of Phase 4): usable for real writing.**
+
+### Phase 5: Data (4 d)
+CSV/XLSX parsing, Gemini PDF table extraction, the Data pane, insert table,
+suggested data.
+
+### Phase 6: Workflows (6–8 d)
+1. Rename tables and nodes. Remove the clinical nodes from `engine.ts` and
+   `registry.ts`; add the new nodes (§6.7).
+2. Source coverage workflow including `web.find`.
+3. Restructure workflow (merge and rewrite modes, checkpoint approval) wired to
+   the classifier chip.
+4. Draft-all workflow; update `engine.test.ts` mocks.
+
+### Phase 7: Citations, rubric check and export (5–6 d)
+Citation mark and quote verification, the rubric panel with apply-fix, and
+Markdown/DOCX/PDF export with footnotes.
+
+### Phase 8: FIE type pack and the rest of the catalog (3–5 d)
+1. FIE as a document type, outline and narrative guidance only (cheap).
+2. Optional: the full clinical pack (`src/packs/fie/`) bringing back the
+   exclusion and eligibility deterministic cores as `pack:` renderers and
+   workflow nodes. This adds about 2–3 d and roughly 1,700 lines of clinical
+   code. See §11 item 1.
+3. Expand to 25–30 types, including curated ClawHub imports.
+
+### Phase 9: Hardening (3–4 d)
+Rate limits per user on model routes, cost dashboard (tokens by task from
+`audit_log`), Playwright smoke tests for the editor, modal, upload and export,
+and accessibility checks.
+
+---
+
+## 8. Files to reuse or adapt from the organizer (by path)
+
+- **Reuse as-is:**
+  - `src/components/ui/*`
+  - `src/lib/report/markdown-to-tiptap.ts`, `editor-extensions.ts`
+  - `src/lib/workflow/{types,validate,template,edge-routing,run-stats,model-json}.ts`
+  - `src/lib/ontology/{governance,text-match,ensure-schema}.ts`
+  - `src/lib/ontology/agent-determination/passages.ts`
+  - `src/lib/{gemini*,pdf-chunks,resumable-upload,extracted-text,blob-*,upload-strategy,processing-*}.ts`
+  - `src/app/api/upload/{presign,direct}`
+  - workflow `routed-edge`, `canvas-context`, `run-timeline`, `workflow-picker`
+- **Adapt:**
+  - `src/components/report-editor.tsx` (continuous document plus heading gutter)
+  - `src/lib/ontology/report/service.ts`, `rewrite-presets.ts`
+  - `src/components/case-detail-view.tsx` → `document-modal.tsx`
+  - `upload-groups-list.tsx` → `document-switcher.tsx`
+  - `summary-note.tsx` → `notes-pane.tsx`
+  - `suggestion-list.tsx`, `case-suggestions.ts`, `suggestion-edits.ts`
+  - `src/lib/workflow/{engine,registry,auto-run}.ts`
+  - `workflow-canvas.tsx`, `node-settings.tsx`, `run-history.tsx`, `run-inspector.tsx`
+  - `assistant/agent.ts`, `assistant/governance.ts`
+  - `assessment/{classify,service}.ts` → `data/`
+  - `upload/route.ts`, `upload/complete/route.ts`
+  - `permissions.ts` (roles: owner, editor, viewer)
+- **From deskapp:** `apps/web/src/components/useSpeechToText.ts` (283 lines) and
+  the Finish/Cancel dictation pattern in `ChatInput.tsx`.
+- **Rewrite:** `report/template.ts` → `catalog/schema.ts`; `ontology/catalog.ts`;
+  `workflow/default-graph.ts`; `assessment/{extract,scoring,domains,instruments}.ts`
+  → `data/extract.ts`; `assistant/{objects,functions,menu}.ts`.
+
+---
+
+## 9. Testing strategy
+
+- **Unit (vitest):** catalog schema validation, section range detection, the
+  classifier trigger logic (pure), suggestion diffing, CSV/XLSX inference, citation
+  marker parsing and quote verification, restructure mapping application,
+  exporters (golden files).
+- **LLM contract tests:** recorded fixtures for each task's JSON schema, plus one
+  live smoke run per task that runs only when the keys are present.
+- **E2E (Playwright, pre-installed Chromium):** new document → type → outline →
+  draft section → export DOCX; upload CSV → insert table; dictation is mocked
+  through the `window.__deskDictation` bridge contract.
+
+---
+
+## 10. Risks
+
+| Risk | Mitigation |
+|---|---|
+| Large single documents make autosave and context heavy | Debounced whole-document saves are fine below about 50 pages. Send only the relevant sections plus the outline to models |
+| Concurrent edits by teammates overwrite each other | Optimistic concurrency with a conflict prompt in v1. Yjs/Hocuspocus co-editing is a later option |
+| Web Speech quality varies by browser; Firefox has none | Hide the microphone when unsupported; optional Gemini clean-up pass |
+| Background classification costs | Haiku, a cached catalog prompt, word-delta and rate gating. Estimate under $0.01 per run |
+| Prompt injection from sources or ClawHub content | Sources are passed as delimited data. Tools on workflow nodes are read-only unless the node is `doc.write`. ClawHub imports are sanitized and reviewed by a person |
+| PDF export on Vercel (Chromium size and cold starts) | `@sparticuz/chromium`; client print fallback |
+| Licences of catalog sources | Store provenance for each type; avoid NC-licensed rubrics; paraphrase CC BY-SA material and attribute it |
+
+---
+
+## 11. Open items
+
+1. **FIE depth:** port only the outline and narrative guidance (recommended for
+   v1), or the whole governed clinical pipeline as a pack?
+2. **Classifier trigger:** the answer to question 10 reads "your catalog approach
+   is good", which matches question 9. I am using the recommended default (5 s
+   pause, at least 150 changed words, at most once every 2 minutes, quiet chip).
+   Confirm or adjust.
+3. **Gemini transcription:** with live browser dictation, Gemini has no required
+   transcription role. Should there be an optional "Clean up dictation" pass on
+   Gemini?
+4. **Team model:** Clerk Organizations for the team, with documents and the
+   library shared across the organization (recommended), or per-user ownership
+   with explicit sharing?
+
+---
+
+## Sources
+
+- https://github.com/openclaw/clawhub (`docs/http-api.md`, `docs/skill-format.md`, `docs/publishing.md`)
+- https://clawhub.ai/api/v1/openapi.json
+- https://github.com/VoltAgent/awesome-openclaw-skills
+- https://github.com/anthropics/skills
+- https://diataxis.fr
+- https://grants.nih.gov
+- https://new.nsf.gov/policies/pappg
+- https://www.sba.gov/business-guide/plan-your-business/write-your-business-plan
+- https://www.epa.gov/quality/guidance-preparing-standard-operating-procedures-epa-qag-6-march-2001
+- https://www.plainlanguage.gov/guidelines/
+- https://developers.google.com/tech-writing
+- https://www.aacu.org/initiatives/value-initiative/how-to-cite
+- https://www.antiy.net/p/clawhavoc-analysis-of-large-scale-poisoning-campaign-targeting-the-openclaw-skill-market-for-ai-agents/
+- https://tiptap.dev/docs
+- https://docx.js.org
+- https://sheetjs.com
+- https://github.com/Sparticuz/chromium
