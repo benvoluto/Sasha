@@ -4,7 +4,7 @@ import { callModel, type ModelReply } from "@/lib/llm/call";
 import type { ModelChoice } from "@/lib/llm/model-choice";
 import { withTimeout } from "@/lib/processing-status";
 
-/** Per model call. */
+/** Per model call (callers cap it at the time the invocation has left). */
 export const CALL_TIMEOUT_MS = 120_000;
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -30,20 +30,21 @@ export async function callForJson<T>(
   user: string,
   parse: (text: string) => Parsed<T>,
   label: string,
+  timeoutMs = CALL_TIMEOUT_MS,
 ): Promise<{ value?: T; text: string; error?: string }> {
-  let reply: ModelReply = await withTimeout(callModel({ ...choice, system, user, label }), CALL_TIMEOUT_MS, label);
+  let reply: ModelReply = await withTimeout(callModel({ ...choice, system, user, label }), timeoutMs, label);
   let parsed = parse(reply.text);
   if (!parsed.ok) {
     const why = reply.truncated ? "Your reply was cut off at the output limit; answer more concisely." : `Your reply was invalid: ${parsed.error}`;
-    reply = await withTimeout(callModel({ ...choice, system, user: `${user}\n\n${why}\nReturn ONLY the corrected JSON object.`, label: `${label} (retry)` }), CALL_TIMEOUT_MS, `${label} (retry)`);
+    reply = await withTimeout(callModel({ ...choice, system, user: `${user}\n\n${why}\nReturn ONLY the corrected JSON object.`, label: `${label} (retry)` }), timeoutMs, `${label} (retry)`);
     parsed = parse(reply.text);
   }
   return parsed.ok ? { value: parsed.value, text: reply.text } : { text: reply.text, error: reply.truncated ? "reply truncated at the output limit" : parsed.error };
 }
 
 /** A plain-text reply. */
-export async function callForText(choice: ModelChoice, system: string, user: string, label: string): Promise<string> {
-  const reply = await withTimeout(callModel({ ...choice, system, user, json: false, label }), CALL_TIMEOUT_MS, label);
+export async function callForText(choice: ModelChoice, system: string, user: string, label: string, timeoutMs = CALL_TIMEOUT_MS): Promise<string> {
+  const reply = await withTimeout(callModel({ ...choice, system, user, json: false, label }), timeoutMs, label);
   if (reply.truncated) throw new Error("reply truncated at the output limit");
   return reply.text.trim();
 }

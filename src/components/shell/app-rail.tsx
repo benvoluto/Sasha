@@ -1,15 +1,16 @@
 "use client";
 
 // The narrow cream rail down the left of the writing pages: the Documents
-// toggle (opens the documents/folders panel), links to the source library and
-// the document-type catalog, the account menu, and Sasha herself at the bottom.
+// toggle (opens the documents/folders panel), links to the source library, the
+// document-type catalog and the workflow canvas, the account menu, and Sasha
+// herself at the bottom.
 // It sits above the panel (z-50) so the mascot can overlap the panel's and the
 // editor's edge, as in the mockup.
 
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import type { ComponentType, ReactNode, RefObject } from "react";
-import { DocsIcon, LibraryIcon, TypesIcon } from "@/components/icons";
+import { DocsIcon, LibraryIcon, TypesIcon, Workflow } from "@/components/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const RAIL_BUTTON =
@@ -47,6 +48,7 @@ export function AppRail({ pathname, panelOpen, onTogglePanel, toggleRef }: { pat
       </RailTip>
       <RailLink href="/library" label="Library" icon={LibraryIcon} pathname={pathname} />
       <RailLink href="/catalog" label="Document types" icon={TypesIcon} pathname={pathname} />
+      <RailLink href="/workflows" label="Workflows" icon={Workflow} pathname={pathname} />
 
       <div className="mt-auto mb-24 grid h-11 w-11 place-items-center [@media(max-height:520px)]:mb-4">
         <UserButton>

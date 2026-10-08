@@ -6,8 +6,9 @@
 // page; a right column with the living outline over the tools or section notes
 // (right-column.tsx); floating Outline / Tools / Sources buttons. Sources and
 // the Notes control beside the title open the document modal (Notes / Sources /
-// Data / Suggestions). Each heading has a gutter button that opens the section's actions
-// (draft, rewrite, notes).
+// Data / Suggestions / Workflows). Each heading has a gutter button that opens the section's actions
+// (draft, rewrite, notes). Changes a workflow run proposes are applied here, in
+// the editor, as one undo step (apply-workflow-change.ts).
 
 import { OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -26,7 +27,10 @@ import type { TableSnapshot } from "@/lib/data/contract";
 import { tableSnapshotNodes } from "@/lib/data/snapshot";
 import type { PMNode } from "@/lib/documents/sections";
 import type { SaveOutlineAsTypeResponse, SectionListResponse } from "@/lib/sections/contract";
+import type { ProposedChange } from "@/lib/workflow/contract";
+import { applyRestructurePlan } from "@/lib/workflow/restructure";
 import { applyOutlineMerge } from "./apply-outline";
+import { applyWorkflowChange, type AppliedChange } from "./apply-workflow-change";
 import { ClassifierChip } from "./classifier-chip";
 import { DocumentModal } from "./document-modal";
 import type { DocumentModalTab } from "./document-modal-model";
@@ -59,6 +63,7 @@ import { useDocument, type SaveStatus } from "./use-document";
 import { useOutlineStatus } from "./use-outline-status";
 import { busyAnnouncement, useSectionGeneration } from "./use-section-generation";
 import { linkedSourcesKey, useSuggestionsRefresh } from "./use-suggestions-refresh";
+import { chipApplyAction, restructurePrefill, type WorkflowsPrefill } from "./workflows-pane-model";
 
 /** Who can see the document, and the team switcher. Uses Clerk's organization hooks, so it is never mounted under the dev auth bypass. */
 function TeamSharing() {
@@ -275,8 +280,10 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const currentType = findType(types, doc.type_key);
   // The right column: the outline on top, Tools or Section notes below (right-column-model.ts).
   const [column, setColumn] = useState<RightColumnState>(CLOSED_COLUMN);
-  // The document modal (Notes / Sources / Data / Suggestions), and the control that opened it.
+  // The document modal (Notes / Sources / Data / Suggestions / Workflows), and the control that opened it.
   const [modalTab, setModalTab] = useState<DocumentModalTab | null>(null);
+  // The classifier chip's "Restructure…": the Workflows tab opens on the restructure workflow with the type chosen.
+  const [workflowsPrefill, setWorkflowsPrefill] = useState<WorkflowsPrefill | null>(null);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
   const notesButtonRef = useRef<HTMLButtonElement>(null);
   const [modalOpener, setModalOpener] = useState<"sources" | "notes">("sources");
@@ -414,6 +421,41 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     [notify, undoNotice],
   );
 
+  /** The Workflows tab's "Apply to document": the run's change as one undo step after a snapshot, then a notice (phase6-spec.md §8.2). */
+  const applyChange = useCallback(
+    async (proposed: ProposedChange): Promise<AppliedChange> => {
+      const ed = editorRef.current;
+      if (!ed) return { result: null, detail: "The editor isn't ready yet.", typeKey: null };
+      const out = await applyWorkflowChange(ed, proposed, {
+        ensureSaved,
+        snapshot,
+        sectionsFor: (key) => findType(types, key)?.sections ?? null,
+        newId: newSectionId,
+        restructure: applyRestructurePlan,
+      });
+      if (out.typeKey) change({ type_key: out.typeKey, type_source: "restructure" });
+      if (out.result === "applied") notify(undoNotice(`${proposed.title}: ${out.detail}`));
+      else notify({ text: out.detail, tone: out.result === null ? "error" : undefined });
+      return out;
+    },
+    [ensureSaved, snapshot, types, change, notify, undoNotice],
+  );
+
+  /** A workflow finding's location: the section's heading, in view. The dialog closes first. */
+  const jumpToSection = useCallback((sectionId: string) => {
+    requestAnimationFrame(() => {
+      const ed = editorRef.current;
+      const s = ed ? sectionBodyRange(ed.state.doc, sectionId) : null;
+      if (ed && s) goToHeading(ed, s.headingPos);
+    });
+  }, []);
+
+  /** The chip's "Restructure…" (and its Apply on a typed document): the restructure workflow, to this type. */
+  const openRestructure = (key: string) => {
+    setWorkflowsPrefill(restructurePrefill(key));
+    openModal("workflows", "sources");
+  };
+
   /** A new document of the type, opened in place of this one. Resolves to an error message, or null. */
   const startNewOfType = async (t: DocumentTypeSummary): Promise<string | null> => {
     try {
@@ -544,10 +586,14 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           </button>
           <ClassifierChip
             suggestion={classifier.suggestion}
+            applyLabel={chipApplyAction(doc.type_key).label}
             onApply={(key) => {
+              // A typed document (the drift case) restructures rather than only tagging headings.
+              if (chipApplyAction(doc.type_key).restructure) return openRestructure(key);
               const t = findType(types, key);
               if (t) void chooseType(t, "classifier");
             }}
+            onRestructure={openRestructure}
             onDismiss={(key) => void classifier.dismiss(key)}
           />
           <StatusText status={status} error={error} isNew={!doc.id} />
@@ -643,7 +689,11 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       />
       <DocumentModal
         tab={modalTab}
-        onTabChange={setModalTab}
+        onTabChange={(t) => {
+          setModalTab(t);
+          // The chip's prefill lasts while the Workflows tab is showing.
+          if (t !== "workflows") setWorkflowsPrefill(null);
+        }}
         documentId={doc.id || null}
         documentTitle={doc.title}
         typeKey={doc.type_key}
@@ -655,6 +705,10 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         returnFocusRef={modalOpener === "notes" ? notesButtonRef : sourcesButtonRef}
         onSourcesChange={onSourcesChange}
         onInsertTable={insertTable}
+        onApplyWorkflowChange={applyChange}
+        onJumpToSection={jumpToSection}
+        workflowsPrefill={workflowsPrefill}
+        onWorkflowsPrefillDone={() => setWorkflowsPrefill(null)}
       />
 
       <span role="status" aria-live="polite" className="sr-only">

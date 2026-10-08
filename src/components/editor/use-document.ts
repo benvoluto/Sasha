@@ -27,8 +27,8 @@ export type DocState = {
 export type SaveStatus = "idle" | "saving" | "saved" | "error" | "conflict";
 
 type Patch = Partial<Pick<DocState, "title" | "type_key" | "content_json" | "notes">> & {
-  /** With type_key: "classifier" when applied from the classifier chip (the server defaults to "user"). */
-  type_source?: "user" | "classifier";
+  /** With type_key: "classifier" when applied from the classifier chip, "restructure" when a restructure workflow's change set it (the server defaults to "user"). */
+  type_source?: "user" | "classifier" | "restructure";
 };
 
 /** A loaded or conflicting document row as the client keeps it. */
@@ -248,7 +248,7 @@ export function useDocument(initialId: string | null) {
       pending.current = {
         title: docRef.current.title,
         type_key: docRef.current.type_key,
-        type_source: docRef.current.type_source === "classifier" ? "classifier" : "user",
+        type_source: docRef.current.type_source ?? "user",
         content_json: docRef.current.content_json ?? undefined,
         notes: docRef.current.notes,
         ...pending.current,

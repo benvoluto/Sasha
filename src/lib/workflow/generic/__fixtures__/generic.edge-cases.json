@@ -1,0 +1,17 @@
+{
+  "note": "Hand-written replies the generic nodes must survive: ids in odd case and spacing, unknown keys, missing rows, invented passage ids, citation markers left in the text, empty sentences.",
+  "restructure.plan": {
+    "rows": [
+      { "id": " r2 ", "target": "budget", "reason": "Costs" },
+      { "id": "R1", "target": "Summary", "reason": "Wrong case" },
+      { "id": "R9", "target": "summary", "reason": "No such part" }
+    ]
+  },
+  "draft.traced": {
+    "sentences": [
+      { "text": "  ", "support": [], "paragraph_break": false },
+      { "text": "The path costs £38,400 [S0f1e2d3c.P1] [[p:S0f1e2d3c.P1]].", "support": [{ "kind": "passage", "id": "[S0f1e2d3c.P1]" }], "paragraph_break": true },
+      { "text": "It will reopen in July.", "support": [{ "kind": "passage", "id": "S99999999.P1" }, { "kind": "passage", "id": null }], "paragraph_break": false }
+    ]
+  }
+}

@@ -32,6 +32,18 @@ export const TASKS = {
   "draft.from_notes": { tier: "draft", effort: "medium", maxTokens: 16000 },
   /** Large enough that claude.ts streams it (the SDK refuses it as a plain request). */
   "restructure.apply": { tier: "draft", effort: "high", maxTokens: 32000 },
+  /** Phase 6 workflows (src/lib/workflow/nodes, generic). Draft-all's sentence-traced section draft. */
+  "draft.traced": { tier: "draft", effort: "medium", maxTokens: 16000 },
+  /** Public resources for coverage gaps, with the server web search tool. */
+  "web.find": { tier: "mid", effort: "medium", maxTokens: 8000 },
+  /** Gate: required inputs keywords could not confirm. */
+  "workflow.gate": { tier: "fast", effort: "low", maxTokens: 2000 },
+  /** Shared review steps. */
+  "workflow.extract": { tier: "mid", effort: "medium", maxTokens: 16000 },
+  "workflow.trace": { tier: "mid", effort: "medium", maxTokens: 16000 },
+  "workflow.review": { tier: "mid", effort: "high", maxTokens: 16000 },
+  "workflow.check": { tier: "mid", effort: "medium", maxTokens: 16000 },
+  "workflow.decide": { tier: "mid", effort: "medium", maxTokens: 4000 },
 } as const satisfies Record<string, TaskSpec>;
 
 export type Task = keyof typeof TASKS;

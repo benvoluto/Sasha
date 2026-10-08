@@ -2,30 +2,26 @@
 // long it and its steps took, and totals across runs. Pure functions over run
 // summaries, shared by the server (which builds the summaries) and the client.
 
+import { runBrief, type CheckpointVerdict, type RunBrief, type RunStatus, type StepState, type WorkflowRunRecord } from "./contract";
 import { CHECKPOINT_NODE_TYPE, NODE_SPEC_INDEX, OUTPUT_NODE_TYPE } from "./registry";
-import type { RunStatus, StepState, WorkflowRun } from "./store";
 
-/** A run without its node outputs: enough for the history views, small enough to list hundreds. */
-export type RunSummary = Pick<WorkflowRun, "id" | "group_id" | "status" | "workflow_id" | "workflow_name" | "workflow_version" | "steps" | "checkpoints" | "requested_by" | "created_at" | "updated_at"> & {
-  /** The run's nodes, in workflow order. */
-  nodes: Array<{ id: string; type: string; label: string }>;
-};
+/** A run without its node outputs: enough for the history views, small enough to list hundreds. A RunBrief plus steps and nodes. */
+export type RunSummary = RunBrief &
+  Pick<WorkflowRunRecord, "steps" | "checkpoints"> & {
+    /** The run's nodes, in workflow order. */
+    nodes: Array<{ id: string; type: string; label: string }>;
+  };
 
-export function toRunSummary(run: WorkflowRun): RunSummary {
+export function toRunSummary(run: WorkflowRunRecord): RunSummary {
   return {
-    id: run.id,
-    group_id: run.group_id,
-    status: run.status,
-    workflow_id: run.workflow_id,
-    workflow_name: run.workflow_name,
+    ...runBrief(run),
     // BIGINT columns come back from Postgres as strings.
     workflow_version: Number(run.workflow_version),
     steps: run.steps,
     checkpoints: run.checkpoints ?? {},
-    requested_by: run.requested_by,
     created_at: new Date(run.created_at).toISOString(),
     updated_at: new Date(run.updated_at).toISOString(),
-    nodes: run.workflow.nodes.map((n) => ({ id: n.id, type: n.type, label: n.label || NODE_SPEC_INDEX[n.type]?.label || n.type })),
+    nodes: run.graph.nodes.map((n) => ({ id: n.id, type: n.type, label: n.label || NODE_SPEC_INDEX[n.type]?.label || n.type })),
   };
 }
 
@@ -37,9 +33,9 @@ export type RunOutcome = Exclude<RunStatus, "superseded"> | "stopped";
 
 export function runOutcome(run: Pick<RunSummary, "status" | "steps" | "nodes">): RunOutcome {
   if (run.status !== "superseded") return run.status;
-  const draft = run.nodes.find((n) => n.type === OUTPUT_NODE_TYPE);
+  const out = run.nodes.find((n) => n.type === OUTPUT_NODE_TYPE);
   const steps = Object.values(run.steps);
-  if (draft && run.steps[draft.id]?.status === "done") return "draft";
+  if (out && run.steps[out.id]?.status === "done") return "complete";
   if (steps.some((s) => s.status === "failed")) return "failed";
   if (steps.some((s) => s.status === "waiting")) return "awaiting_review";
   // Replaced before it finished.
@@ -50,7 +46,7 @@ export const OUTCOME_LABEL: Record<RunOutcome, string> = {
   running: "Running",
   awaiting_review: "Awaiting review",
   paused: "Paused",
-  draft: "Result saved",
+  complete: "Complete",
   failed: "Failed",
   stopped: "Stopped",
 };
@@ -79,6 +75,8 @@ export function formatDuration(d: number | null): string {
   return m < 60 ? `${m}m ${s}s` : `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
+const VERDICT_VERB: Record<CheckpointVerdict, string> = { approve: "approved", edit: "edited and approved", reject: "rejected" };
+
 /** One line of a run's timeline. */
 export type TimelineEntry = { at: string; kind: "run" | "step" | "checkpoint"; nodeId?: string; title: string; detail?: string; status: "ok" | "failed" | "skipped" | "waiting" | "running" | "info" };
 
@@ -100,7 +98,7 @@ export function runTimeline(run: RunSummary, now = Date.now()): TimelineEntry[] 
       at: c.at,
       kind: "checkpoint",
       nodeId,
-      title: `${c.by} continued ${label.get(nodeId) ?? nodeId}`,
+      title: `${c.by} ${VERDICT_VERB[c.verdict ?? "approve"]} ${label.get(nodeId) ?? nodeId}`,
       detail: [c.excluded.length ? `left out ${c.excluded.length} item(s)` : "", c.note ? `“${c.note}”` : ""].filter(Boolean).join(" · ") || undefined,
       status: "info",
     });
@@ -112,9 +110,9 @@ export function runTimeline(run: RunSummary, now = Date.now()): TimelineEntry[] 
     out.push({
       at: run.updated_at,
       kind: "run",
-      title: `Run ${outcome === "draft" ? "finished: result saved" : outcome === "failed" ? "finished without a result" : OUTCOME_LABEL[outcome].toLowerCase()}`,
+      title: `Run ${outcome === "complete" ? "finished: outcome recorded" : outcome === "failed" ? "finished without a result" : OUTCOME_LABEL[outcome].toLowerCase()}`,
       detail: [`total ${formatDuration(runDuration(run))}`, failed ? `${failed} step(s) failed` : "", skipped ? `${skipped} skipped` : "", run.status === "superseded" ? "replaced by a later run" : ""].filter(Boolean).join(" · "),
-      status: outcome === "draft" ? "ok" : outcome === "failed" ? "failed" : outcome === "awaiting_review" ? "waiting" : "info",
+      status: outcome === "complete" ? "ok" : outcome === "failed" ? "failed" : outcome === "awaiting_review" ? "waiting" : "info",
     });
   }
   return out.sort((a, b) => ms(a.at) - ms(b.at));
@@ -193,7 +191,7 @@ export function summarizeRuns(runs: RunSummary[]): RunsOverview {
           workflowId: v.workflowId,
           version: v.version,
           runs: v.runs.length,
-          results: v.runs.filter((r) => runOutcome(r) === "draft").length,
+          results: v.runs.filter((r) => runOutcome(r) === "complete").length,
           failed: v.runs.filter((r) => runOutcome(r) === "failed").length,
           avgRun: durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null,
           steps: [...v.steps.values()]

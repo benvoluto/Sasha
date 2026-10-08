@@ -1,0 +1,9 @@
+{
+  "recorded_at": "2026-10-08T21:27:48.303Z",
+  "model": "claude-opus-5-5",
+  "input": {
+    "heading": "Budget",
+    "text": "### What it costs\nGreenbank Contractors quoted £38,400 including VAT to rebuild 400 m of path and stabilize the bank.\nThe quote is valid for 90 days.\nThe parish has £5,000 set aside from the 2025 precept."
+  },
+  "markdown": "### What it costs\nGreenbank Contractors has quoted £38,400, including VAT, to rebuild 400 m of path and stabilize the bank, and this quote remains valid for 90 days. Toward this cost, the parish has £5,000 set aside from the 2025 precept."
+}

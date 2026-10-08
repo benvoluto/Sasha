@@ -1,0 +1,451 @@
+{
+  "key": "type-imrad",
+  "version": 1,
+  "title": "Simulated peer review",
+  "summary": "A simulated editorial decision with a claims-to-evidence table: each claim marked supported, overstated or unsupported. Checks methods, abstract numbers and the reporting guideline the design calls for; independent reviewers and an editor pass write the decision.",
+  "kind": "type",
+  "appliesTo": [
+    "research-report-imrad"
+  ],
+  "outcome": {
+    "label": "Simulated editorial decision",
+    "values": [
+      {
+        "key": "accept",
+        "label": "Accept"
+      },
+      {
+        "key": "minor_revision",
+        "label": "Minor revision"
+      },
+      {
+        "key": "major_revision",
+        "label": "Major revision"
+      },
+      {
+        "key": "reject",
+        "label": "Reject"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "requirementSets": [
+    "equator-reporting-guidelines"
+  ],
+  "notes": [
+    "Cannot detect fabricated data.",
+    "Novelty and journal-fit views are low confidence.",
+    "Guideline findings are unverified against the official checklist.",
+    "For someone else's manuscript, the journal's confidentiality policy governs whether it can be uploaded at all."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "req",
+      "node": "requirements.read",
+      "label": "Requirements",
+      "config": {
+        "sets": [
+          "equator-reporting-guidelines"
+        ]
+      }
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: study design",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "study_design",
+            "label": "The study design",
+            "kind": "any",
+            "match": [
+              "randomized",
+              "randomised",
+              "cohort",
+              "case-control",
+              "cross-sectional",
+              "systematic review",
+              "meta-analysis",
+              "trial",
+              "qualitative"
+            ],
+            "help": "State the study design; it selects the reporting guideline (CONSORT, STROBE, PRISMA)."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "claims",
+      "node": "step.extract",
+      "label": "Claims",
+      "config": {
+        "item": "claim",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "abstract",
+          "results",
+          "discussion"
+        ],
+        "maxItems": 60,
+        "instructions": "List each claim in the abstract, results and discussion, with the result and the method behind it.",
+        "fields": [
+          {
+            "name": "claim",
+            "label": "Claim",
+            "type": "text",
+            "description": "The claim as written",
+            "required": true
+          },
+          {
+            "name": "section",
+            "label": "Section",
+            "type": "text",
+            "description": "The section it appears in"
+          },
+          {
+            "name": "result",
+            "label": "Result",
+            "type": "text",
+            "description": "The result the claim rests on"
+          },
+          {
+            "name": "method",
+            "label": "Method",
+            "type": "text",
+            "description": "The method or analysis that produced the result"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "tr",
+      "node": "step.trace",
+      "label": "Claims to evidence",
+      "config": {
+        "against": "document",
+        "statuses": [
+          {
+            "key": "supported",
+            "label": "Supported",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "overstated",
+            "label": "Overstated",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "unsupported",
+            "label": "Unsupported",
+            "ok": false,
+            "severity": "major"
+          }
+        ],
+        "unverifiedStatus": "unsupported",
+        "question": "Overstated covers causal wording from a correlational design, generalizing past the sample, and conclusions the analysis did not test"
+      },
+      "in": {
+        "items": "claims.items",
+        "document": "doc.document",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "meth",
+      "node": "step.check",
+      "label": "Methods",
+      "config": {
+        "checklist": [
+          {
+            "key": "design_fits",
+            "label": "The design fits the question",
+            "question": "Does the design fit the research question?",
+            "severity": "major",
+            "appliesTo": [
+              "methods"
+            ]
+          },
+          {
+            "key": "sample_size",
+            "label": "Sample size justified",
+            "question": "Is the sample size justified?",
+            "severity": "major",
+            "appliesTo": [
+              "methods"
+            ]
+          },
+          {
+            "key": "controls",
+            "label": "Controls, randomization and blinding",
+            "question": "Are controls, randomization and blinding described (as the design calls for)?",
+            "severity": "major",
+            "appliesTo": [
+              "methods"
+            ]
+          },
+          {
+            "key": "analysis_matches",
+            "label": "Analysis matches the design",
+            "question": "Does the analysis match the design?",
+            "severity": "major",
+            "appliesTo": [
+              "methods",
+              "results"
+            ]
+          },
+          {
+            "key": "multiple_comparisons",
+            "label": "Multiple comparisons",
+            "question": "Are multiple comparisons handled?",
+            "severity": "minor",
+            "appliesTo": [
+              "methods",
+              "results"
+            ]
+          },
+          {
+            "key": "missing_data",
+            "label": "Missing data",
+            "question": "Is missing data handled and reported?",
+            "severity": "minor",
+            "appliesTo": [
+              "methods",
+              "results"
+            ]
+          },
+          {
+            "key": "limitations",
+            "label": "Limitations stated",
+            "question": "Are the limitations stated?",
+            "severity": "minor",
+            "appliesTo": [
+              "discussion"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "comp",
+      "node": "step.compute",
+      "label": "Abstract numbers",
+      "config": {
+        "checks": [
+          {
+            "kind": "numbers_match",
+            "key": "abstract_numbers",
+            "label": "Abstract numbers appear in the results",
+            "severity": "major",
+            "fromSpecKeys": [
+              "abstract"
+            ],
+            "toSpecKeys": [
+              "results"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "guide",
+      "node": "step.check",
+      "label": "Guideline checklist",
+      "config": {
+        "instructions": "Name the guideline the design calls for (from <requirements>) and mark its main items present or absent with their location; findings are unverified against the official checklist",
+        "checklist": [
+          {
+            "key": "guideline_named",
+            "label": "Reporting guideline",
+            "question": "Which reporting guideline does the design call for (CONSORT for randomized trials, STROBE for observational studies, PRISMA 2020 for systematic reviews)? Does the report say it follows it?",
+            "severity": "minor"
+          },
+          {
+            "key": "guideline_items",
+            "label": "Guideline items present",
+            "question": "Are the main items of that guideline present? List each present or absent with its location.",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "criteria": [
+          {
+            "key": "recommendation",
+            "label": "Recommendation",
+            "guidance": "",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "accept",
+                "minor_revision",
+                "major_revision",
+                "reject"
+              ]
+            }
+          },
+          {
+            "key": "novelty",
+            "label": "Novelty",
+            "guidance": "low confidence",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "high",
+                "moderate",
+                "low"
+              ]
+            }
+          }
+        ],
+        "reviewers": [
+          {
+            "key": "methodologist",
+            "label": "Methodologist",
+            "brief": "Review as a methodologist: does the design answer the question, are sampling, measurement, controls and blinding sound, and do the methods support the conclusions drawn?"
+          },
+          {
+            "key": "skeptic",
+            "label": "Domain skeptic",
+            "brief": "Review as a skeptic in the field: seek disconfirming evidence, alternative explanations, prior work the paper ignores, and claims that outrun the results."
+          },
+          {
+            "key": "statistician",
+            "label": "Statistician",
+            "brief": "Review as a statistician: check the analyses, effect sizes and uncertainty, multiple comparisons, missing data, and whether the reported numbers agree with each other."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement",
+      "config": {
+        "mode": "verdict"
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Editor's decision",
+      "config": {
+        "values": [
+          "accept",
+          "minor_revision",
+          "major_revision",
+          "reject"
+        ],
+        "guidance": "Write as the editor: weigh the agreed points; state each disagreement in the rationale with both views"
+      },
+      "in": {
+        "findings": [
+          "tr.findings",
+          "meth.findings",
+          "comp.findings",
+          "guide.findings",
+          "rev.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "comp.results",
+          "meth.results",
+          "guide.results"
+        ],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "major_revision"
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": [
+          "tr.findings",
+          "meth.findings",
+          "comp.findings",
+          "guide.findings",
+          "rev.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": "comp.results",
+        "tables": [
+          "tr.table",
+          "meth.table",
+          "guide.table",
+          "agree.table"
+        ]
+      }
+    }
+  ]
+}

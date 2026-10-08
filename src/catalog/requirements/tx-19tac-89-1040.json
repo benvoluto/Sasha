@@ -1,0 +1,32 @@
+{
+  "key": "tx-19tac-89-1040",
+  "version": 1,
+  "title": "Texas eligibility criteria (19 TAC §89.1040)",
+  "authority": "Texas Education Agency (Commissioner's rules)",
+  "jurisdiction": "Texas",
+  "appliesTo": ["fie"],
+  "effective": "",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "19 TAC §89.1040, Eligibility Criteria (summarized in docs/workflows-by-document-type.md)",
+    "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1040",
+    "license": "Paraphrased summary (source: Texas Administrative Code, public law)"
+  },
+  "items": [
+    { "key": "autism", "kind": "criterion", "title": "Autism", "text": "Autism is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Autism"] }, "citation": "19 TAC §89.1040(c)(1)" },
+    { "key": "deaf-blindness", "kind": "criterion", "title": "Deaf-blindness", "text": "Deaf-blindness is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Deaf-blindness"] }, "citation": "19 TAC §89.1040(c)(2)" },
+    { "key": "deaf-or-hard-of-hearing", "kind": "criterion", "title": "Deaf or hard of hearing", "text": "Deaf or hard of hearing is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Deaf or hard of hearing"] }, "citation": "19 TAC §89.1040(c)(3)" },
+    { "key": "emotional-disability", "kind": "criterion", "title": "Emotional disability", "text": "Emotional disability is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Emotional disability"] }, "citation": "19 TAC §89.1040(c)(4)" },
+    { "key": "intellectual-disability", "kind": "criterion", "title": "Intellectual disability", "text": "Intellectual disability is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Intellectual disability"] }, "citation": "19 TAC §89.1040(c)(5)" },
+    { "key": "multiple-disabilities", "kind": "criterion", "title": "Multiple disabilities", "text": "Multiple disabilities is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Multiple disabilities"] }, "citation": "19 TAC §89.1040(c)(6)" },
+    { "key": "orthopedic-impairment", "kind": "criterion", "title": "Orthopedic impairment", "text": "Orthopedic impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Orthopedic impairment"] }, "citation": "19 TAC §89.1040(c)(7)" },
+    { "key": "other-health-impairment", "kind": "criterion", "title": "Other health impairment", "text": "A licensed physician, a physician assistant or an advanced practice registered nurse must identify or confirm the student's chronic or acute health problem. See source for the full criteria.", "appliesTo": { "categories": ["Other health impairment"] }, "citation": "19 TAC §89.1040(c)(8)" },
+    { "key": "specific-learning-disability", "kind": "criterion", "title": "Specific learning disability", "text": "The student must be observed in the learning environment, including the general education classroom, and the team considers data showing the student received appropriate instruction in reading or math from qualified staff, with repeated assessments of achievement at reasonable intervals shared with the parents. See source for the full criteria.", "appliesTo": { "categories": ["Specific learning disability"] }, "citation": "19 TAC §89.1040(c)(9)" },
+    { "key": "sld-exclusions", "kind": "criterion", "title": "Specific learning disability: further exclusions", "text": "The learning difficulties must not be primarily the result of a visual, hearing or motor disability; intellectual disability; emotional disability; cultural factors; environmental or economic disadvantage; or being an emergent bilingual student.", "appliesTo": { "categories": ["Specific learning disability"] }, "citation": "19 TAC §89.1040(c)(9)(B)(iv)" },
+    { "key": "speech-impairment", "kind": "criterion", "title": "Speech impairment", "text": "Speech impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Speech impairment"] }, "citation": "19 TAC §89.1040(c)(10)" },
+    { "key": "traumatic-brain-injury", "kind": "criterion", "title": "Traumatic brain injury", "text": "Traumatic brain injury is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Traumatic brain injury"] }, "citation": "19 TAC §89.1040(c)(11)" },
+    { "key": "visual-impairment", "kind": "criterion", "title": "Visual impairment", "text": "Visual impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Visual impairment"] }, "citation": "19 TAC §89.1040(c)(12)" },
+    { "key": "developmental-delay", "kind": "criterion", "title": "Developmental delay", "text": "Developmental delay (for young children; see source for the ages) is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Developmental delay"] }, "citation": "19 TAC §89.1040(c)(13)" },
+    { "key": "noncategorical-early-childhood", "kind": "criterion", "title": "Noncategorical early childhood", "text": "Noncategorical eligibility (for young children; see source for the ages) is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.", "appliesTo": { "categories": ["Noncategorical early childhood"] }, "citation": "19 TAC §89.1040(c)(14)" }
+  ]
+}

@@ -46,6 +46,16 @@ export function groupOpen(rows: SuggestionRecord[], sections: Array<{ key: strin
   return out;
 }
 
+/** suggest.emit's prefix on a web resource's reason (phase6-spec.md §3); the pane shows an "Unverified" label instead. */
+export const UNVERIFIED_WEB_PREFIX = "Unverified web resource: ";
+
+/** A suggestion's reason as shown, and whether it carries the "Unverified" label (open web suggestions, until a person adds them). */
+export function reasonView(row: Pick<SuggestionRecord, "kind" | "state" | "reason">): { reason: string; unverified: boolean } {
+  const reason = row.reason ?? "";
+  const unverified = row.kind === "web" && row.state === "open";
+  return { reason: reason.startsWith(UNVERIFIED_WEB_PREFIX) ? reason.slice(UNVERIFIED_WEB_PREFIX.length) : reason, unverified };
+}
+
 /** Added suggestions, most recent first. */
 export function doneItems(rows: SuggestionRecord[]): SuggestionRecord[] {
   return rows.filter((r) => r.state === "added").sort((a, b) => b.updated_at.localeCompare(a.updated_at));

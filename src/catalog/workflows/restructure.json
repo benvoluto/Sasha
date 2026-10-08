@@ -1,0 +1,145 @@
+{
+  "key": "restructure",
+  "version": 1,
+  "title": "Restructure to type",
+  "summary": "Maps the document's existing parts onto another type's outline. A person checks the mapping table, including parts with no home, before anything moves. Text moves word for word; rewording is a separate, optional step.",
+  "kind": "generic",
+  "outcome": {
+    "label": "Restructure",
+    "values": [
+      {
+        "key": "applied_plan",
+        "label": "Mapping approved; change ready to apply"
+      },
+      {
+        "key": "no_change",
+        "label": "Already in this type's order"
+      },
+      {
+        "key": "rejected",
+        "label": "Mapping rejected"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Author",
+    "required": true
+  },
+  "params": [
+    "targetType",
+    "mode"
+  ],
+  "notes": [
+    "Nothing is dropped: parts with no home stay, word for word, under “Content to place”.",
+    "Rewrite mode rewords each section separately and adds only transitional prose."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "plan",
+      "node": "restructure.plan",
+      "label": "Plan restructure",
+      "config": {
+        "mode": "merge"
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Check the mapping",
+      "config": {
+        "editable": "rows",
+        "instructions": "Check where each part goes. Parts with no home stay, word for word, under “Content to place”. Change a target, then approve."
+      },
+      "in": {
+        "items": "plan.table"
+      }
+    },
+    {
+      "id": "apply",
+      "node": "restructure.apply",
+      "label": "Apply restructure",
+      "in": {
+        "plan": "plan.plan",
+        "approved": "cp.approved",
+        "decision": "cp.decision"
+      }
+    },
+    {
+      "id": "rw",
+      "node": "restructure.rewrite",
+      "label": "Reword sections",
+      "in": {
+        "section": "apply.sections",
+        "document": "doc.document"
+      },
+      "loop": true
+    },
+    {
+      "id": "write",
+      "node": "doc.write",
+      "label": "Proposed change",
+      "config": {
+        "title": "Restructure to type",
+        "snapshotReason": "Before restructuring"
+      },
+      "in": {
+        "ops": [
+          "apply.op",
+          "rw.op"
+        ],
+        "after": "cp.approved"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "rejected",
+            "when": {
+              "checkpoint": {
+                "node": "cp",
+                "verdict": "reject"
+              }
+            }
+          },
+          {
+            "value": "no_change",
+            "when": {
+              "steps": {
+                "node": "plan",
+                "status": "done"
+              },
+              "findings": {
+                "kind": [
+                  "no_change"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "applied_plan"
+      },
+      "in": {
+        "findings": "plan.findings",
+        "tables": "plan.table",
+        "after": "cp.decision"
+      }
+    }
+  ]
+}

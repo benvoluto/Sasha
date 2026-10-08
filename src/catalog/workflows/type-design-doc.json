@@ -1,0 +1,451 @@
+{
+  "key": "type-design-doc",
+  "version": 1,
+  "title": "Design review",
+  "summary": "A recommended review decision: approve, approve with changes, or reject, with reasons, required changes and each finding marked blocking or not. Checks alternatives and rollout, reviews by lens, and checks claims about the current system against linked code and docs. The named approvers decide.",
+  "kind": "type",
+  "appliesTo": [
+    "design-doc-rfc"
+  ],
+  "outcome": {
+    "label": "Review decision",
+    "values": [
+      {
+        "key": "approve",
+        "label": "Approve"
+      },
+      {
+        "key": "approve_with_changes",
+        "label": "Approve with changes"
+      },
+      {
+        "key": "reject",
+        "label": "Reject"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Named approvers",
+    "required": true
+  },
+  "notes": [
+    "Mark decisions reversible or hard to reverse, and spend review effort on the second kind.",
+    "Save the decision as an ADR beside the doc.",
+    "Claims about the current system are unverified unless the repository or architecture docs are linked."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: problem, goals, design",
+      "config": {
+        "useModel": false,
+        "inputs": [
+          {
+            "key": "problem",
+            "label": "The problem",
+            "kind": "section",
+            "specKeys": [
+              "context-and-motivation",
+              "summary"
+            ],
+            "match": [
+              "problem",
+              "motivation",
+              "context"
+            ],
+            "help": "State the problem the design solves."
+          },
+          {
+            "key": "goals",
+            "label": "Goals and non-goals",
+            "kind": "section",
+            "specKeys": [
+              "goals-and-non-goals"
+            ],
+            "match": [
+              "goals",
+              "non-goals"
+            ],
+            "help": "List the goals and the explicit non-goals."
+          },
+          {
+            "key": "design",
+            "label": "A proposed design",
+            "kind": "section",
+            "specKeys": [
+              "proposed-design"
+            ],
+            "match": [
+              "proposed design",
+              "design",
+              "solution"
+            ],
+            "help": "Describe the proposed design."
+          },
+          {
+            "key": "code",
+            "label": "Repository or architecture docs",
+            "kind": "source",
+            "match": [
+              "repository",
+              "repo",
+              "github",
+              "architecture",
+              "readme",
+              "code"
+            ],
+            "required": false,
+            "help": "Link the repository or architecture docs so claims about the current system can be checked."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources"
+      }
+    },
+    {
+      "id": "alt",
+      "node": "step.check",
+      "label": "Alternatives",
+      "config": {
+        "checklist": [
+          {
+            "key": "two_alternatives",
+            "label": "At least two real alternatives",
+            "question": "Are at least two real alternatives considered, one of them “do nothing”? A single strawman does not count.",
+            "severity": "major",
+            "appliesTo": [
+              "alternatives-considered"
+            ]
+          },
+          {
+            "key": "same_criteria",
+            "label": "Compared on the same criteria",
+            "question": "Are the alternatives and the proposal compared on the same criteria?",
+            "severity": "major",
+            "appliesTo": [
+              "alternatives-considered"
+            ]
+          },
+          {
+            "key": "missing_option",
+            "label": "No obvious option missing",
+            "question": "Is an obvious option missing? Name it in the rationale.",
+            "severity": "minor",
+            "appliesTo": [
+              "alternatives-considered"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Review by lens",
+      "config": {
+        "criteria": [
+          {
+            "key": "decision",
+            "label": "Decision",
+            "guidance": "reject or approve_with_changes when you find a blocking issue in your area.",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "approve",
+                "approve_with_changes",
+                "reject"
+              ]
+            }
+          }
+        ],
+        "reviewers": [
+          {
+            "key": "correctness",
+            "label": "Correctness and architecture",
+            "brief": "Review for correctness and architecture: does the design solve the stated problem, are the components and interfaces sound, and does it fit the existing system? Flag failure modes the design does not handle."
+          },
+          {
+            "key": "operations",
+            "label": "Operations and reliability",
+            "brief": "Review for operations and reliability: deployment, monitoring, failure recovery, capacity, cost and on-call load. Flag anything that would page someone at night or grow cost without a limit."
+          },
+          {
+            "key": "security",
+            "label": "Security, privacy, data and migration",
+            "brief": "Review for security and privacy (authentication, authorization, data exposure, threat surface) and for data and migration where relevant (schema changes, backfills, compatibility, data loss)."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "roll",
+      "node": "step.check",
+      "label": "Rollout",
+      "config": {
+        "checklist": [
+          {
+            "key": "phases",
+            "label": "Phases or flags",
+            "question": "Is the rollout phased or behind flags?",
+            "severity": "major",
+            "appliesTo": [
+              "rollout-and-migration"
+            ]
+          },
+          {
+            "key": "migration",
+            "label": "Migration",
+            "question": "Is the migration of data or clients described?",
+            "severity": "major",
+            "appliesTo": [
+              "rollout-and-migration"
+            ]
+          },
+          {
+            "key": "compatibility",
+            "label": "Backward compatibility",
+            "question": "Is backward compatibility addressed?",
+            "severity": "major",
+            "appliesTo": [
+              "rollout-and-migration"
+            ]
+          },
+          {
+            "key": "rollback",
+            "label": "Rollback path and its duration",
+            "question": "Is there a rollback path, with how long it takes?",
+            "severity": "blocking",
+            "appliesTo": [
+              "rollout-and-migration"
+            ]
+          },
+          {
+            "key": "stop_metrics",
+            "label": "Stop metrics",
+            "question": "Are the metrics that mean stop named?",
+            "severity": "major",
+            "appliesTo": [
+              "rollout-and-migration"
+            ]
+          },
+          {
+            "key": "reversibility",
+            "label": "Decisions marked reversible or hard to reverse",
+            "question": "Is each decision marked reversible or hard to reverse?",
+            "severity": "minor"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "claims",
+      "node": "step.extract",
+      "label": "Claims about the current system",
+      "config": {
+        "item": "claim about the current system",
+        "from": [
+          "document"
+        ],
+        "maxItems": 40,
+        "instructions": "List each statement the doc makes about how the current system works today.",
+        "fields": [
+          {
+            "name": "claim",
+            "label": "Claim",
+            "type": "text",
+            "description": "The claim about the current system, as written",
+            "required": true
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "tr",
+      "node": "step.trace",
+      "label": "Check claims",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          {
+            "key": "confirmed",
+            "label": "Confirmed",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "contradicted",
+            "label": "Contradicted",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "unverified",
+            "label": "Unverified",
+            "ok": false,
+            "severity": "minor"
+          }
+        ],
+        "unverifiedStatus": "unverified",
+        "question": "Do the linked code or docs confirm or contradict the claim?"
+      },
+      "in": {
+        "items": "claims.items",
+        "sources": "src.sources",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement",
+      "config": {
+        "mode": "verdict",
+        "blockingVerdicts": [
+          "reject"
+        ]
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Decide",
+      "config": {
+        "values": [
+          "approve",
+          "approve_with_changes",
+          "reject"
+        ],
+        "guidance": "Any unresolved blocking finding means approve_with_changes or reject. List the required changes and mark each finding blocking or non-blocking in the rationale."
+      },
+      "in": {
+        "findings": [
+          "alt.findings",
+          "rev.findings",
+          "roll.findings",
+          "tr.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "alt.results",
+          "roll.results"
+        ],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "approve_with_changes",
+        "guards": [
+          {
+            "values": [
+              "approve"
+            ],
+            "instead": "approve_with_changes",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "disagreements": {
+                    "min": 1,
+                    "blocking": true
+                  }
+                }
+              ]
+            },
+            "reason": "an unresolved blocking finding or blocking disagreement makes the decision approve with changes or reject."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": [
+          "alt.findings",
+          "rev.findings",
+          "roll.findings",
+          "tr.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "tables": [
+          "agree.table",
+          "alt.table",
+          "roll.table",
+          "tr.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Approvers decide",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Decide as the named approvers. Record the conditions of an approval with changes.",
+        "recordFields": [
+          {
+            "key": "decision_conditions",
+            "label": "Decision conditions (required changes)",
+            "required": false
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome"
+      }
+    }
+  ]
+}

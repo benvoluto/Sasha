@@ -6,6 +6,7 @@ import { MAX_DOCUMENT_NOTES } from "@/lib/documents/notes-contract";
 import { deleteDocument, getDocument, updateDocument, type DocumentPatch } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
+import { deleteDocumentRuns } from "@/lib/workflow/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,8 +27,8 @@ const PatchBody = z.object({
   type_key: z.string().max(100).nullable().optional(),
   content_json: z.object({ type: z.literal("doc") }).passthrough().optional(),
   notes: z.string().max(MAX_DOCUMENT_NOTES).optional(),
-  /** With type_key: who chose it. "classifier" when applied from the classifier chip; defaults to "user". */
-  type_source: z.enum(["user", "classifier"]).optional(),
+  /** With type_key: who chose it. "classifier" when applied from the classifier chip, "restructure" from a restructure workflow; defaults to "user". */
+  type_source: z.enum(["user", "classifier", "restructure"]).optional(),
   archived: z.boolean().optional(),
   /** Move to a document folder of the team, or null for the top level. Not an edit (updated_at stays). */
   doc_folder_id: DocFolderIdField.optional(),
@@ -59,7 +60,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
 export async function DELETE(_req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.documentWrite);
   if (caller instanceof NextResponse) return caller;
-  const ok = await deleteDocument(caller.teamId, (await params).id);
+  const id = (await params).id;
+  const ok = await deleteDocument(caller.teamId, id);
   if (!ok) return NextResponse.json({ error: "Document not found." }, { status: 404 });
+  // Runs keep copies of the document's content (items, quotes, rationales); they go with it.
+  await deleteDocumentRuns(caller.teamId, id);
   return NextResponse.json({ deleted: true });
 }

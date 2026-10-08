@@ -1,8 +1,9 @@
 'use client';
 
 // Which workflow, and which of its versions, the editor shows and runs: pick a
-// workflow or an earlier version, create or rename a workflow, and set the
-// default workflow (the one new uploads run unless someone picks another).
+// built-in (read-only) or one of the team's workflows, or an earlier version;
+// create or rename a team workflow, and set the default workflow (the one the
+// canvas opens first).
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,19 @@ export function WorkflowPicker({
   const [copyCurrent, setCopyCurrent] = useState(true);
   const [busy, setBusy] = useState(false);
   const isDefault = info.defaultWorkflowId === info.workflow_id;
+  // Built-ins from the list, or from `builtIns` when the list carries only the team's; and the open one, so the select never shows blank.
+  type Choice = { id: string; name: string; builtIn: boolean };
+  const listed: Choice[] = info.workflows.map((w) => ({ id: w.id, name: w.name, builtIn: w.builtIn }));
+  for (const b of info.builtIns ?? []) if (!listed.some((w) => w.id === b.id)) listed.push({ id: b.id, name: b.title, builtIn: true });
+  if (!listed.some((w) => w.id === info.workflow_id)) listed.push({ id: info.workflow_id, name: info.name, builtIn: info.readOnly });
+  const builtIns = listed.filter((w) => w.builtIn);
+  const team = listed.filter((w) => !w.builtIn);
+  const option = (w: Choice) => (
+    <option key={w.id} value={w.id}>
+      {w.name}
+      {w.id === info.defaultWorkflowId ? ' (default)' : ''}
+    </option>
+  );
   const latest = info.versions[0]?.version ?? 0;
   const select = 'h-8 rounded-md border bg-white px-2 text-sm dark:border-zinc-700 dark:bg-zinc-900';
 
@@ -58,18 +72,14 @@ export function WorkflowPicker({
         <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           Workflow
           <select className={`${select} min-w-[220px] font-medium text-zinc-900 dark:text-zinc-100`} value={info.workflow_id} onChange={(e) => onOpen(e.target.value)}>
-            {info.workflows.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-                {w.id === info.defaultWorkflowId ? ' (default)' : ''}
-              </option>
-            ))}
+            {team.length > 0 && <optgroup label="Your team's workflows">{team.map(option)}</optgroup>}
+            {builtIns.length > 0 && <optgroup label="Built-in (read only)">{builtIns.map(option)}</optgroup>}
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           Version
           <select className={select} value={info.version} onChange={(e) => onOpen(info.workflow_id, Number(e.target.value))}>
-            {info.versions.length === 0 && <option value={0}>Built-in default</option>}
+            {info.versions.length === 0 && <option value={info.version}>{info.readOnly ? `Built-in v${info.version}` : 'Starting version'}</option>}
             {info.versions.map((v) => (
               <option key={v.version} value={v.version}>
                 v{v.version}
@@ -80,7 +90,7 @@ export function WorkflowPicker({
           </select>
         </label>
         {isDefault ? (
-          <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" title="New uploads run this workflow unless someone picks another">
+          <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" title="The canvas opens this workflow first">
             <CheckCircle2 className="h-3.5 w-3.5" /> Default workflow
           </span>
         ) : (
@@ -95,9 +105,11 @@ export function WorkflowPicker({
         )}
         {info.canEdit && mode === 'idle' && (
           <>
-            <Button variant="ghost" size="sm" onClick={() => { setName(info.name); setMode('rename'); }}>
-              <PencilLine /> Rename
-            </Button>
+            {!info.readOnly && (
+              <Button variant="ghost" size="sm" onClick={() => { setName(info.name); setMode('rename'); }}>
+                <PencilLine /> Rename
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => { setName(''); setCopyCurrent(true); setMode('create'); }}>
               <Plus /> New workflow
             </Button>
@@ -121,7 +133,7 @@ export function WorkflowPicker({
               act(async () => {
                 const { workflow } = await send('/api/workflows', 'POST', {
                   name: trimmed,
-                  ...(copyCurrent ? { from: { workflowId: info.workflow_id, version: info.version } } : {}),
+                  ...(copyCurrent ? { basedOn: info.workflow_id } : {}),
                 });
                 onOpen(workflow.id);
               });
@@ -130,10 +142,8 @@ export function WorkflowPicker({
           <Input autoFocus className="h-8 w-64" placeholder={mode === 'rename' ? 'Workflow name' : 'Name the new workflow'} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
           {mode === 'create' && (
             <select className={select} value={copyCurrent ? 'copy' : 'default'} onChange={(e) => setCopyCurrent(e.target.value === 'copy')} aria-label="Start from">
-              <option value="copy">
-                Start from a copy of {info.name} v{info.version}
-              </option>
-              <option value="default">Start from the built-in default</option>
+              <option value="copy">Start from a copy of {info.name}</option>
+              <option value="default">Start from the basic workflow</option>
             </select>
           )}
           <Button size="sm" type="submit" disabled={busy || !name.trim()}>

@@ -1,0 +1,20 @@
+{
+  "key": "nih-ai-and-review-policy",
+  "version": 1,
+  "title": "NIH policies on AI and award decisions",
+  "authority": "National Institutes of Health",
+  "jurisdiction": "United States (federal)",
+  "appliesTo": ["nih-specific-aims-research-strategy"],
+  "effective": "",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "NOT-OD-25-132, NOT-OD-23-149 and the unified NIH funding strategy (summarized in docs/workflows-by-document-type.md)",
+    "url": "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-25-132.html",
+    "license": "Paraphrased summary (source: public domain US government)"
+  },
+  "items": [
+    { "key": "not-od-25-132", "kind": "policy", "title": "AI and application originality (NOT-OD-25-132)", "text": "From September 25, 2025, NIH does not treat applications, or sections, substantially developed by AI as the applicant's original ideas.", "citation": "NOT-OD-25-132", "url": "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-25-132.html" },
+    { "key": "not-od-23-149", "kind": "policy", "title": "Generative AI in peer review (NOT-OD-23-149)", "text": "NIH peer reviewers may not put applications they review into generative AI tools. A mock review is for the applicant's own draft only.", "citation": "NOT-OD-23-149", "url": "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-23-149.html" },
+    { "key": "no-paylines", "kind": "policy", "title": "No paylines", "text": "Since the January 2026 council round, NIH institutes do not rely on paylines. Report scores and weaknesses and make no award prediction from a cutoff.", "url": "https://grants.nih.gov/news-events/nih-extramural-nexus-news/2025/11/implementing-a-unified-nih-funding-strategy-to-guide-consistent-and-clearer-award-decisions" }
+  ]
+}

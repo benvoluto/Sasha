@@ -3,8 +3,8 @@
 // The app frame, rendered once by the root layout around every page: the cream
 // left rail, the documents/folders panel that slides in from the left, and the
 // page beside them. It shows on the writing pages ("/", "/d/[id]", "/library",
-// "/catalog") and steps aside elsewhere (cases, workflows, sign-in), where the
-// page renders as before. Because it lives in the layout, it survives moving
+// "/catalog") and the workflow canvas ("/workflows"), and steps aside elsewhere
+// (sign-in), where the page renders as before. Because it lives in the layout, it survives moving
 // between documents: the panel stays open and keeps its scroll.
 //
 // The open document comes from activeDocumentAtom (./active-document), which
@@ -28,10 +28,15 @@ function tabbablesIn(root: HTMLElement): HTMLElement[] {
   );
 }
 
+/** The pages inside the frame: the writing pages and the workflow canvas. */
+export function inFrame(pathname: string | null | undefined): boolean {
+  return isWritingPath(pathname) || pathname === "/workflows" || !!pathname?.startsWith("/workflows/");
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  if (!isWritingPath(pathname)) return <>{children}</>;
-  return <Frame pathname={pathname}>{children}</Frame>;
+  if (!inFrame(pathname)) return <>{children}</>;
+  return <Frame pathname={pathname ?? "/"}>{children}</Frame>;
 }
 
 function Frame({ pathname, children }: { pathname: string; children: ReactNode }) {

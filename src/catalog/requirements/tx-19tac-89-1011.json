@@ -1,0 +1,21 @@
+{
+  "key": "tx-19tac-89-1011",
+  "version": 1,
+  "title": "Texas FIE timelines (19 TAC §89.1011)",
+  "authority": "Texas Education Agency (Commissioner's rules)",
+  "jurisdiction": "Texas",
+  "appliesTo": ["fie"],
+  "effective": "",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "19 TAC §89.1011, Full Individual and Initial Evaluation (summarized in docs/workflows-by-document-type.md)",
+    "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1011",
+    "license": "Paraphrased summary (source: Texas Administrative Code, public law)"
+  },
+  "items": [
+    { "key": "fie-report", "kind": "deadline", "title": "Written FIE report", "text": "The written report is due by the 45th school day after the district receives written consent. When the student is absent three or more school days in that period, the deadline is extended by the number of school days missed.", "value": 45, "unit": "school_days", "citation": "19 TAC §89.1011(d)(1)" },
+    { "key": "ard-decision", "kind": "deadline", "title": "ARD committee decision", "text": "The ARD committee makes its eligibility decision within 30 calendar days of the date the written report is completed.", "value": 30, "unit": "calendar_days", "citation": "19 TAC §89.1011(g)" },
+    { "key": "parent-copy", "kind": "deadline", "title": "Parent copy of the report", "text": "The parent receives a copy of the report at least five school days before the initial ARD meeting.", "value": 5, "unit": "school_days", "citation": "19 TAC §89.1011(h)" },
+    { "key": "end-of-year", "kind": "policy", "title": "End-of-year exceptions", "text": "Different deadlines apply when consent is received near the end of the school year. See source for the rules.", "citation": "19 TAC §89.1011(e)" }
+  ]
+}

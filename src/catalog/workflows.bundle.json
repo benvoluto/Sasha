@@ -1,0 +1,6044 @@
+[
+  {
+    "key": "draft-all",
+    "version": 1,
+    "title": "Draft all empty sections",
+    "summary": "Drafts every empty section from its notes and the linked sources, then scores the drafts against the type's rubric. Each drafted sentence carries the note or passage behind it; the author applies or discards the proposed change.",
+    "kind": "generic",
+    "appliesTo": [],
+    "fallback": false,
+    "outcome": {
+      "label": "Drafts",
+      "values": [
+        {
+          "key": "drafted",
+          "label": "Drafts ready to review"
+        },
+        {
+          "key": "nothing_to_draft",
+          "label": "No empty sections"
+        }
+      ]
+    },
+    "checkpoint": null,
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Each drafted sentence shows its note or source; unsourced sentences are highlighted."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "notes",
+        "node": "doc.notes",
+        "label": "Notes",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "draft",
+        "node": "draft.section",
+        "label": "Draft sections",
+        "config": {},
+        "in": {
+          "section": "doc.empty_sections",
+          "document": "doc.document",
+          "notes": "notes.notes"
+        },
+        "loop": true
+      },
+      {
+        "id": "score",
+        "node": "rubric.score",
+        "label": "Rubric score",
+        "config": {
+          "scope": "drafted"
+        },
+        "in": {
+          "document": "doc.document",
+          "drafts": "draft.draft"
+        },
+        "loop": false
+      },
+      {
+        "id": "write",
+        "node": "doc.write",
+        "label": "Proposed change",
+        "config": {
+          "title": "Drafts for empty sections",
+          "snapshotReason": "Before inserting drafts"
+        },
+        "in": {
+          "ops": "draft.op"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "nothing_to_draft",
+              "when": {
+                "anyOf": [
+                  {
+                    "steps": {
+                      "node": "write",
+                      "status": "skipped"
+                    }
+                  },
+                  {
+                    "steps": {
+                      "node": "draft",
+                      "status": "skipped"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "value": "drafted",
+              "when": {
+                "findings": {
+                  "kind": [
+                    "draft_summary"
+                  ],
+                  "min": 1
+                }
+              }
+            }
+          ],
+          "fallback": "nothing_to_draft"
+        },
+        "in": {
+          "findings": [
+            "draft.findings",
+            "score.findings"
+          ],
+          "tables": "score.table",
+          "after": "write.change"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "restructure",
+    "version": 1,
+    "title": "Restructure to type",
+    "summary": "Maps the document's existing parts onto another type's outline. A person checks the mapping table, including parts with no home, before anything moves. Text moves word for word; rewording is a separate, optional step.",
+    "kind": "generic",
+    "appliesTo": [],
+    "fallback": false,
+    "outcome": {
+      "label": "Restructure",
+      "values": [
+        {
+          "key": "applied_plan",
+          "label": "Mapping approved; change ready to apply"
+        },
+        {
+          "key": "no_change",
+          "label": "Already in this type's order"
+        },
+        {
+          "key": "rejected",
+          "label": "Mapping rejected"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Author",
+      "required": true
+    },
+    "params": [
+      "targetType",
+      "mode"
+    ],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Nothing is dropped: parts with no home stay, word for word, under “Content to place”.",
+      "Rewrite mode rewords each section separately and adds only transitional prose."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "plan",
+        "node": "restructure.plan",
+        "label": "Plan restructure",
+        "config": {
+          "mode": "merge"
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Check the mapping",
+        "config": {
+          "editable": "rows",
+          "instructions": "Check where each part goes. Parts with no home stay, word for word, under “Content to place”. Change a target, then approve."
+        },
+        "in": {
+          "items": "plan.table"
+        },
+        "loop": false
+      },
+      {
+        "id": "apply",
+        "node": "restructure.apply",
+        "label": "Apply restructure",
+        "config": {},
+        "in": {
+          "plan": "plan.plan",
+          "approved": "cp.approved",
+          "decision": "cp.decision"
+        },
+        "loop": false
+      },
+      {
+        "id": "rw",
+        "node": "restructure.rewrite",
+        "label": "Reword sections",
+        "config": {},
+        "in": {
+          "section": "apply.sections",
+          "document": "doc.document"
+        },
+        "loop": true
+      },
+      {
+        "id": "write",
+        "node": "doc.write",
+        "label": "Proposed change",
+        "config": {
+          "title": "Restructure to type",
+          "snapshotReason": "Before restructuring"
+        },
+        "in": {
+          "ops": [
+            "apply.op",
+            "rw.op"
+          ],
+          "after": "cp.approved"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "rejected",
+              "when": {
+                "checkpoint": {
+                  "node": "cp",
+                  "verdict": "reject"
+                }
+              }
+            },
+            {
+              "value": "no_change",
+              "when": {
+                "steps": {
+                  "node": "plan",
+                  "status": "done"
+                },
+                "findings": {
+                  "kind": [
+                    "no_change"
+                  ],
+                  "min": 1
+                }
+              }
+            }
+          ],
+          "fallback": "applied_plan"
+        },
+        "in": {
+          "findings": "plan.findings",
+          "tables": "plan.table",
+          "after": "cp.decision"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "source-coverage",
+    "version": 1,
+    "title": "Source coverage review",
+    "summary": "Scores how well the linked sources and data cover what the document's type needs, flags gaps, and proposes public web resources. Proposed resources wait in Suggestions, unverified, until a person adds them.",
+    "kind": "generic",
+    "appliesTo": [],
+    "fallback": false,
+    "outcome": {
+      "label": "Source coverage",
+      "values": [
+        {
+          "key": "covered",
+          "label": "Sources cover the type's needs"
+        },
+        {
+          "key": "gaps_found",
+          "label": "Gaps found"
+        }
+      ]
+    },
+    "checkpoint": null,
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Web resources are unverified until a person adds them from Suggestions.",
+      "For sensitive types (student or clinical records) web searches carry no document text and use only the type's public domains."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "data",
+        "node": "data.list",
+        "label": "Linked data",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: document type",
+        "config": {
+          "inputs": [
+            {
+              "key": "type",
+              "label": "A document type",
+              "kind": "type",
+              "help": "Choose a type so Sasha knows what the document needs."
+            }
+          ],
+          "useModel": false
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "cov",
+        "node": "type.coverage",
+        "label": "Coverage",
+        "config": {},
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "web",
+        "node": "web.find",
+        "label": "Web resources",
+        "config": {},
+        "in": {
+          "gaps": "cov.gaps",
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "emit",
+        "node": "suggest.emit",
+        "label": "Add suggestions",
+        "config": {},
+        "in": {
+          "gaps": "cov.gaps",
+          "resources": "web.resources"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "gaps_found",
+              "when": {
+                "findings": {
+                  "severity": [
+                    "major",
+                    "minor"
+                  ],
+                  "kind": [
+                    "coverage_gap"
+                  ],
+                  "min": 1
+                }
+              }
+            }
+          ],
+          "fallback": "covered"
+        },
+        "in": {
+          "blocked": "gate.blocked",
+          "findings": [
+            "cov.findings",
+            "web.findings"
+          ],
+          "tables": "cov.table"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-business-plan",
+    "version": 2,
+    "title": "Business plan readiness",
+    "summary": "A readiness review for the plan's stated audience, investor or lender. Sets the narrative's assumptions against the financial model and lists each place they disagree, ties out and checks the statements, applies the audience's checklist, and ranks unsupported assumptions. The owner resolves each one at the checkpoint.",
+    "kind": "type",
+    "appliesTo": [
+      "business-plan"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Readiness for the stated audience",
+      "values": [
+        {
+          "key": "ready",
+          "label": "Ready"
+        },
+        {
+          "key": "needs_work",
+          "label": "Needs work"
+        },
+        {
+          "key": "not_ready",
+          "label": "Not ready"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Owner",
+      "required": true
+    },
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [
+      "Whether to invest or lend"
+    ],
+    "notes": [
+      "Reports consistency and readiness; gives no view on whether to invest or lend.",
+      "Lenders set their own debt service coverage thresholds; take the number from the lender."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "data",
+        "node": "data.list",
+        "label": "Linked data",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: audience and financials",
+        "config": {
+          "useModel": false,
+          "inputs": [
+            {
+              "key": "audience",
+              "label": "The audience (investor or lender)",
+              "kind": "any",
+              "match": [
+                "investor",
+                "lender",
+                "bank",
+                "loan",
+                "investment",
+                "equity",
+                "seed"
+              ],
+              "help": "Say who the plan is for: an investor (equity) or a lender (a loan)."
+            },
+            {
+              "key": "financials",
+              "label": "Financial projections as a spreadsheet",
+              "kind": "data",
+              "match": [],
+              "help": "Link the financial projections as a spreadsheet"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "data": "data.tables"
+        },
+        "loop": false
+      },
+      {
+        "id": "ext",
+        "node": "step.extract",
+        "label": "Narrative assumptions",
+        "config": {
+          "item": "assumption",
+          "from": [
+            "document"
+          ],
+          "maxItems": 80,
+          "instructions": "List the assumptions the narrative makes: market size, price, customers, growth, hiring, timing.",
+          "fields": [
+            {
+              "name": "name",
+              "label": "Assumption",
+              "type": "text",
+              "description": "What is assumed (market size, price, customer count, growth rate, hires, timing)",
+              "required": true
+            },
+            {
+              "name": "value",
+              "label": "Value",
+              "type": "number",
+              "description": "The number assumed, if any"
+            },
+            {
+              "name": "unit",
+              "label": "Unit",
+              "type": "text",
+              "description": "Its unit (dollars, customers, percent per year)"
+            },
+            {
+              "name": "period",
+              "label": "Period",
+              "type": "text",
+              "description": "The period it applies to"
+            },
+            {
+              "name": "driver",
+              "label": "Driver",
+              "type": "text",
+              "description": "What the narrative says drives it"
+            },
+            {
+              "name": "stated_source",
+              "label": "Stated source",
+              "type": "text",
+              "description": "The source the narrative cites for it, if any"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "extm",
+        "node": "step.extract",
+        "label": "Model figures",
+        "config": {
+          "item": "model period",
+          "from": [
+            "data",
+            "document"
+          ],
+          "maxItems": 40,
+          "instructions": "From the financial model, give one row per period (year or quarter) with the figures the model shows for it. Every figure except market size must come from the linked data tables, never from the narrative; leave it null when the model has none. Market size: take it from the model if it has one, otherwise the market size the narrative states, on every row.",
+          "fields": [
+            {
+              "name": "period",
+              "label": "Period",
+              "type": "text",
+              "description": "The year or quarter",
+              "required": true
+            },
+            {
+              "name": "customers",
+              "label": "Customers",
+              "type": "number",
+              "description": "Customers or units sold in the period"
+            },
+            {
+              "name": "price",
+              "label": "Price",
+              "type": "number",
+              "description": "Average price per customer or unit"
+            },
+            {
+              "name": "revenue",
+              "label": "Revenue",
+              "type": "number",
+              "description": "Revenue in the period"
+            },
+            {
+              "name": "payroll",
+              "label": "Payroll",
+              "type": "number",
+              "description": "Payroll cost in the period"
+            },
+            {
+              "name": "headcount",
+              "label": "Headcount",
+              "type": "number",
+              "description": "Headcount at the end of the period"
+            },
+            {
+              "name": "cost_per_head",
+              "label": "Payroll per head",
+              "type": "number",
+              "description": "Payroll cost per person for the period, if the model states it (salary plus on-costs)"
+            },
+            {
+              "name": "capex",
+              "label": "Capital spending",
+              "type": "number",
+              "description": "Capital expenditure in the period"
+            },
+            {
+              "name": "cash",
+              "label": "Cash",
+              "type": "number",
+              "description": "Cash at the end of the period"
+            },
+            {
+              "name": "burn",
+              "label": "Burn",
+              "type": "number",
+              "description": "Net cash burn per month in the period"
+            },
+            {
+              "name": "runway",
+              "label": "Runway",
+              "type": "number",
+              "description": "Months of runway the model states"
+            },
+            {
+              "name": "market_size",
+              "label": "Market size",
+              "type": "number",
+              "description": "The market size the plan uses, in the same currency as revenue: the model's, or else the narrative's"
+            }
+          ]
+        },
+        "in": {
+          "data": "data.tables",
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "extst",
+        "node": "step.extract",
+        "label": "Net income across the statements",
+        "config": {
+          "item": "statement period",
+          "from": [
+            "data"
+          ],
+          "maxItems": 40,
+          "instructions": "From the financial statements, give one row per period with net income as each statement shows it: the income statement, the cash flow statement (the net income it starts from) and the balance sheet or equity statement (the net income added to retained earnings or equity). Leave a figure null when that statement isn't in the data.",
+          "fields": [
+            {
+              "name": "period",
+              "label": "Period",
+              "type": "text",
+              "description": "The year or quarter",
+              "required": true
+            },
+            {
+              "name": "net_income",
+              "label": "Net income",
+              "type": "number",
+              "description": "Net income for the period on the income statement"
+            },
+            {
+              "name": "cf_net_income",
+              "label": "Net income (cash flow)",
+              "type": "number",
+              "description": "Net income as the cash flow statement starts from it, for the period"
+            },
+            {
+              "name": "equity_net_income",
+              "label": "Net income (equity)",
+              "type": "number",
+              "description": "Net income added to retained earnings or equity for the period, as the balance sheet or equity statement shows it"
+            }
+          ]
+        },
+        "in": {
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "extf",
+        "node": "step.extract",
+        "label": "Funding and use of funds",
+        "config": {
+          "item": "funding line",
+          "from": [
+            "document",
+            "data"
+          ],
+          "maxItems": 40,
+          "instructions": "List the amount of funding sought and each line of the use of funds.",
+          "fields": [
+            {
+              "name": "kind",
+              "label": "Kind",
+              "type": "enum",
+              "description": "The amount sought, or one use of the funds",
+              "values": [
+                "funding_sought",
+                "use_of_funds"
+              ],
+              "required": true
+            },
+            {
+              "name": "name",
+              "label": "Name",
+              "type": "text",
+              "description": "The line as written",
+              "required": true
+            },
+            {
+              "name": "amount",
+              "label": "Amount",
+              "type": "number",
+              "description": "The amount"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "tie",
+        "node": "step.compute",
+        "label": "Tie-out",
+        "config": {
+          "checks": [
+            {
+              "kind": "product",
+              "key": "customers_times_price",
+              "label": "Customers × price = revenue",
+              "severity": "major",
+              "aField": "customers",
+              "bField": "price",
+              "resultField": "revenue"
+            },
+            {
+              "kind": "product",
+              "key": "hiring_payroll",
+              "label": "Hiring plan × payroll per head = payroll",
+              "severity": "major",
+              "aField": "headcount",
+              "bField": "cost_per_head",
+              "resultField": "payroll"
+            },
+            {
+              "kind": "ratio",
+              "key": "runway",
+              "label": "Runway = cash ÷ burn",
+              "severity": "major",
+              "aField": "cash",
+              "bField": "burn",
+              "resultField": "runway"
+            },
+            {
+              "kind": "ratio",
+              "key": "market_share",
+              "label": "Implied market share (revenue ÷ market size)",
+              "severity": "info",
+              "aField": "revenue",
+              "bField": "market_size",
+              "resultField": null
+            }
+          ]
+        },
+        "in": {
+          "items": "extm.items",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "funds",
+        "node": "step.compute",
+        "label": "Use of funds",
+        "config": {
+          "checks": [
+            {
+              "kind": "sum",
+              "key": "use_of_funds",
+              "label": "Use of funds sums to the amount sought",
+              "severity": "major",
+              "valueField": "amount",
+              "partWhere": {
+                "field": "kind",
+                "equals": "use_of_funds"
+              },
+              "totalWhere": {
+                "field": "kind",
+                "equals": "funding_sought"
+              }
+            }
+          ]
+        },
+        "in": {
+          "items": "extf.items",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "stmt",
+        "node": "step.compute",
+        "label": "Statements",
+        "config": {
+          "checks": [
+            {
+              "kind": "table_rows_equal",
+              "key": "balance_sheet",
+              "label": "The balance sheet balances",
+              "severity": "major",
+              "tableMatch": "balance",
+              "left": [
+                "total assets"
+              ],
+              "right": [
+                "total liabilities",
+                "equity"
+              ]
+            },
+            {
+              "kind": "equal",
+              "key": "net_income_cash_flow",
+              "label": "Net income flows to the cash flow statement",
+              "severity": "major",
+              "aField": "net_income",
+              "bField": "cf_net_income"
+            },
+            {
+              "kind": "equal",
+              "key": "net_income_equity",
+              "label": "Net income flows to equity",
+              "severity": "major",
+              "aField": "net_income",
+              "bField": "equity_net_income"
+            },
+            {
+              "kind": "table_row_min",
+              "key": "cash_positive",
+              "label": "Cash stays above zero, or financing is shown",
+              "severity": "major",
+              "tableMatch": "cash",
+              "row": "cash",
+              "min": 0,
+              "coveredBy": [
+                "financing",
+                "funding",
+                "loan proceeds",
+                "equity raised"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "items": "extst.items",
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "aud",
+        "node": "step.check",
+        "label": "Audience check",
+        "config": {
+          "instructions": "apply the items for the stated audience; mark the other audience's not_applicable",
+          "checklist": [
+            {
+              "key": "lender_repayment",
+              "label": "Lender: repayment source",
+              "question": "For a lender: is the source of repayment stated?",
+              "severity": "major"
+            },
+            {
+              "key": "lender_dscr",
+              "label": "Lender: debt service coverage",
+              "question": "For a lender: is debt service coverage shown? (The lender sets its own threshold.)",
+              "severity": "major"
+            },
+            {
+              "key": "lender_collateral",
+              "label": "Lender: collateral",
+              "question": "For a lender: is collateral described?",
+              "severity": "major"
+            },
+            {
+              "key": "lender_equity",
+              "label": "Lender: owner's equity",
+              "question": "For a lender: is the owner's equity in the business stated?",
+              "severity": "major"
+            },
+            {
+              "key": "investor_sizing",
+              "label": "Investor: bottom-up market sizing",
+              "question": "For an investor: is the market sized bottom-up (customers × price), not as a small share of a large market?",
+              "severity": "major"
+            },
+            {
+              "key": "investor_unit_economics",
+              "label": "Investor: unit economics",
+              "question": "For an investor: are unit economics (acquisition cost, margin, lifetime value) given?",
+              "severity": "major"
+            },
+            {
+              "key": "investor_traction",
+              "label": "Investor: traction evidence",
+              "question": "For an investor: is there evidence of traction (customers, revenue, pilots, letters of intent)?",
+              "severity": "major"
+            },
+            {
+              "key": "investor_milestones",
+              "label": "Investor: use of funds tied to milestones",
+              "question": "For an investor: is the use of funds tied to milestones?",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "vs",
+        "node": "step.trace",
+        "label": "Narrative against the model",
+        "config": {
+          "against": "targets",
+          "statuses": [
+            {
+              "key": "consistent",
+              "label": "Matches the model",
+              "ok": true,
+              "severity": "info"
+            },
+            {
+              "key": "not_in_model",
+              "label": "Not in the model",
+              "ok": false,
+              "severity": "info"
+            },
+            {
+              "key": "contradicted",
+              "label": "Disagrees with the model",
+              "ok": false,
+              "severity": "major"
+            }
+          ],
+          "unverifiedStatus": "not_in_model",
+          "question": "Does the model (its period rows and tables) carry the same figure the narrative states for this assumption?",
+          "bothWays": false,
+          "instructions": "Compare each narrative assumption with the model's figure for the same thing and period: customers, price, revenue, growth, hiring (against the model's headcount and payroll), timing, funding. Mark contradicted when the model's figure differs beyond rounding, and give both figures in the rationale. Mark consistent only when you can name the model row (T id) or table cell that matches. Mark not_in_model when the model has no figure to compare."
+        },
+        "in": {
+          "items": "ext.items",
+          "targets": "extm.items",
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "risk",
+        "node": "step.trace",
+        "label": "Risks",
+        "config": {
+          "against": "sources",
+          "statuses": [
+            {
+              "key": "sourced",
+              "label": "Sourced",
+              "ok": true,
+              "severity": "info"
+            },
+            {
+              "key": "estimated",
+              "label": "Estimated",
+              "ok": false,
+              "severity": "minor"
+            },
+            {
+              "key": "unsupported",
+              "label": "Unsupported",
+              "ok": false,
+              "severity": "major"
+            }
+          ],
+          "unverifiedStatus": "unsupported",
+          "question": "Is the assumption backed by a linked source, a stated estimate, or nothing?",
+          "instructions": "Rank by weight: an assumption that moves the result a lot and has little support is the most severe. In each rationale, say what the assumption does to the result (revenue, runway, funding need) if it is wrong."
+        },
+        "in": {
+          "items": "ext.items",
+          "sources": "src.sources",
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "not_ready",
+              "when": {
+                "anyOf": [
+                  {
+                    "findings": {
+                      "severity": [
+                        "blocking"
+                      ],
+                      "min": 1
+                    }
+                  },
+                  {
+                    "computeFailed": {
+                      "min": 2
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "value": "needs_work",
+              "when": {
+                "anyOf": [
+                  {
+                    "findings": {
+                      "severity": [
+                        "major"
+                      ],
+                      "min": 1
+                    }
+                  },
+                  {
+                    "computeFailed": {
+                      "min": 1
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "fallback": "ready"
+        },
+        "in": {
+          "blocked": "gate.blocked",
+          "findings": [
+            "vs.findings",
+            "tie.findings",
+            "funds.findings",
+            "stmt.findings",
+            "aud.findings",
+            "risk.findings"
+          ],
+          "results": [
+            "tie.results",
+            "funds.results",
+            "stmt.results"
+          ],
+          "tables": [
+            "vs.table",
+            "risk.table",
+            "extm.table",
+            "aud.table",
+            "extst.table"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Owner review",
+        "config": {
+          "signsOutcome": true,
+          "editable": "outcome",
+          "instructions": "Resolve each unsupported assumption: source it, change it, or accept it as a stated risk (note which)"
+        },
+        "in": {
+          "items": "out.outcome"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-design-doc",
+    "version": 1,
+    "title": "Design review",
+    "summary": "A recommended review decision: approve, approve with changes, or reject, with reasons, required changes and each finding marked blocking or not. Checks alternatives and rollout, reviews by lens, and checks claims about the current system against linked code and docs. The named approvers decide.",
+    "kind": "type",
+    "appliesTo": [
+      "design-doc-rfc"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Review decision",
+      "values": [
+        {
+          "key": "approve",
+          "label": "Approve"
+        },
+        {
+          "key": "approve_with_changes",
+          "label": "Approve with changes"
+        },
+        {
+          "key": "reject",
+          "label": "Reject"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Named approvers",
+      "required": true
+    },
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Mark decisions reversible or hard to reverse, and spend review effort on the second kind.",
+      "Save the decision as an ADR beside the doc.",
+      "Claims about the current system are unverified unless the repository or architecture docs are linked."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: problem, goals, design",
+        "config": {
+          "useModel": false,
+          "inputs": [
+            {
+              "key": "problem",
+              "label": "The problem",
+              "kind": "section",
+              "specKeys": [
+                "context-and-motivation",
+                "summary"
+              ],
+              "match": [
+                "problem",
+                "motivation",
+                "context"
+              ],
+              "help": "State the problem the design solves."
+            },
+            {
+              "key": "goals",
+              "label": "Goals and non-goals",
+              "kind": "section",
+              "specKeys": [
+                "goals-and-non-goals"
+              ],
+              "match": [
+                "goals",
+                "non-goals"
+              ],
+              "help": "List the goals and the explicit non-goals."
+            },
+            {
+              "key": "design",
+              "label": "A proposed design",
+              "kind": "section",
+              "specKeys": [
+                "proposed-design"
+              ],
+              "match": [
+                "proposed design",
+                "design",
+                "solution"
+              ],
+              "help": "Describe the proposed design."
+            },
+            {
+              "key": "code",
+              "label": "Repository or architecture docs",
+              "kind": "source",
+              "match": [
+                "repository",
+                "repo",
+                "github",
+                "architecture",
+                "readme",
+                "code"
+              ],
+              "required": false,
+              "help": "Link the repository or architecture docs so claims about the current system can be checked."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources"
+        },
+        "loop": false
+      },
+      {
+        "id": "alt",
+        "node": "step.check",
+        "label": "Alternatives",
+        "config": {
+          "checklist": [
+            {
+              "key": "two_alternatives",
+              "label": "At least two real alternatives",
+              "question": "Are at least two real alternatives considered, one of them “do nothing”? A single strawman does not count.",
+              "severity": "major",
+              "appliesTo": [
+                "alternatives-considered"
+              ]
+            },
+            {
+              "key": "same_criteria",
+              "label": "Compared on the same criteria",
+              "question": "Are the alternatives and the proposal compared on the same criteria?",
+              "severity": "major",
+              "appliesTo": [
+                "alternatives-considered"
+              ]
+            },
+            {
+              "key": "missing_option",
+              "label": "No obvious option missing",
+              "question": "Is an obvious option missing? Name it in the rationale.",
+              "severity": "minor",
+              "appliesTo": [
+                "alternatives-considered"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "rev",
+        "node": "step.review",
+        "label": "Review by lens",
+        "config": {
+          "criteria": [
+            {
+              "key": "decision",
+              "label": "Decision",
+              "guidance": "reject or approve_with_changes when you find a blocking issue in your area.",
+              "scale": {
+                "kind": "enum",
+                "values": [
+                  "approve",
+                  "approve_with_changes",
+                  "reject"
+                ]
+              }
+            }
+          ],
+          "reviewers": [
+            {
+              "key": "correctness",
+              "label": "Correctness and architecture",
+              "brief": "Review for correctness and architecture: does the design solve the stated problem, are the components and interfaces sound, and does it fit the existing system? Flag failure modes the design does not handle."
+            },
+            {
+              "key": "operations",
+              "label": "Operations and reliability",
+              "brief": "Review for operations and reliability: deployment, monitoring, failure recovery, capacity, cost and on-call load. Flag anything that would page someone at night or grow cost without a limit."
+            },
+            {
+              "key": "security",
+              "label": "Security, privacy, data and migration",
+              "brief": "Review for security and privacy (authentication, authorization, data exposure, threat surface) and for data and migration where relevant (schema changes, backfills, compatibility, data loss)."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "roll",
+        "node": "step.check",
+        "label": "Rollout",
+        "config": {
+          "checklist": [
+            {
+              "key": "phases",
+              "label": "Phases or flags",
+              "question": "Is the rollout phased or behind flags?",
+              "severity": "major",
+              "appliesTo": [
+                "rollout-and-migration"
+              ]
+            },
+            {
+              "key": "migration",
+              "label": "Migration",
+              "question": "Is the migration of data or clients described?",
+              "severity": "major",
+              "appliesTo": [
+                "rollout-and-migration"
+              ]
+            },
+            {
+              "key": "compatibility",
+              "label": "Backward compatibility",
+              "question": "Is backward compatibility addressed?",
+              "severity": "major",
+              "appliesTo": [
+                "rollout-and-migration"
+              ]
+            },
+            {
+              "key": "rollback",
+              "label": "Rollback path and its duration",
+              "question": "Is there a rollback path, with how long it takes?",
+              "severity": "blocking",
+              "appliesTo": [
+                "rollout-and-migration"
+              ]
+            },
+            {
+              "key": "stop_metrics",
+              "label": "Stop metrics",
+              "question": "Are the metrics that mean stop named?",
+              "severity": "major",
+              "appliesTo": [
+                "rollout-and-migration"
+              ]
+            },
+            {
+              "key": "reversibility",
+              "label": "Decisions marked reversible or hard to reverse",
+              "question": "Is each decision marked reversible or hard to reverse?",
+              "severity": "minor"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "claims",
+        "node": "step.extract",
+        "label": "Claims about the current system",
+        "config": {
+          "item": "claim about the current system",
+          "from": [
+            "document"
+          ],
+          "maxItems": 40,
+          "instructions": "List each statement the doc makes about how the current system works today.",
+          "fields": [
+            {
+              "name": "claim",
+              "label": "Claim",
+              "type": "text",
+              "description": "The claim about the current system, as written",
+              "required": true
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "tr",
+        "node": "step.trace",
+        "label": "Check claims",
+        "config": {
+          "against": "sources",
+          "statuses": [
+            {
+              "key": "confirmed",
+              "label": "Confirmed",
+              "ok": true,
+              "severity": "info"
+            },
+            {
+              "key": "contradicted",
+              "label": "Contradicted",
+              "ok": false,
+              "severity": "major"
+            },
+            {
+              "key": "unverified",
+              "label": "Unverified",
+              "ok": false,
+              "severity": "minor"
+            }
+          ],
+          "unverifiedStatus": "unverified",
+          "question": "Do the linked code or docs confirm or contradict the claim?"
+        },
+        "in": {
+          "items": "claims.items",
+          "sources": "src.sources",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "agree",
+        "node": "step.agree",
+        "label": "Agreement",
+        "config": {
+          "mode": "verdict",
+          "blockingVerdicts": [
+            "reject"
+          ]
+        },
+        "in": {
+          "reviews": "rev.reviews"
+        },
+        "loop": false
+      },
+      {
+        "id": "decide",
+        "node": "step.decide",
+        "label": "Decide",
+        "config": {
+          "values": [
+            "approve",
+            "approve_with_changes",
+            "reject"
+          ],
+          "guidance": "Any unresolved blocking finding means approve_with_changes or reject. List the required changes and mark each finding blocking or non-blocking in the rationale."
+        },
+        "in": {
+          "findings": [
+            "alt.findings",
+            "rev.findings",
+            "roll.findings",
+            "tr.findings",
+            "agree.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "results": [
+            "alt.results",
+            "roll.results"
+          ],
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [],
+          "fallback": "approve_with_changes",
+          "guards": [
+            {
+              "values": [
+                "approve"
+              ],
+              "instead": "approve_with_changes",
+              "when": {
+                "anyOf": [
+                  {
+                    "findings": {
+                      "severity": [
+                        "blocking"
+                      ],
+                      "min": 1
+                    }
+                  },
+                  {
+                    "disagreements": {
+                      "min": 1,
+                      "blocking": true
+                    }
+                  }
+                ]
+              },
+              "reason": "an unresolved blocking finding or blocking disagreement makes the decision approve with changes or reject."
+            }
+          ]
+        },
+        "in": {
+          "value": "decide.value",
+          "rationale": "decide.rationale",
+          "blocked": "gate.blocked",
+          "findings": [
+            "alt.findings",
+            "rev.findings",
+            "roll.findings",
+            "tr.findings",
+            "agree.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "tables": [
+            "agree.table",
+            "alt.table",
+            "roll.table",
+            "tr.table"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Approvers decide",
+        "config": {
+          "signsOutcome": true,
+          "editable": "outcome",
+          "instructions": "Decide as the named approvers. Record the conditions of an approval with changes.",
+          "recordFields": [
+            {
+              "key": "decision_conditions",
+              "label": "Decision conditions (required changes)",
+              "required": false
+            }
+          ]
+        },
+        "in": {
+          "items": "out.outcome"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-diataxis-how-to",
+    "version": 1,
+    "title": "How-to walkthrough",
+    "summary": "Whether the steps achieve the stated goal for a competent reader. A simulated walkthrough names the step where it failed; checks flag missing or out-of-order steps; a type check lists passages that belong in another Diátaxis type.",
+    "kind": "type",
+    "appliesTo": [
+      "diataxis-how-to"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Goal result",
+      "values": [
+        {
+          "key": "achieves_goal",
+          "label": "The steps achieve the goal (simulated)"
+        },
+        {
+          "key": "fails",
+          "label": "The walkthrough failed"
+        }
+      ]
+    },
+    "checkpoint": null,
+    "params": [],
+    "requirementSets": [
+      "diataxis-framework"
+    ],
+    "notAssessed": [],
+    "notes": [
+      "Simulated: no sandbox ran the steps.",
+      "The walkthrough says which steps were only read, not executed.",
+      "Offer flagged passages to Restructure to type as the seed of the sibling document."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "goal",
+        "node": "step.extract",
+        "label": "Goal",
+        "config": {
+          "item": "goal",
+          "from": [
+            "document"
+          ],
+          "sectionKeys": [
+            "goal",
+            "before-you-begin"
+          ],
+          "maxItems": 1,
+          "instructions": "Take the goal from the title and the opening, and the prerequisites the guide states.",
+          "fields": [
+            {
+              "name": "goal",
+              "label": "Goal",
+              "type": "text",
+              "description": "The task the guide promises to accomplish",
+              "required": true
+            },
+            {
+              "name": "prerequisites",
+              "label": "Prerequisites",
+              "type": "list",
+              "description": "The prerequisites the guide states"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "walk",
+        "node": "step.simulate",
+        "label": "Walkthrough",
+        "config": {
+          "persona": "a competent practitioner with only the stated prerequisites",
+          "task": "Follow the steps as written to reach the stated goal.",
+          "records": "steps",
+          "rules": [
+            "the end state must equal the goal",
+            "say which steps were only read, not executed"
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "goal.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "flags",
+        "node": "step.check",
+        "label": "Flags",
+        "config": {
+          "checklist": [
+            {
+              "key": "missing_steps",
+              "label": "No missing steps",
+              "question": "Are any steps missing between the start and the goal? Name where.",
+              "severity": "major"
+            },
+            {
+              "key": "prerequisites",
+              "label": "Prerequisites stated",
+              "question": "Are all prerequisites the steps rely on stated?",
+              "severity": "major"
+            },
+            {
+              "key": "order",
+              "label": "Steps in order",
+              "question": "Are the steps in the order they must be done?",
+              "severity": "major"
+            },
+            {
+              "key": "variations",
+              "label": "Variations handled",
+              "question": "Does the guide handle the variations a working reader meets (“if you use X, do Y”)?",
+              "severity": "minor"
+            },
+            {
+              "key": "no_teaching",
+              "label": "Prerequisites stated without teaching",
+              "question": "Are prerequisites stated without teaching them?",
+              "severity": "minor"
+            },
+            {
+              "key": "title_names_goal",
+              "label": "The title names the goal",
+              "question": "Does the title name the goal (“How to …”)?",
+              "severity": "minor"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "goal.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "type",
+        "node": "step.classify",
+        "label": "Type check",
+        "config": {
+          "unit": "paragraph",
+          "instructions": "Classify each passage by its Diátaxis role in a how-to guide.",
+          "categories": [
+            {
+              "key": "step",
+              "label": "Step",
+              "description": "An action the reader takes toward the goal",
+              "flag": false,
+              "severity": "info"
+            },
+            {
+              "key": "context",
+              "label": "Brief context",
+              "description": "A sentence or two of context a step needs",
+              "flag": false,
+              "severity": "info"
+            },
+            {
+              "key": "teaching",
+              "label": "Teaching",
+              "description": "Teaches a beginner a skill or concept, as a lesson would",
+              "flag": true,
+              "severity": "minor",
+              "suggestion": "a tutorial"
+            },
+            {
+              "key": "explanation",
+              "label": "Explanation",
+              "description": "Discusses why, background, design reasons or alternatives",
+              "flag": true,
+              "severity": "minor",
+              "suggestion": "an explanation"
+            },
+            {
+              "key": "reference",
+              "label": "Reference",
+              "description": "Lists options, parameters or facts to look up",
+              "flag": true,
+              "severity": "minor",
+              "suggestion": "a reference"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "fails",
+              "when": {
+                "findings": {
+                  "kind": [
+                    "walkthrough_failed"
+                  ],
+                  "min": 1
+                }
+              }
+            }
+          ],
+          "fallback": "achieves_goal"
+        },
+        "in": {
+          "findings": [
+            "walk.findings",
+            "flags.findings",
+            "type.findings"
+          ],
+          "tables": [
+            "walk.table",
+            "flags.table",
+            "type.table"
+          ]
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-diataxis-tutorial",
+    "version": 1,
+    "title": "Tutorial walkthrough",
+    "summary": "Whether a beginner starting clean can finish the tutorial, with a table of each step's stated visible result and whether the walkthrough saw it. Two simulated beginner runs, per-step checks and a type check.",
+    "kind": "type",
+    "appliesTo": [
+      "diataxis-tutorial"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Completion result",
+      "values": [
+        {
+          "key": "completes",
+          "label": "A beginner can finish it (simulated)"
+        },
+        {
+          "key": "does_not_complete",
+          "label": "A beginner gets stuck"
+        }
+      ]
+    },
+    "checkpoint": null,
+    "params": [],
+    "requirementSets": [
+      "diataxis-framework"
+    ],
+    "notAssessed": [],
+    "notes": [
+      "A model is a weak stand-in for a beginner; one person new to the topic remains the better test.",
+      "Simulated: no sandbox ran the steps. Run runnable tutorials for real before publishing."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: start and end stated",
+        "config": {
+          "useModel": true,
+          "inputs": [
+            {
+              "key": "start_state",
+              "label": "The starting state (what to install and already know)",
+              "kind": "any",
+              "match": [
+                "before you begin",
+                "prerequisites",
+                "you will need",
+                "install"
+              ],
+              "help": "State at the top what the learner needs installed and already knows."
+            },
+            {
+              "key": "end_result",
+              "label": "The end result",
+              "kind": "any",
+              "match": [
+                "by the end",
+                "you will have",
+                "you'll build"
+              ],
+              "help": "State at the top what the learner will have built or done by the end."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "walk1",
+        "node": "step.simulate",
+        "label": "Beginner walkthrough",
+        "config": {
+          "persona": "a beginner starting from a clean environment using only the stated prior knowledge",
+          "task": "Work through the tutorial from the first step to the end result.",
+          "records": "steps",
+          "rules": [
+            "do exactly what is written",
+            "stop at the first ambiguity",
+            "for each step record the stated visible result and whether you would see it"
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "steps",
+        "node": "step.extract",
+        "label": "Steps",
+        "config": {
+          "item": "step",
+          "from": [
+            "document"
+          ],
+          "sectionKeys": [
+            "steps"
+          ],
+          "maxItems": 100,
+          "instructions": "List each step in order.",
+          "fields": [
+            {
+              "name": "number",
+              "label": "Number",
+              "type": "text",
+              "description": "The step's number as written",
+              "required": true
+            },
+            {
+              "name": "instruction",
+              "label": "Instruction",
+              "type": "text",
+              "description": "What the step tells the learner to do",
+              "required": true
+            },
+            {
+              "name": "stated_result",
+              "label": "Stated result",
+              "type": "text",
+              "description": "The visible result the step says the learner will see"
+            },
+            {
+              "name": "has_choice",
+              "label": "Offers a choice",
+              "type": "boolean",
+              "description": "Whether the step offers the learner a choice or alternative"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "perstep",
+        "node": "step.check",
+        "label": "Per step",
+        "config": {
+          "perItem": true,
+          "checklist": [
+            {
+              "key": "visible_result",
+              "label": "A visible result is stated",
+              "question": "Does the step state the visible result the learner will see?",
+              "severity": "major"
+            },
+            {
+              "key": "complete_code",
+              "label": "Commands and code are complete",
+              "question": "Are the step's commands and code complete enough to run as written?",
+              "severity": "major"
+            },
+            {
+              "key": "no_choice",
+              "label": "No choice offered",
+              "question": "Is the step free of choices or alternatives?",
+              "severity": "minor"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "steps.items",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "type",
+        "node": "step.classify",
+        "label": "Type check",
+        "config": {
+          "unit": "paragraph",
+          "instructions": "Classify each passage by its role in a tutorial.",
+          "categories": [
+            {
+              "key": "step",
+              "label": "Step",
+              "description": "An action the learner takes, or its visible result",
+              "flag": false,
+              "severity": "info"
+            },
+            {
+              "key": "context",
+              "label": "Brief context",
+              "description": "A sentence or two of context or encouragement",
+              "flag": false,
+              "severity": "info"
+            },
+            {
+              "key": "explanation",
+              "label": "Explanation",
+              "description": "Explanation longer than a sentence or two",
+              "flag": true,
+              "severity": "minor",
+              "suggestion": "an explanation"
+            },
+            {
+              "key": "reference",
+              "label": "Reference",
+              "description": "Reference material: option lists, parameter tables, full specifications",
+              "flag": true,
+              "severity": "minor",
+              "suggestion": "a reference"
+            },
+            {
+              "key": "alternatives",
+              "label": "Alternatives",
+              "description": "Alternative ways to do a step",
+              "flag": true,
+              "severity": "minor",
+              "suggestion": "a how-to guide"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "walk2",
+        "node": "step.simulate",
+        "label": "Second run",
+        "config": {
+          "persona": "a second beginner from a clean environment",
+          "task": "Work through the tutorial again from a clean start and compare the result with the first run.",
+          "records": "steps",
+          "rules": [
+            "confirm the same result",
+            "record the tool and library versions the text assumes"
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "does_not_complete",
+              "when": {
+                "findings": {
+                  "kind": [
+                    "walkthrough_failed"
+                  ],
+                  "min": 1
+                }
+              }
+            }
+          ],
+          "fallback": "completes"
+        },
+        "in": {
+          "blocked": "gate.blocked",
+          "findings": [
+            "walk1.findings",
+            "perstep.findings",
+            "type.findings",
+            "walk2.findings"
+          ],
+          "tables": [
+            "walk1.table",
+            "perstep.table",
+            "type.table",
+            "walk2.table"
+          ]
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-fie",
+    "version": 1,
+    "title": "Potential determination (FIE)",
+    "summary": "Reaches a potential determination for each suspected disability category: criteria met, not met or insufficient evidence, and whether the student needs special education and related services. Independent reviewers apply the Texas criteria to an evidence table; the evaluation supervisor reviews every disagreement and signs.",
+    "kind": "type",
+    "appliesTo": [
+      "fie"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Potential determination",
+      "values": [
+        {
+          "key": "criteria_met",
+          "label": "Potential: criteria met; needs special education and related services"
+        },
+        {
+          "key": "criteria_met_no_need",
+          "label": "Potential: criteria met; no demonstrated need for services"
+        },
+        {
+          "key": "criteria_not_met",
+          "label": "Potential: criteria not met"
+        },
+        {
+          "key": "insufficient_evidence",
+          "label": "Insufficient evidence to determine"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Evaluation supervisor (LSSP or diagnostician)",
+      "required": true
+    },
+    "params": [],
+    "requirementSets": [
+      "tx-19tac-89-1040",
+      "tx-19tac-89-1011",
+      "idea-evaluation-34cfr"
+    ],
+    "notAssessed": [
+      "The ARD committee makes the eligibility decision; this is a potential determination only."
+    ],
+    "notes": [
+      "The determination stays potential until the supervisor signs, and enters the report only after that.",
+      "Deadlines (19 TAC §89.1011): the report is due by the 45th school day after written consent, extended by days absent when the student misses three or more; the ARD committee decides within 30 calendar days of the report; the parent gets the report at least five school days before that meeting. End-of-year exceptions apply.",
+      "School-day deadlines are estimated as weekdays; the school calendar is not linked.",
+      "Student records are protected (FERPA): web lookups for this type use only public regulations and test manuals, and carry no student details.",
+      "Criteria vary by state; this workflow uses the Texas criteria (19 TAC §89.1040)."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "notes",
+        "node": "doc.notes",
+        "label": "Notes",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "data",
+        "node": "data.list",
+        "label": "Linked data",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "req",
+        "node": "requirements.read",
+        "label": "Requirements",
+        "config": {
+          "sets": [
+            "tx-19tac-89-1040",
+            "tx-19tac-89-1011",
+            "idea-evaluation-34cfr"
+          ]
+        },
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: required inputs",
+        "config": {
+          "useModel": true,
+          "inputs": [
+            {
+              "key": "consent",
+              "label": "Written consent and its date",
+              "kind": "any",
+              "match": [
+                "consent",
+                "written consent",
+                "consent for evaluation"
+              ],
+              "help": "Link or note the signed consent for evaluation and the date the district received it; the 45-school-day timeline starts there."
+            },
+            {
+              "key": "referral",
+              "label": "Referral concerns",
+              "kind": "any",
+              "match": [
+                "referral",
+                "reason for referral",
+                "concerns"
+              ],
+              "help": "Link the referral, or state who referred the student, when, and the concerns."
+            },
+            {
+              "key": "suspected",
+              "label": "Suspected disability categories",
+              "kind": "any",
+              "match": [
+                "suspected disability",
+                "eligibility category",
+                "suspected"
+              ],
+              "help": "Name the eligibility categories under consideration."
+            },
+            {
+              "key": "category_data",
+              "label": "Data each suspected category requires",
+              "kind": "any",
+              "help": "Data each suspected category requires (19 TAC §89.1040): for OHI, a physician, PA or APRN statement; for SLD, a classroom observation and data on appropriate instruction."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "data": "data.tables",
+          "notes": "notes.notes"
+        },
+        "loop": false
+      },
+      {
+        "id": "ev",
+        "node": "step.extract",
+        "label": "Evidence table",
+        "config": {
+          "item": "evidence",
+          "from": [
+            "sources",
+            "document"
+          ],
+          "maxItems": 120,
+          "instructions": "Build the evidence table: one row per score, observation or report finding. Copy scores exactly as the protocol or report gives them.",
+          "fields": [
+            {
+              "name": "source",
+              "label": "Source",
+              "type": "text",
+              "description": "The report, protocol, rating scale, observation or record the evidence comes from",
+              "required": true
+            },
+            {
+              "name": "date",
+              "label": "Date",
+              "type": "date",
+              "description": "The date the measure was given or the observation made"
+            },
+            {
+              "name": "instrument",
+              "label": "Instrument",
+              "type": "text",
+              "description": "The instrument, scale or procedure by name (e.g. a test's full name and subtest)"
+            },
+            {
+              "name": "result",
+              "label": "Result",
+              "type": "text",
+              "description": "The score (with its type: standard score, percentile, T-score) or the observation, exactly as written",
+              "required": true
+            },
+            {
+              "name": "area",
+              "label": "Area assessed",
+              "type": "text",
+              "description": "The area the evidence speaks to: cognitive, academic, social-emotional, communication, motor, health, vision, hearing, adaptive"
+            },
+            {
+              "name": "category",
+              "label": "Category",
+              "type": "text",
+              "description": "The suspected disability category the evidence bears on, if any"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "dates",
+        "node": "step.extract",
+        "label": "Consent date",
+        "config": {
+          "item": "date",
+          "from": [
+            "document",
+            "sources",
+            "notes"
+          ],
+          "maxItems": 1,
+          "instructions": "Find the date the district received written consent for the evaluation, the number of school days the student was absent since then, and the date of the written report, where stated.",
+          "fields": [
+            {
+              "name": "consent_date",
+              "label": "Consent date",
+              "type": "date",
+              "description": "The date the district received written consent for the evaluation",
+              "required": true
+            },
+            {
+              "name": "absences",
+              "label": "School days absent",
+              "type": "number",
+              "description": "School days the student missed since consent, if stated"
+            },
+            {
+              "name": "report_date",
+              "label": "Report date",
+              "type": "date",
+              "description": "The date of the written evaluation report, if stated"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "notes": "notes.notes",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "cov",
+        "node": "step.check",
+        "label": "Coverage (300.304)",
+        "config": {
+          "instructions": "Check the evaluation against 34 CFR 300.304, using the evidence table in <items>.",
+          "checklist": [
+            {
+              "key": "all_areas",
+              "label": "All areas assessed",
+              "question": "Is every area related to each suspected disability assessed (34 CFR 300.304)? Name any area left out.",
+              "severity": "major"
+            },
+            {
+              "key": "variety_of_sources",
+              "label": "A variety of sources",
+              "question": "Does the evaluation draw on a variety of sources (tests, observations, parent and teacher input, records) rather than one kind?",
+              "severity": "major"
+            },
+            {
+              "key": "no_single_measure",
+              "label": "No single measure decides",
+              "question": "Does any category rest on a single measure? Name the measure if so.",
+              "severity": "blocking"
+            },
+            {
+              "key": "potential_wording",
+              "label": "Reads as a potential determination",
+              "question": "Is the determination worded as a potential determination for the ARD committee, not a decision already made?",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ev.items",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "rev",
+        "node": "step.review",
+        "label": "Independent review",
+        "config": {
+          "criteria": [],
+          "criteriaFrom": "tx-19tac-89-1040",
+          "criterionScale": {
+            "kind": "enum",
+            "values": [
+              "met",
+              "not_met",
+              "insufficient_evidence"
+            ]
+          },
+          "instructions": "Rate only the suspected categories; mark others not_applicable by leaving them out. Rate each criterion from the evidence table and the sources, and cite the evidence for and against.",
+          "reviewers": [
+            {
+              "key": "advocate",
+              "label": "Advocate",
+              "brief": "Build the case that each criterion of the suspected categories is met. Cite the evidence for it from the evidence table and the sources, and say how strong each piece is."
+            },
+            {
+              "key": "skeptic",
+              "label": "Skeptic",
+              "brief": "Look for evidence against each criterion: contrary scores, missing required data (such as the physician statement for OHI or the classroom observation for SLD), and any category that rests on a single measure. Rate not_met or insufficient_evidence where the support is thin."
+            },
+            {
+              "key": "auditor",
+              "label": "Auditor",
+              "brief": "Apply the wording of each state criterion literally to the evidence table. Rate a criterion met only when every element the rule names is documented with a date and a source; otherwise insufficient_evidence."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ev.items",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "excl",
+        "node": "step.check",
+        "label": "Exclusions",
+        "config": {
+          "instructions": "Check the exclusionary factors (34 CFR 300.306(b)) and, for specific learning disability, the state's further exclusions (19 TAC §89.1040(c)(9)).",
+          "checklist": [
+            {
+              "key": "instruction",
+              "label": "Appropriate instruction in reading and math",
+              "question": "Does the evaluation rule out lack of appropriate instruction in reading or math as the determinant factor, with evidence?",
+              "severity": "major",
+              "appliesTo": [
+                "exclusionary_factors"
+              ]
+            },
+            {
+              "key": "english_proficiency",
+              "label": "Limited English proficiency",
+              "question": "Does the evaluation rule out limited English proficiency as the determinant factor, with evidence?",
+              "severity": "major",
+              "appliesTo": [
+                "exclusionary_factors"
+              ]
+            },
+            {
+              "key": "sld_exclusions",
+              "label": "Further SLD exclusions",
+              "question": "If specific learning disability is suspected: does the evaluation show the difficulties are not primarily the result of a visual, hearing or motor disability, intellectual disability, emotional disability, cultural factors, environmental or economic disadvantage, or being an emergent bilingual student? Mark not_applicable if SLD is not suspected.",
+              "severity": "major",
+              "appliesTo": [
+                "exclusionary_factors"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ev.items",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "agree",
+        "node": "step.agree",
+        "label": "Agreement",
+        "config": {
+          "mode": "verdict"
+        },
+        "in": {
+          "reviews": "rev.reviews"
+        },
+        "loop": false
+      },
+      {
+        "id": "comp",
+        "node": "step.compute",
+        "label": "Scores match",
+        "config": {
+          "checks": [
+            {
+              "kind": "values_in_text",
+              "key": "scores_match",
+              "label": "Scores in the narrative match the evidence table",
+              "severity": "major",
+              "labelField": "instrument",
+              "valueField": "result"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "ev.items",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "due",
+        "node": "step.compute",
+        "label": "Report deadline",
+        "config": {
+          "checks": [
+            {
+              "kind": "deadline",
+              "key": "fie_report_due",
+              "label": "Written report due (45 school days from consent)",
+              "severity": "major",
+              "startField": "consent_date",
+              "requirement": "tx-19tac-89-1011#fie-report",
+              "extendByField": "absences",
+              "extendWhenAtLeast": 3,
+              "endField": "report_date"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "dates.items",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "concl",
+        "node": "step.extract",
+        "label": "Conclusions",
+        "config": {
+          "item": "conclusion",
+          "from": [
+            "document"
+          ],
+          "sectionKeys": [
+            "eligibility_determination",
+            "recommendations"
+          ],
+          "instructions": "List each conclusion and each recommendation the report states.",
+          "fields": [
+            {
+              "name": "statement",
+              "label": "Statement",
+              "type": "text",
+              "description": "The conclusion or recommendation as written",
+              "required": true
+            },
+            {
+              "name": "category",
+              "label": "Category",
+              "type": "text",
+              "description": "The disability category it concerns, if any"
+            },
+            {
+              "name": "kind",
+              "label": "Kind",
+              "type": "enum",
+              "description": "Whether it is a conclusion or a recommendation",
+              "values": [
+                "conclusion",
+                "recommendation"
+              ],
+              "required": true
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "tr",
+        "node": "step.trace",
+        "label": "Trace to evidence",
+        "config": {
+          "against": "targets",
+          "question": "Does each conclusion and recommendation rest on evidence in the evidence table? Link the evidence rows it rests on."
+        },
+        "in": {
+          "items": "concl.items",
+          "targets": "ev.items",
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "decide",
+        "node": "step.decide",
+        "label": "Decide",
+        "config": {
+          "values": [
+            "criteria_met",
+            "criteria_met_no_need",
+            "criteria_not_met",
+            "insufficient_evidence"
+          ],
+          "guidance": "Each suspected category's result (criteria met, not met, insufficient evidence) is worked out from the reviewers' agreement on its criteria. For each category whose criteria are met, judge whether the evidence shows the student needs special education and related services because of it: needs_services, no_need, or unclear when the material does not show it. Never rest a judgment on one measure. The value then follows from the categories: criteria_met when any category is met with a shown need; otherwise insufficient_evidence when any category is disputed, short of evidence or its need unclear; criteria_met_no_need when the met categories show no need; criteria_not_met when every rated category is not met. In the rationale, give every category's result, cite the findings and agreed items behind each need judgment, and list every disagreement for the supervisor.",
+          "categories": {
+            "from": "tx-19tac-89-1040",
+            "met": "criteria_met",
+            "metNoNeed": "criteria_met_no_need",
+            "notMet": "criteria_not_met",
+            "insufficient": "insufficient_evidence"
+          }
+        },
+        "in": {
+          "findings": [
+            "cov.findings",
+            "excl.findings",
+            "rev.findings",
+            "agree.findings",
+            "comp.findings",
+            "tr.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "results": [
+            "cov.results",
+            "excl.results",
+            "comp.results",
+            "due.results"
+          ],
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [],
+          "fallback": "insufficient_evidence",
+          "guards": [
+            {
+              "values": [
+                "criteria_met",
+                "criteria_met_no_need"
+              ],
+              "instead": "insufficient_evidence",
+              "when": {
+                "anyOf": [
+                  {
+                    "findings": {
+                      "severity": [
+                        "blocking"
+                      ],
+                      "min": 1
+                    }
+                  },
+                  {
+                    "findings": {
+                      "kind": [
+                        "instruction",
+                        "english_proficiency"
+                      ],
+                      "min": 1
+                    }
+                  }
+                ]
+              },
+              "reason": "a category rests on a single measure, or an exclusionary factor (instruction, English proficiency) is unresolved (34 CFR 300.304, 300.306(b)); see the result by category."
+            }
+          ]
+        },
+        "in": {
+          "value": "decide.value",
+          "rationale": "decide.rationale",
+          "blocked": "gate.blocked",
+          "findings": [
+            "cov.findings",
+            "rev.findings",
+            "excl.findings",
+            "agree.findings",
+            "comp.findings",
+            "due.findings",
+            "tr.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "results": [
+            "comp.results",
+            "due.results"
+          ],
+          "tables": [
+            "decide.table",
+            "ev.table",
+            "agree.table",
+            "cov.table",
+            "excl.table",
+            "tr.table"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Supervisor sign-off",
+        "config": {
+          "signsOutcome": true,
+          "editable": "outcome",
+          "instructions": "Review the potential determination and every disagreement with both rationales. Edit the value if the evidence supports a different one, then sign. The ARD committee makes the eligibility decision.",
+          "recordFields": [
+            {
+              "key": "signed_name",
+              "label": "Name and credential",
+              "required": true
+            }
+          ]
+        },
+        "in": {
+          "items": "out.outcome"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-general-report",
+    "version": 1,
+    "title": "Support check",
+    "summary": "Marks each finding supported, partly supported or unsupported by the sources, traces each recommendation to the findings behind it, and checks the summary and the recommendations. The default for any type with no workflow of its own.",
+    "kind": "type",
+    "appliesTo": [
+      "general-report"
+    ],
+    "fallback": true,
+    "outcome": {
+      "label": "Support result",
+      "values": [
+        {
+          "key": "sound",
+          "label": "Sound"
+        },
+        {
+          "key": "gaps_found",
+          "label": "Gaps found"
+        }
+      ]
+    },
+    "checkpoint": null,
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Shown as an annotated view: each claim carries its status and source link",
+      "The author resolves each flag; there is no checkpoint."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "data",
+        "node": "data.list",
+        "label": "Linked data",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "ext",
+        "node": "step.extract",
+        "label": "Findings",
+        "config": {
+          "item": "finding or conclusion",
+          "from": [
+            "document"
+          ],
+          "maxItems": 80,
+          "instructions": "List each finding and conclusion the report states, with any figure it gives.",
+          "fields": [
+            {
+              "name": "kind",
+              "label": "Kind",
+              "type": "enum",
+              "description": "Whether it is a finding or a conclusion",
+              "values": [
+                "finding",
+                "conclusion"
+              ],
+              "required": true
+            },
+            {
+              "name": "text",
+              "label": "Text",
+              "type": "text",
+              "description": "The finding or conclusion as written",
+              "required": true
+            },
+            {
+              "name": "figure",
+              "label": "Figure",
+              "type": "text",
+              "description": "A figure, date, unit or quotation it states, exactly as written"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "recs",
+        "node": "step.extract",
+        "label": "Recommendations",
+        "config": {
+          "item": "recommendation",
+          "from": [
+            "document"
+          ],
+          "maxItems": 40,
+          "instructions": "List each recommendation the report makes.",
+          "fields": [
+            {
+              "name": "text",
+              "label": "Recommendation",
+              "type": "text",
+              "description": "The recommendation as written",
+              "required": true
+            },
+            {
+              "name": "who_acts",
+              "label": "Who acts",
+              "type": "text",
+              "description": "Who is to act on it"
+            },
+            {
+              "name": "by_when",
+              "label": "By when",
+              "type": "text",
+              "description": "By when"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "tr1",
+        "node": "step.trace",
+        "label": "Trace findings",
+        "config": {
+          "against": "sources",
+          "statuses": [
+            {
+              "key": "supported",
+              "label": "Supported",
+              "ok": true,
+              "severity": "info"
+            },
+            {
+              "key": "partly_supported",
+              "label": "Partly supported",
+              "ok": false,
+              "severity": "minor"
+            },
+            {
+              "key": "unsupported",
+              "label": "Unsupported",
+              "ok": false,
+              "severity": "major"
+            },
+            {
+              "key": "contradicted",
+              "label": "Contradicted",
+              "ok": false,
+              "severity": "major"
+            },
+            {
+              "key": "outdated",
+              "label": "Outdated",
+              "ok": false,
+              "severity": "minor"
+            }
+          ],
+          "unverifiedStatus": "unsupported",
+          "question": "Does a linked source or data table support the finding as stated? Figures, dates, units and quotations must match the source exactly; a finding that turns a source into a stronger claim is partly supported at best; a finding resting on an outdated source is outdated."
+        },
+        "in": {
+          "items": "ext.items",
+          "sources": "src.sources",
+          "data": "data.tables"
+        },
+        "loop": false
+      },
+      {
+        "id": "comp",
+        "node": "step.compute",
+        "label": "Numbers",
+        "config": {
+          "checks": [
+            {
+              "kind": "numbers_match",
+              "key": "intro_numbers",
+              "label": "Numbers in the introduction appear in the body",
+              "severity": "minor",
+              "fromSpecKeys": [
+                "introduction"
+              ],
+              "toSpecKeys": []
+            },
+            {
+              "kind": "numbers_match",
+              "key": "recommendation_numbers",
+              "label": "Numbers in the discussion and recommendations appear in the findings",
+              "severity": "minor",
+              "fromSpecKeys": [
+                "discussion",
+                "recommendations"
+              ],
+              "toSpecKeys": [
+                "findings"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "tr2",
+        "node": "step.trace",
+        "label": "Trace recommendations",
+        "config": {
+          "against": "targets",
+          "bothWays": true,
+          "question": "Each recommendation rests on findings; major findings lead somewhere"
+        },
+        "in": {
+          "items": "recs.items",
+          "targets": "ext.items",
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "sumchk",
+        "node": "step.check",
+        "label": "Summary check",
+        "config": {
+          "checklist": [
+            {
+              "key": "summary_no_new_claims",
+              "label": "The summary adds no claim",
+              "question": "Does the summary or introduction add any claim the body does not support? Name it.",
+              "severity": "major"
+            },
+            {
+              "key": "summary_numbers",
+              "label": "Summary numbers match the body",
+              "question": "Do the numbers in the summary or introduction match the body?",
+              "severity": "major"
+            },
+            {
+              "key": "recommendations_actionable",
+              "label": "Recommendations name who, what and when",
+              "question": "Does each recommendation name who acts, what they do and by when?",
+              "severity": "minor",
+              "appliesTo": [
+                "recommendations"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "recs.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "gaps_found",
+              "when": {
+                "findings": {
+                  "severity": [
+                    "major",
+                    "blocking"
+                  ],
+                  "min": 1
+                }
+              }
+            }
+          ],
+          "fallback": "sound"
+        },
+        "in": {
+          "findings": [
+            "tr1.findings",
+            "comp.findings",
+            "tr2.findings",
+            "sumchk.findings"
+          ],
+          "results": "comp.results",
+          "tables": [
+            "tr1.table",
+            "tr2.table",
+            "sumchk.table"
+          ]
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-imrad",
+    "version": 1,
+    "title": "Simulated peer review",
+    "summary": "A simulated editorial decision with a claims-to-evidence table: each claim marked supported, overstated or unsupported. Checks methods, abstract numbers and the reporting guideline the design calls for; independent reviewers and an editor pass write the decision.",
+    "kind": "type",
+    "appliesTo": [
+      "research-report-imrad"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Simulated editorial decision",
+      "values": [
+        {
+          "key": "accept",
+          "label": "Accept"
+        },
+        {
+          "key": "minor_revision",
+          "label": "Minor revision"
+        },
+        {
+          "key": "major_revision",
+          "label": "Major revision"
+        },
+        {
+          "key": "reject",
+          "label": "Reject"
+        }
+      ]
+    },
+    "checkpoint": null,
+    "params": [],
+    "requirementSets": [
+      "equator-reporting-guidelines"
+    ],
+    "notAssessed": [],
+    "notes": [
+      "Cannot detect fabricated data.",
+      "Novelty and journal-fit views are low confidence.",
+      "Guideline findings are unverified against the official checklist.",
+      "For someone else's manuscript, the journal's confidentiality policy governs whether it can be uploaded at all."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "data",
+        "node": "data.list",
+        "label": "Linked data",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "req",
+        "node": "requirements.read",
+        "label": "Requirements",
+        "config": {
+          "sets": [
+            "equator-reporting-guidelines"
+          ]
+        },
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: study design",
+        "config": {
+          "useModel": true,
+          "inputs": [
+            {
+              "key": "study_design",
+              "label": "The study design",
+              "kind": "any",
+              "match": [
+                "randomized",
+                "randomised",
+                "cohort",
+                "case-control",
+                "cross-sectional",
+                "systematic review",
+                "meta-analysis",
+                "trial",
+                "qualitative"
+              ],
+              "help": "State the study design; it selects the reporting guideline (CONSORT, STROBE, PRISMA)."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "claims",
+        "node": "step.extract",
+        "label": "Claims",
+        "config": {
+          "item": "claim",
+          "from": [
+            "document"
+          ],
+          "sectionKeys": [
+            "abstract",
+            "results",
+            "discussion"
+          ],
+          "maxItems": 60,
+          "instructions": "List each claim in the abstract, results and discussion, with the result and the method behind it.",
+          "fields": [
+            {
+              "name": "claim",
+              "label": "Claim",
+              "type": "text",
+              "description": "The claim as written",
+              "required": true
+            },
+            {
+              "name": "section",
+              "label": "Section",
+              "type": "text",
+              "description": "The section it appears in"
+            },
+            {
+              "name": "result",
+              "label": "Result",
+              "type": "text",
+              "description": "The result the claim rests on"
+            },
+            {
+              "name": "method",
+              "label": "Method",
+              "type": "text",
+              "description": "The method or analysis that produced the result"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "tr",
+        "node": "step.trace",
+        "label": "Claims to evidence",
+        "config": {
+          "against": "document",
+          "statuses": [
+            {
+              "key": "supported",
+              "label": "Supported",
+              "ok": true,
+              "severity": "info"
+            },
+            {
+              "key": "overstated",
+              "label": "Overstated",
+              "ok": false,
+              "severity": "major"
+            },
+            {
+              "key": "unsupported",
+              "label": "Unsupported",
+              "ok": false,
+              "severity": "major"
+            }
+          ],
+          "unverifiedStatus": "unsupported",
+          "question": "Overstated covers causal wording from a correlational design, generalizing past the sample, and conclusions the analysis did not test"
+        },
+        "in": {
+          "items": "claims.items",
+          "document": "doc.document",
+          "data": "data.tables",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "meth",
+        "node": "step.check",
+        "label": "Methods",
+        "config": {
+          "checklist": [
+            {
+              "key": "design_fits",
+              "label": "The design fits the question",
+              "question": "Does the design fit the research question?",
+              "severity": "major",
+              "appliesTo": [
+                "methods"
+              ]
+            },
+            {
+              "key": "sample_size",
+              "label": "Sample size justified",
+              "question": "Is the sample size justified?",
+              "severity": "major",
+              "appliesTo": [
+                "methods"
+              ]
+            },
+            {
+              "key": "controls",
+              "label": "Controls, randomization and blinding",
+              "question": "Are controls, randomization and blinding described (as the design calls for)?",
+              "severity": "major",
+              "appliesTo": [
+                "methods"
+              ]
+            },
+            {
+              "key": "analysis_matches",
+              "label": "Analysis matches the design",
+              "question": "Does the analysis match the design?",
+              "severity": "major",
+              "appliesTo": [
+                "methods",
+                "results"
+              ]
+            },
+            {
+              "key": "multiple_comparisons",
+              "label": "Multiple comparisons",
+              "question": "Are multiple comparisons handled?",
+              "severity": "minor",
+              "appliesTo": [
+                "methods",
+                "results"
+              ]
+            },
+            {
+              "key": "missing_data",
+              "label": "Missing data",
+              "question": "Is missing data handled and reported?",
+              "severity": "minor",
+              "appliesTo": [
+                "methods",
+                "results"
+              ]
+            },
+            {
+              "key": "limitations",
+              "label": "Limitations stated",
+              "question": "Are the limitations stated?",
+              "severity": "minor",
+              "appliesTo": [
+                "discussion"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "comp",
+        "node": "step.compute",
+        "label": "Abstract numbers",
+        "config": {
+          "checks": [
+            {
+              "kind": "numbers_match",
+              "key": "abstract_numbers",
+              "label": "Abstract numbers appear in the results",
+              "severity": "major",
+              "fromSpecKeys": [
+                "abstract"
+              ],
+              "toSpecKeys": [
+                "results"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "guide",
+        "node": "step.check",
+        "label": "Guideline checklist",
+        "config": {
+          "instructions": "Name the guideline the design calls for (from <requirements>) and mark its main items present or absent with their location; findings are unverified against the official checklist",
+          "checklist": [
+            {
+              "key": "guideline_named",
+              "label": "Reporting guideline",
+              "question": "Which reporting guideline does the design call for (CONSORT for randomized trials, STROBE for observational studies, PRISMA 2020 for systematic reviews)? Does the report say it follows it?",
+              "severity": "minor"
+            },
+            {
+              "key": "guideline_items",
+              "label": "Guideline items present",
+              "question": "Are the main items of that guideline present? List each present or absent with its location.",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "rev",
+        "node": "step.review",
+        "label": "Independent review",
+        "config": {
+          "criteria": [
+            {
+              "key": "recommendation",
+              "label": "Recommendation",
+              "guidance": "",
+              "scale": {
+                "kind": "enum",
+                "values": [
+                  "accept",
+                  "minor_revision",
+                  "major_revision",
+                  "reject"
+                ]
+              }
+            },
+            {
+              "key": "novelty",
+              "label": "Novelty",
+              "guidance": "low confidence",
+              "scale": {
+                "kind": "enum",
+                "values": [
+                  "high",
+                  "moderate",
+                  "low"
+                ]
+              }
+            }
+          ],
+          "reviewers": [
+            {
+              "key": "methodologist",
+              "label": "Methodologist",
+              "brief": "Review as a methodologist: does the design answer the question, are sampling, measurement, controls and blinding sound, and do the methods support the conclusions drawn?"
+            },
+            {
+              "key": "skeptic",
+              "label": "Domain skeptic",
+              "brief": "Review as a skeptic in the field: seek disconfirming evidence, alternative explanations, prior work the paper ignores, and claims that outrun the results."
+            },
+            {
+              "key": "statistician",
+              "label": "Statistician",
+              "brief": "Review as a statistician: check the analyses, effect sizes and uncertainty, multiple comparisons, missing data, and whether the reported numbers agree with each other."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "agree",
+        "node": "step.agree",
+        "label": "Agreement",
+        "config": {
+          "mode": "verdict"
+        },
+        "in": {
+          "reviews": "rev.reviews"
+        },
+        "loop": false
+      },
+      {
+        "id": "decide",
+        "node": "step.decide",
+        "label": "Editor's decision",
+        "config": {
+          "values": [
+            "accept",
+            "minor_revision",
+            "major_revision",
+            "reject"
+          ],
+          "guidance": "Write as the editor: weigh the agreed points; state each disagreement in the rationale with both views"
+        },
+        "in": {
+          "findings": [
+            "tr.findings",
+            "meth.findings",
+            "comp.findings",
+            "guide.findings",
+            "rev.findings",
+            "agree.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "results": [
+            "comp.results",
+            "meth.results",
+            "guide.results"
+          ],
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [],
+          "fallback": "major_revision"
+        },
+        "in": {
+          "value": "decide.value",
+          "rationale": "decide.rationale",
+          "blocked": "gate.blocked",
+          "findings": [
+            "tr.findings",
+            "meth.findings",
+            "comp.findings",
+            "guide.findings",
+            "rev.findings",
+            "agree.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "results": "comp.results",
+          "tables": [
+            "tr.table",
+            "meth.table",
+            "guide.table",
+            "agree.table"
+          ]
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-nih",
+    "version": 1,
+    "title": "Mock NIH review",
+    "summary": "A mock summary statement: an Overall Impact score with the reviewers' range, scores for Factor 1 and Factor 2, a Factor 3 sufficiency rating, and the weaknesses most likely to drive the score, each tied to a passage. Includes page-limit, aims and rigor checks.",
+    "kind": "type",
+    "appliesTo": [
+      "nih-specific-aims-research-strategy"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Overall impact (mock review)",
+      "values": [
+        {
+          "key": "high_impact",
+          "label": "High impact (1–3)"
+        },
+        {
+          "key": "moderate_impact",
+          "label": "Moderate impact (4–6)"
+        },
+        {
+          "key": "low_impact",
+          "label": "Low impact (7–9)"
+        }
+      ]
+    },
+    "checkpoint": null,
+    "params": [],
+    "requirementSets": [
+      "nih-page-limits",
+      "nih-simplified-review",
+      "nih-ai-and-review-policy"
+    ],
+    "notAssessed": [
+      "Human subjects",
+      "Vertebrate animals",
+      "Biohazards",
+      "Budget"
+    ],
+    "notes": [
+      "No award prediction: NIH institutes no longer rely on paylines (since the January 2026 council round).",
+      "Model reviewers may cluster mid-scale; treat the scores as a calibration aid, not a forecast.",
+      "For your own draft only (NOT-OD-23-149).",
+      "Page counts are estimated from words; figures and formatting are not counted.",
+      "The PI decides what to revise; there is no checkpoint."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "notes",
+        "node": "doc.notes",
+        "label": "Notes",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "req",
+        "node": "requirements.read",
+        "label": "Requirements",
+        "config": {
+          "sets": [
+            "nih-page-limits",
+            "nih-simplified-review",
+            "nih-ai-and-review-policy"
+          ]
+        },
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: activity code",
+        "config": {
+          "useModel": true,
+          "inputs": [
+            {
+              "key": "activity_code",
+              "label": "Activity code and funding opportunity (NOFO)",
+              "kind": "any",
+              "match": [
+                "R01",
+                "R21",
+                "R03",
+                "R15",
+                "U01",
+                "NOFO",
+                "PAR-",
+                "RFA-",
+                "PA-",
+                "funding opportunity"
+              ],
+              "help": "Name the activity code (R01, R21…) and link or cite the NOFO; they set the page limits and any extra review criteria."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "notes": "notes.notes"
+        },
+        "loop": false
+      },
+      {
+        "id": "len",
+        "node": "step.compute",
+        "label": "Page limits",
+        "config": {
+          "checks": [
+            {
+              "kind": "length",
+              "key": "aims_pages",
+              "label": "Specific Aims within 1 page",
+              "severity": "major",
+              "specKeys": [
+                "specific-aims"
+              ],
+              "unit": "pages",
+              "requirement": "nih-page-limits#specific-aims"
+            },
+            {
+              "kind": "length",
+              "key": "strategy_pages",
+              "label": "Research Strategy within the page limit for the activity code",
+              "severity": "major",
+              "specKeys": [
+                "research-strategy",
+                "significance",
+                "innovation",
+                "approach"
+              ],
+              "unit": "pages",
+              "requirementSet": "nih-page-limits"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "aims",
+        "node": "step.extract",
+        "label": "Aims",
+        "config": {
+          "item": "aim",
+          "from": [
+            "document"
+          ],
+          "sectionKeys": [
+            "specific-aims",
+            "approach"
+          ],
+          "maxItems": 10,
+          "instructions": "List each specific aim with its objective and expected outcome, and the Approach subsection that carries it out.",
+          "fields": [
+            {
+              "name": "aim",
+              "label": "Aim",
+              "type": "text",
+              "description": "The aim as stated, with its number",
+              "required": true
+            },
+            {
+              "name": "objective",
+              "label": "Objective",
+              "type": "text",
+              "description": "The testable objective or hypothesis"
+            },
+            {
+              "name": "expected_outcome",
+              "label": "Expected outcome",
+              "type": "text",
+              "description": "The expected outcome stated for the aim"
+            },
+            {
+              "name": "approach_subsection",
+              "label": "Approach subsection",
+              "type": "text",
+              "description": "The heading of the Approach subsection for this aim, if any"
+            },
+            {
+              "name": "depends_on_aim",
+              "label": "Depends on aim",
+              "type": "text",
+              "description": "Another aim whose success this aim needs, if any"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "aimchk",
+        "node": "step.check",
+        "label": "Aims check",
+        "config": {
+          "perItem": true,
+          "checklist": [
+            {
+              "key": "testable",
+              "label": "Testable objective",
+              "question": "Does the aim state a testable objective or hypothesis?",
+              "severity": "major"
+            },
+            {
+              "key": "expected_outcome",
+              "label": "Expected outcome",
+              "question": "Does the aim state an expected outcome?",
+              "severity": "major"
+            },
+            {
+              "key": "independent",
+              "label": "Independent of other aims",
+              "question": "Can the aim succeed even if another aim fails?",
+              "severity": "major"
+            },
+            {
+              "key": "maps_to_approach",
+              "label": "Maps to an Approach subsection",
+              "question": "Is there an Approach subsection that carries out this aim?",
+              "severity": "major"
+            },
+            {
+              "key": "scope_fits",
+              "label": "Scope fits the period",
+              "question": "Does the aim's scope fit the project period and the stated timeline?",
+              "severity": "minor"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "aims.items",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "rigor",
+        "node": "step.check",
+        "label": "Rigor checks",
+        "config": {
+          "instructions": "These are the rigor checks inside Factor 2.",
+          "checklist": [
+            {
+              "key": "controls",
+              "label": "Controls",
+              "question": "Are appropriate controls described?",
+              "severity": "major",
+              "appliesTo": [
+                "approach"
+              ]
+            },
+            {
+              "key": "sample_size",
+              "label": "Sample size justification",
+              "question": "Is the sample size justified (power analysis or another stated basis)?",
+              "severity": "major",
+              "appliesTo": [
+                "approach"
+              ]
+            },
+            {
+              "key": "analysis_plan",
+              "label": "Analysis plan",
+              "question": "Is there an analysis plan matched to each aim?",
+              "severity": "major",
+              "appliesTo": [
+                "approach"
+              ]
+            },
+            {
+              "key": "biological_variables",
+              "label": "Biological variables",
+              "question": "Are relevant biological variables, such as sex or age, considered?",
+              "severity": "major",
+              "appliesTo": [
+                "approach"
+              ]
+            },
+            {
+              "key": "pitfalls",
+              "label": "Pitfalls and alternatives",
+              "question": "Are potential pitfalls named, each with an alternative approach?",
+              "severity": "major",
+              "appliesTo": [
+                "approach"
+              ]
+            },
+            {
+              "key": "timeline",
+              "label": "Timeline",
+              "question": "Is there a timeline for the aims?",
+              "severity": "minor",
+              "appliesTo": [
+                "approach"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "rev",
+        "node": "step.review",
+        "label": "Independent review",
+        "config": {
+          "criteria": [
+            {
+              "key": "factor_1",
+              "label": "Factor 1: Importance of the Research (Significance, Innovation)",
+              "guidance": "Score 1 (exceptional) to 9 (poor).",
+              "scale": {
+                "kind": "score",
+                "min": 1,
+                "max": 9,
+                "best": "low"
+              }
+            },
+            {
+              "key": "factor_2",
+              "label": "Factor 2: Rigor and Feasibility (Approach)",
+              "guidance": "Score 1 (exceptional) to 9 (poor). Consider controls, sample size justification, the analysis plan, biological variables such as sex or age, pitfalls and alternatives, and the timeline.",
+              "scale": {
+                "kind": "score",
+                "min": 1,
+                "max": 9,
+                "best": "low"
+              }
+            },
+            {
+              "key": "overall_impact",
+              "label": "Overall Impact",
+              "guidance": "Score 1 (exceptional) to 9 (poor): the likelihood the project will exert a sustained, powerful influence on its field.",
+              "scale": {
+                "kind": "score",
+                "min": 1,
+                "max": 9,
+                "best": "low"
+              }
+            },
+            {
+              "key": "factor_3",
+              "label": "Factor 3: Expertise and Resources",
+              "guidance": "not_rated unless biosketches or facilities are linked.",
+              "scale": {
+                "kind": "enum",
+                "values": [
+                  "sufficient",
+                  "gaps_identified",
+                  "not_rated"
+                ]
+              }
+            }
+          ],
+          "instructions": "Write strengths and weaknesses as an NIH reviewer would, tied to passages. Make no prediction about funding.",
+          "reviewers": [
+            {
+              "key": "primary",
+              "label": "Primary reviewer",
+              "brief": "You are the assigned primary reviewer writing the critique. Weigh strengths and weaknesses evenly across both scored factors and score as a careful, experienced study-section member would."
+            },
+            {
+              "key": "skeptic",
+              "label": "Skeptical reviewer",
+              "brief": "Find the weaknesses most likely to drive the score down: feasibility, rigor, missing controls, unjustified sample sizes, aims that depend on each other. Score from those weaknesses."
+            },
+            {
+              "key": "outsider",
+              "label": "Outside reviewer",
+              "brief": "Judge the importance of the work to the broader field and how clearly it reads for a scientist outside the subfield. Flag jargon, unstated assumptions and significance claims that are asserted rather than shown."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "requirements": "req.requirements",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "agree1",
+        "node": "step.agree",
+        "label": "Agreement",
+        "config": {
+          "mode": "score",
+          "tolerance": 2,
+          "meanTimes10": true
+        },
+        "in": {
+          "reviews": "rev.reviews"
+        },
+        "loop": false
+      },
+      {
+        "id": "split",
+        "node": "logic.if",
+        "label": "Any score spread of 2 or more?",
+        "config": {
+          "operator": "is_empty",
+          "value": ""
+        },
+        "in": {
+          "value": "agree1.disagreements"
+        },
+        "loop": false
+      },
+      {
+        "id": "disc",
+        "node": "step.review",
+        "label": "Discussion round",
+        "config": {
+          "criteria": [
+            {
+              "key": "factor_1",
+              "label": "Factor 1: Importance of the Research (Significance, Innovation)",
+              "guidance": "Score 1 (exceptional) to 9 (poor).",
+              "scale": {
+                "kind": "score",
+                "min": 1,
+                "max": 9,
+                "best": "low"
+              }
+            },
+            {
+              "key": "factor_2",
+              "label": "Factor 2: Rigor and Feasibility (Approach)",
+              "guidance": "Score 1 (exceptional) to 9 (poor). Consider controls, sample size justification, the analysis plan, biological variables such as sex or age, pitfalls and alternatives, and the timeline.",
+              "scale": {
+                "kind": "score",
+                "min": 1,
+                "max": 9,
+                "best": "low"
+              }
+            },
+            {
+              "key": "overall_impact",
+              "label": "Overall Impact",
+              "guidance": "Score 1 (exceptional) to 9 (poor): the likelihood the project will exert a sustained, powerful influence on its field.",
+              "scale": {
+                "kind": "score",
+                "min": 1,
+                "max": 9,
+                "best": "low"
+              }
+            },
+            {
+              "key": "factor_3",
+              "label": "Factor 3: Expertise and Resources",
+              "guidance": "not_rated unless biosketches or facilities are linked.",
+              "scale": {
+                "kind": "enum",
+                "values": [
+                  "sufficient",
+                  "gaps_identified",
+                  "not_rated"
+                ]
+              }
+            }
+          ],
+          "instructions": "Write strengths and weaknesses as an NIH reviewer would, tied to passages. Make no prediction about funding.",
+          "reviewers": [
+            {
+              "key": "primary",
+              "label": "Primary reviewer",
+              "brief": "You are the assigned primary reviewer writing the critique. Weigh strengths and weaknesses evenly across both scored factors and score as a careful, experienced study-section member would."
+            },
+            {
+              "key": "skeptic",
+              "label": "Skeptical reviewer",
+              "brief": "Find the weaknesses most likely to drive the score down: feasibility, rigor, missing controls, unjustified sample sizes, aims that depend on each other. Score from those weaknesses."
+            },
+            {
+              "key": "outsider",
+              "label": "Outside reviewer",
+              "brief": "Judge the importance of the work to the broader field and how clearly it reads for a scientist outside the subfield. Flag jargon, unstated assumptions and significance claims that are asserted rather than shown."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "discuss": "split.false",
+          "after": "split.false"
+        },
+        "loop": false
+      },
+      {
+        "id": "agree2",
+        "node": "step.agree",
+        "label": "Agreement after discussion",
+        "config": {
+          "mode": "score",
+          "tolerance": 2,
+          "meanTimes10": true
+        },
+        "in": {
+          "reviews": [
+            "rev.reviews",
+            "disc.reviews"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "topFindings": 5,
+          "topFindingsKinds": [
+            "weakness"
+          ],
+          "rules": [
+            {
+              "value": "high_impact",
+              "when": {
+                "score": {
+                  "item": "overall_impact",
+                  "stat": "median",
+                  "op": "<=",
+                  "value": 3
+                }
+              }
+            },
+            {
+              "value": "moderate_impact",
+              "when": {
+                "score": {
+                  "item": "overall_impact",
+                  "stat": "median",
+                  "op": "<=",
+                  "value": 6
+                }
+              }
+            }
+          ],
+          "fallback": "low_impact"
+        },
+        "in": {
+          "blocked": "gate.blocked",
+          "findings": [
+            "rev.findings",
+            "disc.findings",
+            "len.findings",
+            "aimchk.findings",
+            "rigor.findings"
+          ],
+          "agreed": "agree2.agreed",
+          "disagreements": "agree2.disagreements",
+          "scores": [
+            "agree1.scores",
+            "agree2.scores"
+          ],
+          "results": "len.results",
+          "tables": [
+            "agree2.table",
+            "aimchk.table",
+            "rigor.table"
+          ]
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-policy-memo",
+    "version": 2,
+    "title": "Recommendation check",
+    "summary": "Checks the memo's recommendation against an options-by-criteria matrix built by independent reviewers, with the conditions that would change it. The decision-maker's choice is recorded at the checkpoint.",
+    "kind": "type",
+    "appliesTo": [
+      "policy-decision-memo"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Recommendation check",
+      "values": [
+        {
+          "key": "supported",
+          "label": "Recommendation supported by the options matrix"
+        },
+        {
+          "key": "departs",
+          "label": "Recommendation departs from the matrix (reason given or missing)"
+        },
+        {
+          "key": "incomplete_matrix",
+          "label": "Options matrix incomplete"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Decision-maker",
+      "required": true
+    },
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Ordinal ratings, no weighted total.",
+      "Value trade-offs and political feasibility belong to the decision-maker; stakeholder positions are reported as stated."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "notes",
+        "node": "doc.notes",
+        "label": "Notes",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "gate",
+        "node": "step.gate",
+        "label": "Gate: decision inputs",
+        "config": {
+          "useModel": true,
+          "inputs": [
+            {
+              "key": "decision",
+              "label": "The decision to be made",
+              "kind": "any",
+              "match": [
+                "decision",
+                "decide",
+                "approve"
+              ],
+              "help": "State the decision the memo asks for."
+            },
+            {
+              "key": "decision_maker",
+              "label": "The decision-maker",
+              "kind": "any",
+              "match": [
+                "decision-maker",
+                "decision maker",
+                "for decision by",
+                "to:"
+              ],
+              "help": "Name who makes the decision."
+            },
+            {
+              "key": "deadline",
+              "label": "A deadline",
+              "kind": "any",
+              "match": [
+                "deadline",
+                "decision needed by",
+                "no later than",
+                "by close of"
+              ],
+              "help": "State when the decision is needed and why."
+            },
+            {
+              "key": "options",
+              "label": "At least two options plus the status quo",
+              "kind": "section",
+              "specKeys": [
+                "options"
+              ],
+              "match": [
+                "option",
+                "status quo",
+                "alternative"
+              ],
+              "help": "Set out at least two options and the status quo."
+            },
+            {
+              "key": "criteria",
+              "label": "Stated criteria",
+              "kind": "any",
+              "match": [
+                "criteria",
+                "criterion",
+                "assessed against",
+                "evaluated against"
+              ],
+              "help": "State the criteria the options are judged on."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "notes": "notes.notes"
+        },
+        "loop": false
+      },
+      {
+        "id": "ext",
+        "node": "step.extract",
+        "label": "Options and criteria",
+        "config": {
+          "item": "option or criterion",
+          "from": [
+            "document"
+          ],
+          "maxItems": 20,
+          "instructions": "List each option (including the status quo) and each criterion the memo states.",
+          "fields": [
+            {
+              "name": "kind",
+              "label": "Kind",
+              "type": "enum",
+              "description": "Whether it is an option or a criterion",
+              "values": [
+                "option",
+                "criterion"
+              ],
+              "required": true
+            },
+            {
+              "name": "id",
+              "label": "Id",
+              "type": "text",
+              "description": "A short id: O1, O2… for options, C1, C2… for criteria",
+              "required": true
+            },
+            {
+              "name": "name",
+              "label": "Name",
+              "type": "text",
+              "description": "Its name as written",
+              "required": true
+            },
+            {
+              "name": "description",
+              "label": "Description",
+              "type": "text",
+              "description": "What it is, in a sentence"
+            },
+            {
+              "name": "is_status_quo",
+              "label": "Status quo",
+              "type": "boolean",
+              "description": "For an option: whether it is the status quo or no-action option"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "crit",
+        "node": "step.check",
+        "label": "Criteria check",
+        "config": {
+          "checklist": [
+            {
+              "key": "defined_apart",
+              "label": "Criteria defined apart from the options",
+              "question": "Are the criteria defined apart from the options (not written to favour one)?",
+              "severity": "major"
+            },
+            {
+              "key": "one_option_only",
+              "label": "No criterion only one option can meet",
+              "question": "Is there a criterion only one option can meet? Name it.",
+              "severity": "major"
+            },
+            {
+              "key": "feasible",
+              "label": "Options have authority, budget and time",
+              "question": "Does any option lack the authority, budget or time to carry it out? Name it.",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "ext.items",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "cells",
+        "node": "step.extract",
+        "label": "Matrix cells",
+        "config": {
+          "item": "matrix cell",
+          "from": [
+            "document"
+          ],
+          "maxItems": 80,
+          "instructions": "List one cell per option and criterion the memo assesses: what the memo claims about that option on that criterion, and the evidence it gives. Include the status quo. Skip pairs the memo says nothing about.",
+          "fields": [
+            {
+              "name": "name",
+              "label": "Cell",
+              "type": "text",
+              "description": "The option and criterion, as “Option — Criterion”",
+              "required": true
+            },
+            {
+              "name": "option",
+              "label": "Option",
+              "type": "text",
+              "description": "The option as written",
+              "required": true
+            },
+            {
+              "name": "criterion",
+              "label": "Criterion",
+              "type": "text",
+              "description": "The criterion as written",
+              "required": true
+            },
+            {
+              "name": "claim",
+              "label": "Claim",
+              "type": "text",
+              "description": "What the memo says about the option on this criterion",
+              "required": true
+            },
+            {
+              "name": "stated_evidence",
+              "label": "Stated evidence",
+              "type": "text",
+              "description": "The evidence or estimate the memo gives for it, if any"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "cellev",
+        "node": "step.trace",
+        "label": "Trace: evidence per cell",
+        "config": {
+          "against": "sources",
+          "statuses": [
+            {
+              "key": "supported",
+              "label": "Supported",
+              "ok": true,
+              "severity": "info"
+            },
+            {
+              "key": "estimated",
+              "label": "Estimated",
+              "ok": false,
+              "severity": "minor"
+            },
+            {
+              "key": "unsupported",
+              "label": "Unsupported",
+              "ok": false,
+              "severity": "major"
+            }
+          ],
+          "unverifiedStatus": "unsupported",
+          "question": "Is the memo's claim for this cell backed by a linked source (supported), a stated estimate or projection (estimated), or nothing (unsupported)?",
+          "bothWays": false,
+          "instructions": "Judge the evidence for each cell, not whether the option is good. Mark estimated when the memo gives a projection or estimate without a source behind it."
+        },
+        "in": {
+          "items": "cells.items",
+          "sources": "src.sources",
+          "document": "doc.document",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "rev",
+        "node": "step.review",
+        "label": "Matrix review",
+        "config": {
+          "criteria": [],
+          "matrix": true,
+          "criterionScale": {
+            "kind": "enum",
+            "values": [
+              "strong",
+              "adequate",
+              "weak",
+              "unknown"
+            ]
+          },
+          "instructions": "Rate each option against each criterion with a rationale. In each rationale say whether the evidence for the cell is supported by a source, estimated, or unsupported. Use unknown rather than guess.",
+          "reviewers": [
+            {
+              "key": "case_builder",
+              "label": "Case builder",
+              "brief": "Build the strongest honest case for each option in turn, citing the evidence that favours it on each criterion."
+            },
+            {
+              "key": "skeptic",
+              "label": "Skeptic",
+              "brief": "For each option, find the costs, risks and disconfirming evidence on each criterion, including what the memo leaves out."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ext.items",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "agree",
+        "node": "step.agree",
+        "label": "Agreement (the matrix)",
+        "config": {
+          "mode": "verdict"
+        },
+        "in": {
+          "reviews": "rev.reviews"
+        },
+        "loop": false
+      },
+      {
+        "id": "sens",
+        "node": "step.check",
+        "label": "Sensitivity",
+        "config": {
+          "checklist": [
+            {
+              "key": "priority_order",
+              "label": "Robust to priority order",
+              "question": "Using the agreed options matrix, does the recommendation change under a different priority order of the criteria? Name the conditions.",
+              "severity": "minor"
+            },
+            {
+              "key": "least_certain",
+              "label": "Robust to the least certain estimate",
+              "question": "Using the agreed options matrix, does the recommendation change if the least certain cell or estimate moves? Name the cell and the conditions.",
+              "severity": "minor"
+            }
+          ],
+          "instructions": "Work from the agreed options matrix (the reviewer agreement table in <data>): vary the priority order of the criteria and the least certain cells, and say which conditions would change the recommendation."
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "data": "agree.table",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "cons",
+        "node": "step.check",
+        "label": "Consistency and form",
+        "config": {
+          "checklist": [
+            {
+              "key": "matches_matrix",
+              "label": "Recommendation matches the matrix",
+              "question": "Does the memo's recommendation match the agreed options matrix (the reviewer agreement table in <data>), or does the memo say why it departs?",
+              "severity": "major",
+              "appliesTo": [
+                "recommendation"
+              ]
+            },
+            {
+              "key": "form",
+              "label": "Recommendation first",
+              "question": "Does the memo put the recommendation first, then options, risks, cost and next steps?",
+              "severity": "minor"
+            },
+            {
+              "key": "status_quo",
+              "label": "Status quo present",
+              "question": "Is the status quo present as an option?",
+              "severity": "major",
+              "appliesTo": [
+                "options"
+              ]
+            },
+            {
+              "key": "costs_all",
+              "label": "Costs for every option",
+              "question": "Are costs given for every option, not one only?",
+              "severity": "major",
+              "appliesTo": [
+                "options"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "ext.items",
+          "data": "agree.table",
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "decide",
+        "node": "step.decide",
+        "label": "Decide",
+        "config": {
+          "values": [
+            "supported",
+            "departs",
+            "incomplete_matrix"
+          ],
+          "guidance": "Begin the rationale with “Recommended option: ” and the option the memo recommends, by name. supported when the recommendation matches the agreed options matrix; departs when it does not (say whether the memo gives a reason); incomplete_matrix when the status quo, at least two options or stated criteria are missing, or many cells are unknown or unsupported. Name the conditions that would change the recommendation."
+        },
+        "in": {
+          "findings": [
+            "crit.findings",
+            "cellev.findings",
+            "rev.findings",
+            "agree.findings",
+            "sens.findings",
+            "cons.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "results": [
+            "crit.results",
+            "sens.results",
+            "cons.results"
+          ],
+          "after": "gate.pass"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [],
+          "fallback": "incomplete_matrix"
+        },
+        "in": {
+          "value": "decide.value",
+          "rationale": "decide.rationale",
+          "blocked": "gate.blocked",
+          "findings": [
+            "crit.findings",
+            "cellev.findings",
+            "rev.findings",
+            "agree.findings",
+            "sens.findings",
+            "cons.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "tables": [
+            "agree.table",
+            "cellev.table",
+            "crit.table",
+            "sens.table",
+            "cons.table"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Decision-maker",
+        "config": {
+          "signsOutcome": true,
+          "editable": "outcome",
+          "instructions": "Record your decision: approve the recommendation, choose another option, defer, or ask for more.",
+          "recordFields": [
+            {
+              "key": "decision",
+              "label": "Approve recommendation / chose another option / defer / asked for more",
+              "required": true
+            },
+            {
+              "key": "chosen_option",
+              "label": "Chosen option",
+              "required": false
+            },
+            {
+              "key": "reason",
+              "label": "Reason",
+              "required": true
+            }
+          ]
+        },
+        "in": {
+          "items": "out.outcome"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-prd",
+    "version": 2,
+    "title": "PRD build readiness",
+    "summary": "A build-readiness decision. Marks each requirement testable or not, traces requirements to goals and non-goals, checks for gaps, and has engineering, design and QA review independently. A “cannot proceed” from any role blocks. The product owner and engineering lead accept the decision.",
+    "kind": "type",
+    "appliesTo": [
+      "product-requirements"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Build readiness",
+      "values": [
+        {
+          "key": "ready",
+          "label": "Ready to build"
+        },
+        {
+          "key": "ready_with_open_items",
+          "label": "Ready with listed open items"
+        },
+        {
+          "key": "not_ready",
+          "label": "Not ready"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Product owner and engineering lead",
+      "required": true
+    },
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "The QA reviewer writes a test case for each requirement; a requirement with no writable test is untestable.",
+      "Link designs and research so requirements the designs contradict can be flagged."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "ext",
+        "node": "step.extract",
+        "label": "Entries",
+        "config": {
+          "item": "entry",
+          "from": [
+            "document"
+          ],
+          "maxItems": 150,
+          "instructions": "List the problem, each goal, success metric, numbered requirement, non-goal, open question and dependency. Include requirements hidden in prose.",
+          "fields": [
+            {
+              "name": "kind",
+              "label": "Kind",
+              "type": "enum",
+              "description": "What the entry is",
+              "values": [
+                "problem",
+                "goal",
+                "metric",
+                "requirement",
+                "non_goal",
+                "open_question",
+                "dependency"
+              ],
+              "required": true
+            },
+            {
+              "name": "id",
+              "label": "Id",
+              "type": "text",
+              "description": "Its id or number as written (e.g. FR-3), if any"
+            },
+            {
+              "name": "text",
+              "label": "Text",
+              "type": "text",
+              "description": "The entry as written",
+              "required": true
+            },
+            {
+              "name": "owner",
+              "label": "Owner",
+              "type": "text",
+              "description": "Who owns it (open questions, dependencies)"
+            },
+            {
+              "name": "due",
+              "label": "Due",
+              "type": "date",
+              "description": "Its due date (open questions, dependencies)"
+            },
+            {
+              "name": "blocking",
+              "label": "Blocking",
+              "type": "boolean",
+              "description": "For an open question: whether it is marked blocking"
+            },
+            {
+              "name": "baseline",
+              "label": "Baseline",
+              "type": "text",
+              "description": "For a metric: its baseline"
+            },
+            {
+              "name": "target",
+              "label": "Target",
+              "type": "text",
+              "description": "For a metric: its target"
+            },
+            {
+              "name": "data_source",
+              "label": "Data source",
+              "type": "text",
+              "description": "For a metric: where its data comes from"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "test",
+        "node": "step.check",
+        "label": "Testability",
+        "config": {
+          "perItem": true,
+          "instructions": "Apply these checks to items of kind requirement only; mark every other item not_applicable.",
+          "checklist": [
+            {
+              "key": "acceptance",
+              "label": "Observable acceptance criterion",
+              "question": "Does the requirement have an observable acceptance criterion?",
+              "severity": "major"
+            },
+            {
+              "key": "vague_terms",
+              "label": "No vague terms",
+              "question": "Is the requirement free of vague terms such as fast, easy or intuitive?",
+              "severity": "major"
+            },
+            {
+              "key": "not_compound",
+              "label": "Not compound",
+              "question": "Does the requirement state one thing (not several joined with and/or)?",
+              "severity": "minor"
+            },
+            {
+              "key": "nfr_number",
+              "label": "Non-functional requirements carry a number",
+              "question": "If it is a non-functional requirement, does it carry a number (a threshold, a limit, a percentage)?",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "items": "ext.items",
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "tr",
+        "node": "step.trace",
+        "label": "Scope trace",
+        "config": {
+          "against": "targets",
+          "bothWays": true,
+          "question": "Each requirement serves a goal and none falls under a non-goal; each goal has requirements"
+        },
+        "in": {
+          "items": "ext.items",
+          "targets": "ext.items",
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "gaps",
+        "node": "step.check",
+        "label": "Gaps",
+        "config": {
+          "checklist": [
+            {
+              "key": "conflicts",
+              "label": "Conflicting requirements",
+              "question": "Are the requirements free of conflicts with each other? Name any pair that conflicts.",
+              "severity": "major"
+            },
+            {
+              "key": "states",
+              "label": "Empty, error and edge states",
+              "question": "Are empty, error and edge states specified?",
+              "severity": "major"
+            },
+            {
+              "key": "permissions",
+              "label": "Permissions",
+              "question": "Are permissions (who can see and do what) specified?",
+              "severity": "major"
+            },
+            {
+              "key": "migration",
+              "label": "Migration",
+              "question": "Is migration of existing data or users addressed?",
+              "severity": "minor"
+            },
+            {
+              "key": "analytics",
+              "label": "Analytics",
+              "question": "Is analytics or instrumentation specified?",
+              "severity": "minor"
+            },
+            {
+              "key": "accessibility",
+              "label": "Accessibility",
+              "question": "Are accessibility requirements stated?",
+              "severity": "major"
+            },
+            {
+              "key": "metrics",
+              "label": "Metrics have baseline, target and data source",
+              "question": "Does each success metric have a baseline, a target and a data source?",
+              "severity": "major",
+              "appliesTo": [
+                "success-metrics"
+              ]
+            },
+            {
+              "key": "designs",
+              "label": "Designs agree",
+              "question": "Do the linked designs agree with the requirements? Name any requirement a design contradicts. Mark not_applicable if no designs are linked.",
+              "severity": "major"
+            },
+            {
+              "key": "open_question",
+              "label": "Open questions have owner and date",
+              "question": "Is every open question either resolved, or marked non-blocking with both an owner and a date? Answer not_met when any open question lacks one of these (it blocks the build); partly_met only when every open question is marked non-blocking with an owner but one lacks a date.",
+              "severity": "blocking",
+              "appliesTo": [
+                "open-questions"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ext.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "rev",
+        "node": "step.review",
+        "label": "Review by role",
+        "config": {
+          "criteria": [
+            {
+              "key": "proceed",
+              "label": "Can your role proceed?",
+              "guidance": "cannot_proceed blocks the build.",
+              "scale": {
+                "kind": "enum",
+                "values": [
+                  "proceed",
+                  "proceed_with_concerns",
+                  "cannot_proceed"
+                ]
+              }
+            }
+          ],
+          "reviewers": [
+            {
+              "key": "engineering",
+              "label": "Engineering",
+              "brief": "Review as the engineer who must build it: can each requirement be estimated? Flag requirements too vague to size, hidden technical dependencies and unstated constraints."
+            },
+            {
+              "key": "design",
+              "label": "Design",
+              "brief": "Review as the designer: are the states and flows defined for every requirement, including empty, error, loading and permission states? Flag flows that stop or branch without a defined screen."
+            },
+            {
+              "key": "qa",
+              "label": "QA",
+              "brief": "Review as QA: write a test case for each requirement. A requirement with no writable test is untestable; list each one and why."
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ext.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "agree",
+        "node": "step.agree",
+        "label": "Agreement",
+        "config": {
+          "mode": "verdict",
+          "blockingVerdicts": [
+            "cannot_proceed"
+          ]
+        },
+        "in": {
+          "reviews": "rev.reviews"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "not_ready",
+              "when": {
+                "anyOf": [
+                  {
+                    "disagreements": {
+                      "min": 1,
+                      "blocking": true
+                    }
+                  },
+                  {
+                    "findings": {
+                      "severity": [
+                        "blocking"
+                      ],
+                      "min": 1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "value": "ready_with_open_items",
+              "when": {
+                "anyOf": [
+                  {
+                    "findings": {
+                      "kind": [
+                        "open_question"
+                      ],
+                      "min": 1
+                    }
+                  },
+                  {
+                    "findings": {
+                      "severity": [
+                        "major"
+                      ],
+                      "min": 1
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "fallback": "ready"
+        },
+        "in": {
+          "findings": [
+            "test.findings",
+            "tr.findings",
+            "gaps.findings",
+            "rev.findings",
+            "agree.findings"
+          ],
+          "agreed": "agree.agreed",
+          "disagreements": "agree.disagreements",
+          "tables": [
+            "test.table",
+            "tr.table",
+            "gaps.table",
+            "agree.table"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Accept the decision",
+        "config": {
+          "signsOutcome": true,
+          "editable": "outcome",
+          "instructions": "The product owner and the engineering lead each accept the build-readiness decision, or edit it; it is final only once both have. Check that each open item has an owner.",
+          "signers": [
+            {
+              "key": "product_owner",
+              "label": "Product owner"
+            },
+            {
+              "key": "engineering_lead",
+              "label": "Engineering lead"
+            }
+          ]
+        },
+        "in": {
+          "items": "out.outcome"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-proposal",
+    "version": 1,
+    "title": "Proposal readiness",
+    "summary": "A go or no-go readiness decision. Traces deliverables to dates, costs and owners, reruns the arithmetic, checks that summary, scope and pricing describe the same work, builds a compliance matrix when an RFP or brief is linked, and checks the terms. The person who can commit the price and dates signs.",
+    "kind": "type",
+    "appliesTo": [
+      "proposal"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Readiness",
+      "values": [
+        {
+          "key": "ready",
+          "label": "Ready to send"
+        },
+        {
+          "key": "ready_after_fixes",
+          "label": "Ready after listed fixes"
+        },
+        {
+          "key": "not_ready",
+          "label": "Not ready"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Person who can commit the price and dates",
+      "required": true
+    },
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Link the pricing spreadsheet so the arithmetic can be rerun.",
+      "The compliance matrix appears only when an RFP or client brief is linked."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "data",
+        "node": "data.list",
+        "label": "Linked data",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "ext",
+        "node": "step.extract",
+        "label": "Commitments",
+        "config": {
+          "item": "commitment",
+          "from": [
+            "document",
+            "data"
+          ],
+          "maxItems": 150,
+          "instructions": "List every deliverable, milestone, budget line, total, staff role, assumption and term, with its date, amount, quantity, rate and owner where given.",
+          "fields": [
+            {
+              "name": "kind",
+              "label": "Kind",
+              "type": "enum",
+              "description": "What the item is",
+              "values": [
+                "deliverable",
+                "milestone",
+                "budget_line",
+                "total",
+                "staff",
+                "assumption",
+                "term"
+              ],
+              "required": true
+            },
+            {
+              "name": "name",
+              "label": "Name",
+              "type": "text",
+              "description": "The item's name as written",
+              "required": true
+            },
+            {
+              "name": "date",
+              "label": "Date",
+              "type": "date",
+              "description": "Its due or delivery date"
+            },
+            {
+              "name": "amount",
+              "label": "Amount",
+              "type": "number",
+              "description": "Its cost or total amount"
+            },
+            {
+              "name": "quantity",
+              "label": "Quantity",
+              "type": "number",
+              "description": "Units, hours or effort"
+            },
+            {
+              "name": "rate",
+              "label": "Rate",
+              "type": "number",
+              "description": "The unit or hourly rate"
+            },
+            {
+              "name": "owner",
+              "label": "Owner",
+              "type": "text",
+              "description": "Who is responsible"
+            },
+            {
+              "name": "depends_on",
+              "label": "Depends on",
+              "type": "text",
+              "description": "The name of the item it depends on, if any"
+            },
+            {
+              "name": "linked_to",
+              "label": "Linked to",
+              "type": "text",
+              "description": "For a budget line: the deliverable or activity it pays for"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "data": "data.tables"
+        },
+        "loop": false
+      },
+      {
+        "id": "tr",
+        "node": "step.trace",
+        "label": "Trace",
+        "config": {
+          "against": "targets",
+          "bothWays": false,
+          "question": "Does each deliverable have a date, a cost and an owner, and does each budget line map to a deliverable or activity?"
+        },
+        "in": {
+          "items": "ext.items",
+          "targets": "ext.items",
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "comp",
+        "node": "step.compute",
+        "label": "Arithmetic",
+        "config": {
+          "checks": [
+            {
+              "kind": "sum",
+              "key": "lines_sum_to_total",
+              "label": "Budget lines sum to the total",
+              "severity": "major",
+              "valueField": "amount",
+              "partWhere": {
+                "field": "kind",
+                "equals": "budget_line"
+              },
+              "totalWhere": {
+                "field": "kind",
+                "equals": "total"
+              }
+            },
+            {
+              "kind": "product",
+              "key": "rate_times_quantity",
+              "label": "Rate × quantity (or effort) = amount",
+              "severity": "major",
+              "aField": "rate",
+              "bField": "quantity",
+              "resultField": "amount"
+            },
+            {
+              "kind": "date_order",
+              "key": "dependencies_in_order",
+              "label": "Dates run in order; each dependency comes first",
+              "severity": "major",
+              "dateField": "date",
+              "idField": "name",
+              "dependsOnField": "depends_on",
+              "labelField": "name"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "ext.items",
+          "data": "data.tables"
+        },
+        "loop": false
+      },
+      {
+        "id": "scope",
+        "node": "step.check",
+        "label": "Scope check",
+        "config": {
+          "checklist": [
+            {
+              "key": "same_work",
+              "label": "Summary, scope and pricing describe the same work",
+              "question": "Do the summary, the scope of work and the pricing describe the same work?",
+              "severity": "blocking",
+              "appliesTo": [
+                "summary",
+                "approach",
+                "budget"
+              ]
+            },
+            {
+              "key": "single_promises",
+              "label": "Promises in one place only",
+              "question": "Is any promise made in only one of the summary, the scope of work or the pricing? Name each.",
+              "severity": "major"
+            },
+            {
+              "key": "client_review_time",
+              "label": "Time for client review",
+              "question": "Does the timeline leave time for client review and sign-off?",
+              "severity": "minor",
+              "appliesTo": [
+                "timeline"
+              ]
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "rfpreq",
+        "node": "step.extract",
+        "label": "RFP requirements",
+        "config": {
+          "item": "requirement",
+          "from": [
+            "sources"
+          ],
+          "sourceMatch": [
+            "rfp",
+            "request for proposal",
+            "brief"
+          ],
+          "maxItems": 100,
+          "instructions": "List each requirement the RFP or client brief states, with its number if it has one. Return nothing if no RFP or brief is linked.",
+          "fields": [
+            {
+              "name": "text",
+              "label": "Requirement",
+              "type": "text",
+              "description": "The requirement as stated",
+              "required": true
+            },
+            {
+              "name": "id",
+              "label": "Number",
+              "type": "text",
+              "description": "The requirement's number or reference in the RFP, if any"
+            }
+          ]
+        },
+        "in": {
+          "sources": "src.sources"
+        },
+        "loop": false
+      },
+      {
+        "id": "rfp",
+        "node": "step.trace",
+        "label": "Compliance matrix",
+        "config": {
+          "against": "document",
+          "statuses": [
+            {
+              "key": "answered",
+              "label": "Answered",
+              "ok": true,
+              "severity": "info"
+            },
+            {
+              "key": "partly_answered",
+              "label": "Partly answered",
+              "ok": false,
+              "severity": "minor"
+            },
+            {
+              "key": "not_answered",
+              "label": "Not answered",
+              "ok": false,
+              "severity": "major"
+            }
+          ],
+          "unverifiedStatus": "not_answered",
+          "question": "Where in the proposal is this requirement answered? Quote the passage."
+        },
+        "in": {
+          "items": "rfpreq.items",
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "terms",
+        "node": "step.check",
+        "label": "Terms check",
+        "config": {
+          "checklist": [
+            {
+              "key": "assumptions",
+              "label": "Assumptions",
+              "question": "Are the assumptions the price rests on stated?",
+              "severity": "major"
+            },
+            {
+              "key": "exclusions",
+              "label": "Exclusions",
+              "question": "Are exclusions (what is not included) stated?",
+              "severity": "major"
+            },
+            {
+              "key": "acceptance",
+              "label": "Acceptance criteria",
+              "question": "Are acceptance criteria for the deliverables stated?",
+              "severity": "major"
+            },
+            {
+              "key": "validity",
+              "label": "Validity period",
+              "question": "Is the period the offer is valid for stated?",
+              "severity": "minor"
+            },
+            {
+              "key": "payment_terms",
+              "label": "Payment terms",
+              "question": "Are payment terms stated?",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "not_ready",
+              "when": {
+                "findings": {
+                  "severity": [
+                    "blocking"
+                  ],
+                  "min": 1
+                }
+              }
+            },
+            {
+              "value": "ready_after_fixes",
+              "when": {
+                "anyOf": [
+                  {
+                    "findings": {
+                      "severity": [
+                        "major"
+                      ],
+                      "min": 1
+                    }
+                  },
+                  {
+                    "computeFailed": {
+                      "min": 1
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "fallback": "ready"
+        },
+        "in": {
+          "findings": [
+            "tr.findings",
+            "comp.findings",
+            "scope.findings",
+            "rfp.findings",
+            "terms.findings"
+          ],
+          "results": "comp.results",
+          "tables": [
+            "ext.table",
+            "tr.table",
+            "rfp.table",
+            "scope.table",
+            "terms.table"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Sign before sending",
+        "config": {
+          "signsOutcome": true,
+          "editable": "outcome",
+          "instructions": "Check each listed fix. Sign when you can commit the price and dates, or edit the readiness value."
+        },
+        "in": {
+          "items": "out.outcome"
+        },
+        "loop": false
+      }
+    ]
+  },
+  {
+    "key": "type-sop",
+    "version": 2,
+    "title": "SOP approval readiness",
+    "summary": "Whether the procedure can be carried out as written, with every gap listed by step. Two dry runs with different briefs, then safety, QC and document control checks. The process owner and the quality or safety approver sign; Sasha records the approval and never grants it.",
+    "kind": "type",
+    "appliesTo": [
+      "standard-operating-procedure"
+    ],
+    "fallback": false,
+    "outcome": {
+      "label": "Can be carried out as written",
+      "values": [
+        {
+          "key": "ready_for_approval",
+          "label": "Yes: ready for approval"
+        },
+        {
+          "key": "gaps_found",
+          "label": "No: gaps listed by step"
+        }
+      ]
+    },
+    "checkpoint": {
+      "role": "Process owner and quality or safety approver",
+      "required": true
+    },
+    "params": [],
+    "requirementSets": [],
+    "notAssessed": [],
+    "notes": [
+      "Sasha records the approval and never grants it.",
+      "For high-stakes procedures, confirm someone walked through it physically.",
+      "The dry runs are simulated on paper; nothing was carried out."
+    ],
+    "provenance": {
+      "source": "docs/workflows-by-document-type.md",
+      "checked": "2026-10-08"
+    },
+    "steps": [
+      {
+        "id": "doc",
+        "node": "doc.read",
+        "label": "Document",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "src",
+        "node": "sources.read",
+        "label": "Source passages",
+        "config": {},
+        "in": {},
+        "loop": false
+      },
+      {
+        "id": "ext",
+        "node": "step.extract",
+        "label": "Steps",
+        "config": {
+          "item": "step",
+          "from": [
+            "document"
+          ],
+          "sectionKeys": [
+            "procedure",
+            "quality-control-and-quality-assurance"
+          ],
+          "maxItems": 120,
+          "instructions": "List each procedure step in order.",
+          "fields": [
+            {
+              "name": "number",
+              "label": "Number",
+              "type": "text",
+              "description": "The step's number as written",
+              "required": true
+            },
+            {
+              "name": "action",
+              "label": "Action",
+              "type": "text",
+              "description": "What the step says to do",
+              "required": true
+            },
+            {
+              "name": "actor",
+              "label": "Actor",
+              "type": "text",
+              "description": "Who does it"
+            },
+            {
+              "name": "materials",
+              "label": "Materials",
+              "type": "list",
+              "description": "Materials and equipment the step uses"
+            },
+            {
+              "name": "quantities_settings",
+              "label": "Quantities and settings",
+              "type": "text",
+              "description": "Quantities, settings, durations and tolerances the step gives"
+            },
+            {
+              "name": "warning_before",
+              "label": "Warning before the step",
+              "type": "boolean",
+              "description": "Whether a hazard warning appears before this step"
+            },
+            {
+              "name": "qc_check",
+              "label": "QC check",
+              "type": "text",
+              "description": "The QC check at this step, if any"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "dry1",
+        "node": "step.simulate",
+        "label": "Dry run: new hire",
+        "config": {
+          "persona": "a new hire holding only the listed materials and the text",
+          "task": "Carry out the procedure from start to finish using only the listed materials and the text.",
+          "records": "gaps",
+          "rules": [
+            "log every point where you must guess: a missing quantity, setting, unit, duration or tolerance; an undefined term; an unclear actor; a judgment call with no criterion"
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ext.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "dry2",
+        "node": "step.simulate",
+        "label": "Dry run: experienced operator",
+        "config": {
+          "persona": "an experienced operator",
+          "task": "Carry out the procedure from start to finish as written, noting where your experience fills a gap the text leaves.",
+          "records": "gaps",
+          "rules": [
+            "log every point where you must guess: a missing quantity, setting, unit, duration or tolerance; an undefined term; an unclear actor; a judgment call with no criterion"
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "sources": "src.sources",
+          "items": "ext.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "safety",
+        "node": "step.check",
+        "label": "Safety",
+        "config": {
+          "checklist": [
+            {
+              "key": "warnings_before",
+              "label": "Warnings before their steps",
+              "question": "Does each hazard have a warning placed before the step it applies to (not after)?",
+              "severity": "blocking"
+            },
+            {
+              "key": "ppe",
+              "label": "Protective equipment",
+              "question": "Is the protective equipment for each hazard stated?",
+              "severity": "major"
+            },
+            {
+              "key": "stop_conditions",
+              "label": "Stop conditions",
+              "question": "Are the conditions that mean stop stated?",
+              "severity": "major"
+            },
+            {
+              "key": "disposal",
+              "label": "Disposal",
+              "question": "Is disposal of waste and materials covered?",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "ext.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "qc",
+        "node": "step.check",
+        "label": "QC checks",
+        "config": {
+          "perItem": true,
+          "instructions": "Apply these checks only to steps with a QC check; mark the other steps not_applicable.",
+          "checklist": [
+            {
+              "key": "numeric_criterion",
+              "label": "Numeric acceptance criterion",
+              "question": "Does the QC check have a numeric acceptance criterion?",
+              "severity": "major"
+            },
+            {
+              "key": "failure_path",
+              "label": "Failure path",
+              "question": "Does it say what to do when the check fails?",
+              "severity": "major"
+            },
+            {
+              "key": "record",
+              "label": "Record",
+              "question": "Does it name the record to keep?",
+              "severity": "major"
+            },
+            {
+              "key": "verifier",
+              "label": "Verifier",
+              "question": "Does it name who verifies?",
+              "severity": "major"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document",
+          "items": "ext.items"
+        },
+        "loop": false
+      },
+      {
+        "id": "ctrl",
+        "node": "step.check",
+        "label": "Document control",
+        "config": {
+          "checklist": [
+            {
+              "key": "owner",
+              "label": "Owner",
+              "question": "Is the SOP's owner named?",
+              "severity": "major"
+            },
+            {
+              "key": "version",
+              "label": "Version",
+              "question": "Is there a version or revision number?",
+              "severity": "major"
+            },
+            {
+              "key": "dates",
+              "label": "Effective and review dates",
+              "question": "Are the effective date and the next review date stated?",
+              "severity": "major"
+            },
+            {
+              "key": "references",
+              "label": "Current references",
+              "question": "Are the references current and complete?",
+              "severity": "minor",
+              "appliesTo": [
+                "references"
+              ]
+            },
+            {
+              "key": "change_log",
+              "label": "Change log",
+              "question": "Is there a change log or revision history?",
+              "severity": "minor"
+            }
+          ]
+        },
+        "in": {
+          "document": "doc.document"
+        },
+        "loop": false
+      },
+      {
+        "id": "out",
+        "node": "outcome.report",
+        "label": "Outcome",
+        "config": {
+          "rules": [
+            {
+              "value": "gaps_found",
+              "when": {
+                "findings": {
+                  "severity": [
+                    "major",
+                    "blocking"
+                  ],
+                  "min": 1
+                }
+              }
+            }
+          ],
+          "fallback": "ready_for_approval"
+        },
+        "in": {
+          "findings": [
+            "dry1.findings",
+            "dry2.findings",
+            "safety.findings",
+            "qc.findings",
+            "ctrl.findings"
+          ],
+          "tables": [
+            "ext.table",
+            "dry1.table",
+            "dry2.table",
+            "qc.table",
+            "safety.table",
+            "ctrl.table"
+          ]
+        },
+        "loop": false
+      },
+      {
+        "id": "cp",
+        "node": "checkpoint",
+        "label": "Approval record",
+        "config": {
+          "signsOutcome": true,
+          "editable": "outcome",
+          "instructions": "Record the approval. Sasha records it and never grants it. The process owner and the quality or safety approver each sign, as themselves; the approval is final only once both have signed.",
+          "recordFields": [
+            {
+              "key": "approver",
+              "label": "Your name and title",
+              "required": true
+            },
+            {
+              "key": "version",
+              "label": "Version",
+              "required": true
+            },
+            {
+              "key": "effective_date",
+              "label": "Effective date",
+              "required": true
+            },
+            {
+              "key": "next_review_date",
+              "label": "Next review date",
+              "required": true
+            },
+            {
+              "key": "physical_walkthrough",
+              "label": "Walked through physically? (high-stakes)",
+              "required": false
+            }
+          ],
+          "signers": [
+            {
+              "key": "process_owner",
+              "label": "Process owner"
+            },
+            {
+              "key": "quality_approver",
+              "label": "Quality or safety approver"
+            }
+          ]
+        },
+        "in": {
+          "items": "out.outcome"
+        },
+        "loop": false
+      }
+    ]
+  }
+]

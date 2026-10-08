@@ -2,7 +2,7 @@
 
 // The Run log (every run, newest first, each expandable into its steps) and the
 // Overview (outcomes, errors, and step timings per workflow version), both built
-// from the same list of run summaries.
+// from the same list of run summaries. Runs are named by the document they read.
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import {
 } from '@/lib/workflow/run-stats';
 import { RunTimeline } from './run-timeline';
 import { Muted, OutcomeBadge } from './run-parts';
-import { fallbackSourceLabel, sourceLabel, type UploadGroupBrief } from './source-label';
+import type { DocumentOption } from './types';
 
 const HISTORY_LIMIT = 300;
 const PAGE_SIZE = 20;
@@ -32,8 +32,8 @@ export const EMPTY_FILTER: LogFilter = { query: '', outcome: '', version: '' };
 
 export type RunHistory = {
   runs: RunSummary[];
-  /** Upload group id to a readable name, for the runs' subjects. */
-  sourceNames: Record<string, string>;
+  /** Document id to its title, for the runs' subjects. */
+  documentTitles: Record<string, string>;
   persisted: boolean;
   limit: number;
   loading: boolean;
@@ -42,9 +42,9 @@ export type RunHistory = {
   reload: () => void;
 };
 
-/** Loads the run list (and source names for it) the first time `active` is true, and on reload. */
+/** Loads the run list (and document titles for it) the first time `active` is true, and on reload. */
 export function useRunHistory(active: boolean): RunHistory {
-  const [data, setData] = useState<Omit<RunHistory, 'loading' | 'error' | 'reload'>>({ runs: [], sourceNames: {}, persisted: true, limit: HISTORY_LIMIT, loadedAt: null });
+  const [data, setData] = useState<Omit<RunHistory, 'loading' | 'error' | 'reload'>>({ runs: [], documentTitles: {}, persisted: true, limit: HISTORY_LIMIT, loadedAt: null });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,22 +52,22 @@ export function useRunHistory(active: boolean): RunHistory {
     setLoading(true);
     setError(null);
     try {
-      const [history, groups] = await Promise.all([
+      const [history, documents] = await Promise.all([
         fetch(`/api/workflow-runs/runs/history?limit=${HISTORY_LIMIT}`, { cache: 'no-store' }).then(async (r) => {
           const body = await r.json().catch(() => ({}));
           if (!r.ok) throw new Error(body.error || `Request failed (${r.status})`);
-          return body as { runs: RunSummary[]; persisted: boolean; limit: number };
+          return body as { runs: RunSummary[]; persisted?: boolean; limit?: number };
         }),
-        fetch('/api/upload-groups', { cache: 'no-store' })
+        fetch('/api/documents', { cache: 'no-store' })
           .then((r) => r.json())
-          .then((b: { groups?: UploadGroupBrief[] }) => b.groups ?? [])
-          .catch(() => []),
+          .then((b: { documents?: DocumentOption[] }) => b.documents ?? [])
+          .catch(() => [] as DocumentOption[]),
       ]);
       setData({
         runs: history.runs,
-        persisted: history.persisted,
-        limit: history.limit,
-        sourceNames: Object.fromEntries(groups.map((g) => [g.id, sourceLabel(g)])),
+        persisted: history.persisted ?? true,
+        limit: history.limit ?? HISTORY_LIMIT,
+        documentTitles: Object.fromEntries(documents.map((d) => [d.id, d.title.trim() || 'Untitled document'])),
         loadedAt: new Date(),
       });
     } catch (e) {
@@ -84,7 +84,8 @@ export function useRunHistory(active: boolean): RunHistory {
   return { ...data, loading, error, reload };
 }
 
-const sourceName = (h: RunHistory, id: string) => h.sourceNames[id] ?? fallbackSourceLabel(id);
+/** The run's document by title; a document deleted (or archived out of the list) since reads by its id. */
+const documentName = (h: RunHistory, id: string | null) => (id ? (h.documentTitles[id] ?? `Document ${id.slice(0, 8)}`) : 'No document');
 
 function HistoryHeader({ history, children }: { history: RunHistory; children?: React.ReactNode }) {
   return (
@@ -132,12 +133,12 @@ export function RunLog({ history, filter, setFilter }: { history: RunHistory; fi
     const q = filter.query.trim().toLowerCase();
     return history.runs.filter(
       (r) =>
-        (!q || r.id.toLowerCase().startsWith(q) || sourceName(history, r.group_id).toLowerCase().includes(q) || r.requested_by.toLowerCase().includes(q)) &&
+        (!q || r.id.toLowerCase().startsWith(q) || documentName(history, r.document_id).toLowerCase().includes(q) || r.requested_by.toLowerCase().includes(q)) &&
         (!filter.outcome || runOutcome(r) === filter.outcome) &&
         (!filter.version || versionKey(r) === filter.version),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history.runs, history.sourceNames, filter]);
+  }, [history.runs, history.documentTitles, filter]);
 
   useEffect(() => setPage(0), [filter]);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -148,7 +149,7 @@ export function RunLog({ history, filter, setFilter }: { history: RunHistory; fi
   return (
     <div className="space-y-3">
       <HistoryHeader history={history}>
-        <Input className="h-8 w-60" placeholder="Search sources, run ID, or person" value={filter.query} onChange={(e) => setFilter({ ...filter, query: e.target.value })} />
+        <Input className="h-8 w-60" placeholder="Search documents, run ID, or person" value={filter.query} onChange={(e) => setFilter({ ...filter, query: e.target.value })} />
         <select className={select} value={filter.outcome} onChange={(e) => setFilter({ ...filter, outcome: e.target.value as RunOutcome | '' })} aria-label="Status">
           <option value="">Any status</option>
           {(Object.keys(OUTCOME_LABEL) as RunOutcome[]).map((o) => (
@@ -179,7 +180,7 @@ export function RunLog({ history, filter, setFilter }: { history: RunHistory; fi
             <tr className="border-b border-zinc-200 text-left text-xs font-semibold text-zinc-500 dark:border-zinc-800">
               <th className="px-3 py-2">Date &amp; time</th>
               <th className="px-3 py-2">Run ID</th>
-              <th className="px-3 py-2">Sources</th>
+              <th className="px-3 py-2">Document</th>
               <th className="px-3 py-2">Workflow</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2 text-right">Total time</th>
@@ -200,7 +201,7 @@ export function RunLog({ history, filter, setFilter }: { history: RunHistory; fi
                     <td className="px-3 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400" title={r.id}>
                       {r.id.slice(0, 8)}
                     </td>
-                    <td className="px-3 py-2">{sourceName(history, r.group_id)}</td>
+                    <td className="px-3 py-2">{documentName(history, r.document_id)}</td>
                     <td className="whitespace-nowrap px-3 py-2">{workflowLabel(r)}</td>
                     <td className="px-3 py-2">
                       <OutcomeBadge outcome={runOutcome(r)} />
@@ -213,7 +214,7 @@ export function RunLog({ history, filter, setFilter }: { history: RunHistory; fi
                       <td colSpan={7} className="px-6 py-4">
                         <div className="mb-3 text-xs text-zinc-500">
                           Run {r.id} · started by {r.requested_by}
-                          {r.status === 'superseded' ? ' · replaced by a later run on these sources' : ''}
+                          {r.status === 'superseded' ? ' · replaced by a later run of this workflow on the document' : ''}
                         </div>
                         <RunTimeline run={r} />
                       </td>
@@ -263,7 +264,7 @@ const RANGES = [
 ] as const;
 
 const OUTCOME_FILL: Record<RunOutcome, string> = {
-  draft: 'bg-emerald-500',
+  complete: 'bg-emerald-500',
   failed: 'bg-red-500',
   awaiting_review: 'bg-violet-500',
   paused: 'bg-amber-500',
@@ -339,7 +340,7 @@ function VersionCard({ v, onFailed }: { v: ReturnType<typeof summarizeRuns>['ver
       title={v.label}
       aside={
         <span className="text-xs text-zinc-500">
-          {v.runs} run{v.runs === 1 ? '' : 's'} · {v.results} result{v.results === 1 ? '' : 's'} ·{' '}
+          {v.runs} run{v.runs === 1 ? '' : 's'} · {v.results} complete ·{' '}
           <button className={v.failed ? 'text-red-700 hover:underline dark:text-red-400' : ''} onClick={onFailed} disabled={!v.failed}>
             {v.failed} failed
           </button>{' '}
@@ -438,13 +439,13 @@ export function RunsOverview({ history, openLog }: { history: RunHistory; openLo
         <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
       ) : !o.total ? (
         <Card title="No runs in this period">
-          <Muted>Run the workflow on uploaded sources from the Editor tab, or widen the time range.</Muted>
+          <Muted>Run a workflow on a document from the Editor tab or the document&apos;s Workflows tab, or widen the time range.</Muted>
         </Card>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Tile label="Runs" value={String(o.total)} sub={o.byOutcome.running ? `${o.byOutcome.running} running now` : undefined} onClick={() => openLog({})} />
-            <Tile label="Results saved" value={String(o.byOutcome.draft)} sub={`${pct(o.byOutcome.draft, finished)} of finished runs`} onClick={() => openLog({ outcome: 'draft' })} />
+            <Tile label="Complete" value={String(o.byOutcome.complete)} sub={`${pct(o.byOutcome.complete, finished)} of finished runs`} onClick={() => openLog({ outcome: 'complete' })} />
             <Tile label="Failed" value={String(o.byOutcome.failed)} sub={`${pct(o.byOutcome.failed, finished)} of finished runs`} tone={o.byOutcome.failed ? 'bad' : undefined} onClick={() => openLog({ outcome: 'failed' })} />
             <Tile label="Average run time" value={formatDuration(avgRun)} sub="start to finish, including review waits" />
           </div>

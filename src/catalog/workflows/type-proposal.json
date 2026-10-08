@@ -1,0 +1,425 @@
+{
+  "key": "type-proposal",
+  "version": 1,
+  "title": "Proposal readiness",
+  "summary": "A go or no-go readiness decision. Traces deliverables to dates, costs and owners, reruns the arithmetic, checks that summary, scope and pricing describe the same work, builds a compliance matrix when an RFP or brief is linked, and checks the terms. The person who can commit the price and dates signs.",
+  "kind": "type",
+  "appliesTo": [
+    "proposal"
+  ],
+  "outcome": {
+    "label": "Readiness",
+    "values": [
+      {
+        "key": "ready",
+        "label": "Ready to send"
+      },
+      {
+        "key": "ready_after_fixes",
+        "label": "Ready after listed fixes"
+      },
+      {
+        "key": "not_ready",
+        "label": "Not ready"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Person who can commit the price and dates",
+    "required": true
+  },
+  "notes": [
+    "Link the pricing spreadsheet so the arithmetic can be rerun.",
+    "The compliance matrix appears only when an RFP or client brief is linked."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "ext",
+      "node": "step.extract",
+      "label": "Commitments",
+      "config": {
+        "item": "commitment",
+        "from": [
+          "document",
+          "data"
+        ],
+        "maxItems": 150,
+        "instructions": "List every deliverable, milestone, budget line, total, staff role, assumption and term, with its date, amount, quantity, rate and owner where given.",
+        "fields": [
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "What the item is",
+            "values": [
+              "deliverable",
+              "milestone",
+              "budget_line",
+              "total",
+              "staff",
+              "assumption",
+              "term"
+            ],
+            "required": true
+          },
+          {
+            "name": "name",
+            "label": "Name",
+            "type": "text",
+            "description": "The item's name as written",
+            "required": true
+          },
+          {
+            "name": "date",
+            "label": "Date",
+            "type": "date",
+            "description": "Its due or delivery date"
+          },
+          {
+            "name": "amount",
+            "label": "Amount",
+            "type": "number",
+            "description": "Its cost or total amount"
+          },
+          {
+            "name": "quantity",
+            "label": "Quantity",
+            "type": "number",
+            "description": "Units, hours or effort"
+          },
+          {
+            "name": "rate",
+            "label": "Rate",
+            "type": "number",
+            "description": "The unit or hourly rate"
+          },
+          {
+            "name": "owner",
+            "label": "Owner",
+            "type": "text",
+            "description": "Who is responsible"
+          },
+          {
+            "name": "depends_on",
+            "label": "Depends on",
+            "type": "text",
+            "description": "The name of the item it depends on, if any"
+          },
+          {
+            "name": "linked_to",
+            "label": "Linked to",
+            "type": "text",
+            "description": "For a budget line: the deliverable or activity it pays for"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "data": "data.tables"
+      }
+    },
+    {
+      "id": "tr",
+      "node": "step.trace",
+      "label": "Trace",
+      "config": {
+        "against": "targets",
+        "bothWays": false,
+        "question": "Does each deliverable have a date, a cost and an owner, and does each budget line map to a deliverable or activity?"
+      },
+      "in": {
+        "items": "ext.items",
+        "targets": "ext.items",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "comp",
+      "node": "step.compute",
+      "label": "Arithmetic",
+      "config": {
+        "checks": [
+          {
+            "kind": "sum",
+            "key": "lines_sum_to_total",
+            "label": "Budget lines sum to the total",
+            "severity": "major",
+            "valueField": "amount",
+            "partWhere": {
+              "field": "kind",
+              "equals": "budget_line"
+            },
+            "totalWhere": {
+              "field": "kind",
+              "equals": "total"
+            }
+          },
+          {
+            "kind": "product",
+            "key": "rate_times_quantity",
+            "label": "Rate × quantity (or effort) = amount",
+            "severity": "major",
+            "aField": "rate",
+            "bField": "quantity",
+            "resultField": "amount"
+          },
+          {
+            "kind": "date_order",
+            "key": "dependencies_in_order",
+            "label": "Dates run in order; each dependency comes first",
+            "severity": "major",
+            "dateField": "date",
+            "idField": "name",
+            "dependsOnField": "depends_on",
+            "labelField": "name"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ext.items",
+        "data": "data.tables"
+      }
+    },
+    {
+      "id": "scope",
+      "node": "step.check",
+      "label": "Scope check",
+      "config": {
+        "checklist": [
+          {
+            "key": "same_work",
+            "label": "Summary, scope and pricing describe the same work",
+            "question": "Do the summary, the scope of work and the pricing describe the same work?",
+            "severity": "blocking",
+            "appliesTo": [
+              "summary",
+              "approach",
+              "budget"
+            ]
+          },
+          {
+            "key": "single_promises",
+            "label": "Promises in one place only",
+            "question": "Is any promise made in only one of the summary, the scope of work or the pricing? Name each.",
+            "severity": "major"
+          },
+          {
+            "key": "client_review_time",
+            "label": "Time for client review",
+            "question": "Does the timeline leave time for client review and sign-off?",
+            "severity": "minor",
+            "appliesTo": [
+              "timeline"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "rfpreq",
+      "node": "step.extract",
+      "label": "RFP requirements",
+      "config": {
+        "item": "requirement",
+        "from": [
+          "sources"
+        ],
+        "sourceMatch": [
+          "rfp",
+          "request for proposal",
+          "brief"
+        ],
+        "maxItems": 100,
+        "instructions": "List each requirement the RFP or client brief states, with its number if it has one. Return nothing if no RFP or brief is linked.",
+        "fields": [
+          {
+            "name": "text",
+            "label": "Requirement",
+            "type": "text",
+            "description": "The requirement as stated",
+            "required": true
+          },
+          {
+            "name": "id",
+            "label": "Number",
+            "type": "text",
+            "description": "The requirement's number or reference in the RFP, if any"
+          }
+        ]
+      },
+      "in": {
+        "sources": "src.sources"
+      }
+    },
+    {
+      "id": "rfp",
+      "node": "step.trace",
+      "label": "Compliance matrix",
+      "config": {
+        "against": "document",
+        "statuses": [
+          {
+            "key": "answered",
+            "label": "Answered",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "partly_answered",
+            "label": "Partly answered",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "not_answered",
+            "label": "Not answered",
+            "ok": false,
+            "severity": "major"
+          }
+        ],
+        "unverifiedStatus": "not_answered",
+        "question": "Where in the proposal is this requirement answered? Quote the passage."
+      },
+      "in": {
+        "items": "rfpreq.items",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "terms",
+      "node": "step.check",
+      "label": "Terms check",
+      "config": {
+        "checklist": [
+          {
+            "key": "assumptions",
+            "label": "Assumptions",
+            "question": "Are the assumptions the price rests on stated?",
+            "severity": "major"
+          },
+          {
+            "key": "exclusions",
+            "label": "Exclusions",
+            "question": "Are exclusions (what is not included) stated?",
+            "severity": "major"
+          },
+          {
+            "key": "acceptance",
+            "label": "Acceptance criteria",
+            "question": "Are acceptance criteria for the deliverables stated?",
+            "severity": "major"
+          },
+          {
+            "key": "validity",
+            "label": "Validity period",
+            "question": "Is the period the offer is valid for stated?",
+            "severity": "minor"
+          },
+          {
+            "key": "payment_terms",
+            "label": "Payment terms",
+            "question": "Are payment terms stated?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "not_ready",
+            "when": {
+              "findings": {
+                "severity": [
+                  "blocking"
+                ],
+                "min": 1
+              }
+            }
+          },
+          {
+            "value": "ready_after_fixes",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "major"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "computeFailed": {
+                    "min": 1
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "fallback": "ready"
+      },
+      "in": {
+        "findings": [
+          "tr.findings",
+          "comp.findings",
+          "scope.findings",
+          "rfp.findings",
+          "terms.findings"
+        ],
+        "results": "comp.results",
+        "tables": [
+          "ext.table",
+          "tr.table",
+          "rfp.table",
+          "scope.table",
+          "terms.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Sign before sending",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Check each listed fix. Sign when you can commit the price and dates, or edit the readiness value."
+      },
+      "in": {
+        "items": "out.outcome"
+      }
+    }
+  ]
+}

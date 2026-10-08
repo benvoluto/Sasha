@@ -1,0 +1,513 @@
+{
+  "task": "coverage.score",
+  "recorded_at": "2026-10-08T21:26:45.441Z",
+  "model": "claude-sonnet-5-5",
+  "material": {
+    "doc": {
+      "id": "doc-live",
+      "title": "Riverside path restoration",
+      "typeKey": "proposal",
+      "typeTitle": "Proposal",
+      "updatedAt": "2026-10-08T00:00:00.000Z",
+      "wordCount": 38,
+      "text": "Summary\nWe request £40,000 to rebuild 400 metres of the riverside path by September 2027.\nBudget\nBank works £38,400 (contractor quote). Signage £1,600. Total £40,000.\nTimeline\nWork starts in March 2027 and the path reopens in September 2027.",
+      "preamble": "",
+      "sections": [
+        {
+          "sectionId": "sum",
+          "heading": "Summary",
+          "level": 2,
+          "specKey": "summary",
+          "index": 0,
+          "text": "We request £40,000 to rebuild 400 metres of the riverside path by September 2027.",
+          "wordCount": 14,
+          "hasContent": true,
+          "renderer": "narrative",
+          "required": true
+        },
+        {
+          "sectionId": "bud",
+          "heading": "Budget",
+          "level": 2,
+          "specKey": "budget",
+          "index": 2,
+          "text": "Bank works £38,400 (contractor quote). Signage £1,600. Total £40,000.",
+          "wordCount": 9,
+          "hasContent": true,
+          "renderer": "narrative",
+          "required": true
+        },
+        {
+          "sectionId": "tl",
+          "heading": "Timeline",
+          "level": 2,
+          "specKey": "timeline",
+          "index": 4,
+          "text": "Work starts in March 2027 and the path reopens in September 2027.",
+          "wordCount": 12,
+          "hasContent": true,
+          "renderer": "narrative",
+          "required": true
+        }
+      ],
+      "type": {
+        "key": "proposal",
+        "title": "Proposal",
+        "version": 1,
+        "family": "business",
+        "sections": [
+          {
+            "key": "summary",
+            "heading": "Summary",
+            "level": 2,
+            "required": true,
+            "guidance": "In one short paragraph, state what is proposed, the problem or opportunity it addresses, the expected result, and what is being asked of the reader (approval, funding, people) with the headline cost and duration. A reader who stops here should know what they are being asked to decide.",
+            "lengthHint": "1 paragraph",
+            "elements": [
+              "What is proposed",
+              "Problem or opportunity addressed",
+              "Expected result",
+              "The ask: approval, funding or resources",
+              "Headline cost and duration"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [
+              "Total cost",
+              "Duration"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "reason",
+            "heading": "Reason for Proposal",
+            "level": 2,
+            "required": true,
+            "guidance": "Explain why the work is needed now. Describe the current situation and its cost or risk, the evidence for the need, who is affected, and what happens if nothing is done. Ground the case in the sources and give figures where they exist.",
+            "elements": [
+              "Current situation",
+              "Evidence of the need",
+              "Who is affected",
+              "Consequence of doing nothing"
+            ],
+            "sourcesNeeded": [
+              "Evidence of the problem or opportunity"
+            ],
+            "dataNeeded": [
+              "Baseline figures"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "objectives",
+            "heading": "Objectives",
+            "level": 2,
+            "required": true,
+            "guidance": "List two to five objectives the work will achieve. Make each specific and measurable, with a target and a date, and tie each to the need described above. Use a numbered list.",
+            "lengthHint": "2–5 objectives",
+            "elements": [
+              "Two to five numbered objectives",
+              "Measurable target for each objective",
+              "Target date for each objective",
+              "Link from each objective to the need"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [
+              "Targets"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "approach",
+            "heading": "Approach",
+            "level": 2,
+            "required": true,
+            "guidance": "Describe how the objectives will be met: the main activities, who will carry them out, the methods or tools, and the deliverables each activity produces. Explain why this approach was chosen over the obvious alternatives, and name the key risks and how they will be managed.",
+            "elements": [
+              "Main activities",
+              "Who will do the work",
+              "Deliverables",
+              "Why this approach over alternatives",
+              "Key risks and mitigations"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [],
+            "renderer": "narrative"
+          },
+          {
+            "key": "timeline",
+            "heading": "Timeline",
+            "level": 2,
+            "required": true,
+            "guidance": "Lay out the schedule from start to finish as phases or milestones with dates, and mark dependencies and decision points. A Markdown table (milestone, date, deliverable) works well.",
+            "elements": [
+              "Start and end dates",
+              "Milestones with dates",
+              "Dependencies and decision points"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [
+              "Milestone dates"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "budget",
+            "heading": "Budget",
+            "level": 2,
+            "required": true,
+            "guidance": "Give the total cost and its breakdown by major category (people, equipment, services, other), with the basis for each figure. Note any cost already committed, any contribution from other sources, and ongoing costs after the work ends. Present the breakdown as a Markdown table.",
+            "elements": [
+              "Total cost",
+              "Breakdown by category",
+              "Basis for each figure",
+              "Ongoing costs after the work ends"
+            ],
+            "sourcesNeeded": [
+              "Quotes or cost estimates"
+            ],
+            "dataNeeded": [
+              "Cost figures"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "evaluation",
+            "heading": "Evaluation",
+            "level": 2,
+            "required": true,
+            "guidance": "Explain how success will be judged: the measures for each objective, how and when they will be collected, who will review them, and how results will be reported back to the reader.",
+            "elements": [
+              "Success measures for each objective",
+              "How and when data will be collected",
+              "Who reviews the results",
+              "How results will be reported"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [],
+            "renderer": "narrative"
+          }
+        ],
+        "rubric": [
+          {
+            "key": "clarity",
+            "criterion": "Clarity: each sentence has one clear meaning on first read.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Every sentence says one thing in active voice with a clear actor. Terms are defined on first use and used consistently. There are no ambiguous pronouns."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly clear. A few long or passive sentences, or an undefined term, slow the reader without misleading them."
+              },
+              {
+                "score": 2,
+                "descriptor": "Frequent ambiguity: noun stacks, vague pronouns, inconsistent terms, or jargon left unexplained. The reader has to reread."
+              },
+              {
+                "score": 1,
+                "descriptor": "The meaning is often unclear or can be read more than one way. Key claims can't be pinned down."
+              }
+            ]
+          },
+          {
+            "key": "concision",
+            "criterion": "Concision: no more words than the meaning needs.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "No filler, redundancy or throat-clearing. Sentences average about 20 words or fewer. Each paragraph earns its place."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly tight. Some wordy phrases (\"in order to\", \"it is important to note\") or repetition."
+              },
+              {
+                "score": 2,
+                "descriptor": "Noticeable padding: repeated points, long introductions, verbs turned into nouns (\"make a determination\")."
+              },
+              {
+                "score": 1,
+                "descriptor": "Wordiness hides the content. The section could be cut by half without losing meaning."
+              }
+            ]
+          },
+          {
+            "key": "audience_fit",
+            "criterion": "Audience fit: written for the stated reader's knowledge, needs and task.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Assumes exactly the reader's background, answers their questions in order, and uses the tone and register the type specifies. Speaks to the reader directly where that fits."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly well pitched. Occasionally over-explains or assumes too much."
+              },
+              {
+                "score": 2,
+                "descriptor": "Often written for the author or the wrong reader. Important context is missing, or there is condescending detail."
+              },
+              {
+                "score": 1,
+                "descriptor": "Ignores the intended audience. The reader can't use the document for its purpose."
+              }
+            ]
+          },
+          {
+            "key": "structure",
+            "criterion": "Structure: organised so the reader finds and follows the main points.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "The most important information comes first. Headings are informative and match the type's outline. Paragraphs have topic sentences. Lists and tables are used where they help. Transitions are logical."
+              },
+              {
+                "score": 3,
+                "descriptor": "Sound overall. A few buried points, generic headings or long paragraphs."
+              },
+              {
+                "score": 2,
+                "descriptor": "The order is hard to follow. Key points are buried. Headings and lists are inconsistent or missing where needed."
+              },
+              {
+                "score": 1,
+                "descriptor": "No discernible organisation. Required sections are missing or out of order."
+              }
+            ]
+          },
+          {
+            "key": "evidence",
+            "criterion": "Evidence: claims are supported, accurate and attributed.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Every substantive claim is backed by cited sources or data. Figures are accurate and in context. Limits and uncertainty are stated. Nothing is invented."
+              },
+              {
+                "score": 3,
+                "descriptor": "Most claims are supported. A few general statements lack citation, or the support is thin."
+              },
+              {
+                "score": 2,
+                "descriptor": "Many claims are unsupported or loosely tied to sources. Some figures lack context."
+              },
+              {
+                "score": 1,
+                "descriptor": "Claims are asserted without support, or contradict the sources, or contain invented facts."
+              }
+            ]
+          },
+          {
+            "key": "internal_consistency",
+            "criterion": "Objectives, approach, timeline, budget and evaluation agree with each other.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Every objective has activities in the approach, milestones in the timeline, costs in the budget and a measure in the evaluation."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly consistent; one objective lacks a milestone, cost line or measure."
+              },
+              {
+                "score": 2,
+                "descriptor": "Several gaps or contradictions between objectives, schedule, budget and evaluation."
+              },
+              {
+                "score": 1,
+                "descriptor": "The sections describe different projects or contradict each other."
+              }
+            ],
+            "appliesTo": [
+              "objectives",
+              "approach",
+              "timeline",
+              "budget",
+              "evaluation"
+            ]
+          },
+          {
+            "key": "clear_ask",
+            "criterion": "The reader knows exactly what is being asked of them and why.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "The summary states the decision, the cost and the duration, and the reason for the proposal makes a compelling, evidenced case."
+              },
+              {
+                "score": 3,
+                "descriptor": "The ask is clear but the case for it is thin in places."
+              },
+              {
+                "score": 2,
+                "descriptor": "The ask or its cost is vague, or the need is asserted rather than shown."
+              },
+              {
+                "score": 1,
+                "descriptor": "It is unclear what the reader is being asked to approve."
+              }
+            ],
+            "appliesTo": [
+              "summary",
+              "reason"
+            ]
+          }
+        ]
+      }
+    },
+    "sources": {
+      "sources": [
+        {
+          "id": "5b1e2c4a-0d1f-4a8e-9a77-0c2b8f1d3e01",
+          "title": "Greenbank contractor quote",
+          "kind": "file",
+          "role": null,
+          "summary": "A quote for rebuilding 400 m of riverside path and stabilizing the bank: £38,400 including VAT, valid for 90 days.",
+          "status": "ready",
+          "url": null
+        }
+      ],
+      "passages": [
+        {
+          "id": "S5b1e2c4a.P1",
+          "sourceId": "5b1e2c4a-0d1f-4a8e-9a77-0c2b8f1d3e01",
+          "page": 1,
+          "text": "Rebuild 400 m of footpath and stabilize the riverbank. Total price £38,400 including VAT. Valid for 90 days."
+        }
+      ]
+    },
+    "needs": [
+      {
+        "id": "N1",
+        "need": "Total cost",
+        "kind": "data",
+        "specKey": "summary",
+        "heading": "Summary"
+      },
+      {
+        "id": "N2",
+        "need": "Duration",
+        "kind": "data",
+        "specKey": "summary",
+        "heading": "Summary"
+      },
+      {
+        "id": "N3",
+        "need": "Evidence of the problem or opportunity",
+        "kind": "source",
+        "specKey": "reason",
+        "heading": "Reason for Proposal"
+      },
+      {
+        "id": "N4",
+        "need": "Baseline figures",
+        "kind": "data",
+        "specKey": "reason",
+        "heading": "Reason for Proposal"
+      },
+      {
+        "id": "N5",
+        "need": "Targets",
+        "kind": "data",
+        "specKey": "objectives",
+        "heading": "Objectives"
+      },
+      {
+        "id": "N6",
+        "need": "Milestone dates",
+        "kind": "data",
+        "specKey": "timeline",
+        "heading": "Timeline"
+      },
+      {
+        "id": "N7",
+        "need": "Quotes or cost estimates",
+        "kind": "source",
+        "specKey": "budget",
+        "heading": "Budget"
+      },
+      {
+        "id": "N8",
+        "need": "Cost figures",
+        "kind": "data",
+        "specKey": "budget",
+        "heading": "Budget"
+      }
+    ]
+  },
+  "replies": [
+    {
+      "rows": [
+        {
+          "need": "N1",
+          "status": "weak",
+          "evidence": [
+            {
+              "id": "S5b1e2c4a.P1",
+              "quote": "Total price £38,400 including VAT."
+            }
+          ],
+          "note": "The contractor quote gives £38,400 for the path and bank work, but no data tables are linked and nothing shows this is the whole project cost. Treat it as a partial figure."
+        },
+        {
+          "need": "N2",
+          "status": "missing",
+          "evidence": [],
+          "note": "No data or source states the project duration. The quote's 90-day validity is not a project duration."
+        },
+        {
+          "need": "N3",
+          "status": "missing",
+          "evidence": [],
+          "note": "The only source is a contractor quote. Nothing documents the problem, such as erosion or path condition."
+        },
+        {
+          "need": "N4",
+          "status": "missing",
+          "evidence": [],
+          "note": "No baseline figures are provided, and no data tables are linked."
+        },
+        {
+          "need": "N5",
+          "status": "weak",
+          "evidence": [
+            {
+              "id": "S5b1e2c4a.P1",
+              "quote": "Rebuild 400 m of footpath and stabilize the riverbank."
+            }
+          ],
+          "note": "The quote implies a deliverable of 400 m of path, but no stated targets or measurable outcomes are provided."
+        },
+        {
+          "need": "N6",
+          "status": "missing",
+          "evidence": [],
+          "note": "No milestone dates are provided. The data section has no tables and the quote has no schedule."
+        },
+        {
+          "need": "N7",
+          "status": "supported",
+          "evidence": [
+            {
+              "id": "S5b1e2c4a.P1",
+              "quote": "Total price £38,400 including VAT. Valid for 90 days."
+            }
+          ],
+          "note": "A contractor quote with price, scope and validity is provided. It is a single quote, with no comparison quotes."
+        },
+        {
+          "need": "N8",
+          "status": "weak",
+          "evidence": [
+            {
+              "id": "S5b1e2c4a.P1",
+              "quote": "Total price £38,400 including VAT."
+            }
+          ],
+          "note": "Only one total figure is available. There is no itemized breakdown and no cost table."
+        }
+      ]
+    }
+  ]
+}

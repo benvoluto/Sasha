@@ -1,0 +1,575 @@
+{
+  "key": "type-nih",
+  "version": 1,
+  "title": "Mock NIH review",
+  "summary": "A mock summary statement: an Overall Impact score with the reviewers' range, scores for Factor 1 and Factor 2, a Factor 3 sufficiency rating, and the weaknesses most likely to drive the score, each tied to a passage. Includes page-limit, aims and rigor checks.",
+  "kind": "type",
+  "appliesTo": [
+    "nih-specific-aims-research-strategy"
+  ],
+  "outcome": {
+    "label": "Overall impact (mock review)",
+    "values": [
+      {
+        "key": "high_impact",
+        "label": "High impact (1–3)"
+      },
+      {
+        "key": "moderate_impact",
+        "label": "Moderate impact (4–6)"
+      },
+      {
+        "key": "low_impact",
+        "label": "Low impact (7–9)"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "requirementSets": [
+    "nih-page-limits",
+    "nih-simplified-review",
+    "nih-ai-and-review-policy"
+  ],
+  "notAssessed": [
+    "Human subjects",
+    "Vertebrate animals",
+    "Biohazards",
+    "Budget"
+  ],
+  "notes": [
+    "No award prediction: NIH institutes no longer rely on paylines (since the January 2026 council round).",
+    "Model reviewers may cluster mid-scale; treat the scores as a calibration aid, not a forecast.",
+    "For your own draft only (NOT-OD-23-149).",
+    "Page counts are estimated from words; figures and formatting are not counted.",
+    "The PI decides what to revise; there is no checkpoint."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "notes",
+      "node": "doc.notes",
+      "label": "Notes"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "req",
+      "node": "requirements.read",
+      "label": "Requirements",
+      "config": {
+        "sets": [
+          "nih-page-limits",
+          "nih-simplified-review",
+          "nih-ai-and-review-policy"
+        ]
+      }
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: activity code",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "activity_code",
+            "label": "Activity code and funding opportunity (NOFO)",
+            "kind": "any",
+            "match": [
+              "R01",
+              "R21",
+              "R03",
+              "R15",
+              "U01",
+              "NOFO",
+              "PAR-",
+              "RFA-",
+              "PA-",
+              "funding opportunity"
+            ],
+            "help": "Name the activity code (R01, R21…) and link or cite the NOFO; they set the page limits and any extra review criteria."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "notes": "notes.notes"
+      }
+    },
+    {
+      "id": "len",
+      "node": "step.compute",
+      "label": "Page limits",
+      "config": {
+        "checks": [
+          {
+            "kind": "length",
+            "key": "aims_pages",
+            "label": "Specific Aims within 1 page",
+            "severity": "major",
+            "specKeys": [
+              "specific-aims"
+            ],
+            "unit": "pages",
+            "requirement": "nih-page-limits#specific-aims"
+          },
+          {
+            "kind": "length",
+            "key": "strategy_pages",
+            "label": "Research Strategy within the page limit for the activity code",
+            "severity": "major",
+            "specKeys": [
+              "research-strategy",
+              "significance",
+              "innovation",
+              "approach"
+            ],
+            "unit": "pages",
+            "requirementSet": "nih-page-limits"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "aims",
+      "node": "step.extract",
+      "label": "Aims",
+      "config": {
+        "item": "aim",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "specific-aims",
+          "approach"
+        ],
+        "maxItems": 10,
+        "instructions": "List each specific aim with its objective and expected outcome, and the Approach subsection that carries it out.",
+        "fields": [
+          {
+            "name": "aim",
+            "label": "Aim",
+            "type": "text",
+            "description": "The aim as stated, with its number",
+            "required": true
+          },
+          {
+            "name": "objective",
+            "label": "Objective",
+            "type": "text",
+            "description": "The testable objective or hypothesis"
+          },
+          {
+            "name": "expected_outcome",
+            "label": "Expected outcome",
+            "type": "text",
+            "description": "The expected outcome stated for the aim"
+          },
+          {
+            "name": "approach_subsection",
+            "label": "Approach subsection",
+            "type": "text",
+            "description": "The heading of the Approach subsection for this aim, if any"
+          },
+          {
+            "name": "depends_on_aim",
+            "label": "Depends on aim",
+            "type": "text",
+            "description": "Another aim whose success this aim needs, if any"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "aimchk",
+      "node": "step.check",
+      "label": "Aims check",
+      "config": {
+        "perItem": true,
+        "checklist": [
+          {
+            "key": "testable",
+            "label": "Testable objective",
+            "question": "Does the aim state a testable objective or hypothesis?",
+            "severity": "major"
+          },
+          {
+            "key": "expected_outcome",
+            "label": "Expected outcome",
+            "question": "Does the aim state an expected outcome?",
+            "severity": "major"
+          },
+          {
+            "key": "independent",
+            "label": "Independent of other aims",
+            "question": "Can the aim succeed even if another aim fails?",
+            "severity": "major"
+          },
+          {
+            "key": "maps_to_approach",
+            "label": "Maps to an Approach subsection",
+            "question": "Is there an Approach subsection that carries out this aim?",
+            "severity": "major"
+          },
+          {
+            "key": "scope_fits",
+            "label": "Scope fits the period",
+            "question": "Does the aim's scope fit the project period and the stated timeline?",
+            "severity": "minor"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "aims.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rigor",
+      "node": "step.check",
+      "label": "Rigor checks",
+      "config": {
+        "instructions": "These are the rigor checks inside Factor 2.",
+        "checklist": [
+          {
+            "key": "controls",
+            "label": "Controls",
+            "question": "Are appropriate controls described?",
+            "severity": "major",
+            "appliesTo": [
+              "approach"
+            ]
+          },
+          {
+            "key": "sample_size",
+            "label": "Sample size justification",
+            "question": "Is the sample size justified (power analysis or another stated basis)?",
+            "severity": "major",
+            "appliesTo": [
+              "approach"
+            ]
+          },
+          {
+            "key": "analysis_plan",
+            "label": "Analysis plan",
+            "question": "Is there an analysis plan matched to each aim?",
+            "severity": "major",
+            "appliesTo": [
+              "approach"
+            ]
+          },
+          {
+            "key": "biological_variables",
+            "label": "Biological variables",
+            "question": "Are relevant biological variables, such as sex or age, considered?",
+            "severity": "major",
+            "appliesTo": [
+              "approach"
+            ]
+          },
+          {
+            "key": "pitfalls",
+            "label": "Pitfalls and alternatives",
+            "question": "Are potential pitfalls named, each with an alternative approach?",
+            "severity": "major",
+            "appliesTo": [
+              "approach"
+            ]
+          },
+          {
+            "key": "timeline",
+            "label": "Timeline",
+            "question": "Is there a timeline for the aims?",
+            "severity": "minor",
+            "appliesTo": [
+              "approach"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "criteria": [
+          {
+            "key": "factor_1",
+            "label": "Factor 1: Importance of the Research (Significance, Innovation)",
+            "guidance": "Score 1 (exceptional) to 9 (poor).",
+            "scale": {
+              "kind": "score",
+              "min": 1,
+              "max": 9,
+              "best": "low"
+            }
+          },
+          {
+            "key": "factor_2",
+            "label": "Factor 2: Rigor and Feasibility (Approach)",
+            "guidance": "Score 1 (exceptional) to 9 (poor). Consider controls, sample size justification, the analysis plan, biological variables such as sex or age, pitfalls and alternatives, and the timeline.",
+            "scale": {
+              "kind": "score",
+              "min": 1,
+              "max": 9,
+              "best": "low"
+            }
+          },
+          {
+            "key": "overall_impact",
+            "label": "Overall Impact",
+            "guidance": "Score 1 (exceptional) to 9 (poor): the likelihood the project will exert a sustained, powerful influence on its field.",
+            "scale": {
+              "kind": "score",
+              "min": 1,
+              "max": 9,
+              "best": "low"
+            }
+          },
+          {
+            "key": "factor_3",
+            "label": "Factor 3: Expertise and Resources",
+            "guidance": "not_rated unless biosketches or facilities are linked.",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sufficient",
+                "gaps_identified",
+                "not_rated"
+              ]
+            }
+          }
+        ],
+        "instructions": "Write strengths and weaknesses as an NIH reviewer would, tied to passages. Make no prediction about funding.",
+        "reviewers": [
+          {
+            "key": "primary",
+            "label": "Primary reviewer",
+            "brief": "You are the assigned primary reviewer writing the critique. Weigh strengths and weaknesses evenly across both scored factors and score as a careful, experienced study-section member would."
+          },
+          {
+            "key": "skeptic",
+            "label": "Skeptical reviewer",
+            "brief": "Find the weaknesses most likely to drive the score down: feasibility, rigor, missing controls, unjustified sample sizes, aims that depend on each other. Score from those weaknesses."
+          },
+          {
+            "key": "outsider",
+            "label": "Outside reviewer",
+            "brief": "Judge the importance of the work to the broader field and how clearly it reads for a scientist outside the subfield. Flag jargon, unstated assumptions and significance claims that are asserted rather than shown."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree1",
+      "node": "step.agree",
+      "label": "Agreement",
+      "config": {
+        "mode": "score",
+        "tolerance": 2,
+        "meanTimes10": true
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "split",
+      "node": "logic.if",
+      "label": "Any score spread of 2 or more?",
+      "config": {
+        "operator": "is_empty",
+        "value": ""
+      },
+      "in": {
+        "value": "agree1.disagreements"
+      }
+    },
+    {
+      "id": "disc",
+      "node": "step.review",
+      "label": "Discussion round",
+      "config": {
+        "criteria": [
+          {
+            "key": "factor_1",
+            "label": "Factor 1: Importance of the Research (Significance, Innovation)",
+            "guidance": "Score 1 (exceptional) to 9 (poor).",
+            "scale": {
+              "kind": "score",
+              "min": 1,
+              "max": 9,
+              "best": "low"
+            }
+          },
+          {
+            "key": "factor_2",
+            "label": "Factor 2: Rigor and Feasibility (Approach)",
+            "guidance": "Score 1 (exceptional) to 9 (poor). Consider controls, sample size justification, the analysis plan, biological variables such as sex or age, pitfalls and alternatives, and the timeline.",
+            "scale": {
+              "kind": "score",
+              "min": 1,
+              "max": 9,
+              "best": "low"
+            }
+          },
+          {
+            "key": "overall_impact",
+            "label": "Overall Impact",
+            "guidance": "Score 1 (exceptional) to 9 (poor): the likelihood the project will exert a sustained, powerful influence on its field.",
+            "scale": {
+              "kind": "score",
+              "min": 1,
+              "max": 9,
+              "best": "low"
+            }
+          },
+          {
+            "key": "factor_3",
+            "label": "Factor 3: Expertise and Resources",
+            "guidance": "not_rated unless biosketches or facilities are linked.",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sufficient",
+                "gaps_identified",
+                "not_rated"
+              ]
+            }
+          }
+        ],
+        "instructions": "Write strengths and weaknesses as an NIH reviewer would, tied to passages. Make no prediction about funding.",
+        "reviewers": [
+          {
+            "key": "primary",
+            "label": "Primary reviewer",
+            "brief": "You are the assigned primary reviewer writing the critique. Weigh strengths and weaknesses evenly across both scored factors and score as a careful, experienced study-section member would."
+          },
+          {
+            "key": "skeptic",
+            "label": "Skeptical reviewer",
+            "brief": "Find the weaknesses most likely to drive the score down: feasibility, rigor, missing controls, unjustified sample sizes, aims that depend on each other. Score from those weaknesses."
+          },
+          {
+            "key": "outsider",
+            "label": "Outside reviewer",
+            "brief": "Judge the importance of the work to the broader field and how clearly it reads for a scientist outside the subfield. Flag jargon, unstated assumptions and significance claims that are asserted rather than shown."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "discuss": "split.false",
+        "after": "split.false"
+      }
+    },
+    {
+      "id": "agree2",
+      "node": "step.agree",
+      "label": "Agreement after discussion",
+      "config": {
+        "mode": "score",
+        "tolerance": 2,
+        "meanTimes10": true
+      },
+      "in": {
+        "reviews": [
+          "rev.reviews",
+          "disc.reviews"
+        ]
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "topFindings": 5,
+        "topFindingsKinds": [
+          "weakness"
+        ],
+        "rules": [
+          {
+            "value": "high_impact",
+            "when": {
+              "score": {
+                "item": "overall_impact",
+                "stat": "median",
+                "op": "<=",
+                "value": 3
+              }
+            }
+          },
+          {
+            "value": "moderate_impact",
+            "when": {
+              "score": {
+                "item": "overall_impact",
+                "stat": "median",
+                "op": "<=",
+                "value": 6
+              }
+            }
+          }
+        ],
+        "fallback": "low_impact"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": [
+          "rev.findings",
+          "disc.findings",
+          "len.findings",
+          "aimchk.findings",
+          "rigor.findings"
+        ],
+        "agreed": "agree2.agreed",
+        "disagreements": "agree2.disagreements",
+        "scores": [
+          "agree1.scores",
+          "agree2.scores"
+        ],
+        "results": "len.results",
+        "tables": [
+          "agree2.table",
+          "aimchk.table",
+          "rigor.table"
+        ]
+      }
+    }
+  ]
+}

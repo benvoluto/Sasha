@@ -1,51 +1,87 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/ontology/governance";
-import { authFromClerk } from "@/lib/ontology/permissions";
-import { RUN_PERMISSION, auditRun, claimRun, getRun } from "@/lib/workflow/store";
-import { executeGraph } from "@/lib/workflow/engine";
+import { requireTeam } from "@/lib/documents/team";
+import { PERMISSIONS } from "@/lib/ontology/permissions";
+import { ContinueRequest, type RunResponse } from "@/lib/workflow/contract";
+import { checkpointDecisionFor } from "@/lib/workflow/core-nodes";
+import { executeGraph, resetFailedSteps } from "@/lib/workflow/engine";
+import { auditRun, claimRun, getRun, runView, saveRun } from "@/lib/workflow/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * POST /api/workflow-runs/runs/[runId]/continue
- * Resume a run paused at the time limit, or one waiting at a human checkpoint.
- * For a checkpoint, body: { checkpoint: { nodeId, excluded: number[], note } }
- * where `excluded` lists the positions of items to leave out.
+ * POST /api/workflow-runs/runs/[runId]/continue — resume one of the team's runs:
+ * - waiting at a checkpoint: body ContinueRequest with the decision
+ *   (approve, edit or reject; edits and record fields as the checkpoint allows).
+ *   At a checkpoint with named signers, each signs in turn (`signer`); the run
+ *   stays waiting until the last one signs or one rejects;
+ * - paused at the time budget: no body;
+ * - failed: no body; the failed steps (and what depends on them) run again,
+ *   a looping step only for its unfinished items.
+ * 202 with the run; it continues in the background.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ runId: string }> }) {
-  const caller = await authFromClerk();
-  if (!caller) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (!can(caller, RUN_PERMISSION)) return NextResponse.json({ error: `permission denied: requires '${RUN_PERMISSION}'` }, { status: 403 });
+  const caller = await requireTeam(PERMISSIONS.workflowRun);
+  if (caller instanceof NextResponse) return caller;
+  const run = await getRun(caller.teamId, (await params).runId);
+  if (!run) return NextResponse.json({ error: "Run not found." }, { status: 404 });
 
-  const { runId } = await params;
-  const run = await getRun(runId);
-  if (!run) return NextResponse.json({ error: "run not found" }, { status: 404 });
-
-  let body: { checkpoint?: { nodeId?: unknown; excluded?: unknown; note?: unknown } } = {};
-  try {
-    body = await request.json();
-  } catch {
-    // no body: a plain continue
+  const text = await request.text().catch(() => "");
+  let json: unknown = {};
+  if (text.trim()) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      return NextResponse.json({ error: "The body must be JSON." }, { status: 400 });
+    }
   }
+  const parsed = ContinueRequest.safeParse(json);
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
 
   if (run.status === "awaiting_review") {
-    const cp = body.checkpoint;
-    const nodeId = typeof cp?.nodeId === "string" ? cp.nodeId : "";
-    if (!nodeId || run.steps[nodeId]?.status !== "waiting") return NextResponse.json({ error: "name the waiting checkpoint to continue" }, { status: 400 });
-    const pending = ((run.outputs[nodeId]?.pending_items as unknown[]) ?? []).length;
-    const excluded = Array.isArray(cp?.excluded) ? cp.excluded.filter((i): i is number => Number.isInteger(i) && i >= 0 && i < pending) : [];
-    const note = typeof cp?.note === "string" ? cp.note.slice(0, 4000) : "";
-    if (!(await claimRun(run, ["awaiting_review"]))) return NextResponse.json({ error: "the run has already been continued" }, { status: 409 });
-    run.checkpoints[nodeId] = { excluded, note, by: caller.agent, at: new Date().toISOString() };
-    run.steps[nodeId] = { status: "pending" };
-    await auditRun(run, "workflow_checkpoint_continued", { nodeId, excluded, note }, undefined, caller.agent);
+    const cp = parsed.data.checkpoint;
+    if (!cp) return NextResponse.json({ error: "Name the waiting checkpoint to continue." }, { status: 400 });
+    let checked = await checkpointDecisionFor(run, cp, caller.agent);
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
+    if (!(await claimRun(run, ["awaiting_review"]))) return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    if (checked.signatures.length) {
+      // Another signer may have signed since the run was read: check again against what is stored now.
+      const latest = await getRun(caller.teamId, run.id);
+      run.outputs[cp.nodeId] = latest?.outputs[cp.nodeId] ?? run.outputs[cp.nodeId];
+      checked = await checkpointDecisionFor(run, cp, caller.agent);
+      if (!checked.ok) {
+        run.status = "awaiting_review";
+        await saveRun(run);
+        return NextResponse.json({ error: checked.error }, { status: 400 });
+      }
+    }
+    if (!checked.complete) {
+      // One of several named signers: keep the signature and go on waiting for the rest.
+      const last = checked.signatures.at(-1)!;
+      run.outputs[cp.nodeId] = { ...run.outputs[cp.nodeId], signatures: checked.signatures };
+      run.status = "awaiting_review";
+      await saveRun(run);
+      await auditRun(run, "workflow_checkpoint_signed", { documentId: run.document_id, runId: run.id, nodeId: cp.nodeId, verdict: last.verdict, signer: last.signer, edits: last.edits }, cp.note || undefined, caller.agent);
+      return NextResponse.json({ run: runView(run) } satisfies RunResponse, { status: 202 });
+    }
+    run.checkpoints[cp.nodeId] = checked.decision;
+    run.steps[cp.nodeId] = { status: "pending" };
+    await saveRun(run);
+    const { verdict, role, excluded, edits } = checked.decision;
+    const signer = checked.signatures.at(-1)?.signer;
+    await auditRun(run, "workflow_checkpoint_decided", { documentId: run.document_id, runId: run.id, nodeId: cp.nodeId, verdict, role, excluded, edits, ...(signer ? { signer } : {}) }, cp.note || undefined, caller.agent);
   } else if (run.status === "paused") {
-    if (!(await claimRun(run, ["paused"]))) return NextResponse.json({ error: "the run has already been continued" }, { status: 409 });
+    if (!(await claimRun(run, ["paused"]))) return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+  } else if (run.status === "failed") {
+    // A run that stopped responding reads as failed but is stored as running.
+    if (!(await claimRun(run, ["failed", "running"]))) return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    resetFailedSteps(run);
+    await saveRun(run);
+    await auditRun(run, "workflow_run_retried", { documentId: run.document_id, runId: run.id }, undefined, caller.agent);
   } else {
-    return NextResponse.json({ error: `a ${run.status} run cannot be continued` }, { status: 409 });
+    return NextResponse.json({ error: `A ${run.status.replace("_", " ")} run can't be continued.` }, { status: 409 });
   }
 
   after(() => executeGraph(run));
-  return NextResponse.json({ run }, { status: 202 });
+  return NextResponse.json({ run: runView(run) } satisfies RunResponse, { status: 202 });
 }

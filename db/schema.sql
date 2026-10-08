@@ -17,97 +17,126 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 CREATE INDEX IF NOT EXISTS audit_log_group_idx ON audit_log (group_id);
 
--- The editable report. One long-lived report per upload group; content is
--- edited section by section. template_key picks the outline (see
--- src/lib/ontology/report/template.ts).
-CREATE TABLE IF NOT EXISTS report (
-  id            BIGSERIAL PRIMARY KEY,
-  group_id      TEXT NOT NULL,
-  template_key  TEXT NOT NULL DEFAULT 'general_report',
-  title         TEXT NOT NULL DEFAULT 'General Report',
-  status        TEXT NOT NULL DEFAULT 'draft',   -- draft | final
-  created_by    TEXT NOT NULL,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS report_group_uidx ON report (group_id);
+-- report and report_section (the organizer's per-upload-group report) were
+-- retired in Phase 6; older databases may still have them, nothing reads them.
 
--- One row per report section. content_json is the ProseMirror/Tiptap document;
--- content_text is a plain-text mirror for preview/export/search.
-CREATE TABLE IF NOT EXISTS report_section (
-  id            BIGSERIAL PRIMARY KEY,
-  report_id     BIGINT NOT NULL,
-  group_id      TEXT NOT NULL,
-  section_key   TEXT NOT NULL,
-  heading       TEXT NOT NULL,
-  sort_order    INTEGER NOT NULL DEFAULT 0,
-  content_json  JSONB NOT NULL DEFAULT '{}'::jsonb,
-  content_text  TEXT NOT NULL DEFAULT '',
-  status        TEXT NOT NULL DEFAULT 'pending',  -- pending | generating | ready | editing | reviewed
-  source        TEXT NOT NULL DEFAULT 'ai',       -- ai | edited
-  reviewed_by   TEXT,
-  updated_by    TEXT,
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS report_section_uidx ON report_section (report_id, section_key);
-CREATE INDEX IF NOT EXISTS report_section_group_idx ON report_section (group_id);
-
--- Workflow tables. These mirror WORKFLOW_SCHEMA in src/lib/workflow/store.ts,
+-- Workflow tables. These mirror WORKFLOW_SCHEMA in src/lib/workflow/schema.ts,
 -- which owns them and applies them on first use; keep the two in sync.
+-- Everything is scoped to a team (team_id); runs are scoped to a document.
 
--- Named workflows. Each saved version (determination_workflow) belongs to one
--- and is numbered within it; runs record the workflow they used.
+-- Databases from before Phase 6 have the organizer's names; rename them in
+-- place. Their rows keep team_id '' and are seen by no team.
+DO $$ BEGIN
+  IF to_regclass('public.determination_workflow') IS NOT NULL AND to_regclass('public.workflow_version') IS NULL THEN
+    ALTER TABLE determination_workflow RENAME TO workflow_version;
+  END IF;
+  IF to_regclass('public.agent_determination_run') IS NOT NULL AND to_regclass('public.workflow_run') IS NULL THEN
+    ALTER TABLE agent_determination_run RENAME TO workflow_run;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'workflow_version' AND column_name = 'definition') THEN
+    ALTER TABLE workflow_version RENAME COLUMN definition TO graph;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'workflow_run' AND column_name = 'workflow') THEN
+    ALTER TABLE workflow_run RENAME COLUMN workflow TO graph;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'workflow_run' AND column_name = 'group_id') THEN
+    ALTER TABLE workflow_run ALTER COLUMN group_id DROP NOT NULL;
+  END IF;
+END $$;
+DROP INDEX IF EXISTS determination_workflow_version_idx;
+DROP INDEX IF EXISTS agent_determination_run_group_idx;
+
+-- A team's own workflows (made on the canvas, or copied from a built-in:
+-- based_on). Built-in workflows ship in src/catalog/workflows.bundle.json and
+-- run as "builtin:<key>"; they are not stored here.
 CREATE TABLE IF NOT EXISTS workflow (
   id                TEXT PRIMARY KEY,
+  team_id           TEXT NOT NULL DEFAULT '',
   name              TEXT NOT NULL,
+  based_on          TEXT,
   created_by        TEXT NOT NULL,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-INSERT INTO workflow (id, name, created_by) VALUES ('default', 'Default workflow', 'system') ON CONFLICT (id) DO NOTHING;
+ALTER TABLE workflow ADD COLUMN IF NOT EXISTS team_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE workflow ADD COLUMN IF NOT EXISTS based_on TEXT;
+CREATE INDEX IF NOT EXISTS workflow_team_idx ON workflow (team_id, created_at);
 
--- Workflow versions (node graphs) edited on the workflow canvas.
-CREATE TABLE IF NOT EXISTS determination_workflow (
+-- Workflow versions (node graphs) edited on the workflow canvas, numbered per workflow.
+CREATE TABLE IF NOT EXISTS workflow_version (
   id          BIGSERIAL PRIMARY KEY,
-  definition  JSONB NOT NULL,
+  team_id     TEXT NOT NULL DEFAULT '',
+  workflow_id TEXT NOT NULL,
+  version     INTEGER,
+  graph       JSONB NOT NULL,
   note        TEXT NOT NULL DEFAULT '',
   created_by  TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  workflow_id TEXT NOT NULL DEFAULT 'default',
-  version     INTEGER
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS determination_workflow_version_idx ON determination_workflow (workflow_id, version DESC);
+ALTER TABLE workflow_version ADD COLUMN IF NOT EXISTS team_id TEXT NOT NULL DEFAULT '';
+UPDATE workflow_version d SET version = r.n
+  FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY workflow_id ORDER BY id) AS n FROM workflow_version) r
+ WHERE d.id = r.id AND d.version IS NULL;
+CREATE INDEX IF NOT EXISTS workflow_version_wf_idx ON workflow_version (team_id, workflow_id, version DESC);
 
--- Workflow runs.
-CREATE TABLE IF NOT EXISTS agent_determination_run (
+-- Team settings, e.g. the canvas's default workflow ({"id": ...} under 'default_workflow').
+CREATE TABLE IF NOT EXISTS app_setting (
+  team_id           TEXT NOT NULL DEFAULT '',
+  key               TEXT NOT NULL,
+  value             JSONB NOT NULL,
+  updated_by        TEXT NOT NULL,
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (team_id, key)
+);
+ALTER TABLE app_setting ADD COLUMN IF NOT EXISTS team_id TEXT NOT NULL DEFAULT '';
+-- Before Phase 6 the key alone was the primary key.
+DO $$ BEGIN
+  IF (SELECT count(*) FROM information_schema.key_column_usage
+       WHERE table_schema = 'public' AND table_name = 'app_setting' AND constraint_name = 'app_setting_pkey') = 1 THEN
+    ALTER TABLE app_setting DROP CONSTRAINT app_setting_pkey;
+    ALTER TABLE app_setting ADD PRIMARY KEY (team_id, key);
+  END IF;
+END $$;
+
+-- Workflow runs: one per run of a workflow on a document (src/lib/workflow/contract.ts
+-- WorkflowRunRecord). No foreign key to document (applied without the document tables).
+CREATE TABLE IF NOT EXISTS workflow_run (
   id                TEXT PRIMARY KEY,
-  group_id          TEXT NOT NULL,
-  status            TEXT NOT NULL DEFAULT 'running', -- running | awaiting_review | paused | draft | failed | superseded
-  workflow_id       TEXT,
+  team_id           TEXT NOT NULL DEFAULT '',
+  document_id       UUID,
+  status            TEXT NOT NULL DEFAULT 'running', -- running | awaiting_review | paused | complete | failed | superseded
+  pause_reason      TEXT,             -- budget | manual
+  workflow_id       TEXT,             -- builtin:<key> or a workflow.id
   workflow_name     TEXT,
   workflow_version  BIGINT NOT NULL DEFAULT 0,
-  workflow          JSONB,           -- the graph the run used
-  steps             JSONB,           -- per-node status
-  outputs           JSONB,           -- per-node outputs
-  checkpoints       JSONB,           -- decisions at human checkpoints
+  graph             JSONB,            -- the graph the run used
+  params            JSONB,            -- per-run inputs (restructure target type and mode)
+  steps             JSONB,            -- per-node status
+  outputs           JSONB,            -- per-node outputs
+  checkpoints       JSONB,            -- decisions at human checkpoints (verdict, who, when)
+  outcome           JSONB,            -- the outcome node's result
+  changes           JSONB,            -- what happened to each proposed document change
+  responses         JSONB,            -- the author's accept/dismiss per finding
   raw               JSONB,
-  proposals         JSONB,
-  agreement         JSONB,
-  synthesis         JSONB,
   requested_by      TEXT NOT NULL,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS agent_determination_run_group_idx ON agent_determination_run (group_id, created_at DESC);
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS team_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS document_id UUID;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS pause_reason TEXT;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS workflow_id TEXT;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS workflow_name TEXT;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS params JSONB;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS outputs JSONB;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS checkpoints JSONB;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS outcome JSONB;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS changes JSONB;
+ALTER TABLE workflow_run ADD COLUMN IF NOT EXISTS responses JSONB;
+CREATE INDEX IF NOT EXISTS workflow_run_doc_idx ON workflow_run (team_id, document_id, created_at DESC);
 
 -- case_suggestion_edits was retired in Phase 4 (see the suggestion table below); older databases may still have it, nothing reads it.
-
--- App-wide settings, e.g. the default workflow ({"id": ...} under 'default_workflow').
-CREATE TABLE IF NOT EXISTS app_setting (
-  key               TEXT PRIMARY KEY,
-  value             JSONB NOT NULL,
-  updated_by        TEXT NOT NULL,
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 
 -- Documents (src/lib/documents/store.ts owns these; keep in step with DOCUMENT_SCHEMA).
 -- team_id is "org:<clerk org id>" or "user:<clerk user id>" for a personal team.

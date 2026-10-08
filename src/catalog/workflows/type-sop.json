@@ -1,0 +1,360 @@
+{
+  "key": "type-sop",
+  "version": 2,
+  "title": "SOP approval readiness",
+  "summary": "Whether the procedure can be carried out as written, with every gap listed by step. Two dry runs with different briefs, then safety, QC and document control checks. The process owner and the quality or safety approver sign; Sasha records the approval and never grants it.",
+  "kind": "type",
+  "appliesTo": [
+    "standard-operating-procedure"
+  ],
+  "outcome": {
+    "label": "Can be carried out as written",
+    "values": [
+      {
+        "key": "ready_for_approval",
+        "label": "Yes: ready for approval"
+      },
+      {
+        "key": "gaps_found",
+        "label": "No: gaps listed by step"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Process owner and quality or safety approver",
+    "required": true
+  },
+  "notes": [
+    "Sasha records the approval and never grants it.",
+    "For high-stakes procedures, confirm someone walked through it physically.",
+    "The dry runs are simulated on paper; nothing was carried out."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "ext",
+      "node": "step.extract",
+      "label": "Steps",
+      "config": {
+        "item": "step",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "procedure",
+          "quality-control-and-quality-assurance"
+        ],
+        "maxItems": 120,
+        "instructions": "List each procedure step in order.",
+        "fields": [
+          {
+            "name": "number",
+            "label": "Number",
+            "type": "text",
+            "description": "The step's number as written",
+            "required": true
+          },
+          {
+            "name": "action",
+            "label": "Action",
+            "type": "text",
+            "description": "What the step says to do",
+            "required": true
+          },
+          {
+            "name": "actor",
+            "label": "Actor",
+            "type": "text",
+            "description": "Who does it"
+          },
+          {
+            "name": "materials",
+            "label": "Materials",
+            "type": "list",
+            "description": "Materials and equipment the step uses"
+          },
+          {
+            "name": "quantities_settings",
+            "label": "Quantities and settings",
+            "type": "text",
+            "description": "Quantities, settings, durations and tolerances the step gives"
+          },
+          {
+            "name": "warning_before",
+            "label": "Warning before the step",
+            "type": "boolean",
+            "description": "Whether a hazard warning appears before this step"
+          },
+          {
+            "name": "qc_check",
+            "label": "QC check",
+            "type": "text",
+            "description": "The QC check at this step, if any"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "dry1",
+      "node": "step.simulate",
+      "label": "Dry run: new hire",
+      "config": {
+        "persona": "a new hire holding only the listed materials and the text",
+        "task": "Carry out the procedure from start to finish using only the listed materials and the text.",
+        "records": "gaps",
+        "rules": [
+          "log every point where you must guess: a missing quantity, setting, unit, duration or tolerance; an undefined term; an unclear actor; a judgment call with no criterion"
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ext.items"
+      }
+    },
+    {
+      "id": "dry2",
+      "node": "step.simulate",
+      "label": "Dry run: experienced operator",
+      "config": {
+        "persona": "an experienced operator",
+        "task": "Carry out the procedure from start to finish as written, noting where your experience fills a gap the text leaves.",
+        "records": "gaps",
+        "rules": [
+          "log every point where you must guess: a missing quantity, setting, unit, duration or tolerance; an undefined term; an unclear actor; a judgment call with no criterion"
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ext.items"
+      }
+    },
+    {
+      "id": "safety",
+      "node": "step.check",
+      "label": "Safety",
+      "config": {
+        "checklist": [
+          {
+            "key": "warnings_before",
+            "label": "Warnings before their steps",
+            "question": "Does each hazard have a warning placed before the step it applies to (not after)?",
+            "severity": "blocking"
+          },
+          {
+            "key": "ppe",
+            "label": "Protective equipment",
+            "question": "Is the protective equipment for each hazard stated?",
+            "severity": "major"
+          },
+          {
+            "key": "stop_conditions",
+            "label": "Stop conditions",
+            "question": "Are the conditions that mean stop stated?",
+            "severity": "major"
+          },
+          {
+            "key": "disposal",
+            "label": "Disposal",
+            "question": "Is disposal of waste and materials covered?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ext.items"
+      }
+    },
+    {
+      "id": "qc",
+      "node": "step.check",
+      "label": "QC checks",
+      "config": {
+        "perItem": true,
+        "instructions": "Apply these checks only to steps with a QC check; mark the other steps not_applicable.",
+        "checklist": [
+          {
+            "key": "numeric_criterion",
+            "label": "Numeric acceptance criterion",
+            "question": "Does the QC check have a numeric acceptance criterion?",
+            "severity": "major"
+          },
+          {
+            "key": "failure_path",
+            "label": "Failure path",
+            "question": "Does it say what to do when the check fails?",
+            "severity": "major"
+          },
+          {
+            "key": "record",
+            "label": "Record",
+            "question": "Does it name the record to keep?",
+            "severity": "major"
+          },
+          {
+            "key": "verifier",
+            "label": "Verifier",
+            "question": "Does it name who verifies?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ext.items"
+      }
+    },
+    {
+      "id": "ctrl",
+      "node": "step.check",
+      "label": "Document control",
+      "config": {
+        "checklist": [
+          {
+            "key": "owner",
+            "label": "Owner",
+            "question": "Is the SOP's owner named?",
+            "severity": "major"
+          },
+          {
+            "key": "version",
+            "label": "Version",
+            "question": "Is there a version or revision number?",
+            "severity": "major"
+          },
+          {
+            "key": "dates",
+            "label": "Effective and review dates",
+            "question": "Are the effective date and the next review date stated?",
+            "severity": "major"
+          },
+          {
+            "key": "references",
+            "label": "Current references",
+            "question": "Are the references current and complete?",
+            "severity": "minor",
+            "appliesTo": [
+              "references"
+            ]
+          },
+          {
+            "key": "change_log",
+            "label": "Change log",
+            "question": "Is there a change log or revision history?",
+            "severity": "minor"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "gaps_found",
+            "when": {
+              "findings": {
+                "severity": [
+                  "major",
+                  "blocking"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "ready_for_approval"
+      },
+      "in": {
+        "findings": [
+          "dry1.findings",
+          "dry2.findings",
+          "safety.findings",
+          "qc.findings",
+          "ctrl.findings"
+        ],
+        "tables": [
+          "ext.table",
+          "dry1.table",
+          "dry2.table",
+          "qc.table",
+          "safety.table",
+          "ctrl.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Approval record",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Record the approval. Sasha records it and never grants it. The process owner and the quality or safety approver each sign, as themselves; the approval is final only once both have signed.",
+        "recordFields": [
+          {
+            "key": "approver",
+            "label": "Your name and title",
+            "required": true
+          },
+          {
+            "key": "version",
+            "label": "Version",
+            "required": true
+          },
+          {
+            "key": "effective_date",
+            "label": "Effective date",
+            "required": true
+          },
+          {
+            "key": "next_review_date",
+            "label": "Next review date",
+            "required": true
+          },
+          {
+            "key": "physical_walkthrough",
+            "label": "Walked through physically? (high-stakes)",
+            "required": false
+          }
+        ],
+        "signers": [
+          {
+            "key": "process_owner",
+            "label": "Process owner"
+          },
+          {
+            "key": "quality_approver",
+            "label": "Quality or safety approver"
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome"
+      }
+    }
+  ]
+}

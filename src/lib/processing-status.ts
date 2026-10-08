@@ -6,13 +6,10 @@
 // `after()` (keeps the function alive) AND is bounded with a timeout so a
 // slow/hung job is recorded as an error instead of hanging.
 //
-// reconcileGeminiStatus and writeProcessingError serve the legacy upload-group
-// records (still read by the workflow engine, reports and the assistant until
-// Phase 6); sources keep their status in Postgres (src/lib/sources/ingest.ts).
+// reconcileGeminiStatus reads the organizer's extraction status shape (kept for
+// its tests); sources keep their status in Postgres (src/lib/sources/ingest.ts).
 
-import { put } from "@vercel/blob";
 import { documentSections, emptyExtractionMessage, hasReadableText } from "./extracted-text";
-import { blobAccess } from "@/lib/blob-access";
 
 export class ProcessingTimeoutError extends Error {
   constructor(label: string, ms: number) {
@@ -61,29 +58,4 @@ export function reconcileGeminiStatus<
   if (gp.status !== "processing") return meta;
   if (!hasReadableText(gp.extractedContent)) return meta;
   return { ...meta, geminiProcessing: { ...gp, status: "completed" } };
-}
-
-/**
- * Write a terminal "error" status to the group metadata so the case leaves the
- * "processing" state and the UI can show what went wrong. Never throws.
- */
-export async function writeProcessingError(groupId: string, metadata: object, message: string): Promise<void> {
-  const m = metadata as Record<string, unknown>;
-  try {
-    await put(
-      `upload-groups/${groupId}/metadata.json`,
-      JSON.stringify({
-        ...m,
-        geminiProcessing: {
-          ...(typeof m.geminiProcessing === "object" && m.geminiProcessing ? m.geminiProcessing : {}),
-          status: "error",
-          error: message,
-          processedAt: new Date().toISOString(),
-        },
-      }),
-      { access: blobAccess(), contentType: "application/json", allowOverwrite: true },
-    );
-  } catch (e) {
-    console.error(`[Processing] Failed to write error status for ${groupId}:`, e);
-  }
 }

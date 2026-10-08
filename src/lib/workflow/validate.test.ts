@@ -19,34 +19,41 @@ describe("validateGraph", () => {
 
   it("rejects wiring a port that does not exist", () => {
     const g = defaultWorkflowGraph();
-    g.edges.push({ id: "bad", source: "sources", sourceHandle: "nope", target: "output", targetHandle: "text" });
+    g.edges.push({ id: "bad", source: "sources", sourceHandle: "nope", target: "outcome", targetHandle: "summary" });
     expect(errors(g).some((m) => m.includes("port that no longer exists"))).toBe(true);
   });
 
   it("allows only one connection into a single input", () => {
     const g = defaultWorkflowGraph();
-    g.edges.push({ id: "dup", source: "sources", sourceHandle: "names", target: "summarize", targetHandle: "sources" });
+    g.edges.push({ id: "dup", source: "sources", sourceHandle: "passages", target: "summarize", targetHandle: "sources" });
     expect(errors(g)).toContain("Summarize and list gaps “sources” accepts one connection");
   });
 
-  it("accepts several connections into Save output", () => {
+  it("accepts several connections into the outcome's summary", () => {
     const g = defaultWorkflowGraph();
-    g.edges.push({ id: "more", source: "sources", sourceHandle: "combined", target: "output", targetHandle: "text" });
+    g.edges.push({ id: "more", source: "sources", sourceHandle: "text", target: "outcome", targetHandle: "summary" });
     expect(errors(g)).toEqual([]);
   });
 
-  it("requires a Save output node, and only one", () => {
+  it("requires an Outcome node, and only one", () => {
     const g = defaultWorkflowGraph();
-    expect(errors({ ...g, nodes: g.nodes.filter((n) => n.type !== "output.save"), edges: g.edges.filter((e) => e.target !== "output") })).toContain(
-      "Add a Save output node so the run's result is recorded",
+    expect(errors({ ...g, nodes: g.nodes.filter((n) => n.type !== "outcome.report"), edges: g.edges.filter((e) => e.target !== "outcome") })).toContain(
+      "Add an Outcome node so the run's outcome is recorded",
     );
-    expect(errors({ ...g, nodes: [...g.nodes, { ...g.nodes.at(-1)!, id: "output2" }] })).toContain("Only one Save output node is allowed");
+    expect(errors({ ...g, nodes: [...g.nodes, { ...g.nodes.at(-1)!, id: "outcome2" }] })).toContain("Only one Outcome node is allowed");
+  });
+
+  it("gives every node an optional after input that orders and gates it", () => {
+    const g = defaultWorkflowGraph();
+    g.edges.push({ id: "after", source: "sources", sourceHandle: "passages", target: "summarize", targetHandle: "after" });
+    g.edges.push({ id: "after2", source: "sources", sourceHandle: "text", target: "summarize", targetHandle: "after" });
+    expect(errors(g)).toEqual([]);
   });
 
   it("detects cycles", () => {
     const g = defaultWorkflowGraph();
     expect(createsCycle(g, "summarize", "sources")).toBe(true);
-    expect(createsCycle(g, "sources", "output")).toBe(false);
+    expect(createsCycle(g, "sources", "outcome")).toBe(false);
     g.nodes.push({ id: "ask", type: "ai.ask", position: { x: 0, y: 0 }, config: { provider: "anthropic", model: "m", temperature: 0, prompt: "{{input}}", inputs: ["input"] }, loop: false, expanded: false });
     g.nodes.push({ id: "c", type: "text.combine", position: { x: 0, y: 0 }, config: { template: "{{a}}", inputs: ["a"] }, loop: false, expanded: false });
     g.edges.push({ id: "x1", source: "summarize", sourceHandle: "response", target: "c", targetHandle: "a" });

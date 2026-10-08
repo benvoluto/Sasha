@@ -1,0 +1,21 @@
+{
+  "key": "nih-simplified-review",
+  "version": 1,
+  "title": "NIH simplified peer review framework",
+  "authority": "National Institutes of Health",
+  "jurisdiction": "United States (federal)",
+  "appliesTo": ["nih-specific-aims-research-strategy"],
+  "effective": "2025-01-25",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "NIH simplified peer review framework and first-level review scoring (summarized in docs/workflows-by-document-type.md)",
+    "url": "https://www.grants.nih.gov/policy-and-compliance/policy-topics/peer-review/simplifying-review/framework",
+    "license": "Paraphrased summary (source: public domain US government)"
+  },
+  "items": [
+    { "key": "factor-1", "kind": "criterion", "title": "Factor 1: Importance of the Research", "text": "Covers Significance and Innovation. Scored from 1 to 9." },
+    { "key": "factor-2", "kind": "criterion", "title": "Factor 2: Rigor and Feasibility", "text": "Covers the Approach, including controls, sample size justification, the analysis plan, biological variables such as sex or age, pitfalls and alternatives, and the timeline. Scored from 1 to 9." },
+    { "key": "factor-3", "kind": "criterion", "title": "Factor 3: Expertise and Resources", "text": "Rated sufficient or gaps identified, not scored." },
+    { "key": "overall-impact", "kind": "policy", "title": "Overall Impact", "text": "Reviewers give an Overall Impact score from 1 to 9, where 1 is best. The framework covers most research project grants with due dates from January 25, 2025.", "url": "https://grants.nih.gov/grants-process/review/first-level" }
+  ]
+}

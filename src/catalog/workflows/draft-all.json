@@ -1,0 +1,123 @@
+{
+  "key": "draft-all",
+  "version": 1,
+  "title": "Draft all empty sections",
+  "summary": "Drafts every empty section from its notes and the linked sources, then scores the drafts against the type's rubric. Each drafted sentence carries the note or passage behind it; the author applies or discards the proposed change.",
+  "kind": "generic",
+  "outcome": {
+    "label": "Drafts",
+    "values": [
+      {
+        "key": "drafted",
+        "label": "Drafts ready to review"
+      },
+      {
+        "key": "nothing_to_draft",
+        "label": "No empty sections"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "notes": [
+    "Each drafted sentence shows its note or source; unsourced sentences are highlighted."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "notes",
+      "node": "doc.notes",
+      "label": "Notes"
+    },
+    {
+      "id": "draft",
+      "node": "draft.section",
+      "label": "Draft sections",
+      "in": {
+        "section": "doc.empty_sections",
+        "document": "doc.document",
+        "notes": "notes.notes"
+      },
+      "loop": true
+    },
+    {
+      "id": "score",
+      "node": "rubric.score",
+      "label": "Rubric score",
+      "config": {
+        "scope": "drafted"
+      },
+      "in": {
+        "document": "doc.document",
+        "drafts": "draft.draft"
+      }
+    },
+    {
+      "id": "write",
+      "node": "doc.write",
+      "label": "Proposed change",
+      "config": {
+        "title": "Drafts for empty sections",
+        "snapshotReason": "Before inserting drafts"
+      },
+      "in": {
+        "ops": "draft.op"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "nothing_to_draft",
+            "when": {
+              "anyOf": [
+                {
+                  "steps": {
+                    "node": "write",
+                    "status": "skipped"
+                  }
+                },
+                {
+                  "steps": {
+                    "node": "draft",
+                    "status": "skipped"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "value": "drafted",
+            "when": {
+              "findings": {
+                "kind": [
+                  "draft_summary"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "nothing_to_draft"
+      },
+      "in": {
+        "findings": [
+          "draft.findings",
+          "score.findings"
+        ],
+        "tables": "score.table",
+        "after": "write.change"
+      }
+    }
+  ]
+}

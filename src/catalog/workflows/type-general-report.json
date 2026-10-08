@@ -1,0 +1,296 @@
+{
+  "key": "type-general-report",
+  "version": 1,
+  "title": "Support check",
+  "summary": "Marks each finding supported, partly supported or unsupported by the sources, traces each recommendation to the findings behind it, and checks the summary and the recommendations. The default for any type with no workflow of its own.",
+  "kind": "type",
+  "appliesTo": [
+    "general-report"
+  ],
+  "fallback": true,
+  "outcome": {
+    "label": "Support result",
+    "values": [
+      {
+        "key": "sound",
+        "label": "Sound"
+      },
+      {
+        "key": "gaps_found",
+        "label": "Gaps found"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "notes": [
+    "Shown as an annotated view: each claim carries its status and source link",
+    "The author resolves each flag; there is no checkpoint."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "ext",
+      "node": "step.extract",
+      "label": "Findings",
+      "config": {
+        "item": "finding or conclusion",
+        "from": [
+          "document"
+        ],
+        "maxItems": 80,
+        "instructions": "List each finding and conclusion the report states, with any figure it gives.",
+        "fields": [
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "Whether it is a finding or a conclusion",
+            "values": [
+              "finding",
+              "conclusion"
+            ],
+            "required": true
+          },
+          {
+            "name": "text",
+            "label": "Text",
+            "type": "text",
+            "description": "The finding or conclusion as written",
+            "required": true
+          },
+          {
+            "name": "figure",
+            "label": "Figure",
+            "type": "text",
+            "description": "A figure, date, unit or quotation it states, exactly as written"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "recs",
+      "node": "step.extract",
+      "label": "Recommendations",
+      "config": {
+        "item": "recommendation",
+        "from": [
+          "document"
+        ],
+        "maxItems": 40,
+        "instructions": "List each recommendation the report makes.",
+        "fields": [
+          {
+            "name": "text",
+            "label": "Recommendation",
+            "type": "text",
+            "description": "The recommendation as written",
+            "required": true
+          },
+          {
+            "name": "who_acts",
+            "label": "Who acts",
+            "type": "text",
+            "description": "Who is to act on it"
+          },
+          {
+            "name": "by_when",
+            "label": "By when",
+            "type": "text",
+            "description": "By when"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "tr1",
+      "node": "step.trace",
+      "label": "Trace findings",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          {
+            "key": "supported",
+            "label": "Supported",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "partly_supported",
+            "label": "Partly supported",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "unsupported",
+            "label": "Unsupported",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "contradicted",
+            "label": "Contradicted",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "outdated",
+            "label": "Outdated",
+            "ok": false,
+            "severity": "minor"
+          }
+        ],
+        "unverifiedStatus": "unsupported",
+        "question": "Does a linked source or data table support the finding as stated? Figures, dates, units and quotations must match the source exactly; a finding that turns a source into a stronger claim is partly supported at best; a finding resting on an outdated source is outdated."
+      },
+      "in": {
+        "items": "ext.items",
+        "sources": "src.sources",
+        "data": "data.tables"
+      }
+    },
+    {
+      "id": "comp",
+      "node": "step.compute",
+      "label": "Numbers",
+      "config": {
+        "checks": [
+          {
+            "kind": "numbers_match",
+            "key": "intro_numbers",
+            "label": "Numbers in the introduction appear in the body",
+            "severity": "minor",
+            "fromSpecKeys": [
+              "introduction"
+            ],
+            "toSpecKeys": []
+          },
+          {
+            "kind": "numbers_match",
+            "key": "recommendation_numbers",
+            "label": "Numbers in the discussion and recommendations appear in the findings",
+            "severity": "minor",
+            "fromSpecKeys": [
+              "discussion",
+              "recommendations"
+            ],
+            "toSpecKeys": [
+              "findings"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "tr2",
+      "node": "step.trace",
+      "label": "Trace recommendations",
+      "config": {
+        "against": "targets",
+        "bothWays": true,
+        "question": "Each recommendation rests on findings; major findings lead somewhere"
+      },
+      "in": {
+        "items": "recs.items",
+        "targets": "ext.items",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "sumchk",
+      "node": "step.check",
+      "label": "Summary check",
+      "config": {
+        "checklist": [
+          {
+            "key": "summary_no_new_claims",
+            "label": "The summary adds no claim",
+            "question": "Does the summary or introduction add any claim the body does not support? Name it.",
+            "severity": "major"
+          },
+          {
+            "key": "summary_numbers",
+            "label": "Summary numbers match the body",
+            "question": "Do the numbers in the summary or introduction match the body?",
+            "severity": "major"
+          },
+          {
+            "key": "recommendations_actionable",
+            "label": "Recommendations name who, what and when",
+            "question": "Does each recommendation name who acts, what they do and by when?",
+            "severity": "minor",
+            "appliesTo": [
+              "recommendations"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "recs.items"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "gaps_found",
+            "when": {
+              "findings": {
+                "severity": [
+                  "major",
+                  "blocking"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "sound"
+      },
+      "in": {
+        "findings": [
+          "tr1.findings",
+          "comp.findings",
+          "tr2.findings",
+          "sumchk.findings"
+        ],
+        "results": "comp.results",
+        "tables": [
+          "tr1.table",
+          "tr2.table",
+          "sumchk.table"
+        ]
+      }
+    }
+  ]
+}

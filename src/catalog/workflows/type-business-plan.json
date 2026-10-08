@@ -1,0 +1,696 @@
+{
+  "key": "type-business-plan",
+  "version": 2,
+  "title": "Business plan readiness",
+  "summary": "A readiness review for the plan's stated audience, investor or lender. Sets the narrative's assumptions against the financial model and lists each place they disagree, ties out and checks the statements, applies the audience's checklist, and ranks unsupported assumptions. The owner resolves each one at the checkpoint.",
+  "kind": "type",
+  "appliesTo": [
+    "business-plan"
+  ],
+  "outcome": {
+    "label": "Readiness for the stated audience",
+    "values": [
+      {
+        "key": "ready",
+        "label": "Ready"
+      },
+      {
+        "key": "needs_work",
+        "label": "Needs work"
+      },
+      {
+        "key": "not_ready",
+        "label": "Not ready"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Owner",
+    "required": true
+  },
+  "notAssessed": [
+    "Whether to invest or lend"
+  ],
+  "notes": [
+    "Reports consistency and readiness; gives no view on whether to invest or lend.",
+    "Lenders set their own debt service coverage thresholds; take the number from the lender."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: audience and financials",
+      "config": {
+        "useModel": false,
+        "inputs": [
+          {
+            "key": "audience",
+            "label": "The audience (investor or lender)",
+            "kind": "any",
+            "match": [
+              "investor",
+              "lender",
+              "bank",
+              "loan",
+              "investment",
+              "equity",
+              "seed"
+            ],
+            "help": "Say who the plan is for: an investor (equity) or a lender (a loan)."
+          },
+          {
+            "key": "financials",
+            "label": "Financial projections as a spreadsheet",
+            "kind": "data",
+            "match": [],
+            "help": "Link the financial projections as a spreadsheet"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables"
+      }
+    },
+    {
+      "id": "ext",
+      "node": "step.extract",
+      "label": "Narrative assumptions",
+      "config": {
+        "item": "assumption",
+        "from": [
+          "document"
+        ],
+        "maxItems": 80,
+        "instructions": "List the assumptions the narrative makes: market size, price, customers, growth, hiring, timing.",
+        "fields": [
+          {
+            "name": "name",
+            "label": "Assumption",
+            "type": "text",
+            "description": "What is assumed (market size, price, customer count, growth rate, hires, timing)",
+            "required": true
+          },
+          {
+            "name": "value",
+            "label": "Value",
+            "type": "number",
+            "description": "The number assumed, if any"
+          },
+          {
+            "name": "unit",
+            "label": "Unit",
+            "type": "text",
+            "description": "Its unit (dollars, customers, percent per year)"
+          },
+          {
+            "name": "period",
+            "label": "Period",
+            "type": "text",
+            "description": "The period it applies to"
+          },
+          {
+            "name": "driver",
+            "label": "Driver",
+            "type": "text",
+            "description": "What the narrative says drives it"
+          },
+          {
+            "name": "stated_source",
+            "label": "Stated source",
+            "type": "text",
+            "description": "The source the narrative cites for it, if any"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "extm",
+      "node": "step.extract",
+      "label": "Model figures",
+      "config": {
+        "item": "model period",
+        "from": [
+          "data",
+          "document"
+        ],
+        "maxItems": 40,
+        "instructions": "From the financial model, give one row per period (year or quarter) with the figures the model shows for it. Every figure except market size must come from the linked data tables, never from the narrative; leave it null when the model has none. Market size: take it from the model if it has one, otherwise the market size the narrative states, on every row.",
+        "fields": [
+          {
+            "name": "period",
+            "label": "Period",
+            "type": "text",
+            "description": "The year or quarter",
+            "required": true
+          },
+          {
+            "name": "customers",
+            "label": "Customers",
+            "type": "number",
+            "description": "Customers or units sold in the period"
+          },
+          {
+            "name": "price",
+            "label": "Price",
+            "type": "number",
+            "description": "Average price per customer or unit"
+          },
+          {
+            "name": "revenue",
+            "label": "Revenue",
+            "type": "number",
+            "description": "Revenue in the period"
+          },
+          {
+            "name": "payroll",
+            "label": "Payroll",
+            "type": "number",
+            "description": "Payroll cost in the period"
+          },
+          {
+            "name": "headcount",
+            "label": "Headcount",
+            "type": "number",
+            "description": "Headcount at the end of the period"
+          },
+          {
+            "name": "cost_per_head",
+            "label": "Payroll per head",
+            "type": "number",
+            "description": "Payroll cost per person for the period, if the model states it (salary plus on-costs)"
+          },
+          {
+            "name": "capex",
+            "label": "Capital spending",
+            "type": "number",
+            "description": "Capital expenditure in the period"
+          },
+          {
+            "name": "cash",
+            "label": "Cash",
+            "type": "number",
+            "description": "Cash at the end of the period"
+          },
+          {
+            "name": "burn",
+            "label": "Burn",
+            "type": "number",
+            "description": "Net cash burn per month in the period"
+          },
+          {
+            "name": "runway",
+            "label": "Runway",
+            "type": "number",
+            "description": "Months of runway the model states"
+          },
+          {
+            "name": "market_size",
+            "label": "Market size",
+            "type": "number",
+            "description": "The market size the plan uses, in the same currency as revenue: the model's, or else the narrative's"
+          }
+        ]
+      },
+      "in": {
+        "data": "data.tables",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "extst",
+      "node": "step.extract",
+      "label": "Net income across the statements",
+      "config": {
+        "item": "statement period",
+        "from": [
+          "data"
+        ],
+        "maxItems": 40,
+        "instructions": "From the financial statements, give one row per period with net income as each statement shows it: the income statement, the cash flow statement (the net income it starts from) and the balance sheet or equity statement (the net income added to retained earnings or equity). Leave a figure null when that statement isn't in the data.",
+        "fields": [
+          {
+            "name": "period",
+            "label": "Period",
+            "type": "text",
+            "description": "The year or quarter",
+            "required": true
+          },
+          {
+            "name": "net_income",
+            "label": "Net income",
+            "type": "number",
+            "description": "Net income for the period on the income statement"
+          },
+          {
+            "name": "cf_net_income",
+            "label": "Net income (cash flow)",
+            "type": "number",
+            "description": "Net income as the cash flow statement starts from it, for the period"
+          },
+          {
+            "name": "equity_net_income",
+            "label": "Net income (equity)",
+            "type": "number",
+            "description": "Net income added to retained earnings or equity for the period, as the balance sheet or equity statement shows it"
+          }
+        ]
+      },
+      "in": {
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "extf",
+      "node": "step.extract",
+      "label": "Funding and use of funds",
+      "config": {
+        "item": "funding line",
+        "from": [
+          "document",
+          "data"
+        ],
+        "maxItems": 40,
+        "instructions": "List the amount of funding sought and each line of the use of funds.",
+        "fields": [
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "The amount sought, or one use of the funds",
+            "values": [
+              "funding_sought",
+              "use_of_funds"
+            ],
+            "required": true
+          },
+          {
+            "name": "name",
+            "label": "Name",
+            "type": "text",
+            "description": "The line as written",
+            "required": true
+          },
+          {
+            "name": "amount",
+            "label": "Amount",
+            "type": "number",
+            "description": "The amount"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "tie",
+      "node": "step.compute",
+      "label": "Tie-out",
+      "config": {
+        "checks": [
+          {
+            "kind": "product",
+            "key": "customers_times_price",
+            "label": "Customers × price = revenue",
+            "severity": "major",
+            "aField": "customers",
+            "bField": "price",
+            "resultField": "revenue"
+          },
+          {
+            "kind": "product",
+            "key": "hiring_payroll",
+            "label": "Hiring plan × payroll per head = payroll",
+            "severity": "major",
+            "aField": "headcount",
+            "bField": "cost_per_head",
+            "resultField": "payroll"
+          },
+          {
+            "kind": "ratio",
+            "key": "runway",
+            "label": "Runway = cash ÷ burn",
+            "severity": "major",
+            "aField": "cash",
+            "bField": "burn",
+            "resultField": "runway"
+          },
+          {
+            "kind": "ratio",
+            "key": "market_share",
+            "label": "Implied market share (revenue ÷ market size)",
+            "severity": "info",
+            "aField": "revenue",
+            "bField": "market_size",
+            "resultField": null
+          }
+        ]
+      },
+      "in": {
+        "items": "extm.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "funds",
+      "node": "step.compute",
+      "label": "Use of funds",
+      "config": {
+        "checks": [
+          {
+            "kind": "sum",
+            "key": "use_of_funds",
+            "label": "Use of funds sums to the amount sought",
+            "severity": "major",
+            "valueField": "amount",
+            "partWhere": {
+              "field": "kind",
+              "equals": "use_of_funds"
+            },
+            "totalWhere": {
+              "field": "kind",
+              "equals": "funding_sought"
+            }
+          }
+        ]
+      },
+      "in": {
+        "items": "extf.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "stmt",
+      "node": "step.compute",
+      "label": "Statements",
+      "config": {
+        "checks": [
+          {
+            "kind": "table_rows_equal",
+            "key": "balance_sheet",
+            "label": "The balance sheet balances",
+            "severity": "major",
+            "tableMatch": "balance",
+            "left": [
+              "total assets"
+            ],
+            "right": [
+              "total liabilities",
+              "equity"
+            ]
+          },
+          {
+            "kind": "equal",
+            "key": "net_income_cash_flow",
+            "label": "Net income flows to the cash flow statement",
+            "severity": "major",
+            "aField": "net_income",
+            "bField": "cf_net_income"
+          },
+          {
+            "kind": "equal",
+            "key": "net_income_equity",
+            "label": "Net income flows to equity",
+            "severity": "major",
+            "aField": "net_income",
+            "bField": "equity_net_income"
+          },
+          {
+            "kind": "table_row_min",
+            "key": "cash_positive",
+            "label": "Cash stays above zero, or financing is shown",
+            "severity": "major",
+            "tableMatch": "cash",
+            "row": "cash",
+            "min": 0,
+            "coveredBy": [
+              "financing",
+              "funding",
+              "loan proceeds",
+              "equity raised"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "items": "extst.items",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "aud",
+      "node": "step.check",
+      "label": "Audience check",
+      "config": {
+        "instructions": "apply the items for the stated audience; mark the other audience's not_applicable",
+        "checklist": [
+          {
+            "key": "lender_repayment",
+            "label": "Lender: repayment source",
+            "question": "For a lender: is the source of repayment stated?",
+            "severity": "major"
+          },
+          {
+            "key": "lender_dscr",
+            "label": "Lender: debt service coverage",
+            "question": "For a lender: is debt service coverage shown? (The lender sets its own threshold.)",
+            "severity": "major"
+          },
+          {
+            "key": "lender_collateral",
+            "label": "Lender: collateral",
+            "question": "For a lender: is collateral described?",
+            "severity": "major"
+          },
+          {
+            "key": "lender_equity",
+            "label": "Lender: owner's equity",
+            "question": "For a lender: is the owner's equity in the business stated?",
+            "severity": "major"
+          },
+          {
+            "key": "investor_sizing",
+            "label": "Investor: bottom-up market sizing",
+            "question": "For an investor: is the market sized bottom-up (customers × price), not as a small share of a large market?",
+            "severity": "major"
+          },
+          {
+            "key": "investor_unit_economics",
+            "label": "Investor: unit economics",
+            "question": "For an investor: are unit economics (acquisition cost, margin, lifetime value) given?",
+            "severity": "major"
+          },
+          {
+            "key": "investor_traction",
+            "label": "Investor: traction evidence",
+            "question": "For an investor: is there evidence of traction (customers, revenue, pilots, letters of intent)?",
+            "severity": "major"
+          },
+          {
+            "key": "investor_milestones",
+            "label": "Investor: use of funds tied to milestones",
+            "question": "For an investor: is the use of funds tied to milestones?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "vs",
+      "node": "step.trace",
+      "label": "Narrative against the model",
+      "config": {
+        "against": "targets",
+        "statuses": [
+          {
+            "key": "consistent",
+            "label": "Matches the model",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "not_in_model",
+            "label": "Not in the model",
+            "ok": false,
+            "severity": "info"
+          },
+          {
+            "key": "contradicted",
+            "label": "Disagrees with the model",
+            "ok": false,
+            "severity": "major"
+          }
+        ],
+        "unverifiedStatus": "not_in_model",
+        "question": "Does the model (its period rows and tables) carry the same figure the narrative states for this assumption?",
+        "bothWays": false,
+        "instructions": "Compare each narrative assumption with the model's figure for the same thing and period: customers, price, revenue, growth, hiring (against the model's headcount and payroll), timing, funding. Mark contradicted when the model's figure differs beyond rounding, and give both figures in the rationale. Mark consistent only when you can name the model row (T id) or table cell that matches. Mark not_in_model when the model has no figure to compare."
+      },
+      "in": {
+        "items": "ext.items",
+        "targets": "extm.items",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "risk",
+      "node": "step.trace",
+      "label": "Risks",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          {
+            "key": "sourced",
+            "label": "Sourced",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "estimated",
+            "label": "Estimated",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "unsupported",
+            "label": "Unsupported",
+            "ok": false,
+            "severity": "major"
+          }
+        ],
+        "unverifiedStatus": "unsupported",
+        "question": "Is the assumption backed by a linked source, a stated estimate, or nothing?",
+        "instructions": "Rank by weight: an assumption that moves the result a lot and has little support is the most severe. In each rationale, say what the assumption does to the result (revenue, runway, funding need) if it is wrong."
+      },
+      "in": {
+        "items": "ext.items",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "not_ready",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "computeFailed": {
+                    "min": 2
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "value": "needs_work",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "major"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "computeFailed": {
+                    "min": 1
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "fallback": "ready"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": [
+          "vs.findings",
+          "tie.findings",
+          "funds.findings",
+          "stmt.findings",
+          "aud.findings",
+          "risk.findings"
+        ],
+        "results": [
+          "tie.results",
+          "funds.results",
+          "stmt.results"
+        ],
+        "tables": [
+          "vs.table",
+          "risk.table",
+          "extm.table",
+          "aud.table",
+          "extst.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Owner review",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Resolve each unsupported assumption: source it, change it, or accept it as a stated risk (note which)"
+      },
+      "in": {
+        "items": "out.outcome"
+      }
+    }
+  ]
+}

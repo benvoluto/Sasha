@@ -278,7 +278,7 @@ export type DocumentPatch = {
   title?: string;
   type_key?: string | null;
   /** With type_key: who chose it (default 'user'). Ignored without type_key. */
-  type_source?: Extract<TypeSource, "user" | "classifier">;
+  type_source?: TypeSource;
   content_json?: PMNode;
   notes?: string;
   archived?: boolean;

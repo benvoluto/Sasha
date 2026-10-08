@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SuggestionRecord } from "@/lib/suggestions/contract";
-import { applyAction, dismissedItems, doneItems, doneText, groupOpen, loadAfterSave, NOTES_GROUP, OTHER_GROUP, showEmptyHint, upsertRow } from "./suggestions-model";
+import { applyAction, dismissedItems, doneItems, doneText, groupOpen, loadAfterSave, NOTES_GROUP, OTHER_GROUP, reasonView, showEmptyHint, upsertRow } from "./suggestions-model";
 
 let n = 0;
 const rec = (over: Partial<SuggestionRecord>): SuggestionRecord => {
@@ -118,5 +118,14 @@ describe("loadAfterSave", () => {
   it("still loads when the save fails or there's nothing to save with", async () => {
     expect(await loadAfterSave(() => Promise.reject(new Error("offline")), async () => 1)).toBe(1);
     expect(await loadAfterSave(undefined, async () => 2)).toBe(2);
+  });
+});
+
+describe("reasonView", () => {
+  it("labels open web suggestions Unverified and drops the reason's prefix", () => {
+    expect(reasonView(rec({ kind: "web", reason: "Unverified web resource: Census tables for the county" }))).toEqual({ reason: "Census tables for the county", unverified: true });
+    // Added by a person: no longer unverified.
+    expect(reasonView(rec({ kind: "web", state: "added", reason: "Unverified web resource: x" }))).toEqual({ reason: "x", unverified: false });
+    expect(reasonView(rec({ kind: "source", reason: "Needed for the budget" }))).toEqual({ reason: "Needed for the budget", unverified: false });
   });
 });

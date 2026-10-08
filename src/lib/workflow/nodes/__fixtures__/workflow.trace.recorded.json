@@ -1,0 +1,124 @@
+{
+  "task": "workflow.trace",
+  "recorded_at": "2026-10-08T21:25:07.894Z",
+  "model": "claude-sonnet-5-5",
+  "material": {
+    "m": {
+      "items": [
+        {
+          "id": "I1",
+          "fields": {
+            "claim": "The Reading Composite standard score was 78."
+          },
+          "location": null,
+          "evidence": []
+        },
+        {
+          "id": "I2",
+          "fields": {
+            "claim": "The student's IQ is 112."
+          },
+          "location": null,
+          "evidence": []
+        }
+      ],
+      "targets": [],
+      "sources": {
+        "sources": [
+          {
+            "id": "5b1e2c4a-0d1f-4a8e-9a77-0c2b8f1d3e01",
+            "title": "Parent permission packet",
+            "kind": "file",
+            "role": null,
+            "summary": "The parent signed the Notice and Consent for Initial Evaluation on 2026-09-08, permitting testing in all areas of suspected disability.",
+            "status": "ready",
+            "url": null
+          },
+          {
+            "id": "8f3a9d2e-6c4b-4e1a-b5d0-2a7c9e8f1b02",
+            "title": "WIAT-4 score report",
+            "kind": "file",
+            "role": null,
+            "summary": "Score report for the WIAT-4 given on 2026-09-22.",
+            "status": "ready",
+            "url": null
+          }
+        ],
+        "passages": [
+          {
+            "id": "S5b1e2c4a.P1",
+            "sourceId": "5b1e2c4a-0d1f-4a8e-9a77-0c2b8f1d3e01",
+            "page": 1,
+            "text": "Notice and Consent for Initial Evaluation. Parent signature dated September 8, 2026."
+          },
+          {
+            "id": "S8f3a9d2e.P1",
+            "sourceId": "8f3a9d2e-6c4b-4e1a-b5d0-2a7c9e8f1b02",
+            "page": 1,
+            "text": "Reading Composite: 78 (Low). Math Composite: 101 (Average). Oral Reading Fluency: 74 (Low)."
+          },
+          {
+            "id": "S8f3a9d2e.P2",
+            "sourceId": "8f3a9d2e-6c4b-4e1a-b5d0-2a7c9e8f1b02",
+            "page": 2,
+            "text": "Test date: 09/22/2026. Examiner: J. Patel, LSSP."
+          }
+        ]
+      },
+      "doc": null,
+      "tables": []
+    },
+    "config": {
+      "against": "sources",
+      "statuses": [
+        {
+          "key": "supported",
+          "label": "Supported",
+          "ok": true,
+          "severity": "info"
+        },
+        {
+          "key": "unsupported",
+          "label": "Unsupported",
+          "ok": false,
+          "severity": "major"
+        },
+        {
+          "key": "contradicted",
+          "label": "Contradicted",
+          "ok": false,
+          "severity": "major"
+        }
+      ],
+      "unverifiedStatus": "unsupported",
+      "question": "Does a source passage establish the claim as stated?",
+      "bothWays": false,
+      "instructions": ""
+    }
+  },
+  "replies": [
+    {
+      "items": [
+        {
+          "id": "I1",
+          "status": "supported",
+          "evidence": [
+            {
+              "id": "S8f3a9d2e.P1",
+              "quote": "Reading Composite: 78 (Low)."
+            }
+          ],
+          "linked_targets": [],
+          "rationale": "The WIAT-4 score report lists the Reading Composite as 78, matching the claim."
+        },
+        {
+          "id": "I2",
+          "status": "unsupported",
+          "evidence": [],
+          "linked_targets": [],
+          "rationale": "No visible source reports an IQ score. The WIAT-4 report covers achievement composites only, and the parent consent packet has no scores."
+        }
+      ]
+    }
+  ]
+}

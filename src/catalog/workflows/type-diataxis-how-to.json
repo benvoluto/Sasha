@@ -1,0 +1,236 @@
+{
+  "key": "type-diataxis-how-to",
+  "version": 1,
+  "title": "How-to walkthrough",
+  "summary": "Whether the steps achieve the stated goal for a competent reader. A simulated walkthrough names the step where it failed; checks flag missing or out-of-order steps; a type check lists passages that belong in another Diátaxis type.",
+  "kind": "type",
+  "appliesTo": [
+    "diataxis-how-to"
+  ],
+  "outcome": {
+    "label": "Goal result",
+    "values": [
+      {
+        "key": "achieves_goal",
+        "label": "The steps achieve the goal (simulated)"
+      },
+      {
+        "key": "fails",
+        "label": "The walkthrough failed"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "requirementSets": [
+    "diataxis-framework"
+  ],
+  "notes": [
+    "Simulated: no sandbox ran the steps.",
+    "The walkthrough says which steps were only read, not executed.",
+    "Offer flagged passages to Restructure to type as the seed of the sibling document."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "goal",
+      "node": "step.extract",
+      "label": "Goal",
+      "config": {
+        "item": "goal",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "goal",
+          "before-you-begin"
+        ],
+        "maxItems": 1,
+        "instructions": "Take the goal from the title and the opening, and the prerequisites the guide states.",
+        "fields": [
+          {
+            "name": "goal",
+            "label": "Goal",
+            "type": "text",
+            "description": "The task the guide promises to accomplish",
+            "required": true
+          },
+          {
+            "name": "prerequisites",
+            "label": "Prerequisites",
+            "type": "list",
+            "description": "The prerequisites the guide states"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "walk",
+      "node": "step.simulate",
+      "label": "Walkthrough",
+      "config": {
+        "persona": "a competent practitioner with only the stated prerequisites",
+        "task": "Follow the steps as written to reach the stated goal.",
+        "records": "steps",
+        "rules": [
+          "the end state must equal the goal",
+          "say which steps were only read, not executed"
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "goal.items"
+      }
+    },
+    {
+      "id": "flags",
+      "node": "step.check",
+      "label": "Flags",
+      "config": {
+        "checklist": [
+          {
+            "key": "missing_steps",
+            "label": "No missing steps",
+            "question": "Are any steps missing between the start and the goal? Name where.",
+            "severity": "major"
+          },
+          {
+            "key": "prerequisites",
+            "label": "Prerequisites stated",
+            "question": "Are all prerequisites the steps rely on stated?",
+            "severity": "major"
+          },
+          {
+            "key": "order",
+            "label": "Steps in order",
+            "question": "Are the steps in the order they must be done?",
+            "severity": "major"
+          },
+          {
+            "key": "variations",
+            "label": "Variations handled",
+            "question": "Does the guide handle the variations a working reader meets (“if you use X, do Y”)?",
+            "severity": "minor"
+          },
+          {
+            "key": "no_teaching",
+            "label": "Prerequisites stated without teaching",
+            "question": "Are prerequisites stated without teaching them?",
+            "severity": "minor"
+          },
+          {
+            "key": "title_names_goal",
+            "label": "The title names the goal",
+            "question": "Does the title name the goal (“How to …”)?",
+            "severity": "minor"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "goal.items"
+      }
+    },
+    {
+      "id": "type",
+      "node": "step.classify",
+      "label": "Type check",
+      "config": {
+        "unit": "paragraph",
+        "instructions": "Classify each passage by its Diátaxis role in a how-to guide.",
+        "categories": [
+          {
+            "key": "step",
+            "label": "Step",
+            "description": "An action the reader takes toward the goal",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "context",
+            "label": "Brief context",
+            "description": "A sentence or two of context a step needs",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "teaching",
+            "label": "Teaching",
+            "description": "Teaches a beginner a skill or concept, as a lesson would",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "a tutorial"
+          },
+          {
+            "key": "explanation",
+            "label": "Explanation",
+            "description": "Discusses why, background, design reasons or alternatives",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "an explanation"
+          },
+          {
+            "key": "reference",
+            "label": "Reference",
+            "description": "Lists options, parameters or facts to look up",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "a reference"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "fails",
+            "when": {
+              "findings": {
+                "kind": [
+                  "walkthrough_failed"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "achieves_goal"
+      },
+      "in": {
+        "findings": [
+          "walk.findings",
+          "flags.findings",
+          "type.findings"
+        ],
+        "tables": [
+          "walk.table",
+          "flags.table",
+          "type.table"
+        ]
+      }
+    }
+  ]
+}

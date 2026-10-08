@@ -1,0 +1,21 @@
+{
+  "key": "diataxis-framework",
+  "version": 1,
+  "title": "Diátaxis framework",
+  "authority": "Diátaxis (Daniele Procida)",
+  "jurisdiction": "International",
+  "appliesTo": ["diataxis-how-to", "diataxis-tutorial"],
+  "effective": "",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "Diátaxis framework, diataxis.fr (paraphrased)",
+    "url": "https://diataxis.fr/",
+    "license": "Paraphrased; Diátaxis is CC BY-SA 4.0, attribution to diataxis.fr"
+  },
+  "verifyNote": "Verify before relying: a paraphrase of the framework. See diataxis.fr for the full text.",
+  "items": [
+    { "key": "four-types", "kind": "guideline", "title": "Four types on two axes", "text": "Documentation divides into tutorials, how-to guides, reference and explanation, placed on two axes: whether it serves action or cognition, and whether it serves study or work. Tutorials serve action while studying; how-to guides serve action while working; reference serves cognition while working; explanation serves cognition while studying.", "url": "https://diataxis.fr/" },
+    { "key": "how-to", "kind": "guideline", "title": "How-to guides", "text": "A how-to guide takes a competent reader through the steps to reach a stated goal. It states prerequisites without teaching them and handles the variations a working reader meets.", "url": "https://diataxis.fr/" },
+    { "key": "tutorial", "kind": "guideline", "title": "Tutorials", "text": "A tutorial takes a beginner from a stated starting point to a stated result along one path, and should work for every learner every time.", "url": "https://diataxis.fr/" }
+  ]
+}

@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phases 0–5 and the editor layout are built. See §12 for progress notes.
+Status (October 2026): Phases 0–6 and the editor layout are built. See §12 for progress notes.
 
 ---
 
@@ -730,17 +730,41 @@ the interface, Hanken Grotesk for the document.
 - Suggested data: linked tables cover data items and "Add" records the table.
 - Debts closed: PATCH document returns 400 on invalid JSON; failed linked PDFs give link advice.
 
+**Phase 6 (done).**
+- Engine for documents (`src/lib/workflow/`): runs are scoped to a team and a document; workflows,
+  runs and settings carry `team_id`; the clinical nodes, legacy upload groups, cases, report service,
+  assistant and their routes and components are removed (the `report` tables are no longer created;
+  older databases may still have them). 300 s budget with pause and continue, resumable loops,
+  checkpoint pause/resume, retry claims a run once.
+- Nodes: `doc.read`, `doc.notes`, `sources.list/read`, `data.list`, `type.coverage`, `web.find`
+  (Sonnet with server web search; results unverified until accepted; sensitive types send only
+  catalog gap labels and are limited to listed domains), `rubric.score`, `doc.write` (snapshot first),
+  `suggest.emit`, and the seven shared steps from `docs/workflows-by-document-type.md`: gate,
+  extract, trace, compute (in code), independent review with differing briefs (advocate, skeptic,
+  auditor), agreement without averaging, checkpoint with who/when/role.
+- Catalog: 8 dated requirement sets (`src/catalog/requirements/`) and 15 workflow definitions
+  (`src/catalog/workflows/`): source coverage, restructure (merge/rewrite, mapping table with
+  unplaced content, verbatim moves), draft all (sentence-level support, off by default for NIH),
+  and per-type workflows for the 12 catalog types, with general report as the default.
+- UI: a Workflows tab in the document modal (available workflows, progress, fixed-value outcome,
+  findings linking to passages, disagreements with both rationales, checkpoint forms, history);
+  the type chip offers Restructure; the canvas shows built-ins read-only and edits team copies.
+- Smoke-tested with real models: a planted budget total and a date-order error were caught by code;
+  the FIE without consent was blocked with the missing input named and no student details in web
+  queries; restructure kept every paragraph verbatim.
+
 **Known debt carried forward.**
+- Restructuring an already restructured document splits at every heading level, leaving empty rows.
+- Draft-all credits facts from document notes to the section's notes when the section has its own.
+- Model judgements are lenient in places (coverage, FIE input check, report support levels); code
+  checks catch the arithmetic cases.
+- No per-section progress while drafting; a blocked FIE still waits at the supervisor sign-off; the
+  canvas ignores `?workflowId=`.
 - Re-reading a source drops table renames and cell overrides (v1 behaviour).
 - Suggestions marked added keep pointing at a table or source after it is deleted.
 - Deployments with a public Blob store must set `BLOB_ACCESS=public`.
 - Suggestions only learn of source changes while the Sources tab is open; near-duplicate catalog
   labels are not merged; some business-plan item labels are lowercase.
-- The workflow engine, report service, assistant and canvas still read legacy upload groups
-  (`fetchGroupMetadata`). These routes are not team-scoped. The assistant and Phase 6 (engine)
-  still need moving to sources; then delete `upload-groups`,
-  `cases`, `@modal/(.)cases` and the case components.
-- Workflows, runs and `app_setting` have no `team_id` (Phase 6).
 - Section status `edited`/`reviewed` is never set; the outline-status cache and rate gate are per
   server process.
 - No migration runner yet; schema changes are idempotent DDL kept in step across the store

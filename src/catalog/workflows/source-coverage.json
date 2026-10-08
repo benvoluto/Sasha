@@ -1,0 +1,127 @@
+{
+  "key": "source-coverage",
+  "version": 1,
+  "title": "Source coverage review",
+  "summary": "Scores how well the linked sources and data cover what the document's type needs, flags gaps, and proposes public web resources. Proposed resources wait in Suggestions, unverified, until a person adds them.",
+  "kind": "generic",
+  "outcome": {
+    "label": "Source coverage",
+    "values": [
+      {
+        "key": "covered",
+        "label": "Sources cover the type's needs"
+      },
+      {
+        "key": "gaps_found",
+        "label": "Gaps found"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "notes": [
+    "Web resources are unverified until a person adds them from Suggestions.",
+    "For sensitive types (student or clinical records) web searches carry no document text and use only the type's public domains."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: document type",
+      "config": {
+        "inputs": [
+          {
+            "key": "type",
+            "label": "A document type",
+            "kind": "type",
+            "help": "Choose a type so Sasha knows what the document needs."
+          }
+        ],
+        "useModel": false
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "cov",
+      "node": "type.coverage",
+      "label": "Coverage",
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "web",
+      "node": "web.find",
+      "label": "Web resources",
+      "in": {
+        "gaps": "cov.gaps",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "emit",
+      "node": "suggest.emit",
+      "label": "Add suggestions",
+      "in": {
+        "gaps": "cov.gaps",
+        "resources": "web.resources"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "gaps_found",
+            "when": {
+              "findings": {
+                "severity": [
+                  "major",
+                  "minor"
+                ],
+                "kind": [
+                  "coverage_gap"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "covered"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": [
+          "cov.findings",
+          "web.findings"
+        ],
+        "tables": "cov.table"
+      }
+    }
+  ]
+}

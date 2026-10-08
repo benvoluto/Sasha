@@ -12,7 +12,9 @@
 // while the prefill is active marks the suggestion added.
 //
 // An expanded source shows how many tables were read from it ("N tables"),
-// which opens the Data tab when the panel is in the document modal.
+// which opens the Data tab when the panel is in the document modal. A
+// workflow finding's "Open in Sources" opens the panel with that source
+// expanded and scrolled into view (`focusSourceId`).
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -50,6 +52,7 @@ export function SourcesPanel({
   onPrefillDone,
   onSourcesChange,
   onShowData,
+  focusSourceId = null,
 }: {
   documentId: string | null;
   documentTitle: string;
@@ -70,6 +73,8 @@ export function SourcesPanel({
   onSourcesChange?: (sources: LinkedSource[]) => void;
   /** "N tables" on an expanded source: show the Data tab. Without it the count is plain text. */
   onShowData?: () => void;
+  /** Expand this source and scroll to it once the list has loaded ("Open in Sources" from a workflow finding). */
+  focusSourceId?: string | null;
 }) {
   const [sources, setSources] = useState<LinkedSource[] | null>(documentId ? null : []);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +136,16 @@ export function SourcesPanel({
   useEffect(() => {
     void load(documentId);
   }, [documentId, load]);
+
+  // "Open in Sources": expand the source once it is in the list, and bring it into view.
+  const focused = useRef<string | null>(null);
+  const hasFocusSource = !!focusSourceId && !!sources?.some((s) => s.id === focusSourceId);
+  useEffect(() => {
+    if (!focusSourceId || !hasFocusSource || focused.current === focusSourceId) return;
+    focused.current = focusSourceId;
+    setExpanded(focusSourceId);
+    requestAnimationFrame(() => document.getElementById(`source-row-${focusSourceId}`)?.scrollIntoView({ block: "nearest" }));
+  }, [focusSourceId, hasFocusSource]);
 
   usePollSources(sources ?? [], (fresh) => setSources((list) => (list ? mergeFresh(list, fresh) : list)));
 
@@ -298,7 +313,7 @@ export function SourcesPanel({
               const open = expanded === s.id;
               const href = sourceHref(s);
               return (
-                <li key={s.id} className="rounded-xl border border-[var(--doc-line)] px-3 py-2.5">
+                <li key={s.id} id={`source-row-${s.id}`} className={`rounded-xl border px-3 py-2.5 ${focusSourceId === s.id ? "border-[var(--go)]" : "border-[var(--doc-line)]"}`}>
                   <div className="flex items-start gap-2">
                     <KindIcon kind={s.kind} className="mt-0.5 h-4 w-4 shrink-0 text-[var(--doc-muted)]" />
                     <button

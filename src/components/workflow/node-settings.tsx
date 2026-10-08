@@ -2,9 +2,15 @@
 
 // Settings forms shown on an expanded node card. Every control carries the
 // `nodrag nowheel` classes so typing and scrolling don't move the canvas.
+// The AI and text nodes have their own forms; the other nodes (the review
+// steps, changes, checkpoint and outcome) show their simple settings as fields
+// and their complex ones (gate inputs, fields, reviewers, criteria, checks,
+// categories, compute checks, outcome values and rules) as JSON, checked live
+// against the node's settings schema with the first problem shown.
 
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { Plus, Trash2 } from '@/components/icons';
+import { NODE_SPEC_INDEX } from '@/lib/workflow/registry';
 import type { GraphNode } from '@/lib/workflow/types';
 import { useCanvas } from './canvas-context';
 
@@ -208,16 +214,127 @@ function Rows<T extends Record<string, unknown>>({
   );
 }
 
+const isScalar = (v: unknown) => v === null || ['string', 'number', 'boolean'].includes(typeof v);
+const humanize = (key: string) => key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ');
+
+/** The first problem zod finds, as "path: message". */
+function firstIssue(error: { issues: Array<{ path: PropertyKey[]; message: string }> }): string {
+  const i = error.issues[0];
+  if (!i) return 'Not valid';
+  const path = i.path.map(String).join('.');
+  return path ? `${path}: ${i.message}` : i.message;
+}
+
+/**
+ * Any node without its own form: strings, numbers and booleans as fields, and
+ * everything else as one JSON object, applied only while the whole config
+ * passes the node's schema.
+ */
+function GenericSettings({ node, config, set, disabled }: Props) {
+  const spec = NODE_SPEC_INDEX[node.type];
+  const scalarKeys = Object.keys(config).filter((k) => isScalar(config[k]));
+  const complex = Object.fromEntries(Object.entries(config).filter(([, v]) => !isScalar(v)));
+  const complexText = Object.keys(complex).length ? JSON.stringify(complex, null, 2) : '';
+  const [text, setText] = useState(complexText);
+  const [problem, setProblem] = useState<string | null>(null);
+  // The settings changed from outside (a reset, a discard): show them.
+  const [shown, setShown] = useState(complexText);
+  if (shown !== complexText && !problem) {
+    setShown(complexText);
+    setText(complexText);
+  }
+  const check = (next: Record<string, unknown>) => {
+    const r = spec?.config.safeParse(next);
+    return r && !r.success ? firstIssue(r.error) : null;
+  };
+  // A field edited into a value the schema refuses (an empty role) is kept here,
+  // with the problem shown, until it is valid again: saving it would make the
+  // card fall back to the defaults.
+  const [drafts, setDrafts] = useState<Record<string, unknown>>({});
+  const setScalar = (key: string, value: unknown) => {
+    const err = check({ ...config, [key]: value });
+    setProblem(err);
+    if (err) {
+      setDrafts((d) => ({ ...d, [key]: value }));
+      return;
+    }
+    setDrafts((d) => {
+      const rest = { ...d };
+      delete rest[key];
+      return rest;
+    });
+    set({ [key]: value });
+  };
+  return (
+    <div className="space-y-3">
+      {scalarKeys.map((k) => {
+        const v = k in drafts ? drafts[k] : config[k];
+        if (typeof v === 'boolean')
+          return (
+            <label key={k} className="nodrag flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+              <input type="checkbox" disabled={disabled} checked={v} onChange={(e) => setScalar(k, e.target.checked)} />
+              {humanize(k)}
+            </label>
+          );
+        if (typeof v === 'number')
+          return (
+            <Field key={k} title={humanize(k)}>
+              <input type="number" className={field} disabled={disabled} value={v} onChange={(e) => setScalar(k, e.target.value === '' ? 0 : Number(e.target.value))} />
+            </Field>
+          );
+        const long = typeof v === 'string' && (v.length > 60 || /instructions|prompt|brief|guidance|question|template/i.test(k));
+        return (
+          <Field key={k} title={humanize(k)}>
+            {long ? (
+              <textarea rows={3} className={field} disabled={disabled} value={String(v ?? '')} onChange={(e) => setScalar(k, e.target.value)} />
+            ) : (
+              <input className={field} disabled={disabled} value={String(v ?? '')} onChange={(e) => setScalar(k, e.target.value)} />
+            )}
+          </Field>
+        );
+      })}
+      {complexText && (
+        <Field title="Settings (JSON)">
+          <textarea
+            rows={Math.min(16, Math.max(4, text.split('\n').length))}
+            spellCheck={false}
+            className={`${field} font-mono text-[11px] ${problem ? 'border-red-500 dark:border-red-500' : ''}`}
+            disabled={disabled}
+            value={text}
+            aria-invalid={!!problem}
+            onChange={(e) => {
+              const next = e.target.value;
+              setText(next);
+              let parsed: unknown;
+              try {
+                parsed = JSON.parse(next);
+              } catch (err) {
+                setProblem(err instanceof Error ? `JSON: ${err.message}` : 'Not valid JSON');
+                return;
+              }
+              if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                setProblem('Settings must be a JSON object');
+                return;
+              }
+              const merged = { ...Object.fromEntries(scalarKeys.map((k) => [k, config[k]])), ...(parsed as Record<string, unknown>) };
+              const err = check(merged);
+              setProblem(err);
+              if (!err) {
+                setShown(JSON.stringify(Object.fromEntries(Object.entries(merged).filter(([, v]) => !isScalar(v))), null, 2));
+                set(parsed as Record<string, unknown>);
+              }
+            }}
+          />
+        </Field>
+      )}
+      {problem && <p className="text-[11px] text-red-600 dark:text-red-400">{problem}</p>}
+      {!scalarKeys.length && !complexText && <p className="text-xs text-zinc-500">No settings.</p>}
+    </div>
+  );
+}
+
 export function NodeSettings({ node, config, set, disabled }: Props) {
   switch (node.type) {
-    case 'source.documents':
-      return (
-        <Field title="Only documents whose name contains (optional)">
-          <input className={field} disabled={disabled} value={String(config.nameContains ?? '')} placeholder="e.g. Interview" onChange={(e) => set({ nameContains: e.target.value })} />
-        </Field>
-      );
-    case 'flow.checkpoint':
-      return <TemplateField title="What should the reviewer check?" rows={3} value={String(config.instructions ?? '')} onChange={(v) => set({ instructions: v })} variables={[]} disabled={disabled} />;
     case 'ai.ask': {
       const inputs = (config.inputs as string[]) ?? [];
       return (
@@ -318,6 +435,6 @@ export function NodeSettings({ node, config, set, disabled }: Props) {
         </div>
       );
     default:
-      return <p className="text-xs text-zinc-500">No settings.</p>;
+      return <GenericSettings node={node} config={config} set={set} disabled={disabled} />;
   }
 }

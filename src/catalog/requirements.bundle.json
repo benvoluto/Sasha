@@ -1,0 +1,575 @@
+[
+  {
+    "key": "diataxis-framework",
+    "version": 1,
+    "title": "Diátaxis framework",
+    "authority": "Diátaxis (Daniele Procida)",
+    "jurisdiction": "International",
+    "appliesTo": [
+      "diataxis-how-to",
+      "diataxis-tutorial"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "Diátaxis framework, diataxis.fr (paraphrased)",
+      "url": "https://diataxis.fr/",
+      "license": "Paraphrased; Diátaxis is CC BY-SA 4.0, attribution to diataxis.fr"
+    },
+    "verifyNote": "Verify before relying: a paraphrase of the framework. See diataxis.fr for the full text.",
+    "items": [
+      {
+        "key": "four-types",
+        "kind": "guideline",
+        "title": "Four types on two axes",
+        "text": "Documentation divides into tutorials, how-to guides, reference and explanation, placed on two axes: whether it serves action or cognition, and whether it serves study or work. Tutorials serve action while studying; how-to guides serve action while working; reference serves cognition while working; explanation serves cognition while studying.",
+        "url": "https://diataxis.fr/"
+      },
+      {
+        "key": "how-to",
+        "kind": "guideline",
+        "title": "How-to guides",
+        "text": "A how-to guide takes a competent reader through the steps to reach a stated goal. It states prerequisites without teaching them and handles the variations a working reader meets.",
+        "url": "https://diataxis.fr/"
+      },
+      {
+        "key": "tutorial",
+        "kind": "guideline",
+        "title": "Tutorials",
+        "text": "A tutorial takes a beginner from a stated starting point to a stated result along one path, and should work for every learner every time.",
+        "url": "https://diataxis.fr/"
+      }
+    ]
+  },
+  {
+    "key": "equator-reporting-guidelines",
+    "version": 1,
+    "title": "EQUATOR reporting guidelines",
+    "authority": "EQUATOR Network",
+    "jurisdiction": "International",
+    "appliesTo": [
+      "research-report-imrad"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "EQUATOR Network reporting guidelines (named in docs/workflows-by-document-type.md)",
+      "url": "https://www.equator-network.org/",
+      "license": "Pointer only; checklist text not reproduced"
+    },
+    "verifyNote": "Verify before relying: these are pointers only. Use the official checklist for the guideline the design calls for.",
+    "items": [
+      {
+        "key": "consort",
+        "kind": "guideline",
+        "title": "CONSORT",
+        "text": "For randomized trials. Updated in 2025. Checklist items are not reproduced here; use the official checklist.",
+        "url": "https://www.equator-network.org/"
+      },
+      {
+        "key": "strobe",
+        "kind": "guideline",
+        "title": "STROBE",
+        "text": "For observational studies. Checklist items are not reproduced here; use the official checklist.",
+        "url": "https://www.equator-network.org/"
+      },
+      {
+        "key": "prisma-2020",
+        "kind": "guideline",
+        "title": "PRISMA 2020",
+        "text": "For systematic reviews. Checklist items are not reproduced here; use the official checklist.",
+        "url": "https://www.equator-network.org/"
+      }
+    ]
+  },
+  {
+    "key": "idea-evaluation-34cfr",
+    "version": 1,
+    "title": "IDEA evaluation and eligibility (34 CFR 300.304, 300.306)",
+    "authority": "U.S. Department of Education",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "fie"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "34 CFR 300.304 and 300.306 (summarized in docs/workflows-by-document-type.md)",
+      "url": "https://www.law.cornell.edu/cfr/text/34/300.304",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "items": [
+      {
+        "key": "all-areas",
+        "kind": "checklist",
+        "title": "All areas assessed",
+        "text": "Every area related to the suspected disability is assessed.",
+        "citation": "34 CFR 300.304",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
+      },
+      {
+        "key": "variety-of-sources",
+        "kind": "checklist",
+        "title": "A variety of sources",
+        "text": "The evaluation uses a variety of assessment sources.",
+        "citation": "34 CFR 300.304",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
+      },
+      {
+        "key": "no-single-measure",
+        "kind": "checklist",
+        "title": "No single measure decides",
+        "text": "No single measure or assessment is the sole basis for deciding whether the student has a disability.",
+        "citation": "34 CFR 300.304",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
+      },
+      {
+        "key": "exclusionary-factors",
+        "kind": "criterion",
+        "title": "Exclusionary factors",
+        "text": "A student is not found eligible when the determinant factor is lack of appropriate instruction in reading or math, or limited English proficiency.",
+        "citation": "34 CFR 300.306(b)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.306"
+      }
+    ]
+  },
+  {
+    "key": "nih-ai-and-review-policy",
+    "version": 1,
+    "title": "NIH policies on AI and award decisions",
+    "authority": "National Institutes of Health",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "nih-specific-aims-research-strategy"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "NOT-OD-25-132, NOT-OD-23-149 and the unified NIH funding strategy (summarized in docs/workflows-by-document-type.md)",
+      "url": "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-25-132.html",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "items": [
+      {
+        "key": "not-od-25-132",
+        "kind": "policy",
+        "title": "AI and application originality (NOT-OD-25-132)",
+        "text": "From September 25, 2025, NIH does not treat applications, or sections, substantially developed by AI as the applicant's original ideas.",
+        "citation": "NOT-OD-25-132",
+        "url": "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-25-132.html"
+      },
+      {
+        "key": "not-od-23-149",
+        "kind": "policy",
+        "title": "Generative AI in peer review (NOT-OD-23-149)",
+        "text": "NIH peer reviewers may not put applications they review into generative AI tools. A mock review is for the applicant's own draft only.",
+        "citation": "NOT-OD-23-149",
+        "url": "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-23-149.html"
+      },
+      {
+        "key": "no-paylines",
+        "kind": "policy",
+        "title": "No paylines",
+        "text": "Since the January 2026 council round, NIH institutes do not rely on paylines. Report scores and weaknesses and make no award prediction from a cutoff.",
+        "url": "https://grants.nih.gov/news-events/nih-extramural-nexus-news/2025/11/implementing-a-unified-nih-funding-strategy-to-guide-consistent-and-clearer-award-decisions"
+      }
+    ]
+  },
+  {
+    "key": "nih-page-limits",
+    "version": 1,
+    "title": "NIH page limits: Specific Aims and Research Strategy",
+    "authority": "National Institutes of Health",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "nih-specific-aims-research-strategy"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "NIH page limits (summarized in docs/workflows-by-document-type.md)",
+      "url": "https://grants.nih.gov/grants-process/write-application/how-to-apply-application-guide/page-limits",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "items": [
+      {
+        "key": "specific-aims",
+        "kind": "limit",
+        "title": "Specific Aims",
+        "text": "Specific Aims is limited to 1 page.",
+        "value": 1,
+        "unit": "pages",
+        "appliesTo": {
+          "sections": [
+            "specific-aims"
+          ]
+        }
+      },
+      {
+        "key": "research-strategy-12",
+        "kind": "limit",
+        "title": "Research Strategy (R01, R15, U01)",
+        "text": "Research Strategy is limited to 12 pages for R01, R15 and U01 applications.",
+        "value": 12,
+        "unit": "pages",
+        "appliesTo": {
+          "sections": [
+            "research-strategy",
+            "significance",
+            "innovation",
+            "approach"
+          ],
+          "activityCodes": [
+            "R01",
+            "R15",
+            "U01"
+          ]
+        }
+      },
+      {
+        "key": "research-strategy-6",
+        "kind": "limit",
+        "title": "Research Strategy (R03, R21)",
+        "text": "Research Strategy is limited to 6 pages for R03 and R21 applications.",
+        "value": 6,
+        "unit": "pages",
+        "appliesTo": {
+          "sections": [
+            "research-strategy",
+            "significance",
+            "innovation",
+            "approach"
+          ],
+          "activityCodes": [
+            "R03",
+            "R21"
+          ]
+        }
+      },
+      {
+        "key": "nofo-overrides",
+        "kind": "policy",
+        "title": "The NOFO governs",
+        "text": "These limits apply unless the funding opportunity (NOFO) says otherwise."
+      }
+    ]
+  },
+  {
+    "key": "nih-simplified-review",
+    "version": 1,
+    "title": "NIH simplified peer review framework",
+    "authority": "National Institutes of Health",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "nih-specific-aims-research-strategy"
+    ],
+    "effective": "2025-01-25",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "NIH simplified peer review framework and first-level review scoring (summarized in docs/workflows-by-document-type.md)",
+      "url": "https://www.grants.nih.gov/policy-and-compliance/policy-topics/peer-review/simplifying-review/framework",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "items": [
+      {
+        "key": "factor-1",
+        "kind": "criterion",
+        "title": "Factor 1: Importance of the Research",
+        "text": "Covers Significance and Innovation. Scored from 1 to 9."
+      },
+      {
+        "key": "factor-2",
+        "kind": "criterion",
+        "title": "Factor 2: Rigor and Feasibility",
+        "text": "Covers the Approach, including controls, sample size justification, the analysis plan, biological variables such as sex or age, pitfalls and alternatives, and the timeline. Scored from 1 to 9."
+      },
+      {
+        "key": "factor-3",
+        "kind": "criterion",
+        "title": "Factor 3: Expertise and Resources",
+        "text": "Rated sufficient or gaps identified, not scored."
+      },
+      {
+        "key": "overall-impact",
+        "kind": "policy",
+        "title": "Overall Impact",
+        "text": "Reviewers give an Overall Impact score from 1 to 9, where 1 is best. The framework covers most research project grants with due dates from January 25, 2025.",
+        "url": "https://grants.nih.gov/grants-process/review/first-level"
+      }
+    ]
+  },
+  {
+    "key": "tx-19tac-89-1011",
+    "version": 1,
+    "title": "Texas FIE timelines (19 TAC §89.1011)",
+    "authority": "Texas Education Agency (Commissioner's rules)",
+    "jurisdiction": "Texas",
+    "appliesTo": [
+      "fie"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "19 TAC §89.1011, Full Individual and Initial Evaluation (summarized in docs/workflows-by-document-type.md)",
+      "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1011",
+      "license": "Paraphrased summary (source: Texas Administrative Code, public law)"
+    },
+    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "items": [
+      {
+        "key": "fie-report",
+        "kind": "deadline",
+        "title": "Written FIE report",
+        "text": "The written report is due by the 45th school day after the district receives written consent. When the student is absent three or more school days in that period, the deadline is extended by the number of school days missed.",
+        "value": 45,
+        "unit": "school_days",
+        "citation": "19 TAC §89.1011(d)(1)"
+      },
+      {
+        "key": "ard-decision",
+        "kind": "deadline",
+        "title": "ARD committee decision",
+        "text": "The ARD committee makes its eligibility decision within 30 calendar days of the date the written report is completed.",
+        "value": 30,
+        "unit": "calendar_days",
+        "citation": "19 TAC §89.1011(g)"
+      },
+      {
+        "key": "parent-copy",
+        "kind": "deadline",
+        "title": "Parent copy of the report",
+        "text": "The parent receives a copy of the report at least five school days before the initial ARD meeting.",
+        "value": 5,
+        "unit": "school_days",
+        "citation": "19 TAC §89.1011(h)"
+      },
+      {
+        "key": "end-of-year",
+        "kind": "policy",
+        "title": "End-of-year exceptions",
+        "text": "Different deadlines apply when consent is received near the end of the school year. See source for the rules.",
+        "citation": "19 TAC §89.1011(e)"
+      }
+    ]
+  },
+  {
+    "key": "tx-19tac-89-1040",
+    "version": 1,
+    "title": "Texas eligibility criteria (19 TAC §89.1040)",
+    "authority": "Texas Education Agency (Commissioner's rules)",
+    "jurisdiction": "Texas",
+    "appliesTo": [
+      "fie"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "19 TAC §89.1040, Eligibility Criteria (summarized in docs/workflows-by-document-type.md)",
+      "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1040",
+      "license": "Paraphrased summary (source: Texas Administrative Code, public law)"
+    },
+    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "items": [
+      {
+        "key": "autism",
+        "kind": "criterion",
+        "title": "Autism",
+        "text": "Autism is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Autism"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(1)"
+      },
+      {
+        "key": "deaf-blindness",
+        "kind": "criterion",
+        "title": "Deaf-blindness",
+        "text": "Deaf-blindness is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Deaf-blindness"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(2)"
+      },
+      {
+        "key": "deaf-or-hard-of-hearing",
+        "kind": "criterion",
+        "title": "Deaf or hard of hearing",
+        "text": "Deaf or hard of hearing is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Deaf or hard of hearing"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(3)"
+      },
+      {
+        "key": "emotional-disability",
+        "kind": "criterion",
+        "title": "Emotional disability",
+        "text": "Emotional disability is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Emotional disability"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(4)"
+      },
+      {
+        "key": "intellectual-disability",
+        "kind": "criterion",
+        "title": "Intellectual disability",
+        "text": "Intellectual disability is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Intellectual disability"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(5)"
+      },
+      {
+        "key": "multiple-disabilities",
+        "kind": "criterion",
+        "title": "Multiple disabilities",
+        "text": "Multiple disabilities is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Multiple disabilities"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(6)"
+      },
+      {
+        "key": "orthopedic-impairment",
+        "kind": "criterion",
+        "title": "Orthopedic impairment",
+        "text": "Orthopedic impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Orthopedic impairment"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(7)"
+      },
+      {
+        "key": "other-health-impairment",
+        "kind": "criterion",
+        "title": "Other health impairment",
+        "text": "A licensed physician, a physician assistant or an advanced practice registered nurse must identify or confirm the student's chronic or acute health problem. See source for the full criteria.",
+        "appliesTo": {
+          "categories": [
+            "Other health impairment"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(8)"
+      },
+      {
+        "key": "specific-learning-disability",
+        "kind": "criterion",
+        "title": "Specific learning disability",
+        "text": "The student must be observed in the learning environment, including the general education classroom, and the team considers data showing the student received appropriate instruction in reading or math from qualified staff, with repeated assessments of achievement at reasonable intervals shared with the parents. See source for the full criteria.",
+        "appliesTo": {
+          "categories": [
+            "Specific learning disability"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(9)"
+      },
+      {
+        "key": "sld-exclusions",
+        "kind": "criterion",
+        "title": "Specific learning disability: further exclusions",
+        "text": "The learning difficulties must not be primarily the result of a visual, hearing or motor disability; intellectual disability; emotional disability; cultural factors; environmental or economic disadvantage; or being an emergent bilingual student.",
+        "appliesTo": {
+          "categories": [
+            "Specific learning disability"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(9)(B)(iv)"
+      },
+      {
+        "key": "speech-impairment",
+        "kind": "criterion",
+        "title": "Speech impairment",
+        "text": "Speech impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Speech impairment"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(10)"
+      },
+      {
+        "key": "traumatic-brain-injury",
+        "kind": "criterion",
+        "title": "Traumatic brain injury",
+        "text": "Traumatic brain injury is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Traumatic brain injury"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(11)"
+      },
+      {
+        "key": "visual-impairment",
+        "kind": "criterion",
+        "title": "Visual impairment",
+        "text": "Visual impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Visual impairment"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(12)"
+      },
+      {
+        "key": "developmental-delay",
+        "kind": "criterion",
+        "title": "Developmental delay",
+        "text": "Developmental delay (for young children; see source for the ages) is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Developmental delay"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(13)"
+      },
+      {
+        "key": "noncategorical-early-childhood",
+        "kind": "criterion",
+        "title": "Noncategorical early childhood",
+        "text": "Noncategorical eligibility (for young children; see source for the ages) is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "appliesTo": {
+          "categories": [
+            "Noncategorical early childhood"
+          ]
+        },
+        "citation": "19 TAC §89.1040(c)(14)"
+      }
+    ]
+  }
+]

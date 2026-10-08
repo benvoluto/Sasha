@@ -3,11 +3,11 @@
 import { createContext, useContext } from 'react';
 import type { GraphNode } from '@/lib/workflow/types';
 import type { Issue } from '@/lib/workflow/validate';
-import type { WorkflowRun, WorkflowResponse } from './types';
+import type { WorkflowResponse, WorkflowRunView } from './types';
 
 export type CanvasContextValue = {
   info: WorkflowResponse;
-  run: WorkflowRun | null;
+  run: WorkflowRunView | null;
   readOnly: boolean;
   issuesByNode: Map<string, Issue[]>;
   updateNode: (id: string, patch: Partial<GraphNode>) => void;

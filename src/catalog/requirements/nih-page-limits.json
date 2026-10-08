@@ -1,0 +1,21 @@
+{
+  "key": "nih-page-limits",
+  "version": 1,
+  "title": "NIH page limits: Specific Aims and Research Strategy",
+  "authority": "National Institutes of Health",
+  "jurisdiction": "United States (federal)",
+  "appliesTo": ["nih-specific-aims-research-strategy"],
+  "effective": "",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "NIH page limits (summarized in docs/workflows-by-document-type.md)",
+    "url": "https://grants.nih.gov/grants-process/write-application/how-to-apply-application-guide/page-limits",
+    "license": "Paraphrased summary (source: public domain US government)"
+  },
+  "items": [
+    { "key": "specific-aims", "kind": "limit", "title": "Specific Aims", "text": "Specific Aims is limited to 1 page.", "value": 1, "unit": "pages", "appliesTo": { "sections": ["specific-aims"] } },
+    { "key": "research-strategy-12", "kind": "limit", "title": "Research Strategy (R01, R15, U01)", "text": "Research Strategy is limited to 12 pages for R01, R15 and U01 applications.", "value": 12, "unit": "pages", "appliesTo": { "sections": ["research-strategy", "significance", "innovation", "approach"], "activityCodes": ["R01", "R15", "U01"] } },
+    { "key": "research-strategy-6", "kind": "limit", "title": "Research Strategy (R03, R21)", "text": "Research Strategy is limited to 6 pages for R03 and R21 applications.", "value": 6, "unit": "pages", "appliesTo": { "sections": ["research-strategy", "significance", "innovation", "approach"], "activityCodes": ["R03", "R21"] } },
+    { "key": "nofo-overrides", "kind": "policy", "title": "The NOFO governs", "text": "These limits apply unless the funding opportunity (NOFO) says otherwise." }
+  ]
+}

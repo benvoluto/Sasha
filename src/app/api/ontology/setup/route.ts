@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
-import { WORKFLOW_SCHEMA } from "@/lib/workflow/store";
+import { WORKFLOW_SCHEMA } from "@/lib/workflow/schema";
 import { DOCUMENT_SCHEMA } from "@/lib/documents/store";
 import { SOURCE_SCHEMA } from "@/lib/sources/store";
 import { CATALOG_SCHEMA } from "@/catalog/store";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 
 // Idempotent schema setup. Mirrors db/schema.sql (kept in sync); inlined here so
 // it doesn't depend on runtime file access. The workflow tables come from
-// WORKFLOW_SCHEMA in src/lib/workflow/store.ts, which owns them.
+// WORKFLOW_SCHEMA in src/lib/workflow/schema.ts, which owns them.
 // POST /api/ontology/setup  — run once per environment after setting POSTGRES_URL.
 const STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS audit_log (
@@ -19,22 +19,11 @@ const STATEMENTS = [
      agent TEXT NOT NULL, action TEXT NOT NULL, args JSONB NOT NULL, result JSONB NOT NULL,
      allowed BOOLEAN NOT NULL, note TEXT NOT NULL DEFAULT '', group_id TEXT)`,
   `CREATE INDEX IF NOT EXISTS audit_log_group_idx ON audit_log (group_id)`,
-  // The editable report: one per upload group, edited section by section.
-  `CREATE TABLE IF NOT EXISTS report (
-     id BIGSERIAL PRIMARY KEY, group_id TEXT NOT NULL, template_key TEXT NOT NULL DEFAULT 'general_report',
-     title TEXT NOT NULL DEFAULT 'General Report', status TEXT NOT NULL DEFAULT 'draft',
-     created_by TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-     updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS report_group_uidx ON report (group_id)`,
-  `CREATE TABLE IF NOT EXISTS report_section (
-     id BIGSERIAL PRIMARY KEY, report_id BIGINT NOT NULL, group_id TEXT NOT NULL, section_key TEXT NOT NULL,
-     heading TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, content_json JSONB NOT NULL DEFAULT '{}'::jsonb,
-     content_text TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', source TEXT NOT NULL DEFAULT 'ai',
-     reviewed_by TEXT, updated_by TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS report_section_uidx ON report_section (report_id, section_key)`,
-  `CREATE INDEX IF NOT EXISTS report_section_group_idx ON report_section (group_id)`,
+  // (report and report_section, the organizer's per-upload-group report, were retired in Phase 6; older databases may still have them, nothing reads them.)
   // (case_suggestion_edits was retired in Phase 4; older databases may still have it, nothing reads it.)
-  // Named workflows, their versions, runs, and app settings (also applied on first use).
+  // Named workflows, their versions, runs, and team settings (also applied on
+  // first use). Renames the organizer's determination_workflow and
+  // agent_determination_run in place on older databases.
   ...WORKFLOW_SCHEMA,
   ...DOCUMENT_SCHEMA,
   // The sources library (after the documents: links reference document).
@@ -46,19 +35,14 @@ const STATEMENTS = [
   // Suggested sources, data and web resources per document (src/lib/suggestions/schema.ts).
   ...SUGGESTION_SCHEMA,
   `ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
-  // Run columns the engine writes; added here for databases created before them.
-  `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS outputs JSONB`,
-  `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS checkpoints JSONB`,
 ];
 
 const EXPECTED_TABLES = [
   "audit_log",
-  "report",
-  "report_section",
   "app_setting",
   "workflow",
-  "determination_workflow",
-  "agent_determination_run",
+  "workflow_version",
+  "workflow_run",
   "document",
   "document_section",
   "document_version",
@@ -101,8 +85,11 @@ async function inspectSchema() {
   // Columns added by ALTER after the original CREATE — the ones most likely to
   // be absent on an older database, and the whole point of checking.
   const migrations = {
-    "determination_workflow.workflow_id": !!columns.determination_workflow?.includes("workflow_id"),
-    "agent_determination_run.outputs": !!columns.agent_determination_run?.includes("outputs"),
+    "workflow.team_id": !!columns.workflow?.includes("team_id"),
+    "workflow_version.graph": !!columns.workflow_version?.includes("graph"),
+    "workflow_run.document_id": !!columns.workflow_run?.includes("document_id"),
+    "workflow_run.outcome": !!columns.workflow_run?.includes("outcome"),
+    "app_setting.team_id": !!columns.app_setting?.includes("team_id"),
     "document_section.updated_at": !!columns.document_section?.includes("updated_at"),
     "document.doc_folder_id": !!columns.document?.includes("doc_folder_id"),
     "document.classifier_state": !!columns.document?.includes("classifier_state"),

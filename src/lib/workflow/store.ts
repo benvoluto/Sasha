@@ -1,23 +1,46 @@
-// Persistence and audit for workflows: saved workflow versions and the runs made
-// with them. A run's result is what its Save output node recorded; it is a draft
-// for the author to use, and nothing here changes a document by itself.
+// Persistence and audit for workflows: a team's own workflows and their saved
+// versions, the built-in workflows (read-only, compiled from the catalog), the
+// team's canvas default, and runs on documents. Every function takes the team
+// first; nothing is shared across teams. A run's outcome stays advisory until
+// its checkpoint; nothing here changes a document by itself (proposed changes
+// are applied by the open editor).
 //
-// Without POSTGRES_URL (local development) both live in process memory, so the
-// editor and runs work locally but do not survive a restart.
+// Without POSTGRES_URL (local development, tests) everything lives in process
+// memory (processMemory) and does not survive a restart.
 //
-// Table names (determination_workflow, agent_determination_run) and the unused
-// proposals/agreement/synthesis columns are inherited from the app Sasha was
-// copied from. They stay as-is in Phase 0; the rename is planned for Phase 6
-// (docs/PLAN.md §4.3).
+// Rows from before Phase 6 (the organizer's runs on upload groups) keep team_id
+// '' and are seen by no team; normalize() still reads their shapes (old node
+// types, "draft" status, checkpoint decisions without a verdict).
 
 import { randomUUID } from "node:crypto";
 import { sql } from "@vercel/postgres";
-import { defaultWorkflowGraph } from "@/lib/workflow/default-graph";
-import { toRunSummary, type RunSummary } from "@/lib/workflow/run-stats";
-import { WorkflowGraph } from "@/lib/workflow/types";
-import { defaultAuditSink, type Auth } from "@/lib/ontology/governance";
+import { builtInId, builtInWorkflow, builtInWorkflows, parseBuiltInId } from "@/catalog/workflows";
+import { onMemoryStoreReset } from "@/lib/documents/store";
 import { ensureSchema } from "@/lib/ontology/ensure-schema";
-import { OUTPUT_NODE_TYPE } from "./registry";
+import { defaultAuditSink, type Auth } from "@/lib/ontology/governance";
+import { processMemory } from "@/lib/process-memory";
+import { compileWorkflow } from "./compile";
+import {
+  ACTIVE_RUN_STATUSES,
+  MAX_RUN_HISTORY,
+  runBrief,
+  type ChangeResult,
+  type CheckpointDecision,
+  type FindingResponse,
+  type ProposedChange,
+  type RunBrief,
+  type RunParams,
+  type RunStatus,
+  type WorkflowRunRecord,
+  type WorkflowRunView,
+} from "./contract";
+import { defaultWorkflowGraph } from "./default-graph";
+import { LEGACY_NODE_TYPES, NODE_SPEC_INDEX, OUTPUT_NODE_TYPE } from "./registry";
+import { toRunSummary, type RunSummary } from "./run-stats";
+import { WORKFLOW_SCHEMA } from "./schema";
+import { WorkflowGraph } from "./types";
+
+export type { StepState, StepStatus, RunStatus } from "./contract";
 
 const hasDb = () => !!process.env.POSTGRES_URL;
 
@@ -25,262 +48,402 @@ const hasDb = () => !!process.env.POSTGRES_URL;
 export const RUN_PERMISSION = "workflow:run";
 export const RUN_READ_PERMISSION = "workflow:read";
 
-// --- Workflows and their versions --------------------------------------------
-
-/** The built-in workflow every database starts with; runs and versions without a workflow id belong to it. */
-export const LEGACY_WORKFLOW_ID = "default";
-const LEGACY_WORKFLOW_NAME = "Default workflow";
-
-export const WORKFLOW_SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS workflow (
-     id TEXT PRIMARY KEY, name TEXT NOT NULL, created_by TEXT NOT NULL,
-     created_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
-  `INSERT INTO workflow (id, name, created_by) VALUES ('${LEGACY_WORKFLOW_ID}', '${LEGACY_WORKFLOW_NAME}', 'system') ON CONFLICT (id) DO NOTHING`,
-  `CREATE TABLE IF NOT EXISTS determination_workflow (
-     id BIGSERIAL PRIMARY KEY, definition JSONB NOT NULL, note TEXT NOT NULL DEFAULT '',
-     created_by TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
-  `ALTER TABLE determination_workflow ADD COLUMN IF NOT EXISTS workflow_id TEXT NOT NULL DEFAULT '${LEGACY_WORKFLOW_ID}'`,
-  `ALTER TABLE determination_workflow ADD COLUMN IF NOT EXISTS version INTEGER`,
-  // Number the versions saved before per-workflow numbering, in the order they were saved.
-  `UPDATE determination_workflow d SET version = r.n
-     FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY workflow_id ORDER BY id) AS n FROM determination_workflow) r
-    WHERE d.id = r.id AND d.version IS NULL`,
-  `CREATE INDEX IF NOT EXISTS determination_workflow_version_idx ON determination_workflow (workflow_id, version DESC)`,
-  `CREATE TABLE IF NOT EXISTS app_setting (
-     key TEXT PRIMARY KEY, value JSONB NOT NULL, updated_by TEXT NOT NULL,
-     updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
-  `CREATE TABLE IF NOT EXISTS agent_determination_run (
-     id TEXT PRIMARY KEY, group_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'running',
-     workflow_version BIGINT NOT NULL DEFAULT 0, workflow JSONB, steps JSONB, raw JSONB,
-     proposals JSONB, agreement JSONB, synthesis JSONB, requested_by TEXT NOT NULL,
-     created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
-  `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS workflow_id TEXT`,
-  `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS workflow_name TEXT`,
-  `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS outputs JSONB`,
-  `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS checkpoints JSONB`,
-];
+// The tables live in schema.ts (Phase 6 renames: workflow_version, workflow_run).
+export { WORKFLOW_SCHEMA };
 
 const schema = () => ensureSchema("workflows", WORKFLOW_SCHEMA);
 
-/** A named workflow and where its version history stands. */
-export type WorkflowInfo = { id: string; name: string; created_by: string; created_at: string; latestVersion: number; updated_at: string };
-/** One saved version of a workflow (version 0 is the built-in default, used until a version is saved). */
-export type SavedWorkflow = { workflow_id: string; name: string; version: number; definition: WorkflowGraph; note: string; created_by: string; created_at: string };
-export type VersionInfo = Omit<SavedWorkflow, "definition" | "workflow_id" | "name">;
-
-const iso = (v: unknown) => new Date(v as string).toISOString();
-const builtIn = (workflowId: string, name: string): SavedWorkflow => ({
-  workflow_id: workflowId,
-  name,
-  version: 0,
-  definition: defaultWorkflowGraph(),
-  note: "Built-in default",
-  created_by: "system",
-  created_at: new Date(0).toISOString(),
-});
-
-// Without a database: workflows, versions and the default in process memory.
-const memory = {
-  workflows: new Map<string, Omit<WorkflowInfo, "latestVersion" | "updated_at">>([
-    [LEGACY_WORKFLOW_ID, { id: LEGACY_WORKFLOW_ID, name: LEGACY_WORKFLOW_NAME, created_by: "system", created_at: new Date(0).toISOString() }],
-  ]),
-  versions: new Map<string, SavedWorkflow[]>(),
-  defaultId: LEGACY_WORKFLOW_ID,
+/** A workflow the canvas can open: one of the team's, or a built-in (read-only). */
+export type WorkflowInfo = {
+  id: string;
+  name: string;
+  /** The built-in or team workflow this one was copied from. */
+  based_on: string | null;
+  builtIn: boolean;
+  created_by: string;
+  created_at: string;
+  latestVersion: number;
+  updated_at: string;
 };
+/** One version of a workflow (version 0 of a team workflow is the starting graph, used until a version is saved). */
+export type SavedWorkflow = {
+  workflow_id: string;
+  name: string;
+  version: number;
+  graph: WorkflowGraph;
+  note: string;
+  created_by: string;
+  created_at: string;
+  /** Built-ins: shown, run and copied, never saved over. */
+  readOnly: boolean;
+  based_on: string | null;
+};
+export type VersionInfo = Pick<SavedWorkflow, "version" | "note" | "created_by" | "created_at">;
 
-export async function listWorkflows(): Promise<WorkflowInfo[]> {
-  if (!hasDb()) {
-    return [...memory.workflows.values()].map((w) => {
-      const last = memory.versions.get(w.id)?.at(-1);
-      return { ...w, latestVersion: last?.version ?? 0, updated_at: last?.created_at ?? w.created_at };
-    });
+/** @deprecated The run record is WorkflowRunRecord (contract.ts); kept so the canvas's type imports resolve. */
+export type WorkflowRun = WorkflowRunRecord;
+
+/** The error saveWorkflow throws for a built-in id. */
+export class ReadOnlyWorkflowError extends Error {
+  constructor() {
+    super("Built-in workflows can't be changed; copy it first.");
   }
-  await schema();
-  const { rows } = await sql`
-    SELECT w.id, w.name, w.created_by, w.created_at, COALESCE(MAX(d.version), 0) AS latest, COALESCE(MAX(d.created_at), w.created_at) AS updated_at
-      FROM workflow w LEFT JOIN determination_workflow d ON d.workflow_id = w.id
-     GROUP BY w.id ORDER BY w.created_at, w.name`;
-  return rows.map((r) => ({ id: r.id, name: r.name, created_by: r.created_by, created_at: iso(r.created_at), latestVersion: Number(r.latest), updated_at: iso(r.updated_at) }));
 }
 
-async function workflowName(id: string): Promise<string | null> {
-  if (!hasDb()) return memory.workflows.get(id)?.name ?? null;
+const iso = (v: unknown) => new Date(v as string).toISOString();
+const EPOCH = new Date(0).toISOString();
+const clone = <T>(v: T): T => structuredClone(v);
+
+// --- Reading old shapes -----------------------------------------------------------
+
+/** The organizer's source.documents outputs, by the sources.read output that replaces each. */
+const LEGACY_SOURCE_PORTS: Record<string, string> = { combined: "text", documents: "passages", names: "sources" };
+
+/**
+ * A saved graph in today's node set: renamed node types (LEGACY_NODE_TYPES),
+ * output.save's `text` input as the outcome's `summary`, source.documents'
+ * outputs as sources.read's, and the new types' defaults under the old settings.
+ */
+export function normalizeGraph(raw: unknown): WorkflowGraph | null {
+  const parsed = WorkflowGraph.safeParse(raw);
+  if (!parsed.success) return null;
+  const g = parsed.data;
+  const legacy = new Map(g.nodes.filter((n) => LEGACY_NODE_TYPES[n.type]).map((n) => [n.id, n.type]));
+  if (!legacy.size) return g;
+  return {
+    ...g,
+    nodes: g.nodes.map((n) => {
+      const type = LEGACY_NODE_TYPES[n.type];
+      if (!type) return n;
+      const defaults = NODE_SPEC_INDEX[type]?.defaults() ?? {};
+      // The outcome's settings are new; the old Save output had none worth keeping.
+      const config = type === OUTPUT_NODE_TYPE ? defaults : { ...defaults, ...n.config };
+      return { ...n, type, config };
+    }),
+    edges: g.edges.map((e) => {
+      const from = legacy.get(e.source);
+      const to = legacy.get(e.target);
+      let next = e;
+      if (from === "source.documents" && LEGACY_SOURCE_PORTS[e.sourceHandle]) next = { ...next, sourceHandle: LEGACY_SOURCE_PORTS[e.sourceHandle] };
+      if (from === "output.save" && e.sourceHandle === "result") next = { ...next, sourceHandle: "outcome" };
+      if (to === "output.save" && e.targetHandle === "text") next = { ...next, targetHandle: "summary" };
+      return next;
+    }),
+  };
+}
+
+/** A decision from before Phase 6 ({excluded, note, by, at}) reads as an approval. */
+function normalizeDecision(raw: unknown): CheckpointDecision {
+  const d = (raw ?? {}) as Partial<CheckpointDecision>;
+  return {
+    verdict: d.verdict ?? "approve",
+    note: d.note ?? "",
+    by: d.by ?? "",
+    at: d.at ?? EPOCH,
+    role: d.role ?? "",
+    excluded: Array.isArray(d.excluded) ? d.excluded : [],
+    edits: d.edits ?? null,
+  };
+}
+
+/** A stored run in today's shape, or null for a row whose graph can't be read. */
+export function normalizeRun(row: Record<string, unknown> | undefined | null): WorkflowRunRecord | null {
+  if (!row) return null;
+  const graph = normalizeGraph(row.graph ?? row.workflow);
+  if (!graph) return null;
+  const status = row.status === "draft" ? "complete" : (row.status as RunStatus);
+  const checkpoints = Object.fromEntries(Object.entries((row.checkpoints ?? {}) as Record<string, unknown>).map(([k, v]) => [k, normalizeDecision(v)]));
+  return {
+    id: String(row.id),
+    team_id: String(row.team_id ?? ""),
+    document_id: row.document_id == null ? "" : String(row.document_id),
+    status,
+    pause_reason: (row.pause_reason as WorkflowRunRecord["pause_reason"]) ?? null,
+    workflow_id: String(row.workflow_id ?? ""),
+    workflow_name: String(row.workflow_name ?? ""),
+    // BIGINT columns come back from Postgres as strings.
+    workflow_version: Number(row.workflow_version ?? 0),
+    graph,
+    params: (row.params as RunParams) ?? {},
+    steps: (row.steps as WorkflowRunRecord["steps"]) ?? {},
+    outputs: (row.outputs as WorkflowRunRecord["outputs"]) ?? {},
+    checkpoints,
+    outcome: (row.outcome as WorkflowRunRecord["outcome"]) ?? null,
+    changes: (row.changes as WorkflowRunRecord["changes"]) ?? {},
+    responses: (row.responses as WorkflowRunRecord["responses"]) ?? {},
+    raw: (row.raw as WorkflowRunRecord["raw"]) ?? {},
+    requested_by: String(row.requested_by ?? ""),
+    created_at: iso(row.created_at),
+    updated_at: iso(row.updated_at),
+  };
+}
+
+// --- In-memory fallback -------------------------------------------------------------
+
+type WorkflowRow = { id: string; team_id: string; name: string; based_on: string | null; created_by: string; created_at: string };
+type VersionRow = { team_id: string; workflow_id: string; version: number; graph: WorkflowGraph; note: string; created_by: string; created_at: string };
+
+const memory = processMemory("workflows", () => ({
+  workflows: new Map<string, WorkflowRow>(),
+  versions: new Map<string, VersionRow[]>(),
+  /** team id → the canvas's default workflow id. */
+  defaults: new Map<string, string>(),
+  /** Stored copies: reads and writes clone, like rows. */
+  runs: new Map<string, WorkflowRunRecord>(),
+}));
+
+/** Clears the in-memory workflows and runs (tests; also runs with resetMemoryStore). */
+export function resetWorkflowStore() {
+  memory.workflows.clear();
+  memory.versions.clear();
+  memory.defaults.clear();
+  memory.runs.clear();
+}
+onMemoryStoreReset(resetWorkflowStore);
+
+// --- Built-ins ------------------------------------------------------------------------
+
+function builtInSaved(key: string, version?: number): SavedWorkflow | null {
+  const def = builtInWorkflow(key);
+  if (!def || (version !== undefined && version !== def.version)) return null;
+  return {
+    workflow_id: builtInId(key),
+    name: def.title,
+    version: def.version,
+    graph: compileWorkflow(def),
+    note: "Built-in",
+    created_by: "system",
+    created_at: EPOCH,
+    readOnly: true,
+    based_on: null,
+  };
+}
+
+/** The built-in workflows as the canvas lists them. */
+export function builtInList(): Array<{ id: string; title: string }> {
+  return builtInWorkflows().map((w) => ({ id: builtInId(w.key), title: w.title }));
+}
+
+function builtInInfo(): WorkflowInfo[] {
+  return builtInWorkflows().map((w) => ({
+    id: builtInId(w.key),
+    name: w.title,
+    based_on: null,
+    builtIn: true,
+    created_by: "system",
+    created_at: EPOCH,
+    latestVersion: w.version,
+    updated_at: EPOCH,
+  }));
+}
+
+// --- Workflows and their versions --------------------------------------------------
+
+/** The team's workflows, oldest first; with `includeBuiltIns`, the built-ins after them. */
+export async function listWorkflows(teamId: string, opts: { includeBuiltIns?: boolean } = {}): Promise<WorkflowInfo[]> {
+  let own: WorkflowInfo[];
+  if (!hasDb()) {
+    own = [...memory.workflows.values()]
+      .filter((w) => w.team_id === teamId)
+      .map((w) => {
+        const last = memory.versions.get(w.id)?.at(-1);
+        return { id: w.id, name: w.name, based_on: w.based_on, builtIn: false, created_by: w.created_by, created_at: w.created_at, latestVersion: last?.version ?? 0, updated_at: last?.created_at ?? w.created_at };
+      });
+  } else {
+    await schema();
+    const { rows } = await sql`
+      SELECT w.id, w.name, w.based_on, w.created_by, w.created_at, COALESCE(MAX(v.version), 0) AS latest, COALESCE(MAX(v.created_at), w.created_at) AS updated_at
+        FROM workflow w LEFT JOIN workflow_version v ON v.workflow_id = w.id AND v.team_id = w.team_id
+       WHERE w.team_id = ${teamId}
+       GROUP BY w.id ORDER BY w.created_at, w.name`;
+    own = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      based_on: r.based_on ?? null,
+      builtIn: false,
+      created_by: r.created_by,
+      created_at: iso(r.created_at),
+      latestVersion: Number(r.latest),
+      updated_at: iso(r.updated_at),
+    }));
+  }
+  return opts.includeBuiltIns ? [...own, ...builtInInfo()] : own;
+}
+
+async function workflowRow(teamId: string, id: string): Promise<WorkflowRow | null> {
+  if (!hasDb()) {
+    const w = memory.workflows.get(id);
+    return w && w.team_id === teamId ? w : null;
+  }
   await schema();
-  const { rows } = await sql`SELECT name FROM workflow WHERE id = ${id}`;
-  return rows[0]?.name ?? null;
+  const { rows } = await sql`SELECT id, team_id, name, based_on, created_by, created_at FROM workflow WHERE id = ${id} AND team_id = ${teamId}`;
+  return rows[0] ? { id: rows[0].id, team_id: rows[0].team_id, name: rows[0].name, based_on: rows[0].based_on ?? null, created_by: rows[0].created_by, created_at: iso(rows[0].created_at) } : null;
 }
 
 /**
- * A workflow's version: the newest when `version` is omitted, the built-in
- * default when none has been saved (or for version 0). Null for an unknown
- * workflow or version.
+ * A workflow's version: the newest when `version` is omitted. Built-ins
+ * ("builtin:<key>") compile from the catalog and have one version, the
+ * definition's. A team workflow with no saved version reads as the starting
+ * graph (version 0). Null for an unknown workflow or version, or another team's.
  */
-export async function getWorkflow(workflowId: string, version?: number): Promise<SavedWorkflow | null> {
-  const name = await workflowName(workflowId);
-  if (name === null) return null;
-  if (version === 0) return builtIn(workflowId, name);
-  let row: Omit<SavedWorkflow, "workflow_id" | "name"> | undefined;
+export async function getWorkflow(teamId: string, workflowId: string, version?: number): Promise<SavedWorkflow | null> {
+  const key = parseBuiltInId(workflowId);
+  if (key !== null) return builtInSaved(key, version);
+  const w = await workflowRow(teamId, workflowId);
+  if (!w) return null;
+  const starting = (): SavedWorkflow => ({ workflow_id: w.id, name: w.name, version: 0, graph: defaultWorkflowGraph(), note: "Starting graph", created_by: "system", created_at: w.created_at, readOnly: false, based_on: w.based_on });
+  if (version === 0) return starting();
+  let row: Omit<VersionRow, "team_id" | "workflow_id"> | undefined;
   if (!hasDb()) {
-    const all = memory.versions.get(workflowId) ?? [];
+    const all = memory.versions.get(w.id) ?? [];
     row = version === undefined ? all.at(-1) : all.find((v) => v.version === version);
   } else {
     const { rows } =
       version === undefined
-        ? await sql`SELECT version, definition, note, created_by, created_at FROM determination_workflow WHERE workflow_id = ${workflowId} ORDER BY version DESC LIMIT 1`
-        : await sql`SELECT version, definition, note, created_by, created_at FROM determination_workflow WHERE workflow_id = ${workflowId} AND version = ${version}`;
-    if (rows[0]) row = { version: Number(rows[0].version), definition: rows[0].definition, note: rows[0].note, created_by: rows[0].created_by, created_at: iso(rows[0].created_at) };
+        ? await sql`SELECT version, graph, note, created_by, created_at FROM workflow_version WHERE team_id = ${teamId} AND workflow_id = ${w.id} ORDER BY version DESC LIMIT 1`
+        : await sql`SELECT version, graph, note, created_by, created_at FROM workflow_version WHERE team_id = ${teamId} AND workflow_id = ${w.id} AND version = ${version}`;
+    if (rows[0]) row = { version: Number(rows[0].version), graph: rows[0].graph, note: rows[0].note, created_by: rows[0].created_by, created_at: iso(rows[0].created_at) };
   }
-  if (!row) return version === undefined ? builtIn(workflowId, name) : null;
-  // A version saved in an older format falls back to the default rather than breaking every run.
-  const parsed = WorkflowGraph.safeParse(row.definition);
-  return { ...row, workflow_id: workflowId, name, definition: parsed.success ? parsed.data : defaultWorkflowGraph() };
+  if (!row) return version === undefined ? starting() : null;
+  // A version saved in a format that no longer reads falls back to the starting graph rather than breaking every run.
+  return { ...row, workflow_id: w.id, name: w.name, graph: normalizeGraph(row.graph) ?? defaultWorkflowGraph(), readOnly: false, based_on: w.based_on };
 }
 
-/** A workflow's saved versions, newest first. */
-export async function listVersions(workflowId: string): Promise<VersionInfo[]> {
-  if (!hasDb()) return [...(memory.versions.get(workflowId) ?? [])].reverse().map(({ version, note, created_by, created_at }) => ({ version, note, created_by, created_at }));
+/** A workflow's saved versions, newest first (none for a built-in). */
+export async function listVersions(teamId: string, workflowId: string): Promise<VersionInfo[]> {
+  if (parseBuiltInId(workflowId) !== null) return [];
+  if (!hasDb()) {
+    const w = memory.workflows.get(workflowId);
+    if (!w || w.team_id !== teamId) return [];
+    return [...(memory.versions.get(workflowId) ?? [])].reverse().map(({ version, note, created_by, created_at }) => ({ version, note, created_by, created_at }));
+  }
   await schema();
-  const { rows } = await sql`SELECT version, note, created_by, created_at FROM determination_workflow WHERE workflow_id = ${workflowId} ORDER BY version DESC`;
+  const { rows } = await sql`SELECT version, note, created_by, created_at FROM workflow_version WHERE team_id = ${teamId} AND workflow_id = ${workflowId} ORDER BY version DESC`;
   return rows.map((r) => ({ version: Number(r.version), note: r.note, created_by: r.created_by, created_at: iso(r.created_at) }));
 }
 
-/** Save a new version of a workflow; it becomes the version that runs by default. */
-export async function saveWorkflow(workflowId: string, definition: WorkflowGraph, note: string, auth: Auth): Promise<SavedWorkflow> {
-  const name = await workflowName(workflowId);
-  if (name === null) throw new Error(`workflow not found: ${workflowId}`);
+/** Save a new version of a team workflow; it becomes the version that runs by default. Built-ins are refused (ReadOnlyWorkflowError). */
+export async function saveWorkflow(teamId: string, workflowId: string, graph: WorkflowGraph, note: string, auth: Auth): Promise<SavedWorkflow> {
+  if (parseBuiltInId(workflowId) !== null) throw new ReadOnlyWorkflowError();
+  const w = await workflowRow(teamId, workflowId);
+  if (!w) throw new Error(`workflow not found: ${workflowId}`);
   let saved: SavedWorkflow;
   if (hasDb()) {
     // The next number is taken in the insert itself, so two saves can't share one.
     const { rows } = await sql`
-      INSERT INTO determination_workflow (workflow_id, version, definition, note, created_by)
-      SELECT ${workflowId}, COALESCE(MAX(version), 0) + 1, ${JSON.stringify(definition)}::jsonb, ${note}, ${auth.agent}
-        FROM determination_workflow WHERE workflow_id = ${workflowId}
+      INSERT INTO workflow_version (team_id, workflow_id, version, graph, note, created_by)
+      SELECT ${teamId}, ${w.id}, COALESCE(MAX(version), 0) + 1, ${JSON.stringify(graph)}::jsonb, ${note}, ${auth.agent}
+        FROM workflow_version WHERE team_id = ${teamId} AND workflow_id = ${w.id}
       RETURNING version, created_at`;
-    saved = { workflow_id: workflowId, name, version: Number(rows[0].version), definition, note, created_by: auth.agent, created_at: iso(rows[0].created_at) };
+    saved = { workflow_id: w.id, name: w.name, version: Number(rows[0].version), graph, note, created_by: auth.agent, created_at: iso(rows[0].created_at), readOnly: false, based_on: w.based_on };
   } else {
-    const all = memory.versions.get(workflowId) ?? [];
-    saved = { workflow_id: workflowId, name, version: all.length + 1, definition, note, created_by: auth.agent, created_at: new Date().toISOString() };
-    memory.versions.set(workflowId, [...all, saved]);
+    const all = memory.versions.get(w.id) ?? [];
+    const row: VersionRow = { team_id: teamId, workflow_id: w.id, version: all.length + 1, graph: clone(graph), note, created_by: auth.agent, created_at: new Date().toISOString() };
+    memory.versions.set(w.id, [...all, row]);
+    saved = { workflow_id: w.id, name: w.name, version: row.version, graph, note, created_by: auth.agent, created_at: row.created_at, readOnly: false, based_on: w.based_on };
   }
   await defaultAuditSink().write({
     agent: auth.agent,
     action: "save_workflow_version",
-    args: { workflow_id: workflowId, note },
-    result: { version: saved.version, nodes: definition.nodes.length },
+    args: { workflow_id: w.id, note },
+    result: { version: saved.version, nodes: graph.nodes.length },
     allowed: true,
   });
   return saved;
 }
 
-/** Create a named workflow, starting from `definition` as its version 1. */
-export async function createWorkflow(name: string, definition: WorkflowGraph, auth: Auth): Promise<WorkflowInfo> {
+/** Create a team workflow, starting from `graph` as its version 1. `basedOn`: the workflow it was copied from. */
+export async function createWorkflow(teamId: string, name: string, graph: WorkflowGraph, auth: Auth, basedOn?: string): Promise<WorkflowInfo> {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "workflow";
-  const id = `${slug}-${randomUUID().slice(0, 6)}`;
+  const id = `${slug}-${randomUUID().slice(0, 8)}`;
+  const based_on = basedOn ?? null;
   if (hasDb()) {
     await schema();
-    await sql`INSERT INTO workflow (id, name, created_by) VALUES (${id}, ${name}, ${auth.agent})`;
+    await sql`INSERT INTO workflow (id, team_id, name, based_on, created_by) VALUES (${id}, ${teamId}, ${name}, ${based_on}, ${auth.agent})`;
   } else {
-    memory.workflows.set(id, { id, name, created_by: auth.agent, created_at: new Date().toISOString() });
+    memory.workflows.set(id, { id, team_id: teamId, name, based_on, created_by: auth.agent, created_at: new Date().toISOString() });
   }
-  await defaultAuditSink().write({ agent: auth.agent, action: "create_workflow", args: { name }, result: { id }, allowed: true });
-  const first = await saveWorkflow(id, definition, "Created", auth);
-  return { id, name, created_by: auth.agent, created_at: first.created_at, latestVersion: first.version, updated_at: first.created_at };
+  await defaultAuditSink().write({ agent: auth.agent, action: "create_workflow", args: { name, based_on }, result: { id }, allowed: true });
+  const first = await saveWorkflow(teamId, id, graph, basedOn ? `Copied from ${basedOn}` : "Created", auth);
+  return { id, name, based_on, builtIn: false, created_by: auth.agent, created_at: first.created_at, latestVersion: first.version, updated_at: first.created_at };
 }
 
-export async function renameWorkflow(id: string, name: string, auth: Auth): Promise<boolean> {
+/** Rename a team workflow. False for a built-in, an unknown id or another team's. */
+export async function renameWorkflow(teamId: string, id: string, name: string, auth: Auth): Promise<boolean> {
+  if (parseBuiltInId(id) !== null) return false;
+  let ok: boolean;
   if (!hasDb()) {
     const w = memory.workflows.get(id);
-    if (w) w.name = name;
-    return !!w;
+    ok = !!w && w.team_id === teamId;
+    if (ok) w!.name = name;
+  } else {
+    await schema();
+    const { rowCount } = await sql`UPDATE workflow SET name = ${name} WHERE id = ${id} AND team_id = ${teamId}`;
+    ok = !!rowCount;
   }
-  await schema();
-  const { rowCount } = await sql`UPDATE workflow SET name = ${name} WHERE id = ${id}`;
-  await defaultAuditSink().write({ agent: auth.agent, action: "rename_workflow", args: { id, name }, result: { ok: !!rowCount }, allowed: true });
-  return !!rowCount;
+  await defaultAuditSink().write({ agent: auth.agent, action: "rename_workflow", args: { id, name }, result: { ok }, allowed: true });
+  return ok;
 }
 
-/** The workflow new uploads run unless someone picks another; the oldest one when the setting is unset or stale. */
-export async function getDefaultWorkflowId(): Promise<string> {
-  const workflows = await listWorkflows();
+async function workflowExists(teamId: string, id: string): Promise<boolean> {
+  const key = parseBuiltInId(id);
+  return key !== null ? !!builtInWorkflow(key) : !!(await workflowRow(teamId, id));
+}
+
+/**
+ * The workflow the canvas opens first: the team's setting when it still
+ * exists, else the team's oldest workflow, else the first built-in. Null when
+ * there are none at all.
+ */
+export async function getDefaultWorkflowId(teamId: string): Promise<string | null> {
   let id: string | undefined;
-  if (!hasDb()) id = memory.defaultId;
+  if (!hasDb()) id = memory.defaults.get(teamId);
   else {
-    const { rows } = await sql`SELECT value FROM app_setting WHERE key = 'default_workflow'`;
+    await schema();
+    const { rows } = await sql`SELECT value FROM app_setting WHERE team_id = ${teamId} AND key = 'default_workflow'`;
     id = rows[0]?.value?.id;
   }
-  return workflows.some((w) => w.id === id) ? id! : (workflows[0]?.id ?? LEGACY_WORKFLOW_ID);
+  if (id && (await workflowExists(teamId, id))) return id;
+  const own = await listWorkflows(teamId);
+  return own[0]?.id ?? builtInList()[0]?.id ?? null;
 }
 
-export async function setDefaultWorkflowId(id: string, auth: Auth): Promise<boolean> {
-  if ((await workflowName(id)) === null) return false;
-  if (!hasDb()) memory.defaultId = id;
+export async function setDefaultWorkflowId(teamId: string, id: string, auth: Auth): Promise<boolean> {
+  if (!(await workflowExists(teamId, id))) return false;
+  if (!hasDb()) memory.defaults.set(teamId, id);
   else
-    await sql`INSERT INTO app_setting (key, value, updated_by) VALUES ('default_workflow', ${JSON.stringify({ id })}::jsonb, ${auth.agent})
-              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()`;
+    await sql`INSERT INTO app_setting (team_id, key, value, updated_by) VALUES (${teamId}, 'default_workflow', ${JSON.stringify({ id })}::jsonb, ${auth.agent})
+              ON CONFLICT (team_id, key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()`;
   await defaultAuditSink().write({ agent: auth.agent, action: "set_default_workflow", args: { id }, result: { ok: true }, allowed: true });
   return true;
 }
 
-/** The newest version of a workflow, or of the default workflow when none is named. */
-export async function activeWorkflow(workflowId?: string): Promise<SavedWorkflow> {
-  const id = workflowId ?? (await getDefaultWorkflowId());
-  return (await getWorkflow(id)) ?? builtIn(id, LEGACY_WORKFLOW_NAME);
-}
-
-// --- Runs ---------------------------------------------------------------------
-
-export type StepStatus = "pending" | "running" | "done" | "failed" | "skipped" | "waiting";
-export type StepState = { status: StepStatus; startedAt?: string; finishedAt?: string; error?: string; note?: string };
+// --- Runs -------------------------------------------------------------------------------
 
 /**
- * running: executing now. awaiting_review: stopped at a human checkpoint.
- * paused: stopped at the time budget, continue to resume. draft: finished, with
- * a result saved. failed: finished without one. superseded: a later run on the
- * same subject replaced it.
+ * Start a run of `workflow` on a document. Earlier runs of the same workflow
+ * on the same document that are still active (running, awaiting review or
+ * paused) are superseded; other workflows' runs are left alone.
  */
-export type RunStatus = "running" | "awaiting_review" | "paused" | "draft" | "failed" | "superseded";
-
-export type CheckpointDecision = { excluded: number[]; note: string; by: string; at: string };
-
-export type WorkflowRun = {
-  id: string;
-  /** The run's subject: for now, the upload group whose source documents it reads. */
-  group_id: string;
-  status: RunStatus;
-  /** Which workflow ran, and which of its versions. */
-  workflow_id: string;
-  workflow_name: string;
-  workflow_version: number;
-  /** The graph the run used, so a later edit cannot change how a past run reads. */
-  workflow: WorkflowGraph;
-  /** Per node. */
-  steps: Record<string, StepState>;
-  /** Per node, per output port. The Save output node's `result` is the run's result. */
-  outputs: Record<string, Record<string, unknown>>;
-  /** People's decisions at human checkpoints, per node. */
-  checkpoints: Record<string, CheckpointDecision>;
-  /** Model replies that failed validation, per node. */
-  raw: Record<string, string>;
-  requested_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-const memoryRuns = new Map<string, WorkflowRun>();
-
-export async function createRun(groupId: string, workflow: SavedWorkflow, auth: Auth): Promise<WorkflowRun> {
+export async function createRun(teamId: string, documentId: string, workflow: SavedWorkflow, params: RunParams, auth: Auth): Promise<WorkflowRunRecord> {
   const now = new Date().toISOString();
-  const run: WorkflowRun = {
+  const run: WorkflowRunRecord = {
     id: randomUUID(),
-    group_id: groupId,
+    team_id: teamId,
+    document_id: documentId,
     status: "running",
+    pause_reason: null,
     workflow_id: workflow.workflow_id,
     workflow_name: workflow.name,
     workflow_version: workflow.version,
-    workflow: workflow.definition,
-    steps: Object.fromEntries(workflow.definition.nodes.map((n) => [n.id, { status: "pending" as const }])),
+    graph: workflow.graph,
+    params,
+    steps: Object.fromEntries(workflow.graph.nodes.map((n) => [n.id, { status: "pending" as const }])),
     outputs: {},
     checkpoints: {},
+    outcome: null,
+    changes: {},
+    responses: {},
     raw: {},
     requested_by: auth.agent,
     created_at: now,
@@ -288,27 +451,61 @@ export async function createRun(groupId: string, workflow: SavedWorkflow, auth: 
   };
   if (hasDb()) {
     await schema();
-    await sql`UPDATE agent_determination_run SET status = 'superseded', updated_at = now()
-              WHERE group_id = ${groupId} AND status IN ('running', 'awaiting_review', 'paused', 'draft')`;
-    await sql`INSERT INTO agent_determination_run (id, group_id, status, workflow_id, workflow_name, workflow_version, workflow, steps, outputs, checkpoints, raw, requested_by)
-              VALUES (${run.id}, ${groupId}, 'running', ${run.workflow_id}, ${run.workflow_name}, ${run.workflow_version}, ${JSON.stringify(run.workflow)}::jsonb,
-                      ${JSON.stringify(run.steps)}::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, ${auth.agent})`;
+    // sql.query: the tagged template only accepts primitives, and this binds an array.
+    await sql.query(
+      `UPDATE workflow_run SET status = 'superseded', updated_at = now()
+        WHERE team_id = $1 AND document_id = $2 AND workflow_id = $3 AND status = ANY($4)`,
+      [teamId, documentId, workflow.workflow_id, ACTIVE_RUN_STATUSES],
+    );
+    await sql`INSERT INTO workflow_run (id, team_id, document_id, status, workflow_id, workflow_name, workflow_version, graph, params, steps, outputs, checkpoints, outcome, changes, responses, raw, requested_by)
+              VALUES (${run.id}, ${teamId}, ${documentId}, 'running', ${run.workflow_id}, ${run.workflow_name}, ${run.workflow_version}, ${JSON.stringify(run.graph)}::jsonb,
+                      ${JSON.stringify(params)}::jsonb, ${JSON.stringify(run.steps)}::jsonb, '{}'::jsonb, '{}'::jsonb, NULL, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, ${auth.agent})`;
   } else {
-    for (const r of memoryRuns.values()) if (r.group_id === groupId && r.status !== "failed" && r.status !== "superseded") r.status = "superseded";
-    memoryRuns.set(run.id, run);
+    for (const r of memory.runs.values()) {
+      if (r.team_id === teamId && r.document_id === documentId && r.workflow_id === workflow.workflow_id && ACTIVE_RUN_STATUSES.includes(r.status)) {
+        r.status = "superseded";
+        r.updated_at = now;
+      }
+    }
+    memory.runs.set(run.id, clone(run));
   }
-  await defaultAuditSink().write({ agent: auth.agent, action: "start_workflow_run", args: { group_id: groupId, workflow_id: workflow.workflow_id, workflow_version: workflow.version }, result: { runId: run.id }, allowed: true, groupId });
+  await defaultAuditSink().write({
+    agent: auth.agent,
+    action: "start_workflow_run",
+    args: { documentId, workflow_id: workflow.workflow_id, workflow_version: workflow.version, params },
+    result: { runId: run.id },
+    allowed: true,
+  });
   return run;
 }
 
-/** Persist the run's mutable state. `outputs` should already have large references stripped. */
-export async function saveRun(run: WorkflowRun, outputs: WorkflowRun["outputs"]): Promise<void> {
+/**
+ * Persist the run's mutable state (status, steps, outputs, checkpoints,
+ * outcome, raw replies). Changes and finding responses are written by their
+ * own functions so a run in progress can't overwrite them. A run another start
+ * superseded stays superseded, and `run.status` is set to say so.
+ */
+export async function saveRun(run: WorkflowRunRecord): Promise<void> {
   run.updated_at = new Date().toISOString();
-  if (!hasDb()) return;
-  await sql`UPDATE agent_determination_run
-            SET status = ${run.status}, steps = ${JSON.stringify(run.steps)}::jsonb, outputs = ${JSON.stringify(outputs)}::jsonb,
-                checkpoints = ${JSON.stringify(run.checkpoints)}::jsonb, raw = ${JSON.stringify(run.raw)}::jsonb, updated_at = now()
-            WHERE id = ${run.id}`;
+  if (!hasDb()) {
+    const stored = memory.runs.get(run.id);
+    // Like the UPDATE below: a run deleted with its document is not brought back.
+    if (!stored) return;
+    if (stored.status === "superseded") {
+      run.status = "superseded";
+      return;
+    }
+    memory.runs.set(run.id, { ...clone(run), changes: stored.changes ?? {}, responses: stored.responses ?? {} });
+    return;
+  }
+  const { rows } = await sql`UPDATE workflow_run
+            SET status = CASE WHEN status = 'superseded' THEN status ELSE ${run.status} END,
+                pause_reason = ${run.pause_reason}, steps = ${JSON.stringify(run.steps)}::jsonb, outputs = ${JSON.stringify(run.outputs)}::jsonb,
+                checkpoints = ${JSON.stringify(run.checkpoints)}::jsonb, outcome = ${run.outcome ? JSON.stringify(run.outcome) : null}::jsonb,
+                raw = ${JSON.stringify(run.raw)}::jsonb, updated_at = now()
+            WHERE id = ${run.id} AND team_id = ${run.team_id}
+            RETURNING status`;
+  if (rows[0]?.status === "superseded") run.status = "superseded";
 }
 
 /**
@@ -320,7 +517,7 @@ export async function saveRun(run: WorkflowRun, outputs: WorkflowRun["outputs"])
 export const STALE_RUN_MS = 6 * 60 * 1000;
 
 /** Report a run that stopped responding as failed, without rewriting the stored row. */
-export function withStaleCheck(run: WorkflowRun | null, now = Date.now()): WorkflowRun | null {
+export function withStaleCheck<T extends Pick<WorkflowRunRecord, "status" | "updated_at" | "steps">>(run: T | null, now = Date.now()): T | null {
   if (!run || run.status !== "running" || now - new Date(run.updated_at).getTime() < STALE_RUN_MS) return run;
   return {
     ...run,
@@ -331,108 +528,159 @@ export function withStaleCheck(run: WorkflowRun | null, now = Date.now()): Workf
   };
 }
 
-function normalize(row: WorkflowRun | undefined): WorkflowRun | null {
-  if (!row) return null;
-  // Rows from the earlier, fixed-pipeline version of this feature.
-  const parsed = WorkflowGraph.safeParse(row.workflow);
-  if (!parsed.success) return null;
-  return {
-    ...row,
-    // Runs from before named workflows belong to the one workflow there was.
-    workflow_id: row.workflow_id ?? LEGACY_WORKFLOW_ID,
-    workflow_name: row.workflow_name ?? LEGACY_WORKFLOW_NAME,
-    workflow_version: Number(row.workflow_version),
-    workflow: parsed.data,
-    outputs: row.outputs ?? {},
-    checkpoints: row.checkpoints ?? {},
-    raw: row.raw ?? {},
-    steps: row.steps ?? {},
-  };
-}
-
-export async function getRun(runId: string): Promise<WorkflowRun | null> {
-  if (!hasDb()) return withStaleCheck(memoryRuns.get(runId) ?? null);
-  const { rows } = await sql<WorkflowRun>`SELECT * FROM agent_determination_run WHERE id = ${runId}`;
-  return withStaleCheck(normalize(rows[0]));
-}
-
-export async function latestRun(groupId: string): Promise<WorkflowRun | null> {
-  if (!hasDb()) return withStaleCheck([...memoryRuns.values()].filter((r) => r.group_id === groupId).at(-1) ?? null);
-  const { rows } = await sql<WorkflowRun>`SELECT * FROM agent_determination_run WHERE group_id = ${groupId} ORDER BY created_at DESC LIMIT 1`;
-  return withStaleCheck(normalize(rows[0]));
-}
-
-/** The newest runs across all subjects, without their outputs, for the Run log and Overview. */
-export async function listRunSummaries(limit: number): Promise<RunSummary[]> {
+/** One of the team's runs, or null (unknown, or another team's). */
+export async function getRun(teamId: string, runId: string): Promise<WorkflowRunRecord | null> {
   if (!hasDb()) {
-    return [...memoryRuns.values()]
+    const r = memory.runs.get(runId);
+    return r && r.team_id === teamId ? withStaleCheck(clone(r)) : null;
+  }
+  await schema();
+  const { rows } = await sql`SELECT * FROM workflow_run WHERE id = ${runId} AND team_id = ${teamId}`;
+  return withStaleCheck(normalizeRun(rows[0]));
+}
+
+/**
+ * Delete every run of a document (when the document is deleted). Runs hold
+ * copies of the document's content (extracted items, quotes, rationales), so
+ * they go with it. A run still executing finds its row gone and saves nothing.
+ */
+export async function deleteDocumentRuns(teamId: string, documentId: string): Promise<number> {
+  if (!hasDb()) {
+    let n = 0;
+    for (const [id, r] of memory.runs) {
+      if (r.team_id === teamId && r.document_id === documentId) {
+        memory.runs.delete(id);
+        n++;
+      }
+    }
+    return n;
+  }
+  await schema();
+  const { rowCount } = await sql`DELETE FROM workflow_run WHERE team_id = ${teamId} AND document_id = ${documentId}`;
+  return rowCount ?? 0;
+}
+
+// The columns a brief needs (outputs and graphs can be large).
+const BRIEF_COLUMNS = "id, team_id, document_id, status, pause_reason, workflow_id, workflow_name, workflow_version, outcome, requested_by, created_at, updated_at, steps";
+
+function briefOf(row: Record<string, unknown>): RunBrief {
+  const run = withStaleCheck({
+    ...row,
+    status: row.status === "draft" ? ("complete" as const) : (row.status as RunStatus),
+    steps: (row.steps as WorkflowRunRecord["steps"]) ?? {},
+    updated_at: iso(row.updated_at),
+  })!;
+  return runBrief({
+    ...(run as unknown as WorkflowRunRecord),
+    document_id: String(row.document_id ?? ""),
+    workflow_version: Number(row.workflow_version ?? 0),
+    outcome: (row.outcome as WorkflowRunRecord["outcome"]) ?? null,
+    created_at: iso(row.created_at),
+  });
+}
+
+/** A document's runs, newest first, as briefs. */
+export async function listDocumentRuns(teamId: string, documentId: string, limit = MAX_RUN_HISTORY): Promise<RunBrief[]> {
+  const n = Math.min(Math.max(limit, 1), MAX_RUN_HISTORY);
+  if (!hasDb()) {
+    return [...memory.runs.values()]
+      .filter((r) => r.team_id === teamId && r.document_id === documentId)
+      .reverse()
+      .slice(0, n)
+      .map((r) => runBrief(withStaleCheck(r)!));
+  }
+  await schema();
+  const { rows } = await sql.query(`SELECT ${BRIEF_COLUMNS} FROM workflow_run WHERE team_id = $1 AND document_id = $2 ORDER BY created_at DESC LIMIT $3`, [teamId, documentId, n]);
+  return rows.map(briefOf);
+}
+
+/** Each workflow's latest run on the document, by workflow id. */
+export async function latestRuns(teamId: string, documentId: string): Promise<Record<string, RunBrief>> {
+  const out: Record<string, RunBrief> = {};
+  if (!hasDb()) {
+    for (const r of memory.runs.values()) if (r.team_id === teamId && r.document_id === documentId) out[r.workflow_id] = runBrief(withStaleCheck(r)!);
+    return out;
+  }
+  await schema();
+  const { rows } = await sql.query(
+    `SELECT DISTINCT ON (workflow_id) ${BRIEF_COLUMNS} FROM workflow_run
+      WHERE team_id = $1 AND document_id = $2 ORDER BY workflow_id, created_at DESC`,
+    [teamId, documentId],
+  );
+  for (const row of rows) out[String(row.workflow_id)] = briefOf(row);
+  return out;
+}
+
+/** The team's newest runs across documents, without their outputs, for the canvas's run log and overview. */
+export async function recentRunSummaries(teamId: string, limit: number): Promise<RunSummary[]> {
+  if (!hasDb()) {
+    return [...memory.runs.values()]
+      .filter((r) => r.team_id === teamId)
       .reverse()
       .slice(0, limit)
       .map((r) => toRunSummary(withStaleCheck(r)!));
   }
-  // Outputs can be large, so they are left out.
-  const { rows } = await sql<WorkflowRun>`
-    SELECT id, group_id, status, workflow_id, workflow_name, workflow_version, workflow, steps, checkpoints, requested_by, created_at, updated_at
-    FROM agent_determination_run ORDER BY created_at DESC LIMIT ${limit}`;
+  await schema();
+  const { rows } = await sql`
+    SELECT id, team_id, document_id, status, pause_reason, workflow_id, workflow_name, workflow_version, graph, steps, checkpoints, outcome, requested_by, created_at, updated_at
+      FROM workflow_run WHERE team_id = ${teamId} ORDER BY created_at DESC LIMIT ${limit}`;
   return rows.flatMap((row) => {
-    const run = withStaleCheck(normalize({ ...row, outputs: {}, raw: {} }));
+    const run = withStaleCheck(normalizeRun({ ...row, outputs: {}, raw: {} }));
     return run ? [toRunSummary(run)] : [];
   });
 }
 
-/**
- * The subject's newest runs, newest first, for reading back what they produced
- * (a run in progress or one that failed may have nothing yet, so callers look
- * past it).
- */
-export async function recentRuns(groupId: string, limit = 5): Promise<WorkflowRun[]> {
-  if (!hasDb()) return [...memoryRuns.values()].filter((r) => r.group_id === groupId).reverse().slice(0, limit);
-  const { rows } = await sql<WorkflowRun>`SELECT * FROM agent_determination_run WHERE group_id = ${groupId} ORDER BY created_at DESC LIMIT ${limit}`;
-  return rows.map((r) => normalize(r)).filter((r): r is WorkflowRun => !!r);
+/** The changes a run proposes: each doc.write node's `change` output, in graph order. */
+export function proposedChanges(run: Pick<WorkflowRunRecord, "graph" | "outputs">): ProposedChange[] {
+  return run.graph.nodes.flatMap((n) => {
+    if (n.type !== "doc.write") return [];
+    const change = run.outputs[n.id]?.change as ProposedChange | undefined;
+    return change && typeof change === "object" && Array.isArray(change.ops) ? [change] : [];
+  });
 }
 
-/** A run still in progress: executing, stopped at a checkpoint, or paused at the time budget. */
-export type ActiveRun = { id: string; status: "running" | "awaiting_review" | "paused" };
-const ACTIVE: RunStatus[] = ["running", "awaiting_review", "paused"];
+/** The run as the client sees it: no team id or raw replies, plus its proposed changes. */
+export function runView(run: WorkflowRunRecord): WorkflowRunView {
+  const { team_id: _t, raw: _r, ...rest } = run;
+  void _t;
+  void _r;
+  return { ...rest, proposed: proposedChanges(run) };
+}
 
-/** Each subject's latest run, for the subjects whose latest run is still in progress. */
-export async function activeRunsFor(groupIds: string[]): Promise<Record<string, ActiveRun>> {
-  const latest: WorkflowRun[] = [];
-  if (!groupIds.length) return {};
+/** Atomically merge one entry into a run's JSON column (changes or responses). Null when the run is not the team's. */
+async function mergeEntry(teamId: string, runId: string, column: "changes" | "responses", key: string, value: unknown): Promise<WorkflowRunRecord | null> {
   if (!hasDb()) {
-    for (const id of groupIds) {
-      const run = [...memoryRuns.values()].filter((r) => r.group_id === id).at(-1);
-      if (run) latest.push(run);
-    }
-  } else {
-    // Only the columns the stale check reads; steps and outputs can be large.
-    const { rows } = await sql.query(
-      `SELECT DISTINCT ON (group_id) id, group_id, status, updated_at FROM agent_determination_run
-        WHERE group_id = ANY($1) ORDER BY group_id, created_at DESC`,
-      [groupIds],
-    );
-    latest.push(...(rows as WorkflowRun[]).map((r) => ({ ...r, steps: {}, updated_at: new Date(r.updated_at).toISOString() })));
+    const r = memory.runs.get(runId);
+    if (!r || r.team_id !== teamId) return null;
+    r[column] = { ...r[column], [key]: clone(value) } as never;
+    r.updated_at = new Date().toISOString();
+    return withStaleCheck(clone(r));
   }
-  const out: Record<string, ActiveRun> = {};
-  for (const r of latest) {
-    const run = withStaleCheck(r)!;
-    if (ACTIVE.includes(run.status)) out[run.group_id] = { id: run.id, status: run.status as ActiveRun["status"] };
-  }
-  return out;
+  await schema();
+  // The column name is one of two literals above; values are bound.
+  const { rows } = await sql.query(
+    `UPDATE workflow_run SET ${column} = COALESCE(${column}, '{}'::jsonb) || jsonb_build_object($3::text, $4::jsonb), updated_at = now()
+      WHERE id = $1 AND team_id = $2 RETURNING *`,
+    [runId, teamId, key, JSON.stringify(value)],
+  );
+  return withStaleCheck(normalizeRun(rows[0]));
 }
 
-/** What the run's Save output node recorded, or null when it has not run. */
-export function runResult(run: Pick<WorkflowRun, "workflow" | "outputs">): string | null {
-  const node = run.workflow.nodes.find((n) => n.type === OUTPUT_NODE_TYPE);
-  const result = node ? run.outputs[node.id]?.result : undefined;
-  return typeof result === "string" ? result : null;
+/** Record what happened to a proposed change (applied in the editor, discarded, skipped). */
+export function recordChangeResult(teamId: string, runId: string, changeId: string, result: ChangeResult): Promise<WorkflowRunRecord | null> {
+  return mergeEntry(teamId, runId, "changes", changeId, result);
+}
+
+/** Record the author's response to a finding (accept or dismiss; "open" undoes it). */
+export function recordFindingResponse(teamId: string, runId: string, findingId: string, response: FindingResponse): Promise<WorkflowRunRecord | null> {
+  return mergeEntry(teamId, runId, "responses", findingId, response);
 }
 
 export type RunAuditEntry = { ts: string; agent: string; action: string; allowed: boolean; note: string; result: unknown };
 
 /**
  * The audit log's entries for one run, oldest first. Empty without a database (they go to the console).
- * The start entry records the run's ID in its result, the rest in their args.
+ * The start entry records the run's ID in its result, the rest in their args. Callers check the team first (getRun).
  */
 export async function runAuditTrail(runId: string): Promise<RunAuditEntry[]> {
   if (!hasDb()) return [];
@@ -443,22 +691,36 @@ export async function runAuditTrail(runId: string): Promise<RunAuditEntry[]> {
 /**
  * Atomically move a run from `from` to running, so two clicks on Continue
  * cannot start it twice. Returns false when the run was not in `from`.
+ * "running" in `from` only matches a run that stopped responding (older than
+ * STALE_RUN_MS): a fresh running row has just been claimed by someone else.
  */
-export async function claimRun(run: WorkflowRun, from: RunStatus[]): Promise<boolean> {
+export async function claimRun(run: WorkflowRunRecord, from: RunStatus[]): Promise<boolean> {
   if (!from.includes(run.status)) return false;
+  const now = new Date();
   if (hasDb()) {
     // sql.query: the tagged template only accepts primitives, and this binds an array.
     const { rows } = await sql.query(
-      `UPDATE agent_determination_run SET status = 'running', updated_at = now() WHERE id = $1 AND status = ANY($2) RETURNING id`,
-      [run.id, from],
+      `UPDATE workflow_run SET status = 'running', pause_reason = NULL, updated_at = now()
+        WHERE id = $1 AND team_id = $2 AND status = ANY($3)
+          AND (status <> 'running' OR updated_at < now() - make_interval(secs => $4))
+        RETURNING id`,
+      [run.id, run.team_id, from, STALE_RUN_MS / 1000],
     );
     if (!rows.length) return false;
+  } else {
+    const stored = memory.runs.get(run.id);
+    if (!stored || !from.includes(stored.status)) return false;
+    if (stored.status === "running" && now.getTime() - new Date(stored.updated_at).getTime() < STALE_RUN_MS) return false;
+    stored.status = "running";
+    stored.pause_reason = null;
+    stored.updated_at = now.toISOString();
   }
   run.status = "running";
-  run.updated_at = new Date().toISOString();
+  run.pause_reason = null;
+  run.updated_at = now.toISOString();
   return true;
 }
 
-export async function auditRun(run: WorkflowRun, action: string, result: unknown, note?: string, agent = "workflow_engine"): Promise<void> {
-  await defaultAuditSink().write({ agent, action, args: { group_id: run.group_id, runId: run.id }, result, allowed: true, note, groupId: run.group_id });
+export async function auditRun(run: WorkflowRunRecord, action: string, result: unknown, note?: string, agent = "workflow_engine"): Promise<void> {
+  await defaultAuditSink().write({ agent, action, args: { documentId: run.document_id, runId: run.id }, result, allowed: true, note });
 }

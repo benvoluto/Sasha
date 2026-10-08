@@ -1,12 +1,13 @@
 'use client';
 
-import { CaseNav } from '@/components/case-nav';
+// The workflow canvas, inside the app frame (rail and documents panel): build
+// and version workflows, and run them on a document.
+
 import { WorkflowCanvas } from '@/components/workflow/workflow-canvas';
 
 export default function WorkflowsPage() {
   return (
-    <div className="min-h-screen bg-zinc-100 font-sans dark:bg-zinc-950">
-      <CaseNav />
+    <div className="min-h-dvh bg-zinc-100 font-sans dark:bg-zinc-950">
       <main className="mx-auto max-w-[1600px] px-4 py-6">
         <WorkflowCanvas />
       </main>

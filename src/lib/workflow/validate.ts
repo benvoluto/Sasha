@@ -1,6 +1,7 @@
 // Graph validation, run in the editor (to show problems on the canvas) and on
 // the server (before saving and before running).
 
+import { AFTER_PORT } from "./node-spec";
 import { configFor, NODE_SPEC_INDEX, OUTPUT_NODE_TYPE, type NodeSpec } from "./registry";
 import { templateVariables } from "./template";
 import { portsCompatible, type GraphNode, type PortSpec, type WorkflowGraph } from "./types";
@@ -9,14 +10,14 @@ export type Issue = { severity: "error" | "warning"; message: string; nodeId?: s
 
 export type ResolvedNode = { node: GraphNode; spec: NodeSpec; config: Record<string, unknown>; inputs: PortSpec[]; outputs: PortSpec[] };
 
-/** Each node with its parsed settings and current ports; unknown types are dropped. */
+/** Each node with its parsed settings and current ports (plus the `after` input every node has); unknown types are dropped. */
 export function resolveNodes(graph: WorkflowGraph): Map<string, ResolvedNode> {
   const out = new Map<string, ResolvedNode>();
   for (const node of graph.nodes) {
     const spec = NODE_SPEC_INDEX[node.type];
     if (!spec) continue;
     const config = configFor(spec, node.config);
-    out.set(node.id, { node, spec, config, inputs: spec.inputs(config), outputs: spec.outputs(config) });
+    out.set(node.id, { node, spec, config, inputs: [...spec.inputs(config), AFTER_PORT], outputs: spec.outputs(config) });
   }
   return out;
 }
@@ -81,7 +82,7 @@ export function validateGraph(graph: WorkflowGraph): Issue[] {
     if (count > 1) issues.push({ severity: "error", message: `Only one ${spec.label} node is allowed` });
   }
   if (!graph.nodes.some((n) => n.type === OUTPUT_NODE_TYPE)) {
-    issues.push({ severity: "error", message: "Add a Save output node so the run's result is recorded" });
+    issues.push({ severity: "error", message: "Add an Outcome node so the run's outcome is recorded" });
   }
 
   const resolved = resolveNodes(graph);

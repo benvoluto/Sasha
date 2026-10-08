@@ -1,55 +1,43 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/ontology/governance";
-import { authFromClerk } from "@/lib/ontology/permissions";
+import { z } from "zod";
+import { getDocument, isUuid } from "@/lib/documents/store";
+import { requireTeam } from "@/lib/documents/team";
+import { PERMISSIONS } from "@/lib/ontology/permissions";
+import { planRun, startPlannedRun } from "@/lib/workflow/availability";
+import { RunParams, type RunResponse } from "@/lib/workflow/contract";
 import { executeGraph } from "@/lib/workflow/engine";
-import { RUN_PERMISSION, activeWorkflow, createRun, getDefaultWorkflowId, getWorkflow, latestRun } from "@/lib/workflow/store";
+import { getDefaultWorkflowId, runView } from "@/lib/workflow/store";
 
 export const runtime = "nodejs";
 // The run continues in after(); the engine pauses itself before this limit.
 export const maxDuration = 300;
 
+const Body = z.strictObject({
+  documentId: z.string().min(1).max(80),
+  workflowId: z.string().min(1).max(120).optional(),
+  version: z.number().int().min(0).optional(),
+  params: RunParams.optional(),
+});
+
 /**
- * POST /api/workflow-runs/runs — run a workflow on an upload's source documents.
- * Body: { groupId, workflowId?, version? } — the default workflow's newest
- * version unless named. Returns the run immediately; poll GET /runs/[runId].
+ * POST /api/workflow-runs/runs — the canvas's "Run on document". Body:
+ * { documentId, workflowId?, version?, params? }; the team's default workflow's
+ * newest version unless named. The same checks as starting from the document's
+ * Workflows tab. 202 with the run; poll GET /runs/[runId].
  */
 export async function POST(request: NextRequest) {
-  const caller = await authFromClerk();
-  if (!caller) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (!can(caller, RUN_PERMISSION)) return NextResponse.json({ error: `permission denied: requires '${RUN_PERMISSION}'` }, { status: 403 });
-
-  let groupId = "";
-  let workflowId: string | undefined;
-  let version: number | undefined;
-  try {
-    const body = await request.json();
-    if (typeof body?.groupId === "string") groupId = body.groupId.trim();
-    if (typeof body?.workflowId === "string" && body.workflowId) workflowId = body.workflowId;
-    if (Number.isInteger(body?.version)) version = body.version;
-  } catch {
-    // handled below
-  }
-  if (!groupId) return NextResponse.json({ error: "groupId is required" }, { status: 400 });
-
-  // A named workflow and version, or the default workflow's newest.
-  const workflow = workflowId || version !== undefined ? await getWorkflow(workflowId ?? (await getDefaultWorkflowId()), version) : await activeWorkflow();
-  if (!workflow) return NextResponse.json({ error: "workflow or version not found" }, { status: 404 });
-  const run = await createRun(groupId, workflow, caller);
+  const caller = await requireTeam(PERMISSIONS.workflowRun);
+  if (caller instanceof NextResponse) return caller;
+  const parsed = Body.safeParse(await request.json().catch(() => undefined));
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
+  const { documentId, version, params } = parsed.data;
+  const doc = isUuid(documentId) ? await getDocument(caller.teamId, documentId) : null;
+  if (!doc) return NextResponse.json({ error: "Document not found." }, { status: 404 });
+  const workflowId = parsed.data.workflowId ?? (await getDefaultWorkflowId(caller.teamId));
+  if (!workflowId) return NextResponse.json({ error: "Workflow not found." }, { status: 404 });
+  const plan = await planRun(caller.teamId, doc, { workflowId, version, params });
+  if (!plan.ok) return NextResponse.json({ error: plan.error, ...(plan.acknowledge ? { acknowledge: plan.acknowledge } : {}) }, { status: plan.status });
+  const run = await startPlannedRun(caller.teamId, doc, plan, caller);
   after(() => executeGraph(run));
-  return NextResponse.json({ run }, { status: 202 });
-}
-
-/** GET /api/workflow-runs/runs?groupId=[&brief=1] — the latest run on an upload group. */
-export async function GET(request: NextRequest) {
-  const caller = await authFromClerk();
-  if (!caller) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const groupId = request.nextUrl.searchParams.get("groupId");
-  if (!groupId) return NextResponse.json({ error: "groupId is required" }, { status: 400 });
-  const run = await latestRun(groupId);
-  // ?brief=1: just where the run stands, for links (the full run carries every node's output).
-  if (request.nextUrl.searchParams.get("brief") && run) {
-    const { id, status, workflow_id, workflow_name, workflow_version, created_at, updated_at } = run;
-    return NextResponse.json({ run: { id, status, workflow_id, workflow_name, workflow_version, created_at, updated_at } });
-  }
-  return NextResponse.json({ run });
+  return NextResponse.json({ run: runView(run) } satisfies RunResponse, { status: 202 });
 }

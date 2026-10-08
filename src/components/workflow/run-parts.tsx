@@ -1,11 +1,24 @@
 'use client';
 
 // Small shared pieces of the run views: section headings, muted text, a step's
-// status, and a run's outcome badge.
+// status, a run's outcome badge, and a run as the history views summarize it.
 
 import { Check, CheckCircle2, CircleMinus, Hourglass, Loader2, PauseCircle, XCircle } from '@/components/icons';
-import { formatDuration, OUTCOME_LABEL, stepDuration, type RunOutcome } from '@/lib/workflow/run-stats';
-import type { StepState } from './types';
+import { runBrief } from '@/lib/workflow/contract';
+import { NODE_SPEC_INDEX } from '@/lib/workflow/registry';
+import { formatDuration, OUTCOME_LABEL, stepDuration, type RunOutcome, type RunSummary } from '@/lib/workflow/run-stats';
+import type { StepState, WorkflowRunView } from './types';
+
+/** A run as the timeline and the status badge read it (run-stats' toRunSummary, for the run as the client sees it). */
+export function summaryOf(run: WorkflowRunView): RunSummary {
+  return {
+    ...runBrief(run),
+    workflow_version: Number(run.workflow_version),
+    steps: run.steps,
+    checkpoints: run.checkpoints ?? {},
+    nodes: run.graph.nodes.map((n) => ({ id: n.id, type: n.type, label: n.label || NODE_SPEC_INDEX[n.type]?.label || n.type })),
+  };
+}
 
 export const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <section className="space-y-2">
@@ -49,7 +62,7 @@ export function StepStatus({ state }: { state?: StepState }) {
 }
 
 const OUTCOME_STYLE: Record<RunOutcome, { className: string; Icon: typeof Check }> = {
-  draft: { className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300', Icon: CheckCircle2 },
+  complete: { className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300', Icon: CheckCircle2 },
   failed: { className: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300', Icon: XCircle },
   awaiting_review: { className: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300', Icon: Hourglass },
   paused: { className: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', Icon: PauseCircle },

@@ -1,0 +1,47 @@
+{
+  "task": "workflow.decide",
+  "recorded_at": "2026-10-08T21:25:39.966Z",
+  "model": "claude-sonnet-5-5",
+  "material": {
+    "findings": [
+      {
+        "id": "scope:1",
+        "nodeId": "scope",
+        "kind": "check",
+        "severity": "major",
+        "status": null,
+        "title": "The pricing omits the signage promised in the summary",
+        "detail": "",
+        "location": null,
+        "evidence": [],
+        "reviewer": null,
+        "verified": true,
+        "fix": ""
+      },
+      {
+        "id": "terms:1",
+        "nodeId": "terms",
+        "kind": "check",
+        "severity": "minor",
+        "status": null,
+        "title": "No validity period",
+        "detail": "",
+        "location": null,
+        "evidence": [],
+        "reviewer": null,
+        "verified": true,
+        "fix": ""
+      }
+    ]
+  },
+  "replies": [
+    {
+      "value": "ready_after_fixes",
+      "rationale": "No finding is blocking, so not_ready does not apply. One finding is major: scope:1 says the pricing omits the signage promised in the summary, which triggers ready_after_fixes under the guidance. The other finding, terms:1 (no validity period), is minor and does not change the outcome, though it is worth fixing alongside. The decision rests on scope:1 being resolved by adding the signage to the pricing or removing it from the summary. A person should confirm that fix before sign-off. No reviewer disagreements were reported.",
+      "cited": [
+        "scope:1",
+        "terms:1"
+      ]
+    }
+  ]
+}

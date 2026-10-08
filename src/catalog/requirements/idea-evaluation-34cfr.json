@@ -1,0 +1,21 @@
+{
+  "key": "idea-evaluation-34cfr",
+  "version": 1,
+  "title": "IDEA evaluation and eligibility (34 CFR 300.304, 300.306)",
+  "authority": "U.S. Department of Education",
+  "jurisdiction": "United States (federal)",
+  "appliesTo": ["fie"],
+  "effective": "",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "34 CFR 300.304 and 300.306 (summarized in docs/workflows-by-document-type.md)",
+    "url": "https://www.law.cornell.edu/cfr/text/34/300.304",
+    "license": "Paraphrased summary (source: public domain US government)"
+  },
+  "items": [
+    { "key": "all-areas", "kind": "checklist", "title": "All areas assessed", "text": "Every area related to the suspected disability is assessed.", "citation": "34 CFR 300.304", "url": "https://www.law.cornell.edu/cfr/text/34/300.304" },
+    { "key": "variety-of-sources", "kind": "checklist", "title": "A variety of sources", "text": "The evaluation uses a variety of assessment sources.", "citation": "34 CFR 300.304", "url": "https://www.law.cornell.edu/cfr/text/34/300.304" },
+    { "key": "no-single-measure", "kind": "checklist", "title": "No single measure decides", "text": "No single measure or assessment is the sole basis for deciding whether the student has a disability.", "citation": "34 CFR 300.304", "url": "https://www.law.cornell.edu/cfr/text/34/300.304" },
+    { "key": "exclusionary-factors", "kind": "criterion", "title": "Exclusionary factors", "text": "A student is not found eligible when the determinant factor is lack of appropriate instruction in reading or math, or limited English proficiency.", "citation": "34 CFR 300.306(b)", "url": "https://www.law.cornell.edu/cfr/text/34/300.306" }
+  ]
+}

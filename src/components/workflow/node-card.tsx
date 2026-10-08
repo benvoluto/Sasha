@@ -9,22 +9,42 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import {
   AlertTriangle,
   ArrowsSplit,
+  ArrowUpDown,
+  BarChart3,
+  BookOpen,
   Boxes,
   CheckCircle2,
+  ClipboardList,
   Files,
+  FileText,
   GitFork,
+  Globe,
   HandPalm,
+  Highlighter,
   Hourglass,
+  IdentificationCard,
+  LayoutTemplate,
+  Link2,
   ListChecks,
   Loader2,
+  NoteIcon,
   Package,
+  Pencil,
+  PencilLine,
   Rows3,
   Save,
+  Scales,
+  Send,
+  ShieldCheck,
+  SparkleIcon,
   Sparkles,
+  Table,
   Tag,
   Trash2,
+  UserCheck,
   XCircle,
 } from '@/components/icons';
+import { AFTER_PORT } from '@/lib/workflow/node-spec';
 import { configFor, NODE_SPEC_INDEX, type Category } from '@/lib/workflow/registry';
 import type { GraphNode, PortSpec, PortType } from '@/lib/workflow/types';
 import { useCanvas } from './canvas-context';
@@ -47,31 +67,65 @@ const TONES = {
   orange: { header: 'bg-orange-50 dark:bg-orange-950/50', tile: 'bg-orange-500', kicker: 'text-orange-700 dark:text-orange-400', border: 'border-orange-500', glow: 'ring-orange-500/20', hex: '#f97316' },
 } satisfies Record<string, Tone>;
 
-const CATEGORY_TONE: Record<Category, Tone> = { Sources: TONES.emerald, Flow: TONES.violet, AI: TONES.pink, 'Text & logic': TONES.orange };
+const CATEGORY_TONE: Record<Category, Tone> = { Inputs: TONES.emerald, 'Review steps': TONES.sky, Changes: TONES.teal, Flow: TONES.violet, AI: TONES.pink, 'Text & logic': TONES.orange };
 
 /**
  * The flow steps each get their own colour, since they mark where a run stops
- * for a person and where it ends; other nodes take their category's.
+ * for a person and where it ends; other nodes take their category's. The gate
+ * (which can stop a run for missing input) and the web search (whose results
+ * stay unverified) are set apart too.
  */
 const TYPE_TONE: Record<string, Tone> = {
-  'flow.checkpoint': TONES.amber,
-  'output.save': TONES.slate,
+  checkpoint: TONES.amber,
+  'outcome.report': TONES.slate,
+  'step.gate': TONES.amber,
+  'web.find': TONES.orange,
 };
 
 export const toneFor = (type: string): Tone => TYPE_TONE[type] ?? CATEGORY_TONE[NODE_SPEC_INDEX[type]?.category] ?? TONES.slate;
 
 /** For the node library's category dots. */
 export const CATEGORY_STYLE: Record<Category, { chip: string }> = {
-  Sources: { chip: TONES.emerald.tile },
+  Inputs: { chip: TONES.emerald.tile },
+  'Review steps': { chip: TONES.sky.tile },
+  Changes: { chip: TONES.teal.tile },
   Flow: { chip: TONES.violet.tile },
   AI: { chip: TONES.pink.tile },
   'Text & logic': { chip: TONES.orange.tile },
 };
 
 const TYPE_ICON: Record<string, typeof Package> = {
-  'source.documents': Files,
-  'flow.checkpoint': HandPalm,
-  'output.save': Save,
+  // Inputs
+  'doc.read': FileText,
+  'doc.notes': NoteIcon,
+  'sources.list': Files,
+  'sources.read': Files,
+  'data.list': Table,
+  'requirements.read': BookOpen,
+  // Review steps
+  'type.coverage': LayoutTemplate,
+  'web.find': Globe,
+  'rubric.score': Highlighter,
+  'step.gate': ShieldCheck,
+  'step.extract': ListChecks,
+  'step.trace': Link2,
+  'step.review': UserCheck,
+  'step.agree': Scales,
+  'step.check': ClipboardList,
+  'step.classify': Tag,
+  'step.simulate': IdentificationCard,
+  'step.decide': CheckCircle2,
+  'step.compute': BarChart3,
+  // Changes
+  'restructure.plan': ArrowUpDown,
+  'restructure.apply': ArrowsSplit,
+  'restructure.rewrite': PencilLine,
+  'draft.section': SparkleIcon,
+  'doc.write': Pencil,
+  'suggest.emit': Send,
+  // Flow
+  checkpoint: HandPalm,
+  'outcome.report': Save,
   'ai.ask': Sparkles,
   'ai.extract': ListChecks,
   'ai.categorize': Tag,
@@ -155,6 +209,15 @@ export function NodeCard({ id, data, selected }: NodeProps<CardNode>) {
       } ${state?.status === 'skipped' ? 'opacity-60' : ''}`}
     >
       <Ports ports={spec.inputs(config)} kind="target" />
+      {/* Every node also takes "after": connections that only order and gate it (a gate's pass, a checkpoint's approved). */}
+      <Handle
+        id={AFTER_PORT.name}
+        type="target"
+        position={Position.Left}
+        title="after: run only once these steps deliver"
+        style={{ top: 22, background: PORT_COLOR.any, width: 8, height: 8, border: '2px solid white' }}
+      />
+      <span className="pointer-events-none absolute -left-9 top-[15px] text-[9px] uppercase tracking-wide text-zinc-400">{AFTER_PORT.label}</span>
       <div className={`rounded-t-[14px] px-3 py-2.5 ${tone.header}`}>
         <div className="flex items-center gap-2.5">
           <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white shadow-sm ${tone.tile}`}>

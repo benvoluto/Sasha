@@ -1,0 +1,292 @@
+{
+  "key": "type-diataxis-tutorial",
+  "version": 1,
+  "title": "Tutorial walkthrough",
+  "summary": "Whether a beginner starting clean can finish the tutorial, with a table of each step's stated visible result and whether the walkthrough saw it. Two simulated beginner runs, per-step checks and a type check.",
+  "kind": "type",
+  "appliesTo": [
+    "diataxis-tutorial"
+  ],
+  "outcome": {
+    "label": "Completion result",
+    "values": [
+      {
+        "key": "completes",
+        "label": "A beginner can finish it (simulated)"
+      },
+      {
+        "key": "does_not_complete",
+        "label": "A beginner gets stuck"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "requirementSets": [
+    "diataxis-framework"
+  ],
+  "notes": [
+    "A model is a weak stand-in for a beginner; one person new to the topic remains the better test.",
+    "Simulated: no sandbox ran the steps. Run runnable tutorials for real before publishing."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: start and end stated",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "start_state",
+            "label": "The starting state (what to install and already know)",
+            "kind": "any",
+            "match": [
+              "before you begin",
+              "prerequisites",
+              "you will need",
+              "install"
+            ],
+            "help": "State at the top what the learner needs installed and already knows."
+          },
+          {
+            "key": "end_result",
+            "label": "The end result",
+            "kind": "any",
+            "match": [
+              "by the end",
+              "you will have",
+              "you'll build"
+            ],
+            "help": "State at the top what the learner will have built or done by the end."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "walk1",
+      "node": "step.simulate",
+      "label": "Beginner walkthrough",
+      "config": {
+        "persona": "a beginner starting from a clean environment using only the stated prior knowledge",
+        "task": "Work through the tutorial from the first step to the end result.",
+        "records": "steps",
+        "rules": [
+          "do exactly what is written",
+          "stop at the first ambiguity",
+          "for each step record the stated visible result and whether you would see it"
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "steps",
+      "node": "step.extract",
+      "label": "Steps",
+      "config": {
+        "item": "step",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "steps"
+        ],
+        "maxItems": 100,
+        "instructions": "List each step in order.",
+        "fields": [
+          {
+            "name": "number",
+            "label": "Number",
+            "type": "text",
+            "description": "The step's number as written",
+            "required": true
+          },
+          {
+            "name": "instruction",
+            "label": "Instruction",
+            "type": "text",
+            "description": "What the step tells the learner to do",
+            "required": true
+          },
+          {
+            "name": "stated_result",
+            "label": "Stated result",
+            "type": "text",
+            "description": "The visible result the step says the learner will see"
+          },
+          {
+            "name": "has_choice",
+            "label": "Offers a choice",
+            "type": "boolean",
+            "description": "Whether the step offers the learner a choice or alternative"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "perstep",
+      "node": "step.check",
+      "label": "Per step",
+      "config": {
+        "perItem": true,
+        "checklist": [
+          {
+            "key": "visible_result",
+            "label": "A visible result is stated",
+            "question": "Does the step state the visible result the learner will see?",
+            "severity": "major"
+          },
+          {
+            "key": "complete_code",
+            "label": "Commands and code are complete",
+            "question": "Are the step's commands and code complete enough to run as written?",
+            "severity": "major"
+          },
+          {
+            "key": "no_choice",
+            "label": "No choice offered",
+            "question": "Is the step free of choices or alternatives?",
+            "severity": "minor"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "steps.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "type",
+      "node": "step.classify",
+      "label": "Type check",
+      "config": {
+        "unit": "paragraph",
+        "instructions": "Classify each passage by its role in a tutorial.",
+        "categories": [
+          {
+            "key": "step",
+            "label": "Step",
+            "description": "An action the learner takes, or its visible result",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "context",
+            "label": "Brief context",
+            "description": "A sentence or two of context or encouragement",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "explanation",
+            "label": "Explanation",
+            "description": "Explanation longer than a sentence or two",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "an explanation"
+          },
+          {
+            "key": "reference",
+            "label": "Reference",
+            "description": "Reference material: option lists, parameter tables, full specifications",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "a reference"
+          },
+          {
+            "key": "alternatives",
+            "label": "Alternatives",
+            "description": "Alternative ways to do a step",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "a how-to guide"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "walk2",
+      "node": "step.simulate",
+      "label": "Second run",
+      "config": {
+        "persona": "a second beginner from a clean environment",
+        "task": "Work through the tutorial again from a clean start and compare the result with the first run.",
+        "records": "steps",
+        "rules": [
+          "confirm the same result",
+          "record the tool and library versions the text assumes"
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "does_not_complete",
+            "when": {
+              "findings": {
+                "kind": [
+                  "walkthrough_failed"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "completes"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": [
+          "walk1.findings",
+          "perstep.findings",
+          "type.findings",
+          "walk2.findings"
+        ],
+        "tables": [
+          "walk1.table",
+          "perstep.table",
+          "type.table",
+          "walk2.table"
+        ]
+      }
+    }
+  ]
+}

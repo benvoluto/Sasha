@@ -1,18 +1,21 @@
 'use client';
 
 // The side panel during and after a run: what the selected node produced, and,
-// at a human checkpoint, the review form that continues the run.
+// at a human checkpoint, the same checkpoint panel as the document's
+// Workflows tab (checkpoint-panel.tsx), which continues the run.
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Play } from '@/components/icons';
-import { NODE_SPEC_INDEX, OUTPUT_NODE_TYPE } from '@/lib/workflow/registry';
-import { runOutcome, toRunSummary } from '@/lib/workflow/run-stats';
+import { Play } from '@/components/icons';
+import { signatureState, signatureText } from '@/components/editor/workflows-pane-model';
+import { outcomeLabel } from '@/lib/workflow/contract';
+import { CHECKPOINT_NODE_TYPE, NODE_SPEC_INDEX, OUTPUT_NODE_TYPE } from '@/lib/workflow/registry';
+import { runOutcome } from '@/lib/workflow/run-stats';
 import type { GraphNode } from '@/lib/workflow/types';
+import { CheckpointPanel, type CheckpointSubmit } from './checkpoint-panel';
 import { RunTimeline } from './run-timeline';
-import { Muted, OutcomeBadge, Section, StepStatus } from './run-parts';
-import type { WorkflowRun } from './types';
+import { Muted, OutcomeBadge, Section, StepStatus, summaryOf } from './run-parts';
+import type { WorkflowRunView } from './types';
 
 function ValueView({ value }: { value: unknown }) {
   if (value === undefined || value === null) return <Muted>(empty)</Muted>;
@@ -31,60 +34,29 @@ function ValueView({ value }: { value: unknown }) {
   return <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-zinc-100 p-2 text-xs dark:bg-zinc-800">{JSON.stringify(value, null, 2)}</pre>;
 }
 
-/** Short description of a checkpoint item, for the review checklist. */
-function itemSummary(v: unknown): string {
-  const s = typeof v === 'string' ? v : JSON.stringify(v);
-  return s.length > 240 ? `${s.slice(0, 240)}…` : s;
-}
-
-function CheckpointReview({ run, node, onContinue }: { run: WorkflowRun; node: GraphNode; onContinue: (excluded: number[], note: string) => Promise<void> }) {
-  const items = (run.outputs[node.id]?.pending_items as unknown[]) ?? [];
-  const [excluded, setExcluded] = useState<number[]>([]);
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
+/** The run's outcome (the outcome step's record): the value, whether it is signed, and what it rests on. */
+function RunResult({ run }: { run: WorkflowRunView }) {
+  const node = run.graph.nodes.find((n) => n.type === OUTPUT_NODE_TYPE);
+  const o = run.outcome;
+  if (!node || !o) return null;
+  const signed = signatureText(o);
   return (
-    <div className="space-y-3 rounded-lg border border-violet-300 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
-      <p className="text-sm font-medium">This run is waiting for you.</p>
-      {node.config.instructions ? <Muted>{String(node.config.instructions)}</Muted> : null}
-      <ul className="space-y-2">
-        {items.map((v, i) => (
-          <li key={i}>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-1" checked={!excluded.includes(i)} onChange={(e) => setExcluded(e.target.checked ? excluded.filter((x) => x !== i) : [...excluded, i])} />
-              <span>{itemSummary(v)}</span>
-            </label>
-          </li>
-        ))}
-        {!items.length && <Muted>Nothing reached this checkpoint.</Muted>}
-      </ul>
-      <Textarea className="text-sm" placeholder="Note for later steps (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-      <Button
-        size="sm"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await onContinue(excluded, note);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {busy ? <Loader2 className="animate-spin" /> : <Play />} Continue run{excluded.length ? ` without ${excluded.length} item${excluded.length === 1 ? '' : 's'}` : ''}
-      </Button>
-    </div>
-  );
-}
-
-/** What the Save output node recorded as the run's result. */
-function RunResult({ run }: { run: WorkflowRun }) {
-  const node = run.workflow.nodes.find((n) => n.type === OUTPUT_NODE_TYPE);
-  if (!node || run.steps[node.id]?.status !== 'done') return null;
-  const result = run.outputs[node.id]?.result;
-  if (typeof result !== 'string' || !result.trim()) return <Muted>The run finished, but nothing reached Save output.</Muted>;
-  return (
-    <Section title="Result">
-      <ValueView value={result} />
+    <Section title={o.label}>
+      <div className="space-y-1 text-sm">
+        <p className="font-semibold">{o.valueLabel || outcomeLabel(o.values, o.value)}</p>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">{signed ?? (signatureState(o) === 'Advisory' ? 'Advisory' : '')}</p>
+        {o.rationale && <p className="whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">{o.rationale}</p>}
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">
+          {o.findings.length} finding{o.findings.length === 1 ? '' : 's'}
+          {o.disagreements.length ? ` · ${o.disagreements.length} disagreement${o.disagreements.length === 1 ? '' : 's'}` : ''}
+          {o.missing.length ? ` · missing: ${o.missing.join(', ')}` : ''}
+        </p>
+        {run.document_id && (
+          <Link href={`/d/${encodeURIComponent(run.document_id)}`} className="text-xs font-medium text-[var(--go)] hover:underline">
+            Open the document (its Workflows tab shows the full outcome)
+          </Link>
+        )}
+      </div>
     </Section>
   );
 }
@@ -96,13 +68,14 @@ export function RunInspector({
   onContinue,
   onSelectNode,
 }: {
-  run: WorkflowRun;
+  run: WorkflowRunView;
   node: GraphNode | null;
   canRun: boolean;
-  onContinue: (checkpoint?: { nodeId: string; excluded: number[]; note: string }) => Promise<void>;
+  /** Continue a paused run, or record a checkpoint decision; resolves to an error message or null. */
+  onContinue: (checkpoint?: CheckpointSubmit) => Promise<string | null>;
   onSelectNode: (nodeId: string) => void;
 }) {
-  const summary = toRunSummary(run);
+  const summary = summaryOf(run);
 
   if (!node) {
     return (
@@ -113,7 +86,7 @@ export function RunInspector({
         </div>
         <Muted>Click a node to see what it produced.</Muted>
         {run.status === 'paused' && canRun && (
-          <Button size="sm" onClick={() => onContinue()}>
+          <Button size="sm" onClick={() => void onContinue()}>
             <Play /> Continue run
           </Button>
         )}
@@ -135,13 +108,8 @@ export function RunInspector({
         <h2 className="text-lg font-semibold">{node.label || spec?.label}</h2>
       </div>
       {state ? <StepStatus state={state} /> : <Muted>This node was not part of the run (the workflow changed since).</Muted>}
-      {state?.status === 'waiting' && canRun && <CheckpointReview run={run} node={node} onContinue={(excluded, note) => onContinue({ nodeId: node.id, excluded, note })} />}
-      {run.checkpoints[node.id] && (
-        <Muted>
-          Continued by {run.checkpoints[node.id].by}
-          {run.checkpoints[node.id].excluded.length ? `, leaving out ${run.checkpoints[node.id].excluded.length} item(s)` : ''}
-          {run.checkpoints[node.id].note ? `: “${run.checkpoints[node.id].note}”` : ''}
-        </Muted>
+      {node.type === CHECKPOINT_NODE_TYPE && state && (state.status === 'waiting' || run.checkpoints[node.id]) && (
+        <CheckpointPanel run={run} nodeId={node.id} canDecide={canRun && run.status !== 'superseded'} onSubmit={(checkpoint) => onContinue(checkpoint)} />
       )}
       {node.type === OUTPUT_NODE_TYPE && state && state.status !== 'done' && state.status !== 'running' && (
         <Muted>No result was saved. {summary.nodes.filter((n) => run.steps[n.id]?.status === 'failed').map((n) => n.label).join(', ') || 'An earlier step'} did not finish; see the run log.</Muted>
@@ -152,12 +120,6 @@ export function RunInspector({
             <ValueView value={value} />
           </Section>
         ))}
-      {run.raw[node.id] && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-zinc-600">Show the reply that failed validation</summary>
-          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">{run.raw[node.id]}</pre>
-        </details>
-      )}
       <details className="text-sm">
         <summary className="cursor-pointer text-zinc-600 dark:text-zinc-400">Run log</summary>
         <div className="mt-2">

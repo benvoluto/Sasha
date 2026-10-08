@@ -1,0 +1,50 @@
+{
+  "recorded_at": "2026-10-08T21:27:46.341Z",
+  "model": "claude-sonnet-5-5",
+  "type_key": "proposal",
+  "section_keys": [
+    "summary",
+    "reason",
+    "objectives",
+    "approach",
+    "timeline",
+    "budget",
+    "evaluation"
+  ],
+  "parts": [
+    null,
+    "Background",
+    "What it costs",
+    "When",
+    "A note on the old mill"
+  ],
+  "data": {
+    "rows": [
+      {
+        "id": "R1",
+        "target": "summary",
+        "reason": "It states what is proposed and what the parish council is asked to do."
+      },
+      {
+        "id": "R2",
+        "target": "reason",
+        "reason": "It describes the flood damage and survey evidence of use, which show why the work is needed."
+      },
+      {
+        "id": "R3",
+        "target": "budget",
+        "reason": "It gives the contractor's quoted total cost, its scope and how long the quote is valid."
+      },
+      {
+        "id": "R4",
+        "target": "timeline",
+        "reason": "It gives the start and end dates of the work."
+      },
+      {
+        "id": "R5",
+        "target": null,
+        "reason": "The mill's history is background trivia unrelated to any proposal section."
+      }
+    ]
+  }
+}

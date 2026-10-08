@@ -1,8 +1,9 @@
 'use client';
 
 // The workflow editor: a canvas of nodes wired output → input, a node library,
-// problems found by validation, versioned saving, and runs on uploaded source
-// documents with live status on every node.
+// problems found by validation, versioned saving, and runs on a document with
+// live status on every node. Built-in workflows open read-only, with "Copy to
+// edit" to make a team copy.
 
 import {
   addEdge,
@@ -19,29 +20,40 @@ import {
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, BarChart3, ClipboardList, FolderOpen, Loader2, Play, Plus, RefreshCw, Save, Workflow } from '@/components/icons';
+import { AlertTriangle, BarChart3, ClipboardList, Copy, Loader2, Play, Plus, RefreshCw, Save, Workflow } from '@/components/icons';
+import type { RunBrief } from '@/lib/workflow/contract';
 import { CATEGORIES, NODE_SPECS, NODE_SPEC_INDEX } from '@/lib/workflow/registry';
 import { portsCompatible, type GraphNode, type WorkflowGraph } from '@/lib/workflow/types';
-import { formatDuration, runDuration, runOutcome, toRunSummary } from '@/lib/workflow/run-stats';
+import { formatDuration, runDuration, runOutcome } from '@/lib/workflow/run-stats';
 import { createsCycle, resolveNodes, validateGraph, type Issue } from '@/lib/workflow/validate';
 import { CanvasContext } from './canvas-context';
 import { CATEGORY_STYLE, NodeCard, toneFor, type CardNode } from './node-card';
 import { EMPTY_FILTER, RunLog, RunsOverview, useRunHistory, type LogFilter } from './run-history';
 import { RoutedEdge, RoutesProvider, useEdgeRoutes } from './routed-edge';
 import { RunInspector } from './run-inspector';
-import { requestCaseOpen } from '@/lib/open-case';
+import type { CheckpointSubmit } from './checkpoint-panel';
 import { WorkflowPicker } from './workflow-picker';
-import { OutcomeBadge } from './run-parts';
-import { fallbackSourceLabel, sourceLabel, type UploadGroupBrief } from './source-label';
-import type { SourceOption, WorkflowResponse, WorkflowRun } from './types';
+import { OutcomeBadge, summaryOf } from './run-parts';
+import type { DocumentOption, RunResponse, WorkflowResponse, WorkflowRunView } from './types';
 
 const POLL_MS = 2500;
+/** A run waiting for a person changes slowly. */
+const REVIEW_POLL_MS = 10_000;
 const nodeTypes = { card: NodeCard };
 const edgeTypes = { routed: RoutedEdge };
 
@@ -103,35 +115,30 @@ function Editor({
 }) {
   const { resolvedTheme } = useTheme();
   const flow = useReactFlow();
-  const [nodes, setNodes, onNodesChange] = useNodesState<CardNode>(toCards(info.definition));
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(toEdges(info.definition));
-  const [saved, setSaved] = useState(() => JSON.stringify(info.definition));
+  const [nodes, setNodes, onNodesChange] = useNodesState<CardNode>(toCards(info.graph));
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(toEdges(info.graph));
+  const [saved, setSaved] = useState(() => JSON.stringify(info.graph));
   const [selected, setSelected] = useState<string | null>(null);
   const [library, setLibrary] = useState(false);
   const [showIssues, setShowIssues] = useState(false);
   const [note, setNote] = useState('');
-  const [sources, setSources] = useState<SourceOption[]>([]);
-  // A link to an upload's run (from the document list) opens it here: /workflows?source=<id>.
-  // ?case= is the older form of the same link.
-  const [sourceId, setSourceIdState] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    const p = new URLSearchParams(window.location.search);
-    return p.get('source') ?? p.get('case') ?? '';
-  });
-  const setSourceId = useCallback((id: string) => {
-    setSourceIdState(id);
-    // Keep the URL on the sources shown, so it can be shared or reloaded.
+  const [documents, setDocuments] = useState<DocumentOption[] | null>(null);
+  // A link to a document's runs opens it here: /workflows?document=<id>.
+  const [documentId, setDocumentIdState] = useState(() => (typeof window === 'undefined' ? '' : (new URLSearchParams(window.location.search).get('document') ?? '')));
+  const setDocumentId = useCallback((id: string) => {
+    setDocumentIdState(id);
+    // Keep the URL on the document shown, so it can be shared or reloaded.
     const url = new URL(window.location.href);
-    url.searchParams.delete('case');
-    if (id) url.searchParams.set('source', id);
-    else url.searchParams.delete('source');
+    if (id) url.searchParams.set('document', id);
+    else url.searchParams.delete('document');
     window.history.replaceState(null, '', url);
   }, []);
-  const [run, setRun] = useState<WorkflowRun | null>(null);
-  const [busy, setBusy] = useState<'save' | 'run' | null>(null);
+  /** Opening another workflow while this one has unsaved changes: confirmed in a dialog first. */
+  const [pendingOpen, setPendingOpen] = useState<{ workflowId: string; version?: number } | null>(null);
+  const [run, setRun] = useState<WorkflowRunView | null>(null);
+  const [busy, setBusy] = useState<'save' | 'run' | 'copy' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sourceIdRef = useRef('');
 
   const graph = useMemo(() => toGraph(nodes, edges), [nodes, edges]);
   const dirty = JSON.stringify(graph) !== saved;
@@ -142,7 +149,8 @@ function Editor({
     for (const i of issues) if (i.nodeId) m.set(i.nodeId, [...(m.get(i.nodeId) ?? []), i]);
     return m;
   }, [issues]);
-  const readOnly = !info.canEdit;
+  // Built-ins are never saved over: copy one to change it.
+  const readOnly = !info.canEdit || info.readOnly;
 
   const updateNode = useCallback(
     (id: string, patch: Partial<GraphNode>) =>
@@ -197,52 +205,79 @@ function Editor({
     setLibrary(false);
   };
 
-  // Uploaded sources for the run picker.
+  // The team's documents for the run picker.
   useEffect(() => {
-    fetch('/api/upload-groups', { cache: 'no-store' })
-      .then((r) => readJson<{ groups: Array<UploadGroupBrief & { geminiProcessing?: { status?: string } }> }>(r))
-      .then(({ groups }) =>
-        setSources(
-          groups.map((g) => ({
-            id: g.id,
-            label: sourceLabel(g),
-            ready: g.geminiProcessing?.status === 'completed' || g.geminiProcessing?.status === 'partial',
-            failed: g.geminiProcessing?.status === 'error',
-          })),
-        ),
-      )
-      .catch(() => setSources([]));
+    fetch('/api/documents', { cache: 'no-store' })
+      .then((r) => readJson<{ documents: DocumentOption[] }>(r))
+      .then(({ documents: list }) => setDocuments(list))
+      .catch(() => setDocuments([]));
   }, []);
-  // A linked upload that isn't in the working list (archived, say) still needs an option, or the picker would show none.
-  const sourceOptions = useMemo(
-    () => (sourceId && sources.length && !sources.some((c) => c.id === sourceId) ? [...sources, { id: sourceId, label: fallbackSourceLabel(sourceId), ready: false }] : sources),
-    [sources, sourceId],
+  // A linked document that isn't in the list (archived, say) still needs an option, or the picker would show none.
+  const documentOptions = useMemo(
+    () => (documentId && documents && !documents.some((d) => d.id === documentId) ? [...documents, { id: documentId, title: `Document ${documentId.slice(0, 8)}`, type_key: null, updated_at: '' }] : (documents ?? [])),
+    [documents, documentId],
   );
 
-  const poll = useCallback(async (url: string) => {
+  // The one run the canvas follows. A poll whose fetch resolves after the canvas
+  // moved on (another document, another run, unmount) is dropped and stops its
+  // chain, so two chains never share the timer and an old run never comes back.
+  const followed = useRef<string | null>(null);
+  const stopFollowing = useCallback(() => {
+    followed.current = null;
     if (pollTimer.current) clearTimeout(pollTimer.current);
+    pollTimer.current = null;
+  }, []);
+
+  const poll = useCallback(async (runId: string) => {
+    if (followed.current !== runId) return;
+    if (pollTimer.current) clearTimeout(pollTimer.current);
+    pollTimer.current = null;
     try {
-      const { run } = await readJson<{ run: WorkflowRun | null }>(await fetch(url, { cache: 'no-store' }));
-      setRun(run);
-      if (run?.status === 'running') pollTimer.current = setTimeout(() => poll(`/api/workflow-runs/runs/${run.id}`), POLL_MS);
-      // No run yet: one may be about to start (a workflow chosen at upload runs once the
-      // documents are read), so keep checking the upload, less often.
-      else if (!run && sourceIdRef.current) pollTimer.current = setTimeout(() => poll(`/api/workflow-runs/runs?groupId=${encodeURIComponent(sourceIdRef.current)}`), POLL_MS * 2);
+      const { run: fresh } = await readJson<RunResponse>(await fetch(`/api/workflow-runs/runs/${encodeURIComponent(runId)}`, { cache: 'no-store' }));
+      if (followed.current !== runId) return;
+      setRun(fresh);
+      const delay = fresh.status === 'running' ? POLL_MS : fresh.status === 'awaiting_review' ? REVIEW_POLL_MS : null;
+      if (delay !== null) pollTimer.current = setTimeout(() => poll(runId), delay);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (followed.current === runId) setError(e instanceof Error ? e.message : String(e));
     }
   }, []);
 
-  useEffect(() => {
-    setRun(null);
-    sourceIdRef.current = sourceId;
-    if (sourceId) poll(`/api/workflow-runs/runs?groupId=${encodeURIComponent(sourceId)}`);
-    return () => {
-      if (pollTimer.current) clearTimeout(pollTimer.current);
-    };
-  }, [sourceId, poll]);
+  /** Follow `runId` from now on (dropping any other run's chain), polling it now or after `delay`. */
+  const follow = useCallback(
+    (runId: string, delay: number | null) => {
+      stopFollowing();
+      followed.current = runId;
+      if (delay === null) void poll(runId);
+      else pollTimer.current = setTimeout(() => poll(runId), delay);
+    },
+    [poll, stopFollowing],
+  );
 
-  const act = async (kind: 'save' | 'run', fn: () => Promise<void>) => {
+  // The document the canvas is on, for requests that resolve after it changed.
+  const currentDocument = useRef(documentId);
+  currentDocument.current = documentId;
+
+  // The chosen document's latest run of this workflow (another workflow's run wouldn't match the canvas).
+  useEffect(() => {
+    stopFollowing();
+    setRun(null);
+    if (!documentId) return;
+    let cancelled = false;
+    fetch(`/api/workflow-runs/runs/history?documentId=${encodeURIComponent(documentId)}`, { cache: 'no-store' })
+      .then((r) => readJson<{ runs: RunBrief[] }>(r))
+      .then(({ runs }) => {
+        const latest = runs.find((r) => r.workflow_id === info.workflow_id);
+        if (!cancelled && latest) follow(latest.id, null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      stopFollowing();
+    };
+  }, [documentId, info.workflow_id, follow, stopFollowing]);
+
+  const act = async (kind: 'save' | 'run' | 'copy', fn: () => Promise<void>) => {
     setBusy(kind);
     setError(null);
     try {
@@ -256,7 +291,7 @@ function Editor({
 
   const save = () =>
     act('save', async () => {
-      await readJson(await fetch('/api/workflow-runs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: info.workflow_id, definition: graph, note }) }));
+      await readJson(await fetch('/api/workflow-runs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: info.workflow_id, graph, note }) }));
       setSaved(JSON.stringify(graph));
       setNote('');
       await reload();
@@ -264,24 +299,41 @@ function Editor({
 
   const start = () =>
     act('run', async () => {
-      const { run } = await readJson<{ run: WorkflowRun }>(
-        await fetch('/api/workflow-runs/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId: sourceId, workflowId: info.workflow_id, version: info.version }) }),
+      const on = documentId;
+      const { run: started } = await readJson<RunResponse>(
+        await fetch('/api/workflow-runs/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId, workflowId: info.workflow_id, version: info.version }) }),
       );
-      setRun(run);
+      if (currentDocument.current !== on) return;
+      setRun(started);
       setSelected(null);
-      pollTimer.current = setTimeout(() => poll(`/api/workflow-runs/runs/${run.id}`), POLL_MS);
+      follow(started.id, POLL_MS);
     });
 
-  const continueRun = async (checkpoint?: { nodeId: string; excluded: number[]; note: string }) => {
-    if (!run) return;
-    await act('run', async () => {
-      const { run: next } = await readJson<{ run: WorkflowRun }>(
-        await fetch(`/api/workflow-runs/runs/${run.id}/continue`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(checkpoint ? { checkpoint } : {}) }),
+  /** Continue a paused run, or record a checkpoint decision. Resolves to an error message, or null. */
+  const continueRun = async (checkpoint?: CheckpointSubmit): Promise<string | null> => {
+    if (!run) return null;
+    const on = documentId;
+    try {
+      const { run: next } = await readJson<RunResponse>(
+        await fetch(`/api/workflow-runs/runs/${encodeURIComponent(run.id)}/continue`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(checkpoint ? { checkpoint } : {}) }),
       );
+      if (currentDocument.current !== on) return null;
       setRun(next);
-      pollTimer.current = setTimeout(() => poll(`/api/workflow-runs/runs/${next.id}`), POLL_MS);
-    });
+      follow(next.id, POLL_MS);
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
   };
+
+  /** "Copy to edit": a team copy of this built-in (or workflow), opened in its place. */
+  const copyToEdit = () =>
+    act('copy', async () => {
+      const { workflow } = await readJson<{ workflow: { id: string } }>(
+        await fetch('/api/workflows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `${info.name} (copy)`.slice(0, 80), basedOn: info.workflow_id }) }),
+      );
+      open(workflow.id);
+    });
 
   const selectedNode = graph.nodes.find((n) => n.id === selected) ?? null;
   const running = run?.status === 'running';
@@ -305,8 +357,8 @@ function Editor({
             <WorkflowPicker
               info={info}
               onOpen={(workflowId, version) => {
-                if (dirty && !confirm('Discard your unsaved changes to this workflow?')) return;
-                open(workflowId, version);
+                if (dirty) setPendingOpen({ workflowId, version });
+                else open(workflowId, version);
               }}
               onChanged={refresh}
               onError={setError}
@@ -319,7 +371,17 @@ function Editor({
               </p>
             ) : null}
           </div>
-          {info.canEdit && (
+          {info.readOnly && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">Built-in workflow: read only.</span>
+              {info.canEdit && (
+                <Button size="sm" onClick={copyToEdit} disabled={busy === 'copy'}>
+                  {busy === 'copy' ? <Loader2 className="animate-spin" /> : <Copy />} Copy to edit
+                </Button>
+              )}
+            </div>
+          )}
+          {info.canEdit && !info.readOnly && (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
@@ -353,31 +415,23 @@ function Editor({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-900">
-          <select className="h-8 min-w-[200px] rounded-md border bg-transparent px-2 text-sm dark:border-zinc-700" value={sourceId} onChange={(e) => setSourceId(e.target.value)} aria-label="Source documents">
-            <option value="">Select uploaded sources to run on…</option>
-            {sourceOptions.map((c) => (
-              <option key={c.id} value={c.id} disabled={!c.ready}>
-                {c.label}
-                {c.ready ? '' : c.failed ? ' (documents could not be read)' : ' (still processing)'}
-              </option>
-            ))}
-          </select>
-          {sourceId && (
-            <Link
-              href="/library"
-              onClick={() => requestCaseOpen(sourceId)}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-              title="Back to the source library, with these sources open"
-            >
-              <FolderOpen className="h-4 w-4" /> Open sources
-            </Link>
-          )}
-          <Button size="sm" onClick={start} disabled={!info.canRun || !sourceId || dirty || running || busy === 'run'} title={dirty ? 'Save your changes first; runs use the saved version' : undefined}>
+          <label className="flex min-w-0 items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Run on document
+            <select className="h-8 min-w-[200px] max-w-full rounded-md border bg-transparent px-2 text-sm text-zinc-900 dark:border-zinc-700 dark:text-zinc-100" value={documentId} onChange={(e) => setDocumentId(e.target.value)}>
+              <option value="">{documents === null ? 'Loading documents…' : documents.length ? 'Choose a document…' : 'No documents yet'}</option>
+              {documentOptions.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.title.trim() || 'Untitled document'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button size="sm" onClick={start} disabled={!info.canRun || !documentId || dirty || running || busy === 'run'} title={dirty ? 'Save your changes first; runs use the saved version' : undefined}>
             {busy === 'run' || running ? <Loader2 className="animate-spin" /> : <Play />} {running ? 'Running…' : 'Run'}
           </Button>
           {run && (
             <button className="flex items-center gap-2 text-sm text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400" onClick={() => setSelected(null)} title="Show the run result and log">
-              Last run <OutcomeBadge outcome={runOutcome(toRunSummary(run))} /> {new Date(run.created_at).toLocaleString()}
+              Last run <OutcomeBadge outcome={runOutcome(summaryOf(run))} /> {new Date(run.created_at).toLocaleString()}
               {runDuration(run) !== null ? ` · ${formatDuration(runDuration(run))}` : ''}
             </button>
           )}
@@ -408,7 +462,7 @@ function Editor({
 
         <div className={`grid gap-3 ${run ? 'lg:grid-cols-[minmax(0,1fr)_400px]' : ''}`}>
           <div className="relative h-[70vh] min-h-[480px] rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-            {info.canEdit && (
+            {!readOnly && (
               <Button size="sm" className="absolute left-3 top-3 z-10 rounded-full bg-pink-600 text-white hover:bg-pink-700" onClick={() => setLibrary((v) => !v)}>
                 <Plus /> Add node
               </Button>
@@ -449,9 +503,29 @@ function Editor({
           )}
         </div>
         <p className="text-xs text-zinc-500">
-          Drag from an output (bottom of a node) to an input (top) to connect. Select a node or connection and press Delete to remove it.
+          Drag from an output (bottom of a node) to an input (top) to connect; the small “after” handle on a node&apos;s top-left only orders it after another step. Select a node or connection and press Delete to remove it.
         </p>
       </div>
+      <AlertDialog open={pendingOpen !== null} onOpenChange={(o) => !o && setPendingOpen(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard your changes?</AlertDialogTitle>
+            <AlertDialogDescription>This workflow has unsaved changes. Opening another one discards them.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const next = pendingOpen;
+                setPendingOpen(null);
+                if (next) open(next.workflowId, next.version);
+              }}
+            >
+              Discard and open
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </CanvasContext.Provider>
   );
 }
@@ -519,7 +593,7 @@ export function WorkflowCanvas() {
           </TabsTrigger>
         </TabsList>
       </div>
-      {/* Kept mounted so unsaved edits and the selected sources survive a tab switch. */}
+      {/* Kept mounted so unsaved edits and the chosen document survive a tab switch. */}
       <TabsContent value="editor" forceMount className="data-[state=inactive]:hidden">
         <ReactFlowProvider>
           {/* Keyed by version, so switching resets the canvas to what was opened. */}

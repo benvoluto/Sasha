@@ -7,13 +7,22 @@
 // then writes src/catalog/catalog.bundle.json (validated definitions, defaults
 // applied, sorted by key, sections sorted by order) and
 // src/catalog/catalog.index.json (CatalogIndexEntry[] for the classifier).
+// It also builds the Phase 6 data beside the types: src/catalog/requirements/*.json
+// (parseRequirementSet) into requirements.bundle.json and
+// src/catalog/workflows/*.json (parseWorkflowDefinition) into
+// workflows.bundle.json, with the same file-name and unique-key rules, plus
+// cross-checks: every appliesTo key is a catalog type, a workflow's
+// requirementSets exist, at most one workflow is the fallback, and
+// workflow-policies.json parses and names only catalog types.
 // Any error: nothing is written. --check: validate and compare instead of write.
 //
 // Relative imports only (vite-node runs this without the @/ alias).
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { parseRequirementSet, type RequirementSet } from "../../src/catalog/requirements-schema";
 import { parseDefinition, sortedSections, type CatalogIndexEntry, type DocumentTypeDefinition } from "../../src/catalog/schema";
+import { parseWorkflowDefinition, WorkflowPolicies, type WorkflowDefinition } from "../../src/catalog/workflow-schema";
 
 export type TypeFile = {
   /** Path shown in messages, e.g. "src/catalog/types/proposal.json". */
@@ -74,6 +83,96 @@ export function buildCatalog(files: TypeFile[]): BuildResult {
   return { ok: true, definitions, bundle: json(definitions), index: json(index) };
 }
 
+type Parsed<T> = { ok: true; value: T } | { ok: false; errors: string[] };
+
+/** Parse each file with `parse`, require the key to equal the file name and keys to be unique. Sorted by key. */
+function parseKeyed<T extends { key: string }>(files: TypeFile[], parse: (data: unknown) => Parsed<T>, errors: string[]): Array<{ file: string; value: T }> {
+  const out: Array<{ file: string; value: T }> = [];
+  const owner = new Map<string, string>();
+  for (const f of [...files].sort((a, b) => a.name.localeCompare(b.name))) {
+    let data: unknown;
+    try {
+      data = JSON.parse(f.raw);
+    } catch (e) {
+      errors.push(`${f.file}: (root): invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+      continue;
+    }
+    const r = parse(data);
+    if (!r.ok) {
+      for (const msg of r.errors) errors.push(`${f.file}: ${msg}`);
+      continue;
+    }
+    if (r.value.key !== f.name) {
+      errors.push(`${f.file}: key: the key "${r.value.key}" must equal the file name "${f.name}"`);
+      continue;
+    }
+    if (owner.has(r.value.key)) {
+      errors.push(`${f.file}: key: "${r.value.key}" is also used by ${owner.get(r.value.key)}`);
+      continue;
+    }
+    owner.set(r.value.key, f.file);
+    out.push({ file: f.file, value: r.value });
+  }
+  return out;
+}
+
+export type WorkflowBuildInput = { requirements: TypeFile[]; workflows: TypeFile[]; policies: { file: string; raw: string } | null };
+export type WorkflowBuildOutput = { requirementSets: RequirementSet[]; workflows: WorkflowDefinition[]; requirementsBundle: string; workflowsBundle: string };
+export type WorkflowBuildResult = ({ ok: true } & WorkflowBuildOutput) | { ok: false; errors: string[] };
+
+/** Validate requirement sets, workflow definitions and the policies against the catalog's type keys. */
+export function buildWorkflowData(input: WorkflowBuildInput, typeKeys: Set<string>): WorkflowBuildResult {
+  const errors: string[] = [];
+  const sets = parseKeyed(input.requirements, (d) => {
+    const r = parseRequirementSet(d);
+    return r.ok ? { ok: true, value: r.set } : r;
+  }, errors);
+  for (const { file, value } of sets) {
+    value.appliesTo.forEach((k, i) => {
+      if (!typeKeys.has(k)) errors.push(`${file}: appliesTo.${i}: "${k}" is not a catalog type`);
+    });
+  }
+  const setKeys = new Set(sets.map((s) => s.value.key));
+
+  const workflows = parseKeyed(input.workflows, (d) => {
+    const r = parseWorkflowDefinition(d);
+    return r.ok ? { ok: true, value: r.definition } : r;
+  }, errors);
+  for (const { file, value } of workflows) {
+    value.appliesTo.forEach((k, i) => {
+      if (!typeKeys.has(k)) errors.push(`${file}: appliesTo.${i}: "${k}" is not a catalog type`);
+    });
+    value.requirementSets.forEach((k, i) => {
+      if (!setKeys.has(k)) errors.push(`${file}: requirementSets.${i}: no requirement set "${k}"`);
+    });
+  }
+  const fallbacks = workflows.filter((w) => w.value.fallback);
+  if (fallbacks.length > 1) errors.push(`${fallbacks[1].file}: fallback: only one workflow may be the fallback (also ${fallbacks[0].file})`);
+
+  if (input.policies) {
+    let data: unknown;
+    try {
+      data = JSON.parse(input.policies.raw);
+    } catch (e) {
+      errors.push(`${input.policies.file}: (root): invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (data !== undefined) {
+      const r = WorkflowPolicies.safeParse(data);
+      if (!r.success) for (const i of r.error.issues) errors.push(`${input.policies.file}: ${i.path.join(".") || "(root)"}: ${i.message}`);
+      else
+        for (const [k, p] of Object.entries(r.data)) {
+          if (!typeKeys.has(k)) errors.push(`${input.policies.file}: ${k}: "${k}" is not a catalog type`);
+          if (p.sensitive && !p.webDomains.length) errors.push(`${input.policies.file}: ${k}.webDomains: a sensitive type needs public web domains`);
+        }
+    }
+  }
+
+  if (errors.length) return { ok: false, errors };
+  const requirementSets = sets.map((s) => s.value);
+  const defs = workflows.map((w) => w.value);
+  return { ok: true, requirementSets, workflows: defs, requirementsBundle: json(requirementSets), workflowsBundle: json(defs) };
+}
+
 /** The type files in `typesDir` (top level only; dotfiles and directories such as _drafts/ are skipped). */
 export function readTypeFiles(typesDir: string, root: string): TypeFile[] {
   if (!existsSync(typesDir)) return [];
@@ -86,7 +185,17 @@ export function readTypeFiles(typesDir: string, root: string): TypeFile[] {
     });
 }
 
-export type CatalogPaths = { root: string; typesDir: string; bundlePath: string; indexPath: string };
+export type CatalogPaths = {
+  root: string;
+  typesDir: string;
+  bundlePath: string;
+  indexPath: string;
+  requirementsDir: string;
+  workflowsDir: string;
+  requirementsBundlePath: string;
+  workflowsBundlePath: string;
+  policiesPath: string;
+};
 
 export function catalogPaths(root: string): CatalogPaths {
   return {
@@ -94,6 +203,11 @@ export function catalogPaths(root: string): CatalogPaths {
     typesDir: join(root, "src/catalog/types"),
     bundlePath: join(root, "src/catalog/catalog.bundle.json"),
     indexPath: join(root, "src/catalog/catalog.index.json"),
+    requirementsDir: join(root, "src/catalog/requirements"),
+    workflowsDir: join(root, "src/catalog/workflows"),
+    requirementsBundlePath: join(root, "src/catalog/requirements.bundle.json"),
+    workflowsBundlePath: join(root, "src/catalog/workflows.bundle.json"),
+    policiesPath: join(root, "src/catalog/workflow-policies.json"),
   };
 }
 
@@ -102,14 +216,30 @@ const readOrEmpty = (p: string) => (existsSync(p) ? readFileSync(p, "utf8") : ""
 /** Run the build (or the check). Returns the exit code and the lines to print; writes only on success outside check mode. */
 export function runCatalogBuild(paths: CatalogPaths, opts: { check?: boolean } = {}): { code: number; lines: string[] } {
   const result = buildCatalog(readTypeFiles(paths.typesDir, paths.root));
-  if (!result.ok) return { code: 1, lines: [...result.errors, `catalog: ${result.errors.length} error(s); nothing written.`] };
-  const n = result.definitions.length;
+  const typeKeys = new Set(result.ok ? result.definitions.map((d) => d.key) : []);
+  const data = buildWorkflowData(
+    {
+      requirements: readTypeFiles(paths.requirementsDir, paths.root),
+      workflows: readTypeFiles(paths.workflowsDir, paths.root),
+      policies: existsSync(paths.policiesPath) ? { file: relative(paths.root, paths.policiesPath), raw: readFileSync(paths.policiesPath, "utf8") } : null,
+    },
+    typeKeys,
+  );
+  // Type errors first; the workflow data's type-key checks only mean something once the types are valid.
+  const errors = [...(result.ok ? [] : result.errors), ...(result.ok && !data.ok ? data.errors : [])];
+  if (!result.ok || !data.ok) return { code: 1, lines: [...errors, `catalog: ${errors.length} error(s); nothing written.`] };
+  const outputs: Array<[string, string]> = [
+    [paths.bundlePath, result.bundle],
+    [paths.indexPath, result.index],
+    [paths.requirementsBundlePath, data.requirementsBundle],
+    [paths.workflowsBundlePath, data.workflowsBundle],
+  ];
+  const counts = `${result.definitions.length} type(s), ${data.requirementSets.length} requirement set(s), ${data.workflows.length} workflow(s)`;
   if (opts.check) {
-    const stale = [paths.bundlePath, paths.indexPath].filter((p, i) => readOrEmpty(p) !== (i === 0 ? result.bundle : result.index));
+    const stale = outputs.filter(([p, content]) => readOrEmpty(p) !== content).map(([p]) => p);
     if (stale.length) return { code: 1, lines: [...stale.map((p) => `${relative(paths.root, p)}: out of date`), "catalog: run npm run catalog:build"] };
-    return { code: 0, lines: [`catalog: ${n} type(s) valid; generated files up to date.`] };
+    return { code: 0, lines: [`catalog: ${counts} valid; generated files up to date.`] };
   }
-  writeFileSync(paths.bundlePath, result.bundle);
-  writeFileSync(paths.indexPath, result.index);
-  return { code: 0, lines: [`catalog: wrote ${n} type(s) to ${relative(paths.root, paths.bundlePath)} and ${relative(paths.root, paths.indexPath)}.`] };
+  for (const [p, content] of outputs) writeFileSync(p, content);
+  return { code: 0, lines: [`catalog: wrote ${counts}.`] };
 }

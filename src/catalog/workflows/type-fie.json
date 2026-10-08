@@ -1,0 +1,619 @@
+{
+  "key": "type-fie",
+  "version": 1,
+  "title": "Potential determination (FIE)",
+  "summary": "Reaches a potential determination for each suspected disability category: criteria met, not met or insufficient evidence, and whether the student needs special education and related services. Independent reviewers apply the Texas criteria to an evidence table; the evaluation supervisor reviews every disagreement and signs.",
+  "kind": "type",
+  "appliesTo": [
+    "fie"
+  ],
+  "outcome": {
+    "label": "Potential determination",
+    "values": [
+      {
+        "key": "criteria_met",
+        "label": "Potential: criteria met; needs special education and related services"
+      },
+      {
+        "key": "criteria_met_no_need",
+        "label": "Potential: criteria met; no demonstrated need for services"
+      },
+      {
+        "key": "criteria_not_met",
+        "label": "Potential: criteria not met"
+      },
+      {
+        "key": "insufficient_evidence",
+        "label": "Insufficient evidence to determine"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Evaluation supervisor (LSSP or diagnostician)",
+    "required": true
+  },
+  "requirementSets": [
+    "tx-19tac-89-1040",
+    "tx-19tac-89-1011",
+    "idea-evaluation-34cfr"
+  ],
+  "notAssessed": [
+    "The ARD committee makes the eligibility decision; this is a potential determination only."
+  ],
+  "notes": [
+    "The determination stays potential until the supervisor signs, and enters the report only after that.",
+    "Deadlines (19 TAC §89.1011): the report is due by the 45th school day after written consent, extended by days absent when the student misses three or more; the ARD committee decides within 30 calendar days of the report; the parent gets the report at least five school days before that meeting. End-of-year exceptions apply.",
+    "School-day deadlines are estimated as weekdays; the school calendar is not linked.",
+    "Student records are protected (FERPA): web lookups for this type use only public regulations and test manuals, and carry no student details.",
+    "Criteria vary by state; this workflow uses the Texas criteria (19 TAC §89.1040)."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "notes",
+      "node": "doc.notes",
+      "label": "Notes"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "req",
+      "node": "requirements.read",
+      "label": "Requirements",
+      "config": {
+        "sets": [
+          "tx-19tac-89-1040",
+          "tx-19tac-89-1011",
+          "idea-evaluation-34cfr"
+        ]
+      }
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: required inputs",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "consent",
+            "label": "Written consent and its date",
+            "kind": "any",
+            "match": [
+              "consent",
+              "written consent",
+              "consent for evaluation"
+            ],
+            "help": "Link or note the signed consent for evaluation and the date the district received it; the 45-school-day timeline starts there."
+          },
+          {
+            "key": "referral",
+            "label": "Referral concerns",
+            "kind": "any",
+            "match": [
+              "referral",
+              "reason for referral",
+              "concerns"
+            ],
+            "help": "Link the referral, or state who referred the student, when, and the concerns."
+          },
+          {
+            "key": "suspected",
+            "label": "Suspected disability categories",
+            "kind": "any",
+            "match": [
+              "suspected disability",
+              "eligibility category",
+              "suspected"
+            ],
+            "help": "Name the eligibility categories under consideration."
+          },
+          {
+            "key": "category_data",
+            "label": "Data each suspected category requires",
+            "kind": "any",
+            "help": "Data each suspected category requires (19 TAC §89.1040): for OHI, a physician, PA or APRN statement; for SLD, a classroom observation and data on appropriate instruction."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "notes": "notes.notes"
+      }
+    },
+    {
+      "id": "ev",
+      "node": "step.extract",
+      "label": "Evidence table",
+      "config": {
+        "item": "evidence",
+        "from": [
+          "sources",
+          "document"
+        ],
+        "maxItems": 120,
+        "instructions": "Build the evidence table: one row per score, observation or report finding. Copy scores exactly as the protocol or report gives them.",
+        "fields": [
+          {
+            "name": "source",
+            "label": "Source",
+            "type": "text",
+            "description": "The report, protocol, rating scale, observation or record the evidence comes from",
+            "required": true
+          },
+          {
+            "name": "date",
+            "label": "Date",
+            "type": "date",
+            "description": "The date the measure was given or the observation made"
+          },
+          {
+            "name": "instrument",
+            "label": "Instrument",
+            "type": "text",
+            "description": "The instrument, scale or procedure by name (e.g. a test's full name and subtest)"
+          },
+          {
+            "name": "result",
+            "label": "Result",
+            "type": "text",
+            "description": "The score (with its type: standard score, percentile, T-score) or the observation, exactly as written",
+            "required": true
+          },
+          {
+            "name": "area",
+            "label": "Area assessed",
+            "type": "text",
+            "description": "The area the evidence speaks to: cognitive, academic, social-emotional, communication, motor, health, vision, hearing, adaptive"
+          },
+          {
+            "name": "category",
+            "label": "Category",
+            "type": "text",
+            "description": "The suspected disability category the evidence bears on, if any"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "dates",
+      "node": "step.extract",
+      "label": "Consent date",
+      "config": {
+        "item": "date",
+        "from": [
+          "document",
+          "sources",
+          "notes"
+        ],
+        "maxItems": 1,
+        "instructions": "Find the date the district received written consent for the evaluation, the number of school days the student was absent since then, and the date of the written report, where stated.",
+        "fields": [
+          {
+            "name": "consent_date",
+            "label": "Consent date",
+            "type": "date",
+            "description": "The date the district received written consent for the evaluation",
+            "required": true
+          },
+          {
+            "name": "absences",
+            "label": "School days absent",
+            "type": "number",
+            "description": "School days the student missed since consent, if stated"
+          },
+          {
+            "name": "report_date",
+            "label": "Report date",
+            "type": "date",
+            "description": "The date of the written evaluation report, if stated"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "notes": "notes.notes",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "cov",
+      "node": "step.check",
+      "label": "Coverage (300.304)",
+      "config": {
+        "instructions": "Check the evaluation against 34 CFR 300.304, using the evidence table in <items>.",
+        "checklist": [
+          {
+            "key": "all_areas",
+            "label": "All areas assessed",
+            "question": "Is every area related to each suspected disability assessed (34 CFR 300.304)? Name any area left out.",
+            "severity": "major"
+          },
+          {
+            "key": "variety_of_sources",
+            "label": "A variety of sources",
+            "question": "Does the evaluation draw on a variety of sources (tests, observations, parent and teacher input, records) rather than one kind?",
+            "severity": "major"
+          },
+          {
+            "key": "no_single_measure",
+            "label": "No single measure decides",
+            "question": "Does any category rest on a single measure? Name the measure if so.",
+            "severity": "blocking"
+          },
+          {
+            "key": "potential_wording",
+            "label": "Reads as a potential determination",
+            "question": "Is the determination worded as a potential determination for the ARD committee, not a decision already made?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ev.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "criteria": [],
+        "criteriaFrom": "tx-19tac-89-1040",
+        "criterionScale": {
+          "kind": "enum",
+          "values": [
+            "met",
+            "not_met",
+            "insufficient_evidence"
+          ]
+        },
+        "instructions": "Rate only the suspected categories; mark others not_applicable by leaving them out. Rate each criterion from the evidence table and the sources, and cite the evidence for and against.",
+        "reviewers": [
+          {
+            "key": "advocate",
+            "label": "Advocate",
+            "brief": "Build the case that each criterion of the suspected categories is met. Cite the evidence for it from the evidence table and the sources, and say how strong each piece is."
+          },
+          {
+            "key": "skeptic",
+            "label": "Skeptic",
+            "brief": "Look for evidence against each criterion: contrary scores, missing required data (such as the physician statement for OHI or the classroom observation for SLD), and any category that rests on a single measure. Rate not_met or insufficient_evidence where the support is thin."
+          },
+          {
+            "key": "auditor",
+            "label": "Auditor",
+            "brief": "Apply the wording of each state criterion literally to the evidence table. Rate a criterion met only when every element the rule names is documented with a date and a source; otherwise insufficient_evidence."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ev.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "excl",
+      "node": "step.check",
+      "label": "Exclusions",
+      "config": {
+        "instructions": "Check the exclusionary factors (34 CFR 300.306(b)) and, for specific learning disability, the state's further exclusions (19 TAC §89.1040(c)(9)).",
+        "checklist": [
+          {
+            "key": "instruction",
+            "label": "Appropriate instruction in reading and math",
+            "question": "Does the evaluation rule out lack of appropriate instruction in reading or math as the determinant factor, with evidence?",
+            "severity": "major",
+            "appliesTo": [
+              "exclusionary_factors"
+            ]
+          },
+          {
+            "key": "english_proficiency",
+            "label": "Limited English proficiency",
+            "question": "Does the evaluation rule out limited English proficiency as the determinant factor, with evidence?",
+            "severity": "major",
+            "appliesTo": [
+              "exclusionary_factors"
+            ]
+          },
+          {
+            "key": "sld_exclusions",
+            "label": "Further SLD exclusions",
+            "question": "If specific learning disability is suspected: does the evaluation show the difficulties are not primarily the result of a visual, hearing or motor disability, intellectual disability, emotional disability, cultural factors, environmental or economic disadvantage, or being an emergent bilingual student? Mark not_applicable if SLD is not suspected.",
+            "severity": "major",
+            "appliesTo": [
+              "exclusionary_factors"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ev.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement",
+      "config": {
+        "mode": "verdict"
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "comp",
+      "node": "step.compute",
+      "label": "Scores match",
+      "config": {
+        "checks": [
+          {
+            "kind": "values_in_text",
+            "key": "scores_match",
+            "label": "Scores in the narrative match the evidence table",
+            "severity": "major",
+            "labelField": "instrument",
+            "valueField": "result"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ev.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "due",
+      "node": "step.compute",
+      "label": "Report deadline",
+      "config": {
+        "checks": [
+          {
+            "kind": "deadline",
+            "key": "fie_report_due",
+            "label": "Written report due (45 school days from consent)",
+            "severity": "major",
+            "startField": "consent_date",
+            "requirement": "tx-19tac-89-1011#fie-report",
+            "extendByField": "absences",
+            "extendWhenAtLeast": 3,
+            "endField": "report_date"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "dates.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "concl",
+      "node": "step.extract",
+      "label": "Conclusions",
+      "config": {
+        "item": "conclusion",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "eligibility_determination",
+          "recommendations"
+        ],
+        "instructions": "List each conclusion and each recommendation the report states.",
+        "fields": [
+          {
+            "name": "statement",
+            "label": "Statement",
+            "type": "text",
+            "description": "The conclusion or recommendation as written",
+            "required": true
+          },
+          {
+            "name": "category",
+            "label": "Category",
+            "type": "text",
+            "description": "The disability category it concerns, if any"
+          },
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "Whether it is a conclusion or a recommendation",
+            "values": [
+              "conclusion",
+              "recommendation"
+            ],
+            "required": true
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "tr",
+      "node": "step.trace",
+      "label": "Trace to evidence",
+      "config": {
+        "against": "targets",
+        "question": "Does each conclusion and recommendation rest on evidence in the evidence table? Link the evidence rows it rests on."
+      },
+      "in": {
+        "items": "concl.items",
+        "targets": "ev.items",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Decide",
+      "config": {
+        "values": [
+          "criteria_met",
+          "criteria_met_no_need",
+          "criteria_not_met",
+          "insufficient_evidence"
+        ],
+        "guidance": "Each suspected category's result (criteria met, not met, insufficient evidence) is worked out from the reviewers' agreement on its criteria. For each category whose criteria are met, judge whether the evidence shows the student needs special education and related services because of it: needs_services, no_need, or unclear when the material does not show it. Never rest a judgment on one measure. The value then follows from the categories: criteria_met when any category is met with a shown need; otherwise insufficient_evidence when any category is disputed, short of evidence or its need unclear; criteria_met_no_need when the met categories show no need; criteria_not_met when every rated category is not met. In the rationale, give every category's result, cite the findings and agreed items behind each need judgment, and list every disagreement for the supervisor.",
+        "categories": {
+          "from": "tx-19tac-89-1040",
+          "met": "criteria_met",
+          "metNoNeed": "criteria_met_no_need",
+          "notMet": "criteria_not_met",
+          "insufficient": "insufficient_evidence"
+        }
+      },
+      "in": {
+        "findings": [
+          "cov.findings",
+          "excl.findings",
+          "rev.findings",
+          "agree.findings",
+          "comp.findings",
+          "tr.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "cov.results",
+          "excl.results",
+          "comp.results",
+          "due.results"
+        ],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "insufficient_evidence",
+        "guards": [
+          {
+            "values": [
+              "criteria_met",
+              "criteria_met_no_need"
+            ],
+            "instead": "insufficient_evidence",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "findings": {
+                    "kind": [
+                      "instruction",
+                      "english_proficiency"
+                    ],
+                    "min": 1
+                  }
+                }
+              ]
+            },
+            "reason": "a category rests on a single measure, or an exclusionary factor (instruction, English proficiency) is unresolved (34 CFR 300.304, 300.306(b)); see the result by category."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": [
+          "cov.findings",
+          "rev.findings",
+          "excl.findings",
+          "agree.findings",
+          "comp.findings",
+          "due.findings",
+          "tr.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "comp.results",
+          "due.results"
+        ],
+        "tables": [
+          "decide.table",
+          "ev.table",
+          "agree.table",
+          "cov.table",
+          "excl.table",
+          "tr.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Supervisor sign-off",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Review the potential determination and every disagreement with both rationales. Edit the value if the evidence supports a different one, then sign. The ARD committee makes the eligibility decision.",
+        "recordFields": [
+          {
+            "key": "signed_name",
+            "label": "Name and credential",
+            "required": true
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome"
+      }
+    }
+  ]
+}

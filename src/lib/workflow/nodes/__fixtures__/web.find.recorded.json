@@ -1,0 +1,97 @@
+{
+  "task": "web.find",
+  "recorded_at": "2026-10-08T21:24:56.237Z",
+  "model": "claude-sonnet-5-5",
+  "material": {
+    "query": {
+      "sensitive": true,
+      "gaps": [
+        {
+          "id": "G1",
+          "need": "Signed consent for evaluation",
+          "specKey": "reason_for_referral",
+          "heading": "Reason for Referral"
+        },
+        {
+          "id": "G2",
+          "need": "Referral and consent dates",
+          "specKey": "reason_for_referral",
+          "heading": "Reason for Referral"
+        },
+        {
+          "id": "G3",
+          "need": "Test protocols or score reports",
+          "specKey": "assessment_procedures",
+          "heading": "Assessment Procedures"
+        }
+      ],
+      "user": "A Full and Individual Evaluation needs public reference material. Find official guidance for these needs. Search only public sources; there is no case information here, and none is needed.\n\n<gaps>\n- G1: Signed consent for evaluation (for the section “Reason for Referral”)\n- G2: Referral and consent dates (for the section “Reason for Referral”)\n- G3: Test protocols or score reports (for the section “Assessment Procedures”)\n</gaps>\n\nSearch only these sites: law.cornell.edu, tea.texas.gov, ed.gov, sites.ed.gov.\n\nReturn at most 4 resources.",
+      "allowed": [
+        "law.cornell.edu",
+        "tea.texas.gov",
+        "ed.gov",
+        "sites.ed.gov"
+      ],
+      "blocked": []
+    },
+    "maxSearches": 3
+  },
+  "replies": [
+    {
+      "resources": [
+        {
+          "url": "https://www.law.cornell.edu/cfr/text/34/300.300",
+          "title": "34 CFR § 300.300 - Parental consent",
+          "publisher": "Legal Information Institute (Cornell Law School)",
+          "why": "This federal rule requires informed parental consent before an initial evaluation. It also requires the agency to document its attempts to get consent, which covers the signed-consent gap.",
+          "gap": "G1"
+        },
+        {
+          "url": "https://spedsupport.tea.texas.gov/resource-library/evaluation",
+          "title": "Evaluation (Initial Referral and FIIE Timelines)",
+          "publisher": "Texas Education Agency",
+          "why": "This page sets out the referral, notice, written-consent and 45-school-day steps. It treats the date written consent is received as the start of the FIIE timeline, so it supports recording referral and consent dates.",
+          "gap": "G2"
+        },
+        {
+          "url": "https://sites.ed.gov/idea/regs/b/d/300.301",
+          "title": "Sec. 300.301 Initial evaluations",
+          "publisher": "U.S. Department of Education, IDEA website",
+          "why": "This rule lets a parent or the agency start an initial evaluation request. It also sets the timeline that runs from receipt of parental consent, which frames how to report referral and consent dates.",
+          "gap": "G2"
+        },
+        {
+          "url": "https://www.law.cornell.edu/cfr/text/34/300.304",
+          "title": "34 CFR § 300.304 - Evaluation procedures",
+          "publisher": "Legal Information Institute (Cornell Law School)",
+          "why": "This rule sets the requirements for the assessments used, including valid and reliable instruments, trained administrators and following the publisher's instructions. It supports documenting the test protocols and score reports in Assessment Procedures.",
+          "gap": "G3"
+        }
+      ]
+    }
+  ],
+  "searched_urls": [
+    "https://www.law.cornell.edu/cfr/text/34/300.300",
+    "https://www.law.cornell.edu/regulations/maine/05-071-C-M-R-ch-101-SS-V",
+    "https://www.law.cornell.edu/regulations/colorado/1-CCR-301-8-4.00",
+    "https://www.law.cornell.edu/regulations/georgia/Ga-Comp-R-Regs-R-160-4-7-.04",
+    "https://sites.ed.gov/idea/regs/b/d/300.301",
+    "https://www.law.cornell.edu/regulations/pennsylvania/22-Pa-Code-SS-711-3",
+    "https://www.law.cornell.edu/cfr/text/34/appendix-F_to_part_300",
+    "https://www.law.cornell.edu/regulations/maryland/COMAR-13A-05-01-06",
+    "https://www.law.cornell.edu/regulations/virginia/8VAC20-81-70",
+    "https://sites.ed.gov/idea/regs/b/d/300.300/a",
+    "https://spedsupport.tea.texas.gov/resource-library/evaluation",
+    "https://spedsupport.tea.texas.gov/sites/default/files/2023-08/special-education-initial-referral-timeline.pdf",
+    "https://spedsupportstage.tea.texas.gov/sites/default/files/2024-09/special-education-initial-referral-timeline_2024.pdf",
+    "https://spedsupport.tea.texas.gov/sites/default/files/2023-08/special-education-full-and-individual-initial-evaluation-timeline.pdf",
+    "https://tea.texas.gov/about-tea/laws-and-rules/commissioner-rules-tac/coe-proposed/24-03-89-1011.pdf",
+    "https://tea.texas.gov/academics/special-student-populations/special-education/programs-and-services/student-handbook-statement-0",
+    "https://spedsupport.tea.texas.gov/sites/default/files/2024-01/cf-process-parentally-placed-disabilities-private-school-quick-guide.pdf",
+    "https://tea.texas.gov/texas-schools/texas-schools-charter-schools/gen-30-special-education.pdf",
+    "https://www.law.cornell.edu/cfr/text/34/300.304",
+    "https://www.law.cornell.edu/cfr/text/34/part-300/subpart-D",
+    "https://www.law.cornell.edu/cfr/text/34/300.303",
+    "https://www.law.cornell.edu/definitions/index.php?width=840&amp=&height=800&amp=&iframe=true&amp=&def_id=7fd9f9efac7a11c68c7fbb4a2779de69&amp=&term_occur=22&amp=&term_src=Title%3A34%3ASubtitle%3AB%3AChapter%3AIII%3APart%3A300%3ASubpart%3AE%3A300.502"
+  ]
+}

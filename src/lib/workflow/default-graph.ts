@@ -1,5 +1,6 @@
-// The starting workflow: the source documents go to one model prompt that
-// summarizes them and lists gaps, and its answer is saved as the run's result.
+// The starting graph for a new team workflow on the canvas: the linked
+// sources' passages go to one model prompt that summarizes them and lists
+// gaps, and its answer becomes the outcome's summary.
 
 import { NODE_SPEC_INDEX } from "./registry";
 import type { GraphEdge, GraphNode, WorkflowGraph } from "./types";
@@ -22,7 +23,7 @@ const edge = (source: string, sourceHandle: string, target: string, targetHandle
   targetHandle,
 });
 
-/** The built-in summary prompt; {{sources}} is the combined source text. */
+/** The built-in summary prompt; {{sources}} is the sources block with passage ids. */
 export const DEFAULT_SUMMARY_PROMPT = `Summarize these sources and list gaps: topics, evidence or data they do not cover.
 
 Sources:
@@ -32,13 +33,13 @@ export function defaultWorkflowGraph(): WorkflowGraph {
   return {
     format: "graph-v1",
     nodes: [
-      node("sources", "source.documents", 0, 0),
+      node("sources", "sources.read", 0, 0),
       node("summarize", "ai.ask", 0, 200, {
         label: "Summarize and list gaps",
         config: { ...NODE_SPEC_INDEX["ai.ask"].defaults(), prompt: DEFAULT_SUMMARY_PROMPT, inputs: ["sources"] },
       }),
-      node("output", "output.save", 0, 400),
+      node("outcome", "outcome.report", 0, 400),
     ],
-    edges: [edge("sources", "combined", "summarize", "sources"), edge("summarize", "response", "output", "text")],
+    edges: [edge("sources", "text", "summarize", "sources"), edge("summarize", "response", "outcome", "summary")],
   };
 }

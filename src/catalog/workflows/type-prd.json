@@ -1,0 +1,414 @@
+{
+  "key": "type-prd",
+  "version": 2,
+  "title": "PRD build readiness",
+  "summary": "A build-readiness decision. Marks each requirement testable or not, traces requirements to goals and non-goals, checks for gaps, and has engineering, design and QA review independently. A “cannot proceed” from any role blocks. The product owner and engineering lead accept the decision.",
+  "kind": "type",
+  "appliesTo": [
+    "product-requirements"
+  ],
+  "outcome": {
+    "label": "Build readiness",
+    "values": [
+      {
+        "key": "ready",
+        "label": "Ready to build"
+      },
+      {
+        "key": "ready_with_open_items",
+        "label": "Ready with listed open items"
+      },
+      {
+        "key": "not_ready",
+        "label": "Not ready"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Product owner and engineering lead",
+    "required": true
+  },
+  "notes": [
+    "The QA reviewer writes a test case for each requirement; a requirement with no writable test is untestable.",
+    "Link designs and research so requirements the designs contradict can be flagged."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "ext",
+      "node": "step.extract",
+      "label": "Entries",
+      "config": {
+        "item": "entry",
+        "from": [
+          "document"
+        ],
+        "maxItems": 150,
+        "instructions": "List the problem, each goal, success metric, numbered requirement, non-goal, open question and dependency. Include requirements hidden in prose.",
+        "fields": [
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "What the entry is",
+            "values": [
+              "problem",
+              "goal",
+              "metric",
+              "requirement",
+              "non_goal",
+              "open_question",
+              "dependency"
+            ],
+            "required": true
+          },
+          {
+            "name": "id",
+            "label": "Id",
+            "type": "text",
+            "description": "Its id or number as written (e.g. FR-3), if any"
+          },
+          {
+            "name": "text",
+            "label": "Text",
+            "type": "text",
+            "description": "The entry as written",
+            "required": true
+          },
+          {
+            "name": "owner",
+            "label": "Owner",
+            "type": "text",
+            "description": "Who owns it (open questions, dependencies)"
+          },
+          {
+            "name": "due",
+            "label": "Due",
+            "type": "date",
+            "description": "Its due date (open questions, dependencies)"
+          },
+          {
+            "name": "blocking",
+            "label": "Blocking",
+            "type": "boolean",
+            "description": "For an open question: whether it is marked blocking"
+          },
+          {
+            "name": "baseline",
+            "label": "Baseline",
+            "type": "text",
+            "description": "For a metric: its baseline"
+          },
+          {
+            "name": "target",
+            "label": "Target",
+            "type": "text",
+            "description": "For a metric: its target"
+          },
+          {
+            "name": "data_source",
+            "label": "Data source",
+            "type": "text",
+            "description": "For a metric: where its data comes from"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "test",
+      "node": "step.check",
+      "label": "Testability",
+      "config": {
+        "perItem": true,
+        "instructions": "Apply these checks to items of kind requirement only; mark every other item not_applicable.",
+        "checklist": [
+          {
+            "key": "acceptance",
+            "label": "Observable acceptance criterion",
+            "question": "Does the requirement have an observable acceptance criterion?",
+            "severity": "major"
+          },
+          {
+            "key": "vague_terms",
+            "label": "No vague terms",
+            "question": "Is the requirement free of vague terms such as fast, easy or intuitive?",
+            "severity": "major"
+          },
+          {
+            "key": "not_compound",
+            "label": "Not compound",
+            "question": "Does the requirement state one thing (not several joined with and/or)?",
+            "severity": "minor"
+          },
+          {
+            "key": "nfr_number",
+            "label": "Non-functional requirements carry a number",
+            "question": "If it is a non-functional requirement, does it carry a number (a threshold, a limit, a percentage)?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "items": "ext.items",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "tr",
+      "node": "step.trace",
+      "label": "Scope trace",
+      "config": {
+        "against": "targets",
+        "bothWays": true,
+        "question": "Each requirement serves a goal and none falls under a non-goal; each goal has requirements"
+      },
+      "in": {
+        "items": "ext.items",
+        "targets": "ext.items",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "gaps",
+      "node": "step.check",
+      "label": "Gaps",
+      "config": {
+        "checklist": [
+          {
+            "key": "conflicts",
+            "label": "Conflicting requirements",
+            "question": "Are the requirements free of conflicts with each other? Name any pair that conflicts.",
+            "severity": "major"
+          },
+          {
+            "key": "states",
+            "label": "Empty, error and edge states",
+            "question": "Are empty, error and edge states specified?",
+            "severity": "major"
+          },
+          {
+            "key": "permissions",
+            "label": "Permissions",
+            "question": "Are permissions (who can see and do what) specified?",
+            "severity": "major"
+          },
+          {
+            "key": "migration",
+            "label": "Migration",
+            "question": "Is migration of existing data or users addressed?",
+            "severity": "minor"
+          },
+          {
+            "key": "analytics",
+            "label": "Analytics",
+            "question": "Is analytics or instrumentation specified?",
+            "severity": "minor"
+          },
+          {
+            "key": "accessibility",
+            "label": "Accessibility",
+            "question": "Are accessibility requirements stated?",
+            "severity": "major"
+          },
+          {
+            "key": "metrics",
+            "label": "Metrics have baseline, target and data source",
+            "question": "Does each success metric have a baseline, a target and a data source?",
+            "severity": "major",
+            "appliesTo": [
+              "success-metrics"
+            ]
+          },
+          {
+            "key": "designs",
+            "label": "Designs agree",
+            "question": "Do the linked designs agree with the requirements? Name any requirement a design contradicts. Mark not_applicable if no designs are linked.",
+            "severity": "major"
+          },
+          {
+            "key": "open_question",
+            "label": "Open questions have owner and date",
+            "question": "Is every open question either resolved, or marked non-blocking with both an owner and a date? Answer not_met when any open question lacks one of these (it blocks the build); partly_met only when every open question is marked non-blocking with an owner but one lacks a date.",
+            "severity": "blocking",
+            "appliesTo": [
+              "open-questions"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ext.items"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Review by role",
+      "config": {
+        "criteria": [
+          {
+            "key": "proceed",
+            "label": "Can your role proceed?",
+            "guidance": "cannot_proceed blocks the build.",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "proceed",
+                "proceed_with_concerns",
+                "cannot_proceed"
+              ]
+            }
+          }
+        ],
+        "reviewers": [
+          {
+            "key": "engineering",
+            "label": "Engineering",
+            "brief": "Review as the engineer who must build it: can each requirement be estimated? Flag requirements too vague to size, hidden technical dependencies and unstated constraints."
+          },
+          {
+            "key": "design",
+            "label": "Design",
+            "brief": "Review as the designer: are the states and flows defined for every requirement, including empty, error, loading and permission states? Flag flows that stop or branch without a defined screen."
+          },
+          {
+            "key": "qa",
+            "label": "QA",
+            "brief": "Review as QA: write a test case for each requirement. A requirement with no writable test is untestable; list each one and why."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ext.items"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement",
+      "config": {
+        "mode": "verdict",
+        "blockingVerdicts": [
+          "cannot_proceed"
+        ]
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "not_ready",
+            "when": {
+              "anyOf": [
+                {
+                  "disagreements": {
+                    "min": 1,
+                    "blocking": true
+                  }
+                },
+                {
+                  "findings": {
+                    "severity": [
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "value": "ready_with_open_items",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "kind": [
+                      "open_question"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "findings": {
+                    "severity": [
+                      "major"
+                    ],
+                    "min": 1
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "fallback": "ready"
+      },
+      "in": {
+        "findings": [
+          "test.findings",
+          "tr.findings",
+          "gaps.findings",
+          "rev.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "tables": [
+          "test.table",
+          "tr.table",
+          "gaps.table",
+          "agree.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Accept the decision",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "The product owner and the engineering lead each accept the build-readiness decision, or edit it; it is final only once both have. Check that each open item has an owner.",
+        "signers": [
+          {
+            "key": "product_owner",
+            "label": "Product owner"
+          },
+          {
+            "key": "engineering_lead",
+            "label": "Engineering lead"
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome"
+      }
+    }
+  ]
+}

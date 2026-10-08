@@ -1,0 +1,90 @@
+{
+  "recorded_at": "2026-10-08T21:27:53.976Z",
+  "model": "claude-opus-5-5",
+  "passage_ids": [
+    "S0f1e2d3c.P1",
+    "S0f1e2d3c.P2",
+    "S9a8b7c6d.P1",
+    "S9a8b7c6d.P2"
+  ],
+  "data": {
+    "sentences": [
+      {
+        "text": "We are asking the parish council for £38,400 to restore the riverside path.",
+        "support": [
+          {
+            "kind": "note",
+            "id": null
+          },
+          {
+            "kind": "passage",
+            "id": "S0f1e2d3c.P1"
+          }
+        ],
+        "paragraph_break": false
+      },
+      {
+        "text": "After the winter floods, two sections of the path collapsed and are now fenced off.",
+        "support": [
+          {
+            "kind": "passage",
+            "id": "S9a8b7c6d.P2"
+          },
+          {
+            "kind": "note",
+            "id": null
+          }
+        ],
+        "paragraph_break": false
+      },
+      {
+        "text": "This matters because the path is well used: a spring survey counted about 900 walkers a week, including dog walkers and the primary school's nature walks.",
+        "support": [
+          {
+            "kind": "passage",
+            "id": "S9a8b7c6d.P1"
+          },
+          {
+            "kind": "note",
+            "id": null
+          }
+        ],
+        "paragraph_break": false
+      },
+      {
+        "text": "Greenbank Contractors has quoted £38,400 including VAT to rebuild 400 m of the riverside path and stabilize the bank.",
+        "support": [
+          {
+            "kind": "passage",
+            "id": "S0f1e2d3c.P1"
+          }
+        ],
+        "paragraph_break": true
+      },
+      {
+        "text": "The result would be a rebuilt path on a stabilized bank, giving walkers and the school the use of the route again.",
+        "support": [
+          {
+            "kind": "passage",
+            "id": "S0f1e2d3c.P1"
+          },
+          {
+            "kind": "note",
+            "id": null
+          }
+        ],
+        "paragraph_break": false
+      },
+      {
+        "text": "The quote is valid for 90 days from 2 February 2026.",
+        "support": [
+          {
+            "kind": "passage",
+            "id": "S0f1e2d3c.P2"
+          }
+        ],
+        "paragraph_break": false
+      }
+    ]
+  }
+}

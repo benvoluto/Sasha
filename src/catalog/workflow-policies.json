@@ -1,0 +1,13 @@
+{
+  "fie": {
+    "sensitive": true,
+    "webDomains": ["law.cornell.edu", "tea.texas.gov", "ed.gov", "sites.ed.gov", "texreg.sos.state.tx.us"]
+  },
+  "nih-specific-aims-research-strategy": {
+    "draftAll": {
+      "enabled": false,
+      "reason": "NIH does not treat applications or sections substantially developed by AI as the applicant's original ideas (NOT-OD-25-132, effective September 25, 2025).",
+      "acknowledge": "I will use the drafts only as notes and write the application myself."
+    }
+  }
+}

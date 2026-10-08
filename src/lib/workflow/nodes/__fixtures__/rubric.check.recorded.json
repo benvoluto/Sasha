@@ -1,0 +1,458 @@
+{
+  "task": "rubric.check",
+  "recorded_at": "2026-10-08T21:26:01.294Z",
+  "model": "claude-sonnet-5-5",
+  "material": {
+    "doc": {
+      "id": "doc-live",
+      "title": "Riverside path restoration",
+      "typeKey": "proposal",
+      "typeTitle": "Proposal",
+      "updatedAt": "2026-10-08T00:00:00.000Z",
+      "wordCount": 38,
+      "text": "Summary\nWe request £40,000 to rebuild 400 metres of the riverside path by September 2027.\nBudget\nBank works £38,400 (contractor quote). Signage £1,600. Total £40,000.\nTimeline\nWork starts in March 2027 and the path reopens in September 2027.",
+      "preamble": "",
+      "sections": [
+        {
+          "sectionId": "sum",
+          "heading": "Summary",
+          "level": 2,
+          "specKey": "summary",
+          "index": 0,
+          "text": "We request £40,000 to rebuild 400 metres of the riverside path by September 2027.",
+          "wordCount": 14,
+          "hasContent": true,
+          "renderer": "narrative",
+          "required": true
+        },
+        {
+          "sectionId": "bud",
+          "heading": "Budget",
+          "level": 2,
+          "specKey": "budget",
+          "index": 2,
+          "text": "Bank works £38,400 (contractor quote). Signage £1,600. Total £40,000.",
+          "wordCount": 9,
+          "hasContent": true,
+          "renderer": "narrative",
+          "required": true
+        },
+        {
+          "sectionId": "tl",
+          "heading": "Timeline",
+          "level": 2,
+          "specKey": "timeline",
+          "index": 4,
+          "text": "Work starts in March 2027 and the path reopens in September 2027.",
+          "wordCount": 12,
+          "hasContent": true,
+          "renderer": "narrative",
+          "required": true
+        }
+      ],
+      "type": {
+        "key": "proposal",
+        "title": "Proposal",
+        "version": 1,
+        "family": "business",
+        "sections": [
+          {
+            "key": "summary",
+            "heading": "Summary",
+            "level": 2,
+            "required": true,
+            "guidance": "In one short paragraph, state what is proposed, the problem or opportunity it addresses, the expected result, and what is being asked of the reader (approval, funding, people) with the headline cost and duration. A reader who stops here should know what they are being asked to decide.",
+            "lengthHint": "1 paragraph",
+            "elements": [
+              "What is proposed",
+              "Problem or opportunity addressed",
+              "Expected result",
+              "The ask: approval, funding or resources",
+              "Headline cost and duration"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [
+              "Total cost",
+              "Duration"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "reason",
+            "heading": "Reason for Proposal",
+            "level": 2,
+            "required": true,
+            "guidance": "Explain why the work is needed now. Describe the current situation and its cost or risk, the evidence for the need, who is affected, and what happens if nothing is done. Ground the case in the sources and give figures where they exist.",
+            "elements": [
+              "Current situation",
+              "Evidence of the need",
+              "Who is affected",
+              "Consequence of doing nothing"
+            ],
+            "sourcesNeeded": [
+              "Evidence of the problem or opportunity"
+            ],
+            "dataNeeded": [
+              "Baseline figures"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "objectives",
+            "heading": "Objectives",
+            "level": 2,
+            "required": true,
+            "guidance": "List two to five objectives the work will achieve. Make each specific and measurable, with a target and a date, and tie each to the need described above. Use a numbered list.",
+            "lengthHint": "2–5 objectives",
+            "elements": [
+              "Two to five numbered objectives",
+              "Measurable target for each objective",
+              "Target date for each objective",
+              "Link from each objective to the need"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [
+              "Targets"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "approach",
+            "heading": "Approach",
+            "level": 2,
+            "required": true,
+            "guidance": "Describe how the objectives will be met: the main activities, who will carry them out, the methods or tools, and the deliverables each activity produces. Explain why this approach was chosen over the obvious alternatives, and name the key risks and how they will be managed.",
+            "elements": [
+              "Main activities",
+              "Who will do the work",
+              "Deliverables",
+              "Why this approach over alternatives",
+              "Key risks and mitigations"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [],
+            "renderer": "narrative"
+          },
+          {
+            "key": "timeline",
+            "heading": "Timeline",
+            "level": 2,
+            "required": true,
+            "guidance": "Lay out the schedule from start to finish as phases or milestones with dates, and mark dependencies and decision points. A Markdown table (milestone, date, deliverable) works well.",
+            "elements": [
+              "Start and end dates",
+              "Milestones with dates",
+              "Dependencies and decision points"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [
+              "Milestone dates"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "budget",
+            "heading": "Budget",
+            "level": 2,
+            "required": true,
+            "guidance": "Give the total cost and its breakdown by major category (people, equipment, services, other), with the basis for each figure. Note any cost already committed, any contribution from other sources, and ongoing costs after the work ends. Present the breakdown as a Markdown table.",
+            "elements": [
+              "Total cost",
+              "Breakdown by category",
+              "Basis for each figure",
+              "Ongoing costs after the work ends"
+            ],
+            "sourcesNeeded": [
+              "Quotes or cost estimates"
+            ],
+            "dataNeeded": [
+              "Cost figures"
+            ],
+            "renderer": "narrative"
+          },
+          {
+            "key": "evaluation",
+            "heading": "Evaluation",
+            "level": 2,
+            "required": true,
+            "guidance": "Explain how success will be judged: the measures for each objective, how and when they will be collected, who will review them, and how results will be reported back to the reader.",
+            "elements": [
+              "Success measures for each objective",
+              "How and when data will be collected",
+              "Who reviews the results",
+              "How results will be reported"
+            ],
+            "sourcesNeeded": [],
+            "dataNeeded": [],
+            "renderer": "narrative"
+          }
+        ],
+        "rubric": [
+          {
+            "key": "clarity",
+            "criterion": "Clarity: each sentence has one clear meaning on first read.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Every sentence says one thing in active voice with a clear actor. Terms are defined on first use and used consistently. There are no ambiguous pronouns."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly clear. A few long or passive sentences, or an undefined term, slow the reader without misleading them."
+              },
+              {
+                "score": 2,
+                "descriptor": "Frequent ambiguity: noun stacks, vague pronouns, inconsistent terms, or jargon left unexplained. The reader has to reread."
+              },
+              {
+                "score": 1,
+                "descriptor": "The meaning is often unclear or can be read more than one way. Key claims can't be pinned down."
+              }
+            ]
+          },
+          {
+            "key": "concision",
+            "criterion": "Concision: no more words than the meaning needs.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "No filler, redundancy or throat-clearing. Sentences average about 20 words or fewer. Each paragraph earns its place."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly tight. Some wordy phrases (\"in order to\", \"it is important to note\") or repetition."
+              },
+              {
+                "score": 2,
+                "descriptor": "Noticeable padding: repeated points, long introductions, verbs turned into nouns (\"make a determination\")."
+              },
+              {
+                "score": 1,
+                "descriptor": "Wordiness hides the content. The section could be cut by half without losing meaning."
+              }
+            ]
+          },
+          {
+            "key": "audience_fit",
+            "criterion": "Audience fit: written for the stated reader's knowledge, needs and task.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Assumes exactly the reader's background, answers their questions in order, and uses the tone and register the type specifies. Speaks to the reader directly where that fits."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly well pitched. Occasionally over-explains or assumes too much."
+              },
+              {
+                "score": 2,
+                "descriptor": "Often written for the author or the wrong reader. Important context is missing, or there is condescending detail."
+              },
+              {
+                "score": 1,
+                "descriptor": "Ignores the intended audience. The reader can't use the document for its purpose."
+              }
+            ]
+          },
+          {
+            "key": "structure",
+            "criterion": "Structure: organised so the reader finds and follows the main points.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "The most important information comes first. Headings are informative and match the type's outline. Paragraphs have topic sentences. Lists and tables are used where they help. Transitions are logical."
+              },
+              {
+                "score": 3,
+                "descriptor": "Sound overall. A few buried points, generic headings or long paragraphs."
+              },
+              {
+                "score": 2,
+                "descriptor": "The order is hard to follow. Key points are buried. Headings and lists are inconsistent or missing where needed."
+              },
+              {
+                "score": 1,
+                "descriptor": "No discernible organisation. Required sections are missing or out of order."
+              }
+            ]
+          },
+          {
+            "key": "evidence",
+            "criterion": "Evidence: claims are supported, accurate and attributed.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Every substantive claim is backed by cited sources or data. Figures are accurate and in context. Limits and uncertainty are stated. Nothing is invented."
+              },
+              {
+                "score": 3,
+                "descriptor": "Most claims are supported. A few general statements lack citation, or the support is thin."
+              },
+              {
+                "score": 2,
+                "descriptor": "Many claims are unsupported or loosely tied to sources. Some figures lack context."
+              },
+              {
+                "score": 1,
+                "descriptor": "Claims are asserted without support, or contradict the sources, or contain invented facts."
+              }
+            ]
+          },
+          {
+            "key": "internal_consistency",
+            "criterion": "Objectives, approach, timeline, budget and evaluation agree with each other.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "Every objective has activities in the approach, milestones in the timeline, costs in the budget and a measure in the evaluation."
+              },
+              {
+                "score": 3,
+                "descriptor": "Mostly consistent; one objective lacks a milestone, cost line or measure."
+              },
+              {
+                "score": 2,
+                "descriptor": "Several gaps or contradictions between objectives, schedule, budget and evaluation."
+              },
+              {
+                "score": 1,
+                "descriptor": "The sections describe different projects or contradict each other."
+              }
+            ],
+            "appliesTo": [
+              "objectives",
+              "approach",
+              "timeline",
+              "budget",
+              "evaluation"
+            ]
+          },
+          {
+            "key": "clear_ask",
+            "criterion": "The reader knows exactly what is being asked of them and why.",
+            "levels": [
+              {
+                "score": 4,
+                "descriptor": "The summary states the decision, the cost and the duration, and the reason for the proposal makes a compelling, evidenced case."
+              },
+              {
+                "score": 3,
+                "descriptor": "The ask is clear but the case for it is thin in places."
+              },
+              {
+                "score": 2,
+                "descriptor": "The ask or its cost is vague, or the need is asserted rather than shown."
+              },
+              {
+                "score": 1,
+                "descriptor": "It is unclear what the reader is being asked to approve."
+              }
+            ],
+            "appliesTo": [
+              "summary",
+              "reason"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "replies": [
+    {
+      "scores": [
+        {
+          "criterion": "clarity",
+          "level": 4,
+          "rationale": "Each sentence is short, active or plainly stated, with one meaning. No undefined terms or ambiguous pronouns.",
+          "evidence": [
+            {
+              "id": "sum",
+              "quote": "We request £40,000 to rebuild 400 metres of the riverside path by September 2027."
+            }
+          ],
+          "fix": ""
+        },
+        {
+          "criterion": "concision",
+          "level": 4,
+          "rationale": "There is no filler. Every sentence carries needed information.",
+          "evidence": [
+            {
+              "id": "tl",
+              "quote": "Work starts in March 2027 and the path reopens in September 2027."
+            }
+          ],
+          "fix": ""
+        },
+        {
+          "criterion": "audience_fit",
+          "level": 2,
+          "rationale": "The reader is presumably a funder or decision-maker, but there is no context about who the funder is, what the need is, or what they should weigh. The document is too thin to support a decision.",
+          "evidence": [
+            {
+              "id": "sum",
+              "quote": "We request £40,000 to rebuild 400 metres of the riverside path"
+            }
+          ],
+          "fix": "Add a short reason section covering the path's condition, who uses it, and what the funder gets, written for the named decision-maker."
+        },
+        {
+          "criterion": "structure",
+          "level": 3,
+          "rationale": "The summary comes first and the headings are informative, with a logical order. However, sections such as the reason, approach and evaluation are missing, so the outline is incomplete.",
+          "evidence": [
+            {
+              "id": "sum",
+              "quote": "Summary"
+            },
+            {
+              "id": "bud",
+              "quote": "Bank works £38,400 (contractor quote). Signage £1,600. Total £40,000."
+            }
+          ],
+          "fix": "Add the missing reason, approach and evaluation sections in the standard proposal order."
+        },
+        {
+          "criterion": "evidence",
+          "level": 2,
+          "rationale": "Only the bank works figure is attributed to a contractor quote. Nothing shows the need for the work, and the signage cost and 400 m length are unsupported. No uncertainty or risks are stated.",
+          "evidence": [
+            {
+              "id": "bud",
+              "quote": "Bank works £38,400 (contractor quote)."
+            }
+          ],
+          "fix": "Add evidence of the path's condition and usage, cite the signage costing, and state risks to cost and schedule."
+        },
+        {
+          "criterion": "internal_consistency",
+          "level": 2,
+          "rationale": "The budget total of £40,000 and the September 2027 end date agree with the summary. But there are no stated objectives, approach or evaluation. Signage appears in the budget with no matching activity or milestone, and bank works are not in the approach.",
+          "evidence": [
+            {
+              "id": "bud",
+              "quote": "Signage £1,600."
+            },
+            {
+              "id": "tl",
+              "quote": "Work starts in March 2027"
+            }
+          ],
+          "fix": "State objectives and an approach, then link each to a timeline milestone, a budget line and a measure of success."
+        },
+        {
+          "criterion": "clear_ask",
+          "level": 2,
+          "rationale": "The summary states the amount and the end date, but there is no reason section, so the need is not shown. The duration is only implied by the timeline.",
+          "evidence": [
+            {
+              "id": "sum",
+              "quote": "We request £40,000 to rebuild 400 metres of the riverside path by September 2027."
+            }
+          ],
+          "fix": "Add a reason section with evidence of need, and state the decision requested and the duration in the summary."
+        }
+      ]
+    }
+  ]
+}

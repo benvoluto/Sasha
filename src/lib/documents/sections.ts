@@ -26,6 +26,8 @@ export type SectionInfo = {
   proseText?: string;
   /** With `{ own: true }`: the own body has text, a table, an image or a rule (sub-heading titles don't count). */
   hasContent?: boolean;
+  /** With `{ own: true }`: the own body holds a table, an image or a rule, which its plain text leaves out or flattens. */
+  media?: boolean;
 };
 
 export type ListSectionsOptions = {
@@ -92,7 +94,7 @@ export function listSections(doc: PMNode | null | undefined, opts: ListSectionsO
       specKey: (node.attrs?.specKey as string | null | undefined) ?? null,
       index,
       bodyText: body.trim(),
-      ...(opts.own ? { proseText: prose.trim(), hasContent: !!prose.trim() || media } : {}),
+      ...(opts.own ? { proseText: prose.trim(), hasContent: !!prose.trim() || media, media } : {}),
     });
   });
   return out;

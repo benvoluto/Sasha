@@ -7,9 +7,6 @@
 // identical across requests for the same type and mode and claudeText caches
 // it. Everything per request (the document, the notes, the sources) goes in the
 // user message, with untrusted text inside delimited tags.
-//
-// OUTPUT_RULES, SHARED_RULES and stripFences are also used by the legacy report
-// service (src/lib/ontology/report/service.ts) and its templates.
 
 import type { DocumentTypeDefinition, SectionSpec } from "@/catalog/schema";
 import { REWRITE_PRESETS } from "@/lib/report/rewrite-presets";

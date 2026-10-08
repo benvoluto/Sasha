@@ -3,15 +3,15 @@ import { formatDuration, runOutcome, runTimeline, summarizeRuns, type RunSummary
 
 const t = (s: number) => new Date(Date.UTC(2026, 9, 6, 10, 0, s)).toISOString();
 const nodes = [
-  { id: "sources", type: "source.documents", label: "Source documents" },
+  { id: "sources", type: "sources.read", label: "Source passages" },
   { id: "summarize", type: "ai.ask", label: "Summarize" },
-  { id: "check", type: "flow.checkpoint", label: "Human checkpoint" },
-  { id: "output", type: "output.save", label: "Save output" },
+  { id: "check", type: "checkpoint", label: "Human checkpoint" },
+  { id: "output", type: "outcome.report", label: "Outcome" },
 ];
 const run = (over: Partial<RunSummary> = {}): RunSummary => ({
   id: "r1",
-  group_id: "g1",
-  status: "draft",
+  document_id: "d1",
+  status: "complete",
   workflow_id: "default",
   workflow_name: "Default workflow",
   workflow_version: 2,
@@ -19,6 +19,7 @@ const run = (over: Partial<RunSummary> = {}): RunSummary => ({
   created_at: t(0),
   updated_at: t(60),
   checkpoints: {},
+  outcome: null,
   nodes,
   steps: {
     sources: { status: "done", startedAt: t(0), finishedAt: t(2) },
@@ -31,7 +32,7 @@ const run = (over: Partial<RunSummary> = {}): RunSummary => ({
 
 describe("runOutcome", () => {
   it("reads a superseded run's outcome back from its steps", () => {
-    expect(runOutcome(run({ status: "superseded" }))).toBe("draft");
+    expect(runOutcome(run({ status: "superseded" }))).toBe("complete");
     expect(runOutcome(run({ status: "superseded", steps: { summarize: { status: "failed", error: "x" }, output: { status: "skipped" } } }))).toBe("failed");
     expect(runOutcome(run({ status: "superseded", steps: { sources: { status: "done" }, summarize: { status: "running" } } }))).toBe("stopped");
     expect(runOutcome(run({ status: "paused" }))).toBe("paused");
@@ -48,9 +49,9 @@ describe("summarizeRuns", () => {
 
   it("counts outcomes and errors", () => {
     expect(o.total).toBe(4);
-    expect(o.byOutcome.draft).toBe(3);
+    expect(o.byOutcome.complete).toBe(3);
     expect(o.byOutcome.failed).toBe(1);
-    expect(o.topErrors).toEqual([{ label: "Source documents", error: "no documents", count: 1 }]);
+    expect(o.topErrors).toEqual([{ label: "Source passages", error: "no documents", count: 1 }]);
   });
 
   it("breaks step timings down per version, slowest first, leaving out checkpoints", () => {
@@ -67,22 +68,23 @@ describe("summarizeRuns", () => {
 
 describe("runTimeline", () => {
   it("lists the start, each step, checkpoint decisions and the end in time order", () => {
-    const entries = runTimeline(run({ checkpoints: { check: { excluded: [1], note: "drop one", by: "b@example.com", at: t(49) } } }));
+    const decision = { verdict: "reject" as const, excluded: [1], note: "drop one", by: "b@example.com", at: t(49), role: "Supervisor", edits: null };
+    const entries = runTimeline(run({ checkpoints: { check: decision } }));
     expect(entries.map((e) => e.title)).toEqual([
       "Run started",
-      "Source documents finished in 2.00 s",
+      "Source passages finished in 2.00 s",
       "Summarize finished in 10.0 s",
-      "b@example.com continued Human checkpoint",
+      "b@example.com rejected Human checkpoint",
       "Human checkpoint finished in 38.0 s",
-      "Save output finished in 1.00 s",
-      "Run finished: result saved",
+      "Outcome finished in 1.00 s",
+      "Run finished: outcome recorded",
     ]);
     expect(entries.at(-1)!.detail).toBe("total 1m 0s");
   });
 
   it("carries a failed step's error", () => {
     const entries = runTimeline(run({ status: "failed", steps: { sources: { status: "failed", startedAt: t(0), finishedAt: t(1), error: "no documents" } } }));
-    expect(entries.find((e) => e.status === "failed")).toMatchObject({ title: "Source documents failed in 1.00 s", detail: "no documents" });
+    expect(entries.find((e) => e.status === "failed")).toMatchObject({ title: "Source passages failed in 1.00 s", detail: "no documents" });
   });
 });
 

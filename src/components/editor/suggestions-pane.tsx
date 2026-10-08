@@ -27,7 +27,7 @@ import type {
   SuggestionResponse,
 } from "@/lib/suggestions/contract";
 import { MAX_SUGGESTION_LABEL } from "@/lib/suggestions/contract";
-import { applyAction, dismissedItems, doneItems, doneText, groupOpen, loadAfterSave, showEmptyHint, upsertRow } from "./suggestions-model";
+import { applyAction, dismissedItems, doneItems, doneText, groupOpen, loadAfterSave, reasonView, showEmptyHint, upsertRow } from "./suggestions-model";
 import { findType, useDocumentTypes } from "./type-picker";
 
 type GenerateReply = SuggestionGenerateResponse & { retry_after_ms?: number };
@@ -223,8 +223,18 @@ export function SuggestionsPane({
                     <li key={row.id} className="rounded-xl border border-[var(--doc-line)] px-3 py-2.5">
                       <div className="flex items-start gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="break-words text-sm font-medium leading-snug">{row.label}</p>
-                          {row.reason && <p className="mt-0.5 text-xs leading-relaxed text-[var(--doc-muted)]">{row.reason}</p>}
+                          <p className="break-words text-sm font-medium leading-snug">
+                            {row.label}
+                            {reasonView(row).unverified && (
+                              <span
+                                title="Found on the web by a workflow; nobody has checked it yet"
+                                className="ml-1.5 inline-flex rounded-full bg-amber-50 px-2 py-px align-middle text-[11px] font-semibold text-amber-900 dark:bg-amber-950/60 dark:text-amber-200"
+                              >
+                                Unverified
+                              </span>
+                            )}
+                          </p>
+                          {reasonView(row).reason && <p className="mt-0.5 text-xs leading-relaxed text-[var(--doc-muted)]">{reasonView(row).reason}</p>}
                         </div>
                         <button
                           type="button"

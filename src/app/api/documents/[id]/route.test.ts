@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => ({ teamId: "org:a", agent: "ann" }) }));
+vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write: async () => {} }) }));
 
 import { createDocFolder, getDocFolder } from "@/lib/documents/folder-store";
 import { MAX_DOCUMENT_NOTES } from "@/lib/documents/notes-contract";
 import { createDocument, getDocument, resetMemoryStore } from "@/lib/documents/store";
-import { PATCH } from "./route";
+import { defaultWorkflowGraph } from "@/lib/workflow/default-graph";
+import { createRun, getRun, listDocumentRuns, recentRunSummaries, saveRun } from "@/lib/workflow/store";
+import { DELETE, PATCH } from "./route";
 
 const patch = (id: string, body: unknown) =>
   PATCH(new Request(`http://x/api/documents/${id}`, { method: "PATCH", body: JSON.stringify(body) }), { params: Promise.resolve({ id }) });
@@ -73,10 +76,14 @@ describe("PATCH /api/documents/[id] notes and type_source", () => {
     expect(chip.status).toBe(200);
     expect((await chip.json()).document).toMatchObject({ type_key: "proposal", type_source: "classifier" });
 
-    for (const type_source of ["restructure", "CLASSIFIER", "", 1, null]) {
+    for (const type_source of ["RESTRUCTURE", "CLASSIFIER", "", 1, null]) {
       expect((await patch(d.id, { type_key: "sop", type_source })).status).toBe(400);
     }
     expect((await getDocument("org:a", d.id))?.type_source).toBe("classifier");
+
+    // A workflow's restructure sets the type it mapped the document onto.
+    const restructured = await patch(d.id, { type_key: "sop", type_source: "restructure" });
+    expect((await restructured.json()).document).toMatchObject({ type_key: "sop", type_source: "restructure" });
 
     const byHand = await patch(d.id, { type_key: "sop" });
     expect((await byHand.json()).document).toMatchObject({ type_key: "sop", type_source: "user" });
@@ -121,5 +128,44 @@ describe("PATCH /api/documents/[id] invalid JSON", () => {
       expect(await res.json()).toEqual({ error: "Invalid changes." });
     }
     expect((await getDocument("org:a", d.id))?.updated_at).toBe(d.updated_at);
+  });
+});
+
+describe("DELETE /api/documents/[id]", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    resetMemoryStore();
+  });
+
+  const workflow = { workflow_id: "wf-1", name: "W", version: 1, graph: defaultWorkflowGraph(), note: "", created_by: "x", created_at: "", readOnly: false, based_on: null };
+  const auth = { agent: "ann", permissions: [] };
+
+  it("deletes the document's runs with it, leaving other documents' and teams' runs alone", async () => {
+    const d = await createDocument("org:a", "ann");
+    const other = await createDocument("org:a", "ann");
+    const theirs = await createDocument("org:b", "zed");
+    const run = await createRun("org:a", d.id, workflow, {}, auth);
+    const kept = await createRun("org:a", other.id, workflow, {}, auth);
+    const theirRun = await createRun("org:b", theirs.id, workflow, {}, auth);
+
+    const res = await DELETE(new Request(`http://x/api/documents/${d.id}`, { method: "DELETE" }), { params: Promise.resolve({ id: d.id }) });
+    expect(res.status).toBe(200);
+    expect(await getRun("org:a", run.id)).toBeNull();
+    expect(await listDocumentRuns("org:a", d.id)).toEqual([]);
+    expect((await recentRunSummaries("org:a", 10)).map((r) => r.id)).toEqual([kept.id]);
+    expect(await getRun("org:b", theirRun.id)).not.toBeNull();
+
+    // A run still executing when the document went does not come back when it saves.
+    run.status = "complete";
+    await saveRun(run);
+    expect(await getRun("org:a", run.id)).toBeNull();
+  });
+
+  it("404s another team's document and keeps its runs", async () => {
+    const theirs = await createDocument("org:b", "zed");
+    const run = await createRun("org:b", theirs.id, workflow, {}, auth);
+    const res = await DELETE(new Request(`http://x/api/documents/${theirs.id}`, { method: "DELETE" }), { params: Promise.resolve({ id: theirs.id }) });
+    expect(res.status).toBe(404);
+    expect(await getRun("org:b", run.id)).not.toBeNull();
   });
 });

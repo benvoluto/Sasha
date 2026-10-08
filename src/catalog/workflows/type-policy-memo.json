@@ -1,0 +1,526 @@
+{
+  "key": "type-policy-memo",
+  "version": 2,
+  "title": "Recommendation check",
+  "summary": "Checks the memo's recommendation against an options-by-criteria matrix built by independent reviewers, with the conditions that would change it. The decision-maker's choice is recorded at the checkpoint.",
+  "kind": "type",
+  "appliesTo": [
+    "policy-decision-memo"
+  ],
+  "outcome": {
+    "label": "Recommendation check",
+    "values": [
+      {
+        "key": "supported",
+        "label": "Recommendation supported by the options matrix"
+      },
+      {
+        "key": "departs",
+        "label": "Recommendation departs from the matrix (reason given or missing)"
+      },
+      {
+        "key": "incomplete_matrix",
+        "label": "Options matrix incomplete"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Decision-maker",
+    "required": true
+  },
+  "notes": [
+    "Ordinal ratings, no weighted total.",
+    "Value trade-offs and political feasibility belong to the decision-maker; stakeholder positions are reported as stated."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "notes",
+      "node": "doc.notes",
+      "label": "Notes"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: decision inputs",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "decision",
+            "label": "The decision to be made",
+            "kind": "any",
+            "match": [
+              "decision",
+              "decide",
+              "approve"
+            ],
+            "help": "State the decision the memo asks for."
+          },
+          {
+            "key": "decision_maker",
+            "label": "The decision-maker",
+            "kind": "any",
+            "match": [
+              "decision-maker",
+              "decision maker",
+              "for decision by",
+              "to:"
+            ],
+            "help": "Name who makes the decision."
+          },
+          {
+            "key": "deadline",
+            "label": "A deadline",
+            "kind": "any",
+            "match": [
+              "deadline",
+              "decision needed by",
+              "no later than",
+              "by close of"
+            ],
+            "help": "State when the decision is needed and why."
+          },
+          {
+            "key": "options",
+            "label": "At least two options plus the status quo",
+            "kind": "section",
+            "specKeys": [
+              "options"
+            ],
+            "match": [
+              "option",
+              "status quo",
+              "alternative"
+            ],
+            "help": "Set out at least two options and the status quo."
+          },
+          {
+            "key": "criteria",
+            "label": "Stated criteria",
+            "kind": "any",
+            "match": [
+              "criteria",
+              "criterion",
+              "assessed against",
+              "evaluated against"
+            ],
+            "help": "State the criteria the options are judged on."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "notes": "notes.notes"
+      }
+    },
+    {
+      "id": "ext",
+      "node": "step.extract",
+      "label": "Options and criteria",
+      "config": {
+        "item": "option or criterion",
+        "from": [
+          "document"
+        ],
+        "maxItems": 20,
+        "instructions": "List each option (including the status quo) and each criterion the memo states.",
+        "fields": [
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "Whether it is an option or a criterion",
+            "values": [
+              "option",
+              "criterion"
+            ],
+            "required": true
+          },
+          {
+            "name": "id",
+            "label": "Id",
+            "type": "text",
+            "description": "A short id: O1, O2… for options, C1, C2… for criteria",
+            "required": true
+          },
+          {
+            "name": "name",
+            "label": "Name",
+            "type": "text",
+            "description": "Its name as written",
+            "required": true
+          },
+          {
+            "name": "description",
+            "label": "Description",
+            "type": "text",
+            "description": "What it is, in a sentence"
+          },
+          {
+            "name": "is_status_quo",
+            "label": "Status quo",
+            "type": "boolean",
+            "description": "For an option: whether it is the status quo or no-action option"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "crit",
+      "node": "step.check",
+      "label": "Criteria check",
+      "config": {
+        "checklist": [
+          {
+            "key": "defined_apart",
+            "label": "Criteria defined apart from the options",
+            "question": "Are the criteria defined apart from the options (not written to favour one)?",
+            "severity": "major"
+          },
+          {
+            "key": "one_option_only",
+            "label": "No criterion only one option can meet",
+            "question": "Is there a criterion only one option can meet? Name it.",
+            "severity": "major"
+          },
+          {
+            "key": "feasible",
+            "label": "Options have authority, budget and time",
+            "question": "Does any option lack the authority, budget or time to carry it out? Name it.",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ext.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "cells",
+      "node": "step.extract",
+      "label": "Matrix cells",
+      "config": {
+        "item": "matrix cell",
+        "from": [
+          "document"
+        ],
+        "maxItems": 80,
+        "instructions": "List one cell per option and criterion the memo assesses: what the memo claims about that option on that criterion, and the evidence it gives. Include the status quo. Skip pairs the memo says nothing about.",
+        "fields": [
+          {
+            "name": "name",
+            "label": "Cell",
+            "type": "text",
+            "description": "The option and criterion, as “Option — Criterion”",
+            "required": true
+          },
+          {
+            "name": "option",
+            "label": "Option",
+            "type": "text",
+            "description": "The option as written",
+            "required": true
+          },
+          {
+            "name": "criterion",
+            "label": "Criterion",
+            "type": "text",
+            "description": "The criterion as written",
+            "required": true
+          },
+          {
+            "name": "claim",
+            "label": "Claim",
+            "type": "text",
+            "description": "What the memo says about the option on this criterion",
+            "required": true
+          },
+          {
+            "name": "stated_evidence",
+            "label": "Stated evidence",
+            "type": "text",
+            "description": "The evidence or estimate the memo gives for it, if any"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "cellev",
+      "node": "step.trace",
+      "label": "Trace: evidence per cell",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          {
+            "key": "supported",
+            "label": "Supported",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "estimated",
+            "label": "Estimated",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "unsupported",
+            "label": "Unsupported",
+            "ok": false,
+            "severity": "major"
+          }
+        ],
+        "unverifiedStatus": "unsupported",
+        "question": "Is the memo's claim for this cell backed by a linked source (supported), a stated estimate or projection (estimated), or nothing (unsupported)?",
+        "bothWays": false,
+        "instructions": "Judge the evidence for each cell, not whether the option is good. Mark estimated when the memo gives a projection or estimate without a source behind it."
+      },
+      "in": {
+        "items": "cells.items",
+        "sources": "src.sources",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Matrix review",
+      "config": {
+        "criteria": [],
+        "matrix": true,
+        "criterionScale": {
+          "kind": "enum",
+          "values": [
+            "strong",
+            "adequate",
+            "weak",
+            "unknown"
+          ]
+        },
+        "instructions": "Rate each option against each criterion with a rationale. In each rationale say whether the evidence for the cell is supported by a source, estimated, or unsupported. Use unknown rather than guess.",
+        "reviewers": [
+          {
+            "key": "case_builder",
+            "label": "Case builder",
+            "brief": "Build the strongest honest case for each option in turn, citing the evidence that favours it on each criterion."
+          },
+          {
+            "key": "skeptic",
+            "label": "Skeptic",
+            "brief": "For each option, find the costs, risks and disconfirming evidence on each criterion, including what the memo leaves out."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ext.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement (the matrix)",
+      "config": {
+        "mode": "verdict"
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "sens",
+      "node": "step.check",
+      "label": "Sensitivity",
+      "config": {
+        "checklist": [
+          {
+            "key": "priority_order",
+            "label": "Robust to priority order",
+            "question": "Using the agreed options matrix, does the recommendation change under a different priority order of the criteria? Name the conditions.",
+            "severity": "minor"
+          },
+          {
+            "key": "least_certain",
+            "label": "Robust to the least certain estimate",
+            "question": "Using the agreed options matrix, does the recommendation change if the least certain cell or estimate moves? Name the cell and the conditions.",
+            "severity": "minor"
+          }
+        ],
+        "instructions": "Work from the agreed options matrix (the reviewer agreement table in <data>): vary the priority order of the criteria and the least certain cells, and say which conditions would change the recommendation."
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "agree.table",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "cons",
+      "node": "step.check",
+      "label": "Consistency and form",
+      "config": {
+        "checklist": [
+          {
+            "key": "matches_matrix",
+            "label": "Recommendation matches the matrix",
+            "question": "Does the memo's recommendation match the agreed options matrix (the reviewer agreement table in <data>), or does the memo say why it departs?",
+            "severity": "major",
+            "appliesTo": [
+              "recommendation"
+            ]
+          },
+          {
+            "key": "form",
+            "label": "Recommendation first",
+            "question": "Does the memo put the recommendation first, then options, risks, cost and next steps?",
+            "severity": "minor"
+          },
+          {
+            "key": "status_quo",
+            "label": "Status quo present",
+            "question": "Is the status quo present as an option?",
+            "severity": "major",
+            "appliesTo": [
+              "options"
+            ]
+          },
+          {
+            "key": "costs_all",
+            "label": "Costs for every option",
+            "question": "Are costs given for every option, not one only?",
+            "severity": "major",
+            "appliesTo": [
+              "options"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ext.items",
+        "data": "agree.table",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Decide",
+      "config": {
+        "values": [
+          "supported",
+          "departs",
+          "incomplete_matrix"
+        ],
+        "guidance": "Begin the rationale with “Recommended option: ” and the option the memo recommends, by name. supported when the recommendation matches the agreed options matrix; departs when it does not (say whether the memo gives a reason); incomplete_matrix when the status quo, at least two options or stated criteria are missing, or many cells are unknown or unsupported. Name the conditions that would change the recommendation."
+      },
+      "in": {
+        "findings": [
+          "crit.findings",
+          "cellev.findings",
+          "rev.findings",
+          "agree.findings",
+          "sens.findings",
+          "cons.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "crit.results",
+          "sens.results",
+          "cons.results"
+        ],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "incomplete_matrix"
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": [
+          "crit.findings",
+          "cellev.findings",
+          "rev.findings",
+          "agree.findings",
+          "sens.findings",
+          "cons.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "tables": [
+          "agree.table",
+          "cellev.table",
+          "crit.table",
+          "sens.table",
+          "cons.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Decision-maker",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Record your decision: approve the recommendation, choose another option, defer, or ask for more.",
+        "recordFields": [
+          {
+            "key": "decision",
+            "label": "Approve recommendation / chose another option / defer / asked for more",
+            "required": true
+          },
+          {
+            "key": "chosen_option",
+            "label": "Chosen option",
+            "required": false
+          },
+          {
+            "key": "reason",
+            "label": "Reason",
+            "required": true
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome"
+      }
+    }
+  ]
+}
