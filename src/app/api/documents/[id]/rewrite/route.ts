@@ -8,7 +8,9 @@ import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// Two model attempts of CLAUDE_REQUEST_TIMEOUT_MS each fit inside this, so a
+// slow call fails with a message (and an audit entry) instead of being killed.
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 

@@ -7,7 +7,6 @@
 import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, UploadCloud } from "@/components/icons";
-import { addJob } from "@/lib/processing-jobs";
 
 /**
  * `className`/`icon`/`label` let a caller render this as something other than a
@@ -15,7 +14,7 @@ import { addJob } from "@/lib/processing-jobs";
  * default ghost button.
  */
 export function AddDocsButton({
-  groupId, documentName, onDone, className, icon, label, disabled,
+  groupId, onDone, className, icon, label, disabled,
 }: {
   groupId: string;
   documentName?: string;
@@ -42,14 +41,8 @@ export function AddDocsButton({
         alert(`Upload failed: ${d.error || res.status}`);
       } else {
         // The request returns once the files are stored; reading them continues
-        // in the background.
-        // Record the job so the tracker keeps it visible wherever the user goes.
-        addJob({
-          groupId,
-          label: documentName || "document",
-          kind: "upload",
-          files: Array.from(files).map((f) => f.name),
-        });
+        // in the background (legacy upload groups aren't tracked by the
+        // processing tracker, which follows sources).
         onDone();
       }
     } finally {

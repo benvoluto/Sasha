@@ -1,4 +1,5 @@
 import { head } from '@vercel/blob';
+import { blobAuthHeaders } from './blob-host';
 
 /**
  * Safely fetch blob content using Vercel's blob SDK
@@ -23,33 +24,15 @@ export async function fetchBlobContent(blobUrl: string, opts: { skipHead?: boole
       }
     }
 
-    // Try fetching with different auth methods
-    let response: Response;
-    
-    // Method 1: Try without auth first (works for public blobs)
-    response = await fetch(downloadUrl);
-    
-    if (!response.ok && process.env.BLOB_READ_WRITE_TOKEN) {
-      console.log('[BlobUtils] Public access returned:', response.status);
-      
-      // Method 2: Try with Authorization header
-      response = await fetch(downloadUrl, {
-        headers: {
-          'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
-        }
-      });
-      
-      if (!response.ok) {
-        console.log('[BlobUtils] Bearer auth returned:', response.status);
-        
-        // Method 3: Try with token as query parameter
-        const url = new URL(downloadUrl);
-        url.searchParams.set('token', process.env.BLOB_READ_WRITE_TOKEN);
-        response = await fetch(url.toString());
-        
-        if (!response.ok) {
-          console.log('[BlobUtils] Token in URL returned:', response.status);
-        }
+    // Public blobs need no credentials. The store token is only ever sent to
+    // this app's own store host (never to a URL a caller supplied), and only in
+    // the Authorization header, never in the query string where it would be logged.
+    let response = await fetch(downloadUrl);
+    if (!response.ok) {
+      const auth = blobAuthHeaders(downloadUrl);
+      if (auth.Authorization) {
+        console.log('[BlobUtils] Public access returned:', response.status, '- retrying with the store token');
+        response = await fetch(downloadUrl, { headers: auth });
       }
     }
     

@@ -1,111 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getUserIdentifier } from '@/lib/auth';
-import { v4 as uuidv4 } from 'uuid';
-import { DIRECT_UPLOAD_CONFIG } from '@/lib/upload-strategy';
+import { randomUUID } from "node:crypto";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireTeam } from "@/lib/documents/team";
+import { PERMISSIONS } from "@/lib/ontology/permissions";
+import { sourceBlobPath } from "@/lib/sources/blob-paths";
+import { createSource, linkSource, targetFolder } from "@/lib/sources/store";
+import { DIRECT_UPLOAD_CONFIG, resolveUploadType } from "@/lib/upload-strategy";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-interface PresignRequest {
-  files: Array<{
-    name: string;
-    size: number;
-    type: string;
-  }>;
-}
+const Body = z.object({
+  files: z
+    .array(z.object({ name: z.string().trim().min(1).max(300), size: z.number().int().nonnegative(), type: z.string().max(200) }))
+    .min(1)
+    .max(DIRECT_UPLOAD_CONFIG.maxFiles),
+  folder_id: z.string().uuid().nullable().optional(),
+  /** Put the files in this document's folder and link them to it. */
+  document_id: z.string().uuid().nullable().optional(),
+});
 
-interface PresignedUrl {
-  fileId: string;
-  fileName: string;
-  uploadUrl: string;
-  fields: Record<string, string>;
-}
+/**
+ * POST /api/upload/presign — step one of an upload. Creates a source row per
+ * file (status "uploading") and returns where each file goes. The client then
+ * calls `upload(fields.blobPath, file, { access: "public", handleUploadUrl:
+ * "/api/upload/direct", clientPayload: JSON.stringify({ sourceId }), contentType:
+ * fields.contentType })` and finishes with /api/upload/complete.
+ */
+export async function POST(req: Request) {
+  const caller = await requireTeam(PERMISSIONS.sourceWrite);
+  if (caller instanceof NextResponse) return caller;
+  const parsed = Body.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) return NextResponse.json({ error: "No files to upload." }, { status: 400 });
+  const { files, folder_id, document_id } = parsed.data;
 
-interface PresignResponse {
-  groupId: string;
-  uploads: PresignedUrl[];
-  expiresAt: string;
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    console.log('[Presign] Processing presign request...');
-    
-    // Get user identity for security
-    const userIdentifier = await getUserIdentifier();
-    console.log('[Presign] User:', userIdentifier || 'anonymous');
-
-    // Parse request body
-    const { files }: PresignRequest = await request.json();
-    
-    if (!files || !Array.isArray(files) || files.length === 0) {
-      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
-    }
-
-    console.log('[Presign] Files to presign:', files.length);
-
-    // Validate files
-    for (const file of files) {
-      // Check file size
-      if (file.size > DIRECT_UPLOAD_CONFIG.maxFileSize) {
-        return NextResponse.json(
-          { error: `File ${file.name} exceeds maximum size of ${DIRECT_UPLOAD_CONFIG.maxFileSize / 1024 / 1024}MB` },
-          { status: 400 }
-        );
-      }
-
-      // Check file type
-      if (!DIRECT_UPLOAD_CONFIG.allowedTypes.includes(file.type)) {
-        return NextResponse.json(
-          { error: `File ${file.name} has unsupported type: ${file.type}` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Generate group ID and presigned URLs
-    const groupId = uuidv4();
-    const uploads: PresignedUrl[] = [];
-    const expiresAt = new Date(Date.now() + 3600000).toISOString(); // 1 hour from now
-
-    console.log('[Presign] Generated group ID:', groupId);
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileId = `${i}-${file.name}`;
-      const blobPath = `${DIRECT_UPLOAD_CONFIG.uploadPath}/${groupId}/files/${fileId}`;
-
-      // For Vercel Blob, we'll use the handleUploadUrl approach
-      // The actual upload will use @vercel/blob/client with our completion handler
-      uploads.push({
-        fileId,
-        fileName: file.name,
-        uploadUrl: '/api/upload/direct', // Our handler endpoint
-        fields: {
-          groupId,
-          fileIndex: i.toString(),
-          fileName: file.name,
-          fileSize: file.size.toString(),
-          fileType: file.type,
-          blobPath
-        }
-      });
-    }
-
-    console.log('[Presign] Generated', uploads.length, 'presigned URLs');
-
-    const response: PresignResponse = {
-      groupId,
-      uploads,
-      expiresAt
-    };
-
-    return NextResponse.json(response);
-
-  } catch (error) {
-    console.error('[Presign] Error generating presigned URLs:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate upload URLs' },
-      { status: 500 }
-    );
+  const maxMb = DIRECT_UPLOAD_CONFIG.maxFileSize / 1024 / 1024;
+  const typed: Array<{ name: string; size: number; mime: string }> = [];
+  for (const f of files) {
+    if (f.size > DIRECT_UPLOAD_CONFIG.maxFileSize) return NextResponse.json({ error: `${f.name} is larger than ${maxMb} MB.` }, { status: 400 });
+    if (f.size === 0) return NextResponse.json({ error: `${f.name} is empty.` }, { status: 400 });
+    const mime = resolveUploadType(f.name, f.type);
+    if (!mime) return NextResponse.json({ error: `${f.name} isn't a supported file type (PDF, Word, image, text, Markdown, CSV or Excel).` }, { status: 400 });
+    typed.push({ name: f.name, size: f.size, mime });
   }
+
+  const target = await targetFolder(caller.teamId, caller.agent, { folderId: folder_id, documentId: document_id });
+  if (!target.ok) {
+    return NextResponse.json({ error: target.reason === "document_not_found" ? "Document not found." : "Folder not found." }, { status: 404 });
+  }
+
+  const uploads = [];
+  for (const f of typed) {
+    const sourceId = randomUUID();
+    const blobPath = sourceBlobPath(caller.teamId, sourceId, f.name);
+    await createSource(caller.teamId, caller.agent, {
+      id: sourceId,
+      kind: "file",
+      folder_id: target.folderId,
+      filename: f.name,
+      mime: f.mime,
+      bytes: f.size,
+      blob_pathname: blobPath,
+      extraction_status: "uploading",
+    });
+    if (document_id) await linkSource(caller.teamId, caller.agent, document_id, sourceId);
+    uploads.push({
+      sourceId,
+      fileName: f.name,
+      uploadUrl: "/api/upload/direct",
+      fields: { sourceId, blobPath, contentType: f.mime, fileName: f.name, fileSize: String(f.size) },
+    });
+  }
+  return NextResponse.json({ uploads, folder_id: target.folderId });
 }

@@ -2,13 +2,14 @@
 
 // The editing screen: the first thing a person sees. A header with the
 // document switcher, title, type, sources and sharing; a card holding the
-// toolbar, the document, and the outline and tools panels.
+// toolbar, the document, and the outline panel on the left and the tools or
+// sources panel on the right.
 
 import { OrganizationSwitcher, UserButton, useOrganization } from "@clerk/nextjs";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, CaretUpDown, Copy, Loader2, OutlineIcon, Share, SourcesIcon, SparkleIcon } from "@/components/icons";
+import { Check, CaretUpDown, Copy, LibraryIcon, Loader2, OutlineIcon, Share, SourcesIcon, SparkleIcon } from "@/components/icons";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { docFromOutline, type PMNode } from "@/lib/documents/sections";
@@ -17,6 +18,7 @@ import { DocumentSwitcher } from "./document-switcher";
 import { EditorToolbar } from "./editor-toolbar";
 import { documentExtensions, newSectionId } from "./extensions";
 import { OutlinePanel, ToolsPanel } from "./side-panels";
+import { SourcesPanel } from "./sources-panel";
 import { useDocument, type SaveStatus } from "./use-document";
 
 function useDocumentTypes(): DocumentTypeOption[] {
@@ -181,10 +183,16 @@ type WorkspaceProps = {
 
 function Workspace({ initial, doc, types, status, error, conflict, change, flush, resolveConflict }: WorkspaceProps) {
   const [outlineOpen, setOutlineOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
+  // The right-hand slot holds one panel at a time.
+  const [rightPanel, setRightPanel] = useState<"tools" | "sources" | null>(null);
+  const toolsOpen = rightPanel === "tools";
+  const sourcesOpen = rightPanel === "sources";
+  const toggleRight = (panel: "tools" | "sources") => setRightPanel((p) => (p === panel ? null : panel));
   const [notice, setNotice] = useState<string | null>(null);
   const docIdRef = useRef(doc.id);
   docIdRef.current = doc.id;
+  const titleRef = useRef(doc.title);
+  titleRef.current = doc.title;
 
   const snapshot = useCallback(async (reason: string) => {
     const id = docIdRef.current;
@@ -219,9 +227,13 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
   }, [notice]);
 
   const ensureSaved = useCallback(async () => {
-    await flush();
-    return docIdRef.current;
-  }, [flush]);
+    // A blank new document has nothing pending, so flush alone wouldn't create
+    // it; record its title as a change so the save goes out.
+    if (!docIdRef.current) change({ title: titleRef.current });
+    // The id comes from the save itself: docIdRef only updates when this
+    // component re-renders, which happens after the save resolves.
+    return (await flush()) || null;
+  }, [change, flush]);
 
   const chooseType = async (t: DocumentTypeOption | null) => {
     change({ type_key: t?.key ?? null });
@@ -270,11 +282,23 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
           <StatusText status={status} error={error} isNew={!doc.id} />
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/library"
-            className="flex h-11 items-center gap-2 rounded-full bg-[var(--doc-surface)] px-5 text-[17px] font-semibold text-[var(--doc-accent)] shadow-sm hover:bg-[var(--doc-accent-soft)]"
+          <button
+            type="button"
+            aria-pressed={sourcesOpen}
+            onClick={() => toggleRight("sources")}
+            className={`flex h-11 items-center gap-2 rounded-full px-5 text-[17px] font-semibold text-[var(--doc-accent)] shadow-sm hover:bg-[var(--doc-accent-soft)] ${
+              sourcesOpen ? "bg-[var(--doc-accent-soft)]" : "bg-[var(--doc-surface)]"
+            }`}
           >
             <SourcesIcon className="h-5 w-5" /> Sources
+          </button>
+          <Link
+            href="/library"
+            aria-label="Sources library"
+            title="Sources library"
+            className="grid h-11 w-11 place-items-center rounded-full text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
+          >
+            <LibraryIcon className="h-5 w-5" />
           </Link>
           <SharePopover documentId={doc.id} />
           <div className="ml-1 grid h-11 w-11 place-items-center">
@@ -309,7 +333,7 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
           <button
             type="button"
             aria-pressed={toolsOpen}
-            onClick={() => setToolsOpen((o) => !o)}
+            onClick={() => toggleRight("tools")}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[17px] font-semibold text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
           >
             <SparkleIcon className="h-5 w-5" /> <span className="hidden sm:inline">Tools</span>
@@ -351,7 +375,12 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
           </div>
           {toolsOpen && editor && (
             <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
-              <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => setToolsOpen(false)} />
+              <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => setRightPanel(null)} />
+            </div>
+          )}
+          {sourcesOpen && (
+            <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
+              <SourcesPanel documentId={doc.id || null} documentTitle={doc.title} ensureSaved={ensureSaved} onClose={() => setRightPanel(null)} />
             </div>
           )}
         </div>

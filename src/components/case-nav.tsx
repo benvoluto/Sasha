@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser, useClerk } from '@clerk/nextjs';
-import { ClipboardList, FileText, Archive, LogOut, Workflow } from "@/components/icons";
+import { ClipboardList, FileText, LogOut, Workflow } from "@/components/icons";
 import { Popover, PopoverTrigger, PopoverContent } from '@radix-ui/react-popover';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -10,11 +10,11 @@ import { usePathname } from 'next/navigation';
 // name rather than fabricated org data.
 const WORKSPACE_NAME = 'Sasha';
 
-// Nav sections: the editor, the source library, archived documents and workflows.
+// Nav sections: the editor, the source library and workflows. Archived
+// documents are in the editor's document switcher.
 const TABS = [
   { key: 'write', label: 'Write', icon: FileText, href: '/' },
   { key: 'cases', label: 'Sources', icon: ClipboardList, href: '/library' },
-  { key: 'archived', label: 'Archived', icon: Archive, href: '/archived' },
   { key: 'workflow', label: 'Workflows', icon: Workflow, href: '/workflows' },
 ];
 

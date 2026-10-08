@@ -2,9 +2,14 @@
 // which picks the model and effort. Opus and Sonnet calls opt into the
 // server-side refusal fallback, so a declined request is retried on Anthropic's
 // recommended model instead of failing. Token usage is written to the audit log.
+//
+// Each request has its own timeout and at most one retry, so a slow or hung
+// call fails inside the route's time budget and the caller's catch (and the
+// audit write) still runs.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import type { BetaMessage, MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type * as z from "zod/v4";
 import { defaultAuditSink } from "@/lib/ontology/governance";
 import { resolveTask, supportsServerFallback, type Task } from "./tasks";
@@ -16,6 +21,15 @@ function anthropic(): Anthropic {
 }
 
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+const STRUCTURED_BETA = "structured-outputs-2025-12-15";
+/** Per request; two attempts plus the retry backoff fit a 300s function. */
+export const CLAUDE_REQUEST_TIMEOUT_MS = 120_000;
+/**
+ * Above this the request streams. The SDK refuses a non-streaming request
+ * whose max_tokens could take over 10 minutes (about 21k tokens), and a long
+ * idle connection is more likely to be dropped anyway.
+ */
+const STREAM_ABOVE_TOKENS = 16_000;
 
 export type ClaudeInput = {
   task: Task;
@@ -26,6 +40,8 @@ export type ClaudeInput = {
   /** Who asked, for the audit log. */
   agent?: string;
   documentId?: string;
+  /** Per-request timeout; defaults to CLAUDE_REQUEST_TIMEOUT_MS. */
+  timeoutMs?: number;
 };
 
 export type ClaudeUsage = {
@@ -64,6 +80,16 @@ function requestBase(input: ClaudeInput) {
       messages: [{ role: "user" as const, content: input.user }],
     },
   };
+}
+
+type Params = ReturnType<typeof requestBase>["params"] & { output_config: Record<string, unknown> };
+
+/** Send one request, streaming when the reply may be long. */
+async function send(input: ClaudeInput, params: Params): Promise<BetaMessage> {
+  const opts = { timeout: input.timeoutMs ?? CLAUDE_REQUEST_TIMEOUT_MS, maxRetries: 1 };
+  const body = params as MessageCreateParamsNonStreaming;
+  if (params.max_tokens > STREAM_ABOVE_TOKENS) return anthropic().beta.messages.stream(body, opts).finalMessage();
+  return anthropic().beta.messages.create(body, opts);
 }
 
 type FinishedMessage = {
@@ -111,7 +137,7 @@ async function audit(input: ClaudeInput, usage: ClaudeUsage | null, error?: unkn
 export async function claudeText(input: ClaudeInput): Promise<{ text: string; usage: ClaudeUsage }> {
   const { params } = requestBase(input);
   try {
-    const message = await anthropic().beta.messages.create(params);
+    const message = await send(input, params);
     checkStop(message);
     const text = message.content
       .map((b) => (b.type === "text" ? b.text : ""))
@@ -126,21 +152,36 @@ export async function claudeText(input: ClaudeInput): Promise<{ text: string; us
   }
 }
 
-/** A reply validated against a zod schema (structured tasks). */
+/**
+ * A reply validated against a zod schema (structured tasks). The stop reason is
+ * checked before the reply is parsed, so a refusal or a cut-off reply surfaces
+ * as ModelRefusalError / ModelTruncatedError rather than a parse failure.
+ */
 export async function claudeJson<S extends z.ZodType>(
   input: ClaudeInput & { schema: S },
 ): Promise<{ data: z.infer<S>; usage: ClaudeUsage }> {
   const { params } = requestBase(input);
+  // Send only the schema: the SDK's own parse step (messages.parse, or the
+  // stream's final message) would throw on a truncated reply before we could
+  // look at the stop reason.
+  const { parse, ...format } = betaZodOutputFormat(input.schema);
   try {
-    const message = await anthropic().beta.messages.parse({
+    const message = await send(input, {
       ...params,
-      output_config: { ...params.output_config, format: betaZodOutputFormat(input.schema) },
+      betas: [...params.betas, STRUCTURED_BETA],
+      output_config: { ...params.output_config, format },
     });
     checkStop(message);
-    if (message.parsed_output == null) throw new Error("The model's reply did not match the expected format.");
+    const text = message.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+    let data: z.infer<S>;
+    try {
+      data = parse(text) as z.infer<S>;
+    } catch {
+      throw new Error("The model's reply did not match the expected format.");
+    }
     const usage = usageOf(message);
     await audit(input, usage);
-    return { data: message.parsed_output as z.infer<S>, usage };
+    return { data, usage };
   } catch (error) {
     await audit(input, null, error);
     throw error;

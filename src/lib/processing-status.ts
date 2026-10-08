@@ -2,9 +2,13 @@
 //
 // Background: uploads kick off Gemini extraction after the HTTP response is sent.
 // On Vercel the function instance can be frozen/killed once it responds, which
-// left cases stuck on status "processing" forever with no error. We now run that
-// work inside `after()` (keeps the function alive) AND bound it with a timeout so
-// a slow/hung job is recorded as an error instead of hanging.
+// left work stuck "processing" forever with no error. That work runs inside
+// `after()` (keeps the function alive) AND is bounded with a timeout so a
+// slow/hung job is recorded as an error instead of hanging.
+//
+// reconcileGeminiStatus and writeProcessingError serve the legacy upload-group
+// records (still read by the workflow engine, reports and the assistant until
+// Phase 6); sources keep their status in Postgres (src/lib/sources/ingest.ts).
 
 import { put } from "@vercel/blob";
 import { documentSections, emptyExtractionMessage, hasReadableText } from "./extracted-text";
@@ -28,25 +32,18 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promis
 /** Turn a processing failure into a clear, user-facing message. */
 export function friendlyProcessingError(err: unknown): string {
   if (err instanceof ProcessingTimeoutError) {
-    return `${err.message}. The packet may be large or the AI service slow — please retry (delete and re-upload the case).`;
+    return `${err.message}. The file may be large or the AI service slow. Try again with Retry.`;
   }
   const msg = err instanceof Error ? err.message : String(err);
   return `Processing failed: ${msg}`;
 }
 
 /**
- * Self-heal a case whose completion write was partially clobbered by a
- * concurrent, stale-read metadata write on the eventually-consistent blob: if the
- * extracted text is present but the status was left/reverted to "processing",
- * report it as "completed" so the case leaves the stalled state on its next read.
- *
- * Keyed on `extractedContent` specifically — NOT on a determination existing in
- * Postgres — because the governed pipeline runs BEFORE the completion write. The
- * completion write sets status, extractedContent and subjectInfo together, so a
- * determination can exist while the name has not been written yet. Reporting
- * "completed" off the determination would stop the case list's poll early and
- * leave the card nameless until a manual refresh. Pure; returns the same object
- * when no correction applies.
+ * Self-heal a legacy upload group whose completion write was partially clobbered
+ * by a concurrent, stale-read metadata write on the eventually-consistent blob:
+ * if the extracted text is present but the status was left/reverted to
+ * "processing", report it as "completed" so it leaves the stalled state on its
+ * next read. Pure; returns the same object when no correction applies.
  */
 export function reconcileGeminiStatus<
   T extends { geminiProcessing?: { status?: string; extractedContent?: string; error?: string } | null },

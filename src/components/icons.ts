@@ -122,6 +122,16 @@ export {
   Copy,
   Files as DocsIcon,
 
+  // sources library
+  Books as LibraryIcon,
+  Folder,
+  FolderPlus,
+  Globe,
+  Note as NoteIcon,
+  ArrowSquareOut as ExternalLink,
+  LinkBreak as Unlink,
+  DotsThreeVertical as MoreVertical,
+
   // determination workflow
   Play,
   FloppyDisk as Save,

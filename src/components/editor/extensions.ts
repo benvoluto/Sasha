@@ -17,10 +17,59 @@ import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
+import { Mapping } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import type { Extensions } from "@tiptap/react";
 
 export const newSectionId = () => `s_${Math.random().toString(36).slice(2, 10)}`;
+
+/** The ranges of `state.doc` that the transactions inserted or replaced. */
+function changedRanges(transactions: readonly Transaction[]): Array<[number, number]> {
+  const maps = transactions.flatMap((t) => t.mapping.maps);
+  const out: Array<[number, number]> = [];
+  maps.forEach((map, i) => {
+    const rest = new Mapping(maps.slice(i + 1));
+    map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      if (newEnd > newStart) out.push([rest.map(newStart, -1), rest.map(newEnd, 1)]);
+    });
+  });
+  return out;
+}
+
+/**
+ * Give every heading an id, and a fresh one to a heading whose id is already
+ * taken (a heading split, or pasted from elsewhere in the document). Of two
+ * headings with the same id, the one that was already there keeps it and the
+ * copy the transactions brought in is renamed, wherever in the document it
+ * landed; when that can't be told apart, the first keeps it.
+ */
+export function fixSectionIds(transactions: readonly Transaction[], state: EditorState): Transaction | null {
+  if (!transactions.some((t) => t.docChanged)) return null;
+  const heads: Array<{ pos: number; node: PMNode; id: string | null }> = [];
+  state.doc.descendants((node, pos) => {
+    if (node.type.name !== "heading") return true;
+    heads.push({ pos, node, id: (node.attrs.sectionId as string | null) || null });
+    return false;
+  });
+  const changed = changedRanges(transactions);
+  const isNew = (pos: number) => changed.some(([from, to]) => pos >= from && pos < to);
+  // Which heading keeps each id.
+  const keeper = new Map<string, number>();
+  for (const h of heads) {
+    if (!h.id) continue;
+    const kept = keeper.get(h.id);
+    if (kept === undefined || (isNew(kept) && !isNew(h.pos))) keeper.set(h.id, h.pos);
+  }
+  let tr: Transaction | null = null;
+  for (const h of heads) {
+    if (h.id && keeper.get(h.id) === h.pos) continue;
+    tr ??= state.tr;
+    // A copy also drops the outline item it satisfied; the original still does.
+    tr.setNodeMarkup(h.pos, undefined, { ...h.node.attrs, sectionId: newSectionId(), specKey: h.id ? null : h.node.attrs.specKey });
+  }
+  if (tr) (tr as Transaction).setMeta("addToHistory", false);
+  return tr;
+}
 
 /** Headings with a stable `sectionId` (and the outline item they satisfy, `specKey`). */
 const SectionHeading = Heading.extend({
@@ -43,28 +92,7 @@ const SectionHeading = Heading.extend({
     return [
       new Plugin({
         key: new PluginKey("sectionIds"),
-        // Give every heading an id, and a fresh one to a heading whose id is
-        // already taken (a heading split or pasted from elsewhere).
-        appendTransaction: (transactions, _old, state) => {
-          if (!transactions.some((t) => t.docChanged)) return null;
-          const seen = new Set<string>();
-          let tr: Transaction | null = null;
-          state.doc.descendants((node, pos) => {
-            if (node.type.name !== "heading") return true;
-            const id = node.attrs.sectionId as string | null;
-            if (!id || seen.has(id)) {
-              tr ??= state.tr;
-              const fresh = newSectionId();
-              tr.setNodeMarkup(pos, undefined, { ...node.attrs, sectionId: fresh, specKey: id && seen.has(id) ? null : node.attrs.specKey });
-              seen.add(fresh);
-            } else {
-              seen.add(id);
-            }
-            return false;
-          });
-          if (tr) (tr as Transaction).setMeta("addToHistory", false);
-          return tr;
-        },
+        appendTransaction: (transactions, _old, state) => fixSectionIds(transactions, state),
       }),
     ];
   },

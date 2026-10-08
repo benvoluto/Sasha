@@ -3,6 +3,7 @@ import { sql } from "@vercel/postgres";
 import { SUGGESTION_EDITS_SCHEMA } from "@/lib/ontology/suggestion-edits";
 import { WORKFLOW_SCHEMA } from "@/lib/workflow/store";
 import { DOCUMENT_SCHEMA } from "@/lib/documents/store";
+import { SOURCE_SCHEMA } from "@/lib/sources/store";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,8 @@ const STATEMENTS = [
   // Named workflows, their versions, runs, and app settings (also applied on first use).
   ...WORKFLOW_SCHEMA,
   ...DOCUMENT_SCHEMA,
+  // The sources library (after the documents: links reference document).
+  ...SOURCE_SCHEMA,
   // Run columns the engine writes; added here for databases created before them.
   `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS outputs JSONB`,
   `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS checkpoints JSONB`,
@@ -49,6 +52,13 @@ const EXPECTED_TABLES = [
   "workflow",
   "determination_workflow",
   "agent_determination_run",
+  "document",
+  "document_section",
+  "document_version",
+  "folder",
+  "source",
+  "document_source",
+  "source_passage",
 ];
 
 /**

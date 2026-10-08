@@ -224,6 +224,10 @@ export async function updateDocument(
   if (expectedUpdatedAt && new Date(expectedUpdatedAt).getTime() !== new Date(current.updated_at).getTime()) {
     return { ok: false, reason: "conflict", doc: current };
   }
+  // Archiving or restoring isn't an edit: leave updated_at alone, so an editor
+  // open on the document (whose next save sends that updated_at as its base)
+  // doesn't see its own archive as someone else's change.
+  const archiveOnly = patch.archived !== undefined && Object.entries(patch).every(([k, v]) => k === "archived" || v === undefined);
   const next: DocumentRecord = {
     ...current,
     ...(patch.title !== undefined ? { title: patch.title.slice(0, 300) } : {}),
@@ -231,8 +235,7 @@ export async function updateDocument(
     ...(patch.content_json !== undefined ? { content_json: patch.content_json, content_text: docText(patch.content_json) } : {}),
     ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
     ...(patch.archived !== undefined ? { archived: patch.archived } : {}),
-    updated_by: agent,
-    updated_at: nowIso(),
+    ...(archiveOnly ? {} : { updated_by: agent, updated_at: nowIso() }),
   };
   if (!hasDb()) {
     memory.docs.set(id, next);
@@ -246,7 +249,9 @@ export async function updateDocument(
       title = ${next.title}, type_key = ${next.type_key},
       type_source = CASE WHEN ${patch.type_key !== undefined} THEN 'user' ELSE type_source END,
       content_json = ${JSON.stringify(next.content_json)}::jsonb, content_text = ${next.content_text},
-      notes = ${next.notes}, archived = ${next.archived}, updated_by = ${agent}, updated_at = now()
+      notes = ${next.notes}, archived = ${next.archived},
+      updated_by = CASE WHEN ${archiveOnly} THEN updated_by ELSE ${agent} END,
+      updated_at = CASE WHEN ${archiveOnly} THEN updated_at ELSE now() END
     WHERE id = ${id} AND team_id = ${teamId}
       AND date_trunc('milliseconds', updated_at) = ${current.updated_at}::timestamptz
     RETURNING *`;

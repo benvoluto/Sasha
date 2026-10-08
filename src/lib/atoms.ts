@@ -139,31 +139,6 @@ export const refreshUploadGroupsAtom = atom(
   }
 );
 
-export const deleteUploadGroupAtom = atom(
-  null,
-  async (get, set, groupId: string) => {
-    try {
-      const response = await fetch(`/api/upload-groups/${groupId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete upload group');
-      }
-
-      // Remove the deleted group from the list
-      const currentGroups = get(uploadGroupsAtom);
-      set(uploadGroupsAtom, currentGroups.filter(g => g.id !== groupId));
-      
-      console.log(`[Jotai] Deleted upload group ${groupId}`);
-      return true;
-    } catch (error) {
-      console.error('[Jotai] Error deleting upload group:', error);
-      throw error;
-    }
-  }
-);
-
 // Documents the user just archived, hidden from the active list immediately so
 // archiving feels instant. The list still refetches on mount and the archived
 // flag isn't visible on the eventually-consistent metadata blob for a beat, so a

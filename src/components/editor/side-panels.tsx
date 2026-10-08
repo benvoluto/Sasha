@@ -1,13 +1,15 @@
 "use client";
 
 // The panels that open from the toolbar: the outline on the left and the
-// writing tools on the right.
+// writing tools on the right. The Sources panel (sources-panel.tsx) shares the
+// right-hand slot and this file's PanelHeader.
 
 import type { Editor } from "@tiptap/react";
 import { useEffect, useState } from "react";
 import { Loader2, SparkleIcon, X } from "@/components/icons";
 import { markdownToTiptap } from "@/lib/report/markdown-to-tiptap";
 import { REWRITE_PRESET_ORDER, REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
+import { trackRange } from "./tracked-range";
 
 type HeadingItem = { pos: number; level: number; text: string; id: string };
 
@@ -30,7 +32,7 @@ function useHeadings(editor: Editor): HeadingItem[] {
   return items;
 }
 
-function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
+export function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
     <div className="flex items-center justify-between px-5 pb-2 pt-5">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--doc-muted)]">{title}</h2>
@@ -117,10 +119,13 @@ export function ToolsPanel({
   const rewrite = async (body: { preset?: string; direction?: "more" | "less"; instruction?: string }, label: string) => {
     if (!selection) return;
     const target = selection;
+    // The call can take a while and the person may keep writing: follow the
+    // selection through their edits so the result replaces the right text.
+    const tracked = trackRange(editor, target);
     setBusy(label);
     setError(null);
     try {
-      const id = documentId ?? (await ensureSaved());
+      const id = documentId || (await ensureSaved());
       if (!id) throw new Error("Save the document first.");
       await fetch(`/api/documents/${id}/versions`, {
         method: "POST",
@@ -134,15 +139,18 @@ export function ToolsPanel({
       });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error ?? "The rewrite failed.");
+      const range = tracked.current();
+      if (!range) throw new Error("The selected text changed while the rewrite was running, so it wasn't applied. Select it again to retry.");
       const parsed = markdownToTiptap(String(out.markdown ?? ""));
       // One paragraph back for an inline selection: insert its text, not a new block.
       const single = parsed.content.length === 1 && parsed.content[0].type === "paragraph";
       const content = single ? (parsed.content[0].content ?? []) : parsed.content;
-      editor.chain().focus().insertContentAt({ from: target.from, to: target.to }, content).run();
+      editor.chain().focus().insertContentAt(range, content).run();
       setInstruction("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "The rewrite failed.");
     } finally {
+      tracked.stop();
       setBusy(null);
     }
   };

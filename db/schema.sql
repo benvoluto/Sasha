@@ -159,3 +159,64 @@ CREATE TABLE IF NOT EXISTS document_version (
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS document_version_doc_idx ON document_version (document_id, id DESC);
+
+-- The sources library (src/lib/sources/store.ts owns these; keep in step with SOURCE_SCHEMA).
+-- Folders nest; a document's own folder has document_id set (one per document).
+CREATE TABLE IF NOT EXISTS folder (
+  id                 UUID PRIMARY KEY,
+  team_id            TEXT NOT NULL,
+  parent_id          UUID REFERENCES folder(id) ON DELETE CASCADE,
+  name               TEXT NOT NULL,
+  document_id        UUID,
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS folder_team_parent_idx ON folder (team_id, parent_id);
+CREATE UNIQUE INDEX IF NOT EXISTS folder_team_document_uidx ON folder (team_id, document_id) WHERE document_id IS NOT NULL;
+
+-- One uploaded file, web link or note. team_id is stored directly (not only via
+-- the folder) so every query scopes to the team without a join.
+CREATE TABLE IF NOT EXISTS source (
+  id                 UUID PRIMARY KEY,
+  team_id            TEXT NOT NULL,
+  folder_id          UUID REFERENCES folder(id) ON DELETE SET NULL,
+  kind               TEXT NOT NULL CHECK (kind IN ('file', 'url', 'note')),
+  title              TEXT,
+  filename           TEXT,
+  mime               TEXT,
+  bytes              INTEGER,
+  blob_url           TEXT,            -- never sent to the client; files go through /api/sources/[id]/file
+  blob_pathname      TEXT,            -- sources/<team hash>/<source id>/<name>
+  url                TEXT,            -- for kind = 'url'
+  extracted_text     TEXT,
+  extraction_status  TEXT NOT NULL DEFAULT 'pending', -- uploading | pending | extracting | summarizing | ready | partial | error
+  extraction_error   TEXT,
+  summary            TEXT,
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS source_team_folder_idx ON source (team_id, folder_id, created_at DESC);
+
+-- Which sources a document draws on.
+CREATE TABLE IF NOT EXISTS document_source (
+  document_id        UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,
+  source_id          UUID NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+  role               TEXT,
+  added_by           TEXT NOT NULL,
+  added_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (document_id, source_id)
+);
+CREATE INDEX IF NOT EXISTS document_source_source_idx ON document_source (source_id);
+
+-- Citable passages of a source's extracted text; id is "S<8 hex of source id>.P<idx>".
+CREATE TABLE IF NOT EXISTS source_passage (
+  source_id          UUID NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+  idx                INTEGER NOT NULL,
+  id                 TEXT NOT NULL,
+  page               INTEGER,
+  start_offset       INTEGER NOT NULL, -- offsets into source.extracted_text
+  end_offset         INTEGER NOT NULL,
+  text               TEXT NOT NULL,
+  PRIMARY KEY (source_id, idx)
+);

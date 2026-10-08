@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phase 0 and Phase 1 are built. See §12 for progress notes.
+Status (October 2026): Phases 0–2 are built. See §12 for progress notes.
 
 ---
 
@@ -579,6 +579,42 @@ report templates, assistant tools and permissions made domain-neutral; CI.
 - `SASHA_DEV_AUTH_BYPASS=1` (ignored in production) for local development and browser tests.
 - Type picker: Proposal, Memo, General Report and FIE outlines for now; Phase 3 replaces the list
   with the catalog. Choosing a type on a document with text appends only the missing sections.
+
+**Phase 1 hardening (done, with Phase 2).** Autosave retries only transient failures, with backoff;
+keepalive saves only under 60 KB; the rewrite tool tracks its selection through edits made while the
+model runs; duplicate section ids keep the original heading's id; archive, restore and delete in the
+switcher (the legacy `/archived` page is gone); workflow model calls are audited (`llm:workflow`);
+`claudeJson` surfaces refusals and truncation; requests over 16k output tokens stream.
+
+**Phase 2 (done).**
+- `folder`, `source`, `document_source`, `source_passage` tables (`src/lib/sources/store.ts`),
+  team-scoped, with the same in-memory fallback. Each document gets its own folder on first use.
+- API: `/api/folders` (tree, create, rename, move with cycle check, delete), `/api/sources` (list with
+  search and filters, create URL or note sources), `/api/sources/[id]` (+ `/passages`, `/retry`,
+  `/file`), `/api/documents/[id]/sources` (link, unlink).
+- Upload: presign → direct Blob upload → complete now creates `source` rows. Blob paths are
+  `sources/<team hash>/<uuid>/<name>-<suffix>`; `complete` accepts only the presigned path on our own
+  store, and the store token is never sent to any other host. The server upload path is removed.
+- Ingest (`src/lib/sources/ingest.ts`): Gemini for PDFs and images, direct reads for text, Readability
+  (`@mozilla/readability` + `linkedom`) for URLs, a Haiku summary over delimited source text, and
+  page-aware passages with stable ids (`S<id8>.P<n>`) for Phase 7 citations.
+- URL sources are guarded against SSRF: http(s) only, private, loopback, link-local and embedded-IPv4
+  ranges are refused before the fetch and again at connect time, and each redirect is re-checked.
+- UI: a Sources panel in the editor (upload, paste link, note, pick from library), the `/library` page
+  (folder tree, search, kind filter, detail drawer, link to documents), and a tracker that follows
+  sources while they are read.
+- Blob stays public (`@vercel/blob` 1.x); files are served only through the team-checked `/file` route
+  and paths cannot be guessed. Moving to a private store is a later option (2.x makes privacy a
+  property of the store, which needs a new store and a move of the legacy blobs).
+
+**Known debt carried forward.**
+- The workflow engine, report service, assistant and canvas still read legacy upload groups
+  (`fetchGroupMetadata`). These routes are not team-scoped. Phase 3 (report service), Phase 4
+  (assistant, suggestions) and Phase 6 (engine) move them to sources; then delete `upload-groups`,
+  `cases`, `@modal/(.)cases` and the case components.
+- Workflows, runs and `app_setting` have no `team_id` (Phase 6).
+- No migration runner yet; schema changes are idempotent DDL kept in step across the store
+  constants, `db/schema.sql` and the setup route.
 
 ---
 

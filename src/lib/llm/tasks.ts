@@ -29,6 +29,7 @@ export const TASKS = {
   "draft.section": { tier: "draft", effort: "medium", maxTokens: 16000 },
   "rewrite.selection": { tier: "draft", effort: "medium", maxTokens: 16000 },
   "draft.from_notes": { tier: "draft", effort: "medium", maxTokens: 16000 },
+  /** Large enough that claude.ts streams it (the SDK refuses it as a plain request). */
   "restructure.apply": { tier: "draft", effort: "high", maxTokens: 32000 },
 } as const satisfies Record<string, TaskSpec>;
 

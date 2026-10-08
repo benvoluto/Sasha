@@ -10,9 +10,10 @@ Sasha started as a pruned copy of `benvoluto/proto-v2-organizer`. See
 
 ## Status
 
-Phase 0 (bootstrap): clinical modules removed; upload, extraction, report
-editor and workflow canvas kept and made domain-neutral. Upload groups still
-stand in for documents until Phase 1 introduces the Postgres `document` model.
+Phases 0–2 are built: the blank-document editor with autosave, versions and
+Claude model routing, and the team-scoped source library (folders, uploads,
+URL and note sources, extraction, summaries and passages). Next is Phase 3,
+document types. See `docs/PLAN.md` §12.
 
 ## Stack
 

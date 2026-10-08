@@ -1,33 +1,14 @@
+import { blobAuthHeaders } from './blob-host';
+
 /**
- * Download blob content using direct fetch with proper authentication
- * According to Vercel docs, blobs should be accessed via their URLs
+ * Download blob content. The store token is attached only when the URL is on
+ * this app's own Blob store, so a caller-supplied URL never receives it.
  */
 export async function downloadBlobContent(blobUrl: string): Promise<Buffer> {
   console.log('[BlobDownload] Downloading blob from URL:', blobUrl);
   
   try {
-    // First try with Bearer token in header (for private blobs in local dev)
-    let response: Response;
-    
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      console.log('[BlobDownload] Trying with Bearer token authentication');
-      response = await fetch(blobUrl, {
-        headers: {
-          'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
-        }
-      });
-      
-      if (!response.ok) {
-        console.log('[BlobDownload] Bearer auth failed, trying token in URL');
-        // Try with token as query parameter
-        const url = new URL(blobUrl);
-        url.searchParams.set('token', process.env.BLOB_READ_WRITE_TOKEN);
-        response = await fetch(url.toString());
-      }
-    } else {
-      console.log('[BlobDownload] No token available, trying public access');
-      response = await fetch(blobUrl);
-    }
+    const response = await fetch(blobUrl, { headers: blobAuthHeaders(blobUrl) });
     
     if (!response.ok) {
       throw new Error(`Failed to download blob: ${response.status} ${response.statusText}`);

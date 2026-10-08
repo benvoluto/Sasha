@@ -31,11 +31,11 @@ export async function callForJson<T>(
   parse: (text: string) => Parsed<T>,
   label: string,
 ): Promise<{ value?: T; text: string; error?: string }> {
-  let reply: ModelReply = await withTimeout(callModel({ ...choice, system, user }), CALL_TIMEOUT_MS, label);
+  let reply: ModelReply = await withTimeout(callModel({ ...choice, system, user, label }), CALL_TIMEOUT_MS, label);
   let parsed = parse(reply.text);
   if (!parsed.ok) {
     const why = reply.truncated ? "Your reply was cut off at the output limit; answer more concisely." : `Your reply was invalid: ${parsed.error}`;
-    reply = await withTimeout(callModel({ ...choice, system, user: `${user}\n\n${why}\nReturn ONLY the corrected JSON object.` }), CALL_TIMEOUT_MS, `${label} (retry)`);
+    reply = await withTimeout(callModel({ ...choice, system, user: `${user}\n\n${why}\nReturn ONLY the corrected JSON object.`, label: `${label} (retry)` }), CALL_TIMEOUT_MS, `${label} (retry)`);
     parsed = parse(reply.text);
   }
   return parsed.ok ? { value: parsed.value, text: reply.text } : { text: reply.text, error: reply.truncated ? "reply truncated at the output limit" : parsed.error };
@@ -43,7 +43,7 @@ export async function callForJson<T>(
 
 /** A plain-text reply. */
 export async function callForText(choice: ModelChoice, system: string, user: string, label: string): Promise<string> {
-  const reply = await withTimeout(callModel({ ...choice, system, user, json: false }), CALL_TIMEOUT_MS, label);
+  const reply = await withTimeout(callModel({ ...choice, system, user, json: false, label }), CALL_TIMEOUT_MS, label);
   if (reply.truncated) throw new Error("reply truncated at the output limit");
   return reply.text.trim();
 }

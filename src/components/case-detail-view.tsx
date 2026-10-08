@@ -17,7 +17,6 @@ import { CheckCircle2, XCircle, Archive, Loader2, CloudUpload, Boxes, ListChecks
 import { AddDocsButton } from "@/components/add-docs-button";
 import { useSetAtom } from "jotai";
 import { archiveUploadGroupAtom, type UploadGroup } from "@/lib/atoms";
-import { addJob } from "@/lib/processing-jobs";
 import { documentTitle } from "@/lib/case-state";
 import { CaseAssistant } from "@/components/case-assistant";
 import { ReportEditor } from "@/components/report-editor";
@@ -118,7 +117,6 @@ export function CaseDetailView({ groupId, variant = "page" }: { groupId: string;
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        addJob({ groupId, label: title, kind: "remove", files: [] });
         setMsg(`Removed ${file.name}. Re-reading the remaining files…`);
         await load(true);
       } else {

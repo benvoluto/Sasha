@@ -32,7 +32,6 @@ const CONC = 5;               // concurrency cap (GEMINI_*_CONCURRENCY default)
 // Makespan of `durations` across `workers` parallel slots (list-scheduling).
 function makespan(durations, workers) {
   if (durations.length === 0) return 0;
-  const free = new Array(Math.min(workers, durations.length)).fill(0);
   // longest-first isn't how the real pool schedules (it's arrival order), and
   // for equal caps the makespan is dominated by load, so schedule in given order.
   const slots = new Array(Math.max(1, Math.min(workers, durations.length))).fill(0);

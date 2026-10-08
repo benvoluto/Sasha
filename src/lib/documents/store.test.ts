@@ -31,6 +31,26 @@ describe("document store (in memory)", () => {
     expect(forced.ok).toBe(true);
   });
 
+  it("archiving or restoring doesn't conflict with an editor's pending save", async () => {
+    const d = await createDocument("t", "ann", { content_json: body("v1") });
+    // The editor holds d.updated_at; the switcher archives, then the editor's
+    // unmount flush saves with that base.
+    const archived = await updateDocument("t", d.id, "ann", { archived: true });
+    expect(archived).toMatchObject({ ok: true, doc: { archived: true, updated_at: d.updated_at, updated_by: d.updated_by } });
+    const saved = await updateDocument("t", d.id, "ann", { content_json: body("last words") }, d.updated_at);
+    expect(saved).toMatchObject({ ok: true, doc: { archived: true } });
+    if (!saved.ok) return;
+
+    // Restoring with the editor still open: its next autosave isn't a conflict.
+    await updateDocument("t", d.id, "ann", { archived: false });
+    const next = await updateDocument("t", d.id, "ann", { title: "Kept" }, saved.doc.updated_at);
+    expect(next).toMatchObject({ ok: true, doc: { archived: false, title: "Kept" } });
+
+    // Any real edit alongside the flag still counts as an edit.
+    const both = await updateDocument("t", d.id, "bob", { archived: true, title: "Both" });
+    expect(both.ok && both.doc.updated_by).toBe("bob");
+  });
+
   it("archives, snapshots and deletes", async () => {
     const d = await createDocument("t", "ann", { content_json: body("v1") });
     await snapshotVersion("t", d.id, "ann", "before rewrite");
