@@ -2,60 +2,35 @@
 
 // The editing screen: the first thing a person sees. A header with the
 // document switcher, title, type, sources and sharing; a card holding the
-// toolbar, the document, and the outline panel on the left and the tools or
-// sources panel on the right.
+// toolbar, the document, the living outline on the left and the tools, sources
+// or section notes panel on the right. Each heading has a gutter button that
+// opens the section's actions (draft, rewrite, notes).
 
 import { OrganizationSwitcher, UserButton, useOrganization } from "@clerk/nextjs";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, CaretUpDown, Copy, LibraryIcon, Loader2, OutlineIcon, Share, SourcesIcon, SparkleIcon } from "@/components/icons";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Check, Copy, LibraryIcon, Loader2, OutlineIcon, Share, SourcesIcon, SparkleIcon, TypesIcon } from "@/components/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { docFromOutline, type PMNode } from "@/lib/documents/sections";
-import type { DocumentTypeOption } from "@/lib/documents/types";
+import { outlineDoc, sectionNodes } from "@/catalog/outline";
+import type { DocumentTypeSummary } from "@/catalog/schema";
+import type { PMNode } from "@/lib/documents/sections";
+import type { SaveOutlineAsTypeResponse, SectionListResponse } from "@/lib/sections/contract";
 import { DocumentSwitcher } from "./document-switcher";
 import { EditorToolbar } from "./editor-toolbar";
 import { documentExtensions, newSectionId } from "./extensions";
-import { OutlinePanel, ToolsPanel } from "./side-panels";
+import { NoticeStack, useNotices, type Notice } from "./notice";
+import { goToHeading, OutlinePanel } from "./outline-panel";
+import { SectionMenu, type SectionMenuTarget } from "./section-menu";
+import { SectionNotesPanel, useCaretSectionId } from "./section-notes-panel";
+import { ToolsPanel } from "./side-panels";
 import { SourcesPanel } from "./sources-panel";
+import { sectionBodyRange } from "./tracked-range";
+import { createDocumentOfType, findType, SaveOutlineDialog, StartFromTypeStrip, TypeGallery, TypePicker, useDocumentTypes } from "./type-picker";
 import { useDocument, type SaveStatus } from "./use-document";
-
-function useDocumentTypes(): DocumentTypeOption[] {
-  const [types, setTypes] = useState<DocumentTypeOption[]>([]);
-  useEffect(() => {
-    fetch("/api/document-types")
-      .then((r) => (r.ok ? r.json() : { types: [] }))
-      .then((b) => setTypes(b.types ?? []))
-      .catch(() => setTypes([]));
-  }, []);
-  return types;
-}
-
-function TypePicker({ types, value, onChange }: { types: DocumentTypeOption[]; value: string | null; onChange: (t: DocumentTypeOption | null) => void }) {
-  const current = types.find((t) => t.key === value);
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className="flex items-center gap-1 rounded-md px-2 py-1 text-[17px] hover:bg-[var(--doc-accent-soft)]">
-          <span className={current ? "" : "text-[var(--doc-muted)]"}>{current?.title ?? "Choose type"}</span>
-          <CaretUpDown className="h-4 w-4 opacity-70" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-[60vh] min-w-56 overflow-y-auto" onCloseAutoFocus={(e) => e.preventDefault()}>
-        {types.map((t) => (
-          <DropdownMenuItem key={t.key} onSelect={() => onChange(t)}>
-            <Check className={`h-4 w-4 ${t.key === value ? "opacity-100" : "opacity-0"}`} /> {t.title}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => onChange(null)}>
-          <Check className={`h-4 w-4 ${value ? "opacity-0" : "opacity-100"}`} /> No type (freeform)
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+import { useOutlineStatus } from "./use-outline-status";
+import { busyAnnouncement, useSectionGeneration } from "./use-section-generation";
 
 function SharePopover({ documentId }: { documentId: string | null }) {
   const { organization } = useOrganization();
@@ -110,22 +85,9 @@ function StatusText({ status, error, isNew }: { status: SaveStatus; error: strin
   );
 }
 
-/** Headings for the outline's sections that the document doesn't have yet, appended at the end. */
-function appendMissingSections(editor: Editor, type: DocumentTypeOption) {
-  const have = new Set<string>();
-  editor.state.doc.forEach((node) => {
-    if (node.type.name === "heading" && node.attrs.specKey) have.add(String(node.attrs.specKey));
-  });
-  const missing = type.sections.filter((s) => !have.has(s.key));
-  if (missing.length === 0) return 0;
-  const add = docFromOutline(missing, newSectionId).content ?? [];
-  editor.chain().focus("end").insertContentAt(editor.state.doc.content.size, add).run();
-  return missing.length;
-}
-
 export function DocumentScreen({ documentId }: { documentId: string | null }) {
   const { doc, loading, notFound, status, error, conflict, change, flush, resolveConflict } = useDocument(documentId);
-  const types = useDocumentTypes();
+  const catalog = useDocumentTypes();
 
   if (notFound) {
     return (
@@ -152,7 +114,7 @@ export function DocumentScreen({ documentId }: { documentId: string | null }) {
           key={documentId ?? "new"}
           initial={doc.content_json}
           doc={doc}
-          types={types}
+          catalog={catalog}
           status={status}
           error={error}
           conflict={!!conflict}
@@ -172,7 +134,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 type WorkspaceProps = {
   initial: PMNode | null;
   doc: ReturnType<typeof useDocument>["doc"];
-  types: DocumentTypeOption[];
+  catalog: ReturnType<typeof useDocumentTypes>;
   status: SaveStatus;
   error: string | null;
   conflict: boolean;
@@ -181,14 +143,42 @@ type WorkspaceProps = {
   resolveConflict: ReturnType<typeof useDocument>["resolveConflict"];
 };
 
-function Workspace({ initial, doc, types, status, error, conflict, change, flush, resolveConflict }: WorkspaceProps) {
+type RightPanel = "tools" | "sources" | "notes";
+
+/** The section notes saved for each section of the document (for the outline's notes marker). */
+function useSectionNotes(documentId: string | null) {
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const loaded = useRef<string | null>(null);
+  useEffect(() => {
+    if (!documentId || loaded.current === documentId) return;
+    loaded.current = documentId;
+    fetch(`/api/documents/${encodeURIComponent(documentId)}/sections`, { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<SectionListResponse>) : null))
+      .then((b) => {
+        if (b?.sections) setNotes((prev) => ({ ...Object.fromEntries(b.sections.map((s) => [s.section_id, s.notes])), ...prev }));
+      })
+      .catch(() => {});
+  }, [documentId]);
+  const update = useCallback((sectionId: string, text: string) => setNotes((prev) => ({ ...prev, [sectionId]: text })), []);
+  return { notes, update };
+}
+
+function Workspace({ initial, doc, catalog, status, error, conflict, change, flush, resolveConflict }: WorkspaceProps) {
+  const router = useRouter();
+  const types = catalog.types;
+  const currentType = findType(types, doc.type_key);
   const [outlineOpen, setOutlineOpen] = useState(false);
   // The right-hand slot holds one panel at a time.
-  const [rightPanel, setRightPanel] = useState<"tools" | "sources" | null>(null);
-  const toolsOpen = rightPanel === "tools";
-  const sourcesOpen = rightPanel === "sources";
-  const toggleRight = (panel: "tools" | "sources") => setRightPanel((p) => (p === panel ? null : panel));
-  const [notice, setNotice] = useState<string | null>(null);
+  const [rightPanel, setRightPanel] = useState<RightPanel | null>(null);
+  const toggleRight = (panel: RightPanel) => setRightPanel((p) => (p === panel ? null : panel));
+  // Passing notices replace each other; a pending decision (a sticky notice) stays until it is made.
+  const { notices, notify, dismiss: dismissNotice } = useNotices();
+  const editorRef = useRef<ReturnType<typeof useEditor>>(null);
+  const undoNotice = useCallback((text: string): Notice => ({ text, actions: [{ label: "Undo", run: () => editorRef.current?.chain().focus().undo().run() }] }), []);
+  const [menu, setMenu] = useState<SectionMenuTarget | null>(null);
+  /** The gallery's purpose: set this document's type, or start a new document of a type. */
+  const [gallery, setGallery] = useState<"set" | "new" | null>(null);
+  const [saveTypeOpen, setSaveTypeOpen] = useState(false);
   const docIdRef = useRef(doc.id);
   docIdRef.current = doc.id;
   const titleRef = useRef(doc.title);
@@ -205,10 +195,11 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
       documentExtensions({
         onDeleteSection: (heading) => {
           void snapshot(`Before deleting section “${heading}”`);
-          setNotice(`Deleted “${heading || "Untitled section"}”.`);
+          notify(undoNotice(`Deleted “${heading || "Untitled section"}”.`));
         },
+        onSectionMenu: (sectionId, anchor) => setMenu({ sectionId, anchor }),
       }),
-    [snapshot],
+    [snapshot, undoNotice, notify],
   );
 
   const editor = useEditor({
@@ -219,12 +210,19 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
     editorProps: { attributes: { class: "doc-prose", "aria-label": "Document" } },
     onUpdate: ({ editor: e }) => change({ content_json: e.getJSON() as PMNode }),
   });
+  editorRef.current = editor;
 
+  // Whether the document body is empty, for the "Start from a type" strip.
+  const [isEmpty, setIsEmpty] = useState(!initial);
   useEffect(() => {
-    if (!notice) return;
-    const t = window.setTimeout(() => setNotice(null), 8000);
-    return () => window.clearTimeout(t);
-  }, [notice]);
+    if (!editor) return;
+    const read = () => setIsEmpty(editor.isEmpty);
+    read();
+    editor.on("update", read);
+    return () => {
+      editor.off("update", read);
+    };
+  }, [editor]);
 
   const ensureSaved = useCallback(async () => {
     // A blank new document has nothing pending, so flush alone wouldn't create
@@ -235,7 +233,12 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
     return (await flush()) || null;
   }, [change, flush]);
 
-  const chooseType = async (t: DocumentTypeOption | null) => {
+  const generation = useSectionGeneration({ editor, ensureSaved, notify });
+  const outlineStatus = useOutlineStatus({ documentId: doc.id, typeKey: currentType?.key ?? doc.type_key, saveStatus: status });
+  const sectionNotes = useSectionNotes(doc.id);
+  const caretSection = useCaretSectionId(editor);
+
+  const chooseType = async (t: DocumentTypeSummary | null) => {
     change({ type_key: t?.key ?? null });
     if (!editor) return;
     if (!t) {
@@ -243,16 +246,77 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
       return;
     }
     if (editor.isEmpty) {
-      editor.commands.setContent(docFromOutline(t.sections, newSectionId), true);
-      // Caret in the first section's empty paragraph, ready to write.
+      editor.commands.setContent(outlineDoc(t.sections, newSectionId), true);
+      // Caret at the end of the first heading, ready to write below it.
       const first = editor.state.doc.firstChild;
       editor.chain().focus().setTextSelection(first ? first.nodeSize + 1 : 1).run();
-      setNotice(`Started from the ${t.title} outline.`);
+      notify(undoNotice(`Started from the ${t.title} outline.`));
       return;
     }
     await snapshot(`Before applying the ${t.title} outline`);
-    const added = appendMissingSections(editor, t);
-    setNotice(added ? `Added ${added} section${added === 1 ? "" : "s"} from the ${t.title} outline at the end.` : `Your document already has every ${t.title} section.`);
+    const have = new Set<string>();
+    editor.state.doc.forEach((node) => {
+      if (node.type.name === "heading" && node.attrs.specKey) have.add(String(node.attrs.specKey));
+    });
+    const missing = t.sections.filter((s) => !have.has(s.key));
+    if (missing.length) {
+      const add = missing.flatMap((s) => sectionNodes(s, newSectionId));
+      editor.chain().focus("end").insertContentAt(editor.state.doc.content.size, add).run();
+    }
+    notify(
+      missing.length
+        ? undoNotice(`Added ${missing.length} section${missing.length === 1 ? "" : "s"} from the ${t.title} outline at the end.`)
+        : { text: `Your document already has every ${t.title} section.` },
+    );
+  };
+
+  /** A new document of the type, opened in place of this one. Resolves to an error message, or null. */
+  const startNewOfType = async (t: DocumentTypeSummary): Promise<string | null> => {
+    try {
+      const id = await createDocumentOfType(t.key);
+      router.push(`/d/${id}`);
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : "Couldn't create the document.";
+    }
+  };
+
+  const saveOutlineAsType = async (title: string): Promise<string | null> => {
+    const id = await ensureSaved();
+    if (!id) return "Save the document first.";
+    try {
+      const res = await fetch("/api/document-types/from-document", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: id, title }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) return typeof out.error === "string" ? out.error : `Couldn't save the type (${res.status}).`;
+      const { type, specKeys } = out as SaveOutlineAsTypeResponse;
+      await catalog.reload();
+      change({ type_key: type.key });
+      if (editor && !editor.isDestroyed) {
+        // Tie the headings to the new type's sections, as one step outside the undo history.
+        const tr = editor.state.tr;
+        editor.state.doc.forEach((node, pos) => {
+          const key = node.type.name === "heading" ? specKeys[String(node.attrs.sectionId)] : undefined;
+          if (key && node.attrs.specKey !== key) tr.setNodeMarkup(pos, undefined, { ...node.attrs, specKey: key });
+        });
+        if (tr.docChanged) editor.view.dispatch(tr.setMeta("addToHistory", false));
+      }
+      notify({ text: `Saved as a team type: ${type.title}.` });
+      return null;
+    } catch {
+      return "Couldn't reach the server. Try again.";
+    }
+  };
+
+  const openNotesFor = (sectionId: string) => {
+    if (editor) {
+      const s = sectionBodyRange(editor.state.doc, sectionId);
+      if (s) goToHeading(editor, s.headingPos);
+    }
+    setRightPanel("notes");
   };
 
   const setLink = () => {
@@ -261,6 +325,8 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
     setLinkDraft(prev || "https://");
   };
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
+
+  const showStrip = !doc.id && !doc.type_key && isEmpty && types.length > 0;
 
   return (
     <>
@@ -278,16 +344,16 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
             style={{ fieldSizing: "content" } as React.CSSProperties}
             className="min-w-[10ch] max-w-full bg-transparent text-[22px] font-medium tracking-tight outline-none placeholder:text-[var(--doc-muted)] sm:max-w-[28rem]"
           />
-          <TypePicker types={types} value={doc.type_key} onChange={chooseType} />
+          <TypePicker types={types} value={doc.type_key} onChange={chooseType} onBrowse={() => setGallery("set")} onSaveOutline={() => setSaveTypeOpen(true)} />
           <StatusText status={status} error={error} isNew={!doc.id} />
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            aria-pressed={sourcesOpen}
+            aria-pressed={rightPanel === "sources"}
             onClick={() => toggleRight("sources")}
             className={`flex h-11 items-center gap-2 rounded-full px-5 text-[17px] font-semibold text-[var(--doc-accent)] shadow-sm hover:bg-[var(--doc-accent-soft)] ${
-              sourcesOpen ? "bg-[var(--doc-accent-soft)]" : "bg-[var(--doc-surface)]"
+              rightPanel === "sources" ? "bg-[var(--doc-accent-soft)]" : "bg-[var(--doc-surface)]"
             }`}
           >
             <SourcesIcon className="h-5 w-5" /> Sources
@@ -302,7 +368,11 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
           </Link>
           <SharePopover documentId={doc.id} />
           <div className="ml-1 grid h-11 w-11 place-items-center">
-            <UserButton />
+            <UserButton>
+              <UserButton.MenuItems>
+                <UserButton.Link label="Document types" labelIcon={<TypesIcon className="h-4 w-4" />} href="/catalog" />
+              </UserButton.MenuItems>
+            </UserButton>
           </div>
         </div>
       </header>
@@ -332,7 +402,7 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
           <div className="min-w-0 overflow-x-auto">{editor && <EditorToolbar editor={editor} onLink={setLink} />}</div>
           <button
             type="button"
-            aria-pressed={toolsOpen}
+            aria-pressed={rightPanel === "tools"}
             onClick={() => toggleRight("tools")}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[17px] font-semibold text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
           >
@@ -364,43 +434,88 @@ function Workspace({ initial, doc, types, status, error, conflict, change, flush
 
         <div className="relative flex min-h-[70vh]">
           {outlineOpen && editor && (
-            <div className="absolute inset-y-0 left-0 z-10 w-72 max-w-[85vw] border-r border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static lg:w-64">
-              <OutlinePanel editor={editor} onClose={() => setOutlineOpen(false)} />
+            <div className="absolute inset-y-0 left-0 z-10 w-72 max-w-[85vw] border-r border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static lg:w-72">
+              <OutlinePanel
+                editor={editor}
+                type={currentType}
+                status={outlineStatus.status}
+                statusError={outlineStatus.error}
+                notes={sectionNotes.notes}
+                onChooseType={() => setGallery("set")}
+                onClose={() => setOutlineOpen(false)}
+              />
             </div>
           )}
-          <div className="min-w-0 flex-1 px-5 py-10 sm:px-10">
+          <div className="min-w-0 flex-1 px-5 py-10 sm:px-14">
             <div className="mx-auto max-w-[44rem]">
               <EditorContent editor={editor} />
             </div>
+            {showStrip && <StartFromTypeStrip types={types} onChoose={startNewOfType} onBrowse={() => setGallery("new")} />}
           </div>
-          {toolsOpen && editor && (
+          {rightPanel === "tools" && editor && (
             <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
               <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => setRightPanel(null)} />
             </div>
           )}
-          {sourcesOpen && (
+          {rightPanel === "sources" && (
             <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
               <SourcesPanel documentId={doc.id || null} documentTitle={doc.title} ensureSaved={ensureSaved} onClose={() => setRightPanel(null)} />
+            </div>
+          )}
+          {rightPanel === "notes" && editor && (
+            <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
+              <SectionNotesPanel
+                editor={editor}
+                documentId={doc.id}
+                ensureSaved={ensureSaved}
+                sectionId={caretSection}
+                busy={generation.busy}
+                run={generation.run}
+                onSaved={sectionNotes.update}
+                onClose={() => setRightPanel(null)}
+              />
             </div>
           )}
         </div>
       </main>
 
-      {notice && (
-        <div role="status" className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full bg-[var(--doc-ink)] px-4 py-2 text-sm text-[var(--doc-bg)] shadow-lg">
-          {notice}
-          <button
-            type="button"
-            onClick={() => {
-              editor?.chain().focus().undo().run();
-              setNotice(null);
-            }}
-            className="font-semibold underline underline-offset-2"
-          >
-            Undo
-          </button>
-        </div>
+      <span role="status" aria-live="polite" className="sr-only">
+        {editor ? busyAnnouncement([...generation.busy].map((id) => sectionBodyRange(editor.state.doc, id)?.heading ?? "")) : ""}
+      </span>
+
+      {editor && (
+        <SectionMenu
+          editor={editor}
+          target={menu}
+          type={currentType}
+          busy={generation.busy}
+          onClose={() => setMenu(null)}
+          onRun={(req) => void generation.run(req)}
+          onNotes={openNotesFor}
+        />
       )}
+
+      <TypeGallery
+        open={gallery !== null}
+        onOpenChange={(o) => !o && setGallery(null)}
+        types={types}
+        loading={catalog.loading}
+        error={catalog.error}
+        current={gallery === "set" ? (currentType?.key ?? null) : null}
+        title={gallery === "new" ? "New document from a type" : "Document types"}
+        onChoose={async (t) => {
+          if (gallery === "new") {
+            const err = await startNewOfType(t);
+            if (err) return err;
+          } else {
+            await chooseType(t);
+          }
+          setGallery(null);
+        }}
+      />
+      <SaveOutlineDialog open={saveTypeOpen} onOpenChange={setSaveTypeOpen} defaultTitle={doc.title} onSave={saveOutlineAsType} />
+
+      <NoticeStack notices={notices} onDismiss={dismissNotice} />
     </>
   );
 }

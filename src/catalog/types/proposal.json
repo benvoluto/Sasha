@@ -1,0 +1,138 @@
+{
+  "key": "proposal",
+  "version": 1,
+  "title": "Proposal",
+  "family": "business",
+  "summary": "A proposal asks a decision-maker or funder to approve a piece of work: it summarizes the request, explains why it is needed, sets objectives, and describes the approach, timeline, budget and how success will be judged. Use it for internal project proposals, partnership pitches and small funding requests that do not follow a funder's own template.",
+  "signals": [
+    "proposal",
+    "we propose",
+    "proposed project",
+    "reason for proposal",
+    "objectives",
+    "approach",
+    "timeline",
+    "milestones",
+    "budget",
+    "cost",
+    "evaluation",
+    "success criteria",
+    "request for approval",
+    "deliverables"
+  ],
+  "audience": "A decision-maker, sponsor or funder who must decide whether to approve and resource the proposed work, and who knows the organisation but not the details.",
+  "tone": "Confident, concrete and persuasive without hype; specific about what will be done, by when and at what cost.",
+  "preamble": "You are an experienced writer drafting a proposal for a decision-maker who must approve and resource the work. Lead with what is being asked for and why it matters. Be concrete: name deliverables, dates, owners and amounts. Make every objective specific and measurable, and make the approach, timeline, budget and evaluation consistent with the objectives and with each other. Where an amount, date or name is not in the material, write a placeholder such as \"[budget figure needed]\" rather than estimating. Do not overstate benefits or promise outcomes the material does not support.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "summary",
+      "heading": "Summary",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "In one short paragraph, state what is proposed, the problem or opportunity it addresses, the expected result, and what is being asked of the reader (approval, funding, people) with the headline cost and duration. A reader who stops here should know what they are being asked to decide.",
+      "lengthHint": "1 paragraph",
+      "elements": ["What is proposed", "Problem or opportunity addressed", "Expected result", "The ask: approval, funding or resources", "Headline cost and duration"],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Total cost", "Duration"]
+    },
+    {
+      "key": "reason",
+      "heading": "Reason for Proposal",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Explain why the work is needed now. Describe the current situation and its cost or risk, the evidence for the need, who is affected, and what happens if nothing is done. Ground the case in the sources and give figures where they exist.",
+      "elements": ["Current situation", "Evidence of the need", "Who is affected", "Consequence of doing nothing"],
+      "sourcesNeeded": ["Evidence of the problem or opportunity"],
+      "dataNeeded": ["Baseline figures"]
+    },
+    {
+      "key": "objectives",
+      "heading": "Objectives",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "List two to five objectives the work will achieve. Make each specific and measurable, with a target and a date, and tie each to the need described above. Use a numbered list.",
+      "lengthHint": "2–5 objectives",
+      "elements": ["Two to five numbered objectives", "Measurable target for each objective", "Target date for each objective", "Link from each objective to the need"],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Targets"]
+    },
+    {
+      "key": "approach",
+      "heading": "Approach",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Describe how the objectives will be met: the main activities, who will carry them out, the methods or tools, and the deliverables each activity produces. Explain why this approach was chosen over the obvious alternatives, and name the key risks and how they will be managed.",
+      "elements": ["Main activities", "Who will do the work", "Deliverables", "Why this approach over alternatives", "Key risks and mitigations"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    },
+    {
+      "key": "timeline",
+      "heading": "Timeline",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Lay out the schedule from start to finish as phases or milestones with dates, and mark dependencies and decision points. A Markdown table (milestone, date, deliverable) works well.",
+      "elements": ["Start and end dates", "Milestones with dates", "Dependencies and decision points"],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Milestone dates"]
+    },
+    {
+      "key": "budget",
+      "heading": "Budget",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Give the total cost and its breakdown by major category (people, equipment, services, other), with the basis for each figure. Note any cost already committed, any contribution from other sources, and ongoing costs after the work ends. Present the breakdown as a Markdown table.",
+      "elements": ["Total cost", "Breakdown by category", "Basis for each figure", "Ongoing costs after the work ends"],
+      "sourcesNeeded": ["Quotes or cost estimates"],
+      "dataNeeded": ["Cost figures"]
+    },
+    {
+      "key": "evaluation",
+      "heading": "Evaluation",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Explain how success will be judged: the measures for each objective, how and when they will be collected, who will review them, and how results will be reported back to the reader.",
+      "elements": ["Success measures for each objective", "How and when data will be collected", "Who reviews the results", "How results will be reported"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "internal_consistency",
+      "criterion": "Objectives, approach, timeline, budget and evaluation agree with each other.",
+      "levels": [
+        { "score": 4, "descriptor": "Every objective has activities in the approach, milestones in the timeline, costs in the budget and a measure in the evaluation." },
+        { "score": 3, "descriptor": "Mostly consistent; one objective lacks a milestone, cost line or measure." },
+        { "score": 2, "descriptor": "Several gaps or contradictions between objectives, schedule, budget and evaluation." },
+        { "score": 1, "descriptor": "The sections describe different projects or contradict each other." }
+      ],
+      "appliesTo": ["objectives", "approach", "timeline", "budget", "evaluation"]
+    },
+    {
+      "key": "clear_ask",
+      "criterion": "The reader knows exactly what is being asked of them and why.",
+      "levels": [
+        { "score": 4, "descriptor": "The summary states the decision, the cost and the duration, and the reason for the proposal makes a compelling, evidenced case." },
+        { "score": 3, "descriptor": "The ask is clear but the case for it is thin in places." },
+        { "score": 2, "descriptor": "The ask or its cost is vague, or the need is asserted rather than shown." },
+        { "score": 1, "descriptor": "It is unclear what the reader is being asked to approve." }
+      ],
+      "appliesTo": ["summary", "reason"]
+    }
+  ],
+  "provenance": {
+    "source": "Hand-written (Sasha Phase 1 Proposal outline)",
+    "url": "",
+    "license": "Own text",
+    "retrieved": "2026-10-07"
+  }
+}

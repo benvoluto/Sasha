@@ -6,8 +6,15 @@
 //   - "static"    scaffold text / headings, no model call.
 //   - "narrative" model-drafted prose grounded in the uploaded sources.
 //
-// This is the seed of the document-type catalog (PLAN §4.4); later phases move
-// these definitions into zod-validated catalog files.
+// Phase 3: the catalog (src/catalog/types/*.json) is now the source of truth.
+// This module is an adapter for the legacy report service: each template is
+// derived from its catalog type ("general-report", "fie") when the bundle has
+// it, keeping the legacy keys (general_report, fie_basic) so existing `report`
+// rows resolve, and falls back to the hardcoded definitions below otherwise.
+
+import { fileTypeByKey } from "@/catalog/files";
+import { sortedSections, type DocumentTypeDefinition } from "@/catalog/schema";
+import { SHARED_RULES } from "@/lib/sections/prompt";
 
 export type SectionKind = "static" | "narrative";
 
@@ -34,10 +41,29 @@ export const isRewritable = (spec: Pick<ReportSectionSpec, "kind">) => spec.kind
 export const GENERAL_REPORT_TEMPLATE_KEY = "general_report";
 export const FIE_TEMPLATE_KEY = "fie_basic";
 
-const SHARED_RULES =
-  "Ground every statement in the sources provided. Do NOT invent figures, dates, names, or facts; when the sources are silent, say so briefly rather than guessing.";
+/** Catalog keys of the two legacy templates. */
+export const GENERAL_REPORT_CATALOG_KEY = "general-report";
+export const FIE_CATALOG_KEY = "fie";
 
-export const GENERAL_REPORT_TEMPLATE: ReportTemplate = {
+/** A legacy template from a catalog definition, under the legacy key. */
+export function templateFromDefinition(def: DocumentTypeDefinition, legacyKey: string): ReportTemplate {
+  return {
+    key: legacyKey,
+    title: def.title,
+    preamble: `${def.preamble} ${SHARED_RULES}`,
+    sections: sortedSections(def.sections).map((s) => {
+      const kind: SectionKind = s.renderer === "static" ? "static" : "narrative";
+      return { key: s.key, heading: s.heading, order: s.order, kind, guidance: kind === "static" ? s.scaffold?.trim() || s.guidance : s.guidance };
+    }),
+  };
+}
+
+const fromCatalog = (catalogKey: string, legacyKey: string, fallback: ReportTemplate): ReportTemplate => {
+  const def = fileTypeByKey(catalogKey);
+  return def ? templateFromDefinition(def, legacyKey) : fallback;
+};
+
+export const FALLBACK_GENERAL_REPORT_TEMPLATE: ReportTemplate = {
   key: GENERAL_REPORT_TEMPLATE_KEY,
   title: "General Report",
   preamble: `You are an experienced writer drafting a clear, well-organized report for a general professional audience. Write in plain, neutral prose with short paragraphs. ${SHARED_RULES}`,
@@ -50,7 +76,7 @@ export const GENERAL_REPORT_TEMPLATE: ReportTemplate = {
   ],
 };
 
-export const FIE_TEMPLATE: ReportTemplate = {
+export const FALLBACK_FIE_TEMPLATE: ReportTemplate = {
   key: FIE_TEMPLATE_KEY,
   title: "Full and Individual Evaluation",
   preamble: `You are drafting a section of a Full and Individual Evaluation (FIE) report for a professional team. Write in professional, neutral prose. ${SHARED_RULES} Do not state a final determination; that is the team's decision. When you report several numeric scores, present them in a Markdown table and interpret the pattern in prose around it.`,
@@ -67,9 +93,17 @@ export const FIE_TEMPLATE: ReportTemplate = {
   ],
 };
 
+export const GENERAL_REPORT_TEMPLATE: ReportTemplate = fromCatalog(GENERAL_REPORT_CATALOG_KEY, GENERAL_REPORT_TEMPLATE_KEY, FALLBACK_GENERAL_REPORT_TEMPLATE);
+export const FIE_TEMPLATE: ReportTemplate = fromCatalog(FIE_CATALOG_KEY, FIE_TEMPLATE_KEY, FALLBACK_FIE_TEMPLATE);
+
 export const REPORT_TEMPLATES: ReportTemplate[] = [GENERAL_REPORT_TEMPLATE, FIE_TEMPLATE];
 
-/** The template for a key; unknown or missing keys fall back to the general report. */
+const CATALOG_KEYS: Record<string, ReportTemplate> = {
+  [GENERAL_REPORT_CATALOG_KEY]: GENERAL_REPORT_TEMPLATE,
+  [FIE_CATALOG_KEY]: FIE_TEMPLATE,
+};
+
+/** The template for a legacy or catalog key; unknown or missing keys fall back to the general report. */
 export function templateByKey(key: string | null | undefined): ReportTemplate {
-  return REPORT_TEMPLATES.find((t) => t.key === key) ?? GENERAL_REPORT_TEMPLATE;
+  return REPORT_TEMPLATES.find((t) => t.key === key) ?? (key ? CATALOG_KEYS[key] : undefined) ?? GENERAL_REPORT_TEMPLATE;
 }

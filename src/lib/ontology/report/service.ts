@@ -13,6 +13,7 @@ import { PERMISSIONS } from "../permissions";
 import { GENERAL_REPORT_TEMPLATE_KEY, isRewritable, templateByKey, type ReportSectionSpec, type ReportTemplate } from "./template";
 import { markdownToTiptap, tiptapToText, type PMDoc } from "@/lib/report/markdown-to-tiptap";
 import { REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
+import { OUTPUT_RULES, stripFences } from "@/lib/sections/prompt";
 
 export const WRITE_PERMISSION = PERMISSIONS.reportWrite;
 
@@ -125,14 +126,11 @@ SOURCE TEXT (excerpt):
 ${ctx.extractedContent.slice(0, MAX_EVIDENCE) || "(no extracted text)"}`;
 }
 
-const OUTPUT_RULES =
-  "Return Markdown for the section BODY only (no top-level heading, no code fences). Use short paragraphs, bullet lists, and GitHub-style Markdown tables where they help.";
-
 /** A Markdown section body from Claude. The system prompt is the stable, cached part. */
 async function callClaude(task: Task, system: string, user: string, agent: string, groupId: string): Promise<string> {
   if (!claudeConfigured()) throw new Error("no model configured");
   const { text } = await claudeText({ task, system, user, agent, documentId: groupId });
-  return text.replace(/```(?:markdown)?/gi, "").replace(/```/g, "").trim();
+  return stripFences(text);
 }
 
 // ---------------------------------------------------------------------------

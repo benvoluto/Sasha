@@ -9,7 +9,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 }));
 vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write }) }));
 
-import { claudeJson, claudeText, ModelRefusalError, ModelTruncatedError } from "./claude";
+import { CLAUDE_STREAM_DEADLINE_MS, claudeJson, claudeText, ModelDeadlineError, ModelRefusalError, ModelTruncatedError } from "./claude";
 
 const message = (text: string, stop_reason = "end_turn", extra: Record<string, unknown> = {}) => ({
   model: "claude-haiku-5-5",
@@ -73,9 +73,31 @@ describe("claudeText", () => {
   });
 
   it("uses a plain request for ordinary tasks", async () => {
-    create.mockResolvedValue(message("rewritten"));
-    await claudeText({ task: "rewrite.selection", system: "S", user: "u", timeoutMs: 5000 });
+    create.mockResolvedValue(message("checked"));
+    await claudeText({ task: "rubric.check", system: "S", user: "u", timeoutMs: 5000 });
     expect(stream).not.toHaveBeenCalled();
     expect(create.mock.calls[0][1]).toEqual({ timeout: 5000, maxRetries: 1 });
+  });
+
+  it("streams draft-tier prose with an overall deadline, so a long reply isn't cut off at the request timeout", async () => {
+    stream.mockReturnValue({ finalMessage: async () => message("A section.") });
+    for (const task of ["draft.section", "rewrite.section", "rewrite.selection", "draft.from_notes"] as const) {
+      stream.mockClear();
+      await claudeText({ task, system: "S", user: "u" });
+      expect(create).not.toHaveBeenCalled();
+      const opts = stream.mock.calls[0][1];
+      expect(opts).toMatchObject({ timeout: expect.any(Number), maxRetries: 1 });
+      expect(opts.signal).toBeInstanceOf(AbortSignal);
+    }
+    expect(CLAUDE_STREAM_DEADLINE_MS).toBeLessThan(300_000);
+  });
+
+  it("reports a streamed call that runs past its deadline", async () => {
+    stream.mockImplementation((_body: unknown, opts: { signal: AbortSignal }) => ({
+      finalMessage: () =>
+        new Promise((_, reject) => opts.signal.addEventListener("abort", () => reject(new Error("Request was aborted.")))),
+    }));
+    await expect(claudeText({ task: "draft.section", system: "S", user: "u", deadlineMs: 10 })).rejects.toBeInstanceOf(ModelDeadlineError);
+    expect(write).toHaveBeenCalledWith(expect.objectContaining({ allowed: false }));
   });
 });

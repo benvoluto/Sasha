@@ -6,6 +6,7 @@ describe("task routing", () => {
     expect(resolveTask("classify.type", {}).model).toBe("claude-haiku-5-5");
     expect(resolveTask("rubric.check", {}).model).toBe("claude-sonnet-5-5");
     expect(resolveTask("draft.section", {}).model).toBe("claude-opus-5-5");
+    expect(resolveTask("rewrite.section", {})).toMatchObject({ tier: "draft", model: "claude-opus-5-5", maxTokens: 16000 });
     expect(modelForTier("draft", { SASHA_MODEL_DRAFT: "claude-fable-5-1" })).toBe("claude-fable-5-1");
   });
 

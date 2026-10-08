@@ -1,0 +1,331 @@
+{
+  "key": "design-doc-rfc",
+  "version": 2,
+  "title": "Design Doc / RFC",
+  "family": "technical",
+  "summary": "A technical design document or request for comments (RFC) that proposes how to build or change a software system, before the work starts. It states the problem and goals, describes the proposed design in enough detail for peers to review, compares the alternatives, and covers security, rollout, testing and open risks so reviewers can approve, push back or decide.",
+  "signals": [
+    "design doc",
+    "RFC",
+    "request for comments",
+    "technical design",
+    "proposed design",
+    "goals and non-goals",
+    "alternatives considered",
+    "architecture",
+    "system design",
+    "API design",
+    "data model",
+    "migration plan",
+    "rollout plan",
+    "backwards compatibility",
+    "trade-offs",
+    "cross-cutting concerns",
+    "security and privacy considerations",
+    "open questions",
+    "decision log",
+    "design review"
+  ],
+  "audience": "Engineers, tech leads and architects who will review, approve or build the proposed system, plus adjacent teams (security, SRE, product) who need to understand its impact.",
+  "tone": "Precise, direct and neutral: engineer to engineer, making the reasoning and trade-offs explicit rather than selling the proposal.",
+  "preamble": "You are a senior software engineer writing a design document (RFC) for peer review. The purpose is to get a decision: make the proposal concrete enough that a reviewer can find its flaws, and state the trade-offs honestly rather than advocating. Name actual components, interfaces, data and numbers rather than describing them in general terms. Separate what is decided, what is proposed and what is still open, and label assumptions as assumptions. Never invent benchmarks, capacity figures, incident history, dates or owners; where a figure the design depends on is not in the material, leave a clearly marked placeholder such as [TBD: p99 latency target]. Prefer short paragraphs, bulleted lists and tables for comparisons; describe diagrams in words or as simple Mermaid or ASCII sketches only when the material supports them. Use consistent names for every component throughout the document.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "summary",
+      "heading": "Summary",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Write a short summary a busy reviewer can read alone: the problem in one or two sentences, what you propose to do, and the decision or feedback you need from reviewers. Mention the expected impact (who or what changes) and any deadline that drives the decision. Open with a status block, one field per line with bold labels: **Status:** (Draft unless the material says otherwise), **Authors:**, **Reviewers:** and **Last updated:**. Fill each field from the material and leave an unknown field blank after its label rather than guessing. Draft or revise this summary after the design sections so it matches what the document actually proposes.",
+      "lengthHint": "1 short paragraph (under 150 words)",
+      "elements": [
+        "The problem in one or two sentences",
+        "The proposed solution in one or two sentences",
+        "The decision or feedback requested from reviewers",
+        "Expected impact or affected systems and teams",
+        "Status block: authors, reviewers, status and last-updated date"
+      ],
+      "sourcesNeeded": [
+        "Project brief or ticket",
+        "Existing notes or earlier drafts"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "context-and-motivation",
+      "heading": "Context and Motivation",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Explain the current state of the system and why it is no longer good enough. Give the reader the background a capable engineer outside the team would need: the relevant components, how they behave today, and the evidence of the problem (incidents, metrics, user reports, upcoming requirements). Say why now: what happens if nothing changes. Keep design ideas out of this section.",
+      "lengthHint": "2-4 paragraphs",
+      "elements": [
+        "Description of the current system or process",
+        "The specific problem or limitation",
+        "Evidence of the problem (metrics, incidents, user or customer reports)",
+        "Why this needs addressing now, and the cost of doing nothing",
+        "Links to prior designs, tickets or discussions"
+      ],
+      "sourcesNeeded": [
+        "Current architecture docs",
+        "Incident reports or postmortems",
+        "Product requirements or tickets",
+        "Prior design docs"
+      ],
+      "dataNeeded": [
+        "Current performance, reliability or cost metrics",
+        "Usage or traffic figures"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "goals-and-non-goals",
+      "heading": "Goals and Non-Goals",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "List the goals as specific, testable outcomes, with target numbers where they exist (for example a latency, error-rate or cost target). Then list non-goals: reasonable things a reader might expect this work to do that it deliberately will not, with a brief reason. Note hard constraints (deadlines, compatibility, budget, compliance) separately. Every goal should be something the design and testing sections can be checked against.",
+      "lengthHint": "Two bulleted lists, 3-7 items each",
+      "elements": [
+        "Goals stated as measurable or verifiable outcomes",
+        "Explicit non-goals, each with a brief reason",
+        "Hard constraints (deadline, compatibility, budget, compliance)",
+        "A target number or pass condition for each goal that has one"
+      ],
+      "sourcesNeeded": [
+        "Product requirements",
+        "Service-level objectives"
+      ],
+      "dataNeeded": [
+        "Target metrics (latency, throughput, availability, cost)"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "proposed-design",
+      "heading": "Proposed Design",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Describe the design in enough detail that a reviewer can judge whether it works and an engineer could start building it. Start with a high-level overview of the components and how they interact, then go into the parts that matter: interfaces and APIs, data model and storage, key flows (request path, write path, failure path), and how the design meets each goal. Call out the key design decisions and the reasoning behind each, and state assumptions explicitly. Use sub-headings, tables or a simple diagram description when they make the structure easier to follow.",
+      "lengthHint": "The longest section; as long as the design needs",
+      "elements": [
+        "High-level overview of components and their interactions",
+        "Interfaces or API contracts (endpoints, signatures, schemas)",
+        "Data model and storage changes",
+        "Key flows, including error and failure handling",
+        "Key design decisions with their rationale",
+        "How the design meets each stated goal"
+      ],
+      "sourcesNeeded": [
+        "Architecture diagrams",
+        "API specifications",
+        "Database schemas",
+        "Relevant code or library documentation"
+      ],
+      "dataNeeded": [
+        "Capacity estimates (requests, storage, growth)",
+        "Benchmark or prototype results"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "alternatives-considered",
+      "heading": "Alternatives Considered",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Describe the serious alternatives you considered, including doing nothing and buying or reusing an existing solution where that is plausible. For each, summarise how it would work, its advantages and its drawbacks against the goals, and why it was rejected. Treat the alternatives fairly; a reviewer should be able to disagree with your choice using only this section. A comparison table works well when there are three or more options.",
+      "lengthHint": "A paragraph or table row per alternative",
+      "elements": [
+        "At least two alternatives, including doing nothing where relevant",
+        "Pros and cons of each against the stated goals",
+        "The reason each alternative was rejected",
+        "A comparison of trade-offs (table or summary)"
+      ],
+      "sourcesNeeded": [
+        "Vendor or library documentation",
+        "Prior designs or spikes",
+        "Comparable systems at other teams or companies"
+      ],
+      "dataNeeded": [
+        "Cost, effort or performance estimates per option"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "cross-cutting-concerns",
+      "heading": "Cross-cutting Concerns",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Cover how the design affects security, privacy, performance and scalability, reliability, observability and cost. For each concern, say what changes, what the risk is and how the design addresses it; write 'No change' with a one-line reason rather than omitting a concern. Name the data handled and who can access it, the expected load and limits, how failures are detected (metrics, logs, alerts, dashboards) and the expected operating cost. Use one short sub-section or bullet group per concern.",
+      "lengthHint": "A short paragraph or bullet group per concern",
+      "elements": [
+        "Security: authentication, authorisation, threat model or attack surface changes",
+        "Privacy: personal or sensitive data handled, retention and access",
+        "Performance and scalability: expected load, limits and bottlenecks",
+        "Reliability: failure modes, redundancy and recovery",
+        "Observability: metrics, logs, alerts and dashboards",
+        "Cost: infrastructure or licensing impact"
+      ],
+      "sourcesNeeded": [
+        "Security and privacy policies",
+        "Threat model or security review checklist",
+        "Service-level objectives",
+        "Monitoring and alerting standards"
+      ],
+      "dataNeeded": [
+        "Load and capacity estimates",
+        "Infrastructure cost estimates",
+        "Data classification of fields handled"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "rollout-and-migration",
+      "heading": "Rollout and Migration",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Explain how the change reaches production safely. Describe the phases (for example behind a feature flag, internal users, a percentage rollout, general availability), how existing data, clients or APIs migrate, and how backwards compatibility is kept during the transition. State the rollback plan and the signals that would trigger it. Note dependencies on other teams and any communication users or operators need.",
+      "lengthHint": "2-4 paragraphs or a phased list",
+      "elements": [
+        "Rollout phases with entry and exit criteria",
+        "Data or client migration steps",
+        "Backwards compatibility during the transition",
+        "Rollback plan and the signals that trigger it",
+        "Dependencies on other teams and a rough timeline"
+      ],
+      "sourcesNeeded": [
+        "Deployment and release process docs",
+        "Feature flag documentation",
+        "Dependent team contacts or plans"
+      ],
+      "dataNeeded": [
+        "Data volumes to migrate",
+        "Milestone dates"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "testing-plan",
+      "heading": "Testing Plan",
+      "level": 2,
+      "order": 80,
+      "required": true,
+      "guidance": "Describe how you will know the design works and keeps working. Cover the levels of testing that apply (unit, integration, end-to-end, load or performance, security, migration dry runs) and what each one verifies. Tie tests back to the goals and to the riskiest parts of the design, and say how success is measured after launch. Mention test environments or data the plan needs.",
+      "lengthHint": "1-3 paragraphs or a bulleted list",
+      "elements": [
+        "Test levels and what each verifies",
+        "Tests mapped to the stated goals and riskiest components",
+        "Performance or load testing approach where relevant",
+        "Post-launch validation metrics or acceptance criteria",
+        "Test environments or data required"
+      ],
+      "sourcesNeeded": [
+        "Existing test strategy or coverage reports",
+        "QA or release checklists"
+      ],
+      "dataNeeded": [
+        "Performance targets to test against"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "risks-and-open-questions",
+      "heading": "Risks and Open Questions",
+      "level": 2,
+      "order": 90,
+      "required": true,
+      "guidance": "List the main risks to the design or the project, each with its likelihood or impact and a mitigation. Then list the open questions that reviewers can help answer, phrased as specific questions with an owner or a decision date where known. Do not hide uncertainty elsewhere in the document; gather it here so reviewers can focus on it.",
+      "lengthHint": "Two bulleted lists or a risk table",
+      "elements": [
+        "Key risks, each with impact or likelihood",
+        "A mitigation for each risk",
+        "Open questions phrased as specific questions",
+        "Owner or decision date for each open question where known"
+      ],
+      "sourcesNeeded": [
+        "Review comments or discussion threads",
+        "Risk register"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "decision-log",
+      "heading": "Decision Log",
+      "level": 2,
+      "order": 100,
+      "required": false,
+      "guidance": "Record decisions made during review as a table with the columns Date, Decision, Decided by and Rationale, newest last, so later readers understand why the design looks the way it does. Each entry gives the date, the decision, who made or approved it, and a one-line rationale or link to the discussion. Include decisions to reject or defer, and update the relevant sections when a decision changes the design.",
+      "lengthHint": "A table or dated list",
+      "elements": [
+        "Dated entries for each decision",
+        "The decision and who made or approved it",
+        "A one-line rationale or link to the discussion"
+      ],
+      "sourcesNeeded": [
+        "Review meeting notes",
+        "Comment threads and approvals"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "design-specificity",
+      "criterion": "Design specificity: the proposed design is concrete enough to review and build from.",
+      "appliesTo": ["proposed-design"],
+      "levels": [
+        { "score": 4, "descriptor": "Components, interfaces, data model and key flows (including failure paths) are named and described precisely; a reviewer could find flaws and an engineer could start building without guessing." },
+        { "score": 3, "descriptor": "The main components and flows are clear, but some interfaces, data changes or failure handling are left vague." },
+        { "score": 2, "descriptor": "Describes the design at a high level only; important mechanics are hand-waved or missing, so reviewers cannot judge whether it works." },
+        { "score": 1, "descriptor": "Reads as an aspiration or a list of technologies rather than a design; there is nothing concrete to review." }
+      ]
+    },
+    {
+      "key": "goal-traceability",
+      "criterion": "Goal traceability: goals are measurable and the design, rollout and tests demonstrably serve them.",
+      "appliesTo": ["goals-and-non-goals", "proposed-design", "testing-plan"],
+      "levels": [
+        { "score": 4, "descriptor": "Goals are specific and measurable, non-goals set clear boundaries, and every goal is visibly addressed by the design and verified in the testing plan." },
+        { "score": 3, "descriptor": "Goals are mostly measurable and addressed, but one or two lack a target, a clear link to the design, or a test." },
+        { "score": 2, "descriptor": "Goals are vague or non-goals are missing; the connection between goals, design and tests is loose." },
+        { "score": 1, "descriptor": "Goals are absent or unrelated to the design; there is no way to tell whether the design succeeds." }
+      ]
+    },
+    {
+      "key": "tradeoff-analysis",
+      "criterion": "Trade-off analysis: alternatives are treated fairly and the choice is justified.",
+      "appliesTo": ["alternatives-considered", "proposed-design"],
+      "levels": [
+        { "score": 4, "descriptor": "Considers the realistic alternatives (including doing nothing where relevant), compares them on the stated goals fairly, and gives a clear, convincing reason for the choice and its costs." },
+        { "score": 3, "descriptor": "Covers the main alternatives with reasonable pros and cons, but the comparison is uneven or a cost of the chosen design is understated." },
+        { "score": 2, "descriptor": "Alternatives are straw men or listed without real comparison; the rationale for the chosen design is thin." },
+        { "score": 1, "descriptor": "No alternatives are considered, or the choice is asserted without justification." }
+      ]
+    },
+    {
+      "key": "risk-and-operability",
+      "criterion": "Risk and operability: risks, failure modes, rollout and rollback are planned, and uncertainty is stated openly.",
+      "appliesTo": ["cross-cutting-concerns", "rollout-and-migration", "risks-and-open-questions"],
+      "levels": [
+        { "score": 4, "descriptor": "Security, privacy, reliability and observability are each addressed; rollout is phased with a concrete rollback trigger; risks have mitigations and open questions are specific and owned." },
+        { "score": 3, "descriptor": "Most concerns and risks are covered, but a concern is skipped, the rollback plan is generic, or open questions lack owners." },
+        { "score": 2, "descriptor": "Operational concerns and risks are mentioned only briefly; no clear rollback plan; uncertainty is hidden in the prose." },
+        { "score": 1, "descriptor": "Ignores security, failure modes and rollout; presents the design as risk-free." }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "Hand-written from common engineering design-doc and RFC practice; the anthropics/skills doc-coauthoring skill was consulted as inspiration only",
+    "url": "https://github.com/anthropics/skills",
+    "license": "Own text",
+    "retrieved": "2026-10-07"
+  }
+}

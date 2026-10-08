@@ -122,6 +122,13 @@ export {
   Copy,
   Files as DocsIcon,
 
+  // sections, outline, dictation
+  Microphone as MicrophoneIcon,
+  NotePencil as SectionNotesIcon,
+  CircleHalf as CircleHalfIcon,
+  CircleDashed as CircleDashedIcon,
+  Shapes as TypesIcon,
+
   // sources library
   Books as LibraryIcon,
   Folder,

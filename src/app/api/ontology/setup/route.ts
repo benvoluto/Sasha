@@ -4,6 +4,7 @@ import { SUGGESTION_EDITS_SCHEMA } from "@/lib/ontology/suggestion-edits";
 import { WORKFLOW_SCHEMA } from "@/lib/workflow/store";
 import { DOCUMENT_SCHEMA } from "@/lib/documents/store";
 import { SOURCE_SCHEMA } from "@/lib/sources/store";
+import { CATALOG_SCHEMA } from "@/catalog/store";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,9 @@ const STATEMENTS = [
   ...DOCUMENT_SCHEMA,
   // The sources library (after the documents: links reference document).
   ...SOURCE_SCHEMA,
+  // Team overrides and team-made document types (src/catalog/store.ts).
+  ...CATALOG_SCHEMA,
+  `ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
   // Run columns the engine writes; added here for databases created before them.
   `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS outputs JSONB`,
   `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS checkpoints JSONB`,
@@ -59,6 +63,7 @@ const EXPECTED_TABLES = [
   "source",
   "document_source",
   "source_passage",
+  "document_type",
 ];
 
 /**
@@ -88,6 +93,7 @@ async function inspectSchema() {
   const migrations = {
     "determination_workflow.workflow_id": !!columns.determination_workflow?.includes("workflow_id"),
     "agent_determination_run.outputs": !!columns.agent_determination_run?.includes("outputs"),
+    "document_section.updated_at": !!columns.document_section?.includes("updated_at"),
   };
   return {
     ok: missingTables.length === 0 && Object.values(migrations).every(Boolean),

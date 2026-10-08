@@ -61,7 +61,21 @@ function tableRow(type: "tableHeader" | "tableCell", cells: string[], width: num
   return { type: "tableRow", content };
 }
 
-export function markdownToTiptap(markdown: string): PMDoc {
+export type MarkdownOptions = {
+  /**
+   * Keep single line breaks inside a paragraph as hardBreak nodes instead of
+   * joining the lines with a space (Markdown's soft break). For line-per-field
+   * text such as a memo header ("**To:** …\n**From:** …").
+   */
+  lineBreaks?: boolean;
+};
+
+function paragraphContent(lines: string[], lineBreaks: boolean): PMNode[] {
+  if (!lineBreaks) return inline(lines.join(" "));
+  return lines.flatMap((l, i) => (i ? [{ type: "hardBreak" }, ...inline(l)] : inline(l)));
+}
+
+export function markdownToTiptap(markdown: string, opts: MarkdownOptions = {}): PMDoc {
   const lines = (markdown || "").replace(/\r\n/g, "\n").split("\n");
   const content: PMNode[] = [];
   let i = 0;
@@ -118,7 +132,7 @@ export function markdownToTiptap(markdown: string): PMDoc {
       para.push(l);
       i++;
     }
-    content.push({ type: "paragraph", content: inline(para.join(" ")) });
+    content.push({ type: "paragraph", content: paragraphContent(para, !!opts.lineBreaks) });
   }
 
   return { type: "doc", content: content.length ? content : [{ type: "paragraph" }] };
@@ -213,6 +227,7 @@ export function tiptapToText(doc: PMDoc | PMNode | null | undefined): string {
   const out: string[] = [];
   const walk = (n: PMNode) => {
     if (n.text) out.push(n.text);
+    if (n.type === "hardBreak") out.push("\n");
     if (n.content) n.content.forEach(walk);
     if (n.type === "paragraph" || n.type === "heading" || n.type === "listItem") out.push("\n");
   };

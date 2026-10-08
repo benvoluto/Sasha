@@ -1,0 +1,371 @@
+{
+  "key": "product-requirements",
+  "version": 1,
+  "title": "Product Requirements Document (PRD)",
+  "family": "business",
+  "summary": "A product requirements document defines a problem worth solving, who has it, and what a product or feature must do to solve it, before design and engineering commit to a solution. It sets goals and non-goals, prioritised functional and non-functional requirements, success metrics and a release scope, so product, design, engineering and stakeholders can agree on what will be built and how success will be judged.",
+  "signals": [
+    "PRD",
+    "product requirements",
+    "problem statement",
+    "goals and non-goals",
+    "out of scope",
+    "user personas",
+    "user stories",
+    "As a <user>, I want <capability> so that <benefit>",
+    "acceptance criteria",
+    "functional requirements",
+    "non-functional requirements",
+    "must have / should have / could have",
+    "P0 / P1 / P2",
+    "success metrics",
+    "KPIs and guardrail metrics",
+    "MVP",
+    "release plan",
+    "launch criteria",
+    "dependencies and risks",
+    "open questions"
+  ],
+  "audience": "Product managers, designers, engineers, QA and business stakeholders who must agree on what is being built, for whom, and how success will be measured.",
+  "tone": "Direct, specific and testable: plain declarative statements, decisions stated as decisions, and no marketing language.",
+  "preamble": "You are an experienced product manager writing a product requirements document that a cross-functional team will build from and sign off on. Describe the problem and the required behaviour, not the implementation: say what the product must do and why, and leave how to the design and engineering documents unless a constraint is genuinely fixed. Write every requirement so someone could test it: one behaviour per requirement, a stable identifier (FR-1, NFR-1), a priority, and observable acceptance criteria; replace vague words such as fast, easy, intuitive or robust with measurable thresholds. Tie each goal to a metric with a baseline and a target, and each requirement back to a user story or goal. State non-goals and exclusions explicitly. Do not invent user research findings, metrics, baselines, dates, owners or commitments; where the sources do not supply them, write a clearly marked placeholder (for example [TBD: baseline conversion rate]) and list the gap under Open Questions. Use tables for requirement lists, metrics and risks when they have more than three rows.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "overview",
+      "heading": "Overview and Problem Statement",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Open with two or three sentences a busy stakeholder could read alone: what is being proposed, for whom, and why now. Then state the problem from the user's point of view, with the evidence that it is real and how often or how badly it occurs (support tickets, research findings, usage data, revenue at risk). Describe how users cope today and why that is not good enough. Keep proposed solutions out of the problem statement; a reader should be able to agree with the problem before they see the answer.",
+      "lengthHint": "200-400 words",
+      "elements": [
+        "One-paragraph summary of what is proposed, for whom and why now",
+        "Problem stated from the user's perspective, without naming a solution",
+        "Evidence of the problem's size or frequency (data, research or feedback)",
+        "Current workaround or status quo and why it falls short",
+        "Link to the business or strategic objective the work supports"
+      ],
+      "sourcesNeeded": [
+        "User research or interview notes",
+        "Customer support tickets or feedback",
+        "Strategy or roadmap document",
+        "Competitive analysis"
+      ],
+      "dataNeeded": [
+        "Number of affected users or accounts",
+        "Frequency or cost of the problem",
+        "Relevant funnel, usage or revenue figures"
+      ]
+    },
+    {
+      "key": "goals-non-goals",
+      "heading": "Goals and Non-Goals",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "List three to five goals as outcomes for users or the business, not as features to ship. Each goal should be specific enough that the Success Metrics section can measure it. Then list non-goals: things a reasonable reader might expect this work to cover that it deliberately will not, each with a one-line reason. Non-goals prevent scope creep and settle debates early, so name the tempting adjacent problems explicitly.",
+      "lengthHint": "3-5 goals, 3-5 non-goals",
+      "elements": [
+        "3-5 goals phrased as user or business outcomes, not features",
+        "Each goal traceable to a success metric",
+        "Explicit non-goals with a short reason for each",
+        "Goals ranked or prioritised when they could conflict"
+      ],
+      "sourcesNeeded": [
+        "Strategy or OKR document",
+        "Stakeholder notes"
+      ],
+      "dataNeeded": []
+    },
+    {
+      "key": "users-personas",
+      "heading": "Users and Personas",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Identify the primary user the product is designed for and any secondary users or affected roles (administrators, buyers, support staff). For each persona give their context, the job they are trying to get done, their current pain, and any constraint that shapes the requirements (skill level, device, accessibility needs, permissions, regulation). Base personas on research where the sources provide it and say so; mark assumed personas as assumptions. Note who is explicitly not a target user.",
+      "lengthHint": "1-3 personas, a short paragraph or table row each",
+      "elements": [
+        "Primary persona with context, goal and current pain",
+        "Secondary users or affected roles identified",
+        "Constraints that shape requirements (device, skill, accessibility, permissions)",
+        "Evidence basis for each persona, or marked as an assumption",
+        "Users explicitly out of scope"
+      ],
+      "sourcesNeeded": [
+        "User research or persona documents",
+        "Customer segmentation or analytics"
+      ],
+      "dataNeeded": [
+        "Size of each user segment",
+        "Usage patterns by segment"
+      ]
+    },
+    {
+      "key": "user-stories",
+      "heading": "User Stories and Use Cases",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Write the key user stories in the form \"As a <persona>, I want <capability> so that <benefit>\", grouped by persona or workflow and numbered so requirements can refer to them. For the main workflows, add a short use-case narrative covering the trigger, the steps the user takes, and the end state. Include at least one edge or failure case (no data, lost connection, permission denied, wrong input) for each core flow. Keep stories about user intent; detailed system behaviour belongs in Functional Requirements.",
+      "lengthHint": "5-15 stories",
+      "elements": [
+        "Stories in \"As a / I want / so that\" form, each numbered",
+        "Stories cover every primary persona",
+        "Main workflow described end to end (trigger, steps, end state)",
+        "Edge and failure cases for core flows",
+        "Each story mapped to a goal"
+      ],
+      "sourcesNeeded": [
+        "User research or journey maps",
+        "Design explorations or wireframes"
+      ],
+      "dataNeeded": []
+    },
+    {
+      "key": "functional-requirements",
+      "heading": "Functional Requirements",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "List what the product must do, one behaviour per requirement, each with a stable ID (FR-1, FR-2), a priority (Must / Should / Could, or P0 / P1 / P2) and the user story it serves. Give each requirement acceptance criteria a tester could check, ideally in Given / When / Then form. Use a table (ID, requirement, priority, story, acceptance criteria) when there are more than three. State requirements as observable behaviour (\"The system shows an error and keeps the user's input when payment fails\"), not implementation (\"Use a retry queue\"). Make sure the Must set alone delivers a coherent first release.",
+      "lengthHint": "Table; typically 8-30 requirements",
+      "elements": [
+        "Every requirement has a unique ID",
+        "Every requirement has a priority (Must/Should/Could or P0-P2)",
+        "Testable acceptance criteria for each requirement",
+        "Each requirement traced to a user story or goal",
+        "Error, empty and permission states specified",
+        "Must-have set defines a coherent minimum release"
+      ],
+      "sourcesNeeded": [
+        "Design mockups or prototypes",
+        "Existing product specifications",
+        "Engineering feasibility notes"
+      ],
+      "dataNeeded": []
+    },
+    {
+      "key": "non-functional-requirements",
+      "heading": "Non-Functional Requirements",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Specify the qualities the product must have, each with a measurable threshold and an ID (NFR-1, NFR-2): performance (for example 95th-percentile response time), availability, scalability, security and privacy, accessibility (name the standard, such as WCAG 2.2 AA), localisation, compatibility (browsers, devices, operating systems) and compliance. Include only categories that matter for this product, but say so when a usually relevant one is deliberately not applicable. Replace adjectives with numbers and conditions.",
+      "lengthHint": "Table; 4-12 requirements",
+      "elements": [
+        "Performance targets with measurable thresholds",
+        "Security and privacy requirements, including data handling",
+        "Accessibility standard named (e.g. WCAG 2.2 AA)",
+        "Supported platforms, browsers or devices",
+        "Reliability or availability target",
+        "Applicable legal or compliance requirements"
+      ],
+      "sourcesNeeded": [
+        "Security and privacy policies",
+        "Accessibility standard",
+        "Platform support matrix",
+        "Regulatory or compliance guidance"
+      ],
+      "dataNeeded": [
+        "Current performance baselines",
+        "Expected load or traffic volumes"
+      ]
+    },
+    {
+      "key": "success-metrics",
+      "heading": "Success Metrics",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Define how the team will know the product worked. Name one primary metric and a small number of secondary metrics, each with a current baseline, a target, a time frame and the data source. Add guardrail metrics that must not get worse (for example support contact rate, latency, churn). Tie each metric to a goal and say how it will be measured (instrumentation, experiment design, survey). If a baseline is unknown, say how and when it will be established rather than inventing one.",
+      "lengthHint": "Table; 1 primary, 2-4 secondary, 1-3 guardrail metrics",
+      "elements": [
+        "One primary metric tied to the main goal",
+        "Baseline and target for every metric",
+        "Time frame for reaching each target",
+        "Guardrail metrics that must not regress",
+        "Measurement method and data source for each metric"
+      ],
+      "sourcesNeeded": [
+        "Analytics dashboards",
+        "Prior experiment results",
+        "OKR or goal-setting document"
+      ],
+      "dataNeeded": [
+        "Current baseline values for each metric",
+        "Historical trend or seasonality data",
+        "Target values agreed with stakeholders"
+      ]
+    },
+    {
+      "key": "scope-release-plan",
+      "heading": "Scope and Release Plan",
+      "level": 2,
+      "order": 80,
+      "required": true,
+      "guidance": "State what is in the first release (MVP) and what is deferred to later phases, referring to requirement IDs rather than restating them. Lay out the phases or milestones with target dates where they are known and the criteria for moving between them. Describe the rollout approach (internal dogfood, beta, staged percentage, feature flag, general availability) and the launch criteria that must be met before release. Mark dates as targets unless they are committed.",
+      "lengthHint": "200-400 words or a phase table",
+      "elements": [
+        "MVP scope listed by requirement ID",
+        "Deferred items and the phase they move to",
+        "Milestones or phases with target dates",
+        "Rollout approach (beta, staged rollout, feature flag, GA)",
+        "Launch criteria that must be met before release"
+      ],
+      "sourcesNeeded": [
+        "Product roadmap",
+        "Engineering estimates",
+        "Go-to-market or launch plan"
+      ],
+      "dataNeeded": [
+        "Target dates and milestones",
+        "Team capacity or estimates"
+      ]
+    },
+    {
+      "key": "dependencies-risks",
+      "heading": "Dependencies and Risks",
+      "level": 2,
+      "order": 90,
+      "required": true,
+      "guidance": "List the teams, systems, vendors, approvals and decisions this work depends on, with an owner and the date each is needed by. Then list the main risks (technical, market, legal, operational, adoption), each with its likelihood, impact and a mitigation or contingency. Include assumptions that, if wrong, would change the plan. A table with columns for risk, likelihood, impact, mitigation and owner works well.",
+      "lengthHint": "Table",
+      "elements": [
+        "Internal and external dependencies with owners",
+        "Date each dependency is needed by",
+        "Risks rated for likelihood and impact",
+        "Mitigation or contingency for each significant risk",
+        "Key assumptions stated explicitly"
+      ],
+      "sourcesNeeded": [
+        "Engineering and architecture notes",
+        "Vendor or partner agreements",
+        "Legal, security or compliance review"
+      ],
+      "dataNeeded": []
+    },
+    {
+      "key": "open-questions",
+      "heading": "Open Questions",
+      "level": 2,
+      "order": 100,
+      "required": true,
+      "guidance": "List the unresolved questions that block or could change the requirements, each with an owner and a date by which it needs an answer. Include every placeholder or gap left elsewhere in the document. When a question is answered, write the decision into the section it affects and keep a one-line record here (question, decision, date) so reviewers can see what changed.",
+      "lengthHint": "Bulleted list or table",
+      "elements": [
+        "Each open question stated specifically",
+        "Owner assigned to each question",
+        "Date by which an answer is needed",
+        "Placeholders and gaps from other sections carried here",
+        "Answered questions kept as a one-line record of the decision and date"
+      ],
+      "sourcesNeeded": [
+        "Stakeholder review notes",
+        "Meeting notes"
+      ],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "problem-definition",
+      "criterion": "Problem definition: the problem, the affected users and the evidence for it are clear and kept separate from the solution.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "The problem is stated from the user's point of view, its size or frequency is backed by data or research, the primary and secondary users are clearly identified, and the solution is kept out of the problem statement. A stakeholder could agree the problem matters before reading further."
+        },
+        {
+          "score": 3,
+          "descriptor": "The problem and users are clear, but the supporting evidence is thin or partly anecdotal, or the problem statement leans slightly towards a particular solution."
+        },
+        {
+          "score": 2,
+          "descriptor": "The problem is described vaguely or mainly as a missing feature; users are generic (\"all users\"); evidence is absent or asserted without support."
+        },
+        {
+          "score": 1,
+          "descriptor": "There is no identifiable user problem; the document starts from a solution, or the problem and users cannot be determined."
+        }
+      ],
+      "appliesTo": ["overview", "users-personas", "user-stories"]
+    },
+    {
+      "key": "requirement-testability",
+      "criterion": "Requirement testability: each requirement describes one observable behaviour or quality with acceptance criteria or a measurable threshold.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every requirement has an ID, describes a single observable behaviour or a measurable quality, and has acceptance criteria a tester could verify without asking the author. Error, empty and permission states are covered, and no vague qualities (fast, easy, intuitive) remain."
+        },
+        {
+          "score": 3,
+          "descriptor": "Most requirements are testable, but a few lack acceptance criteria, bundle several behaviours, or use a vague quality without a threshold."
+        },
+        {
+          "score": 2,
+          "descriptor": "Many requirements are vague, compound or written as implementation instructions; acceptance criteria are missing for much of the list; edge cases are largely absent."
+        },
+        {
+          "score": 1,
+          "descriptor": "Requirements are a loose feature wish list that could not be built or tested without substantial further clarification."
+        }
+      ],
+      "appliesTo": ["functional-requirements", "non-functional-requirements"]
+    },
+    {
+      "key": "prioritisation-scope",
+      "criterion": "Prioritisation and scope control: priorities, non-goals and release scope make clear what will and will not be built first.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every requirement carries a priority, the must-have set forms a coherent first release, non-goals are explicit with reasons, and the release plan names what is deferred and the criteria for each phase."
+        },
+        {
+          "score": 3,
+          "descriptor": "Priorities and scope are mostly clear, but some requirements lack a priority, non-goals are thin, or the boundary between the first release and later phases is fuzzy."
+        },
+        {
+          "score": 2,
+          "descriptor": "Most items are marked top priority or not prioritised at all; non-goals are missing; the first release cannot be distinguished from the full vision."
+        },
+        {
+          "score": 1,
+          "descriptor": "There is no prioritisation or scope boundary; the document implies everything ships at once."
+        }
+      ],
+      "appliesTo": ["goals-non-goals", "functional-requirements", "scope-release-plan"]
+    },
+    {
+      "key": "measurable-outcomes",
+      "criterion": "Measurable outcomes and traceability: goals are tied to metrics with baselines and targets, and requirements trace back to goals and user stories.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Each goal maps to a metric with a baseline, target, time frame and data source; guardrail metrics are defined; every requirement traces to a user story or goal, and no requirement lacks a reason to exist."
+        },
+        {
+          "score": 3,
+          "descriptor": "Goals have metrics, but some lack baselines, targets or a measurement method, or traceability from requirements to goals is incomplete."
+        },
+        {
+          "score": 2,
+          "descriptor": "Metrics are vanity or activity measures, or are listed without baselines or targets; most requirements cannot be traced to a goal."
+        },
+        {
+          "score": 1,
+          "descriptor": "There is no way to judge whether the product succeeded; goals and metrics are missing or unrelated to the requirements."
+        }
+      ],
+      "appliesTo": ["goals-non-goals", "success-metrics", "functional-requirements", "user-stories"]
+    }
+  ],
+  "provenance": {
+    "source": "Hand-written from common product-management PRD practice; the anthropics/skills doc-coauthoring skill was consulted as inspiration only, no text taken",
+    "url": "",
+    "license": "Own text",
+    "retrieved": "2026-10-07"
+  }
+}

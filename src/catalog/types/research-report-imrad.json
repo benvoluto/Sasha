@@ -1,0 +1,327 @@
+{
+  "key": "research-report-imrad",
+  "version": 1,
+  "title": "Research Report (IMRaD)",
+  "family": "academic",
+  "summary": "An empirical research report in the Introduction, Methods, Results and Discussion (IMRaD) structure used by journal articles, theses chapters, lab reports and technical study reports. It states a question or hypothesis, describes how data were collected and analysed in enough detail to replicate, reports findings without interpretation, and then interprets them against prior work and their limitations.",
+  "signals": [
+    "IMRaD",
+    "Abstract",
+    "Introduction",
+    "Methods",
+    "Materials and Methods",
+    "Results",
+    "Discussion",
+    "hypothesis",
+    "research question",
+    "participants",
+    "sample size",
+    "statistical analysis",
+    "p <",
+    "confidence interval",
+    "effect size",
+    "limitations",
+    "future research",
+    "journal article",
+    "lab report",
+    "empirical study"
+  ],
+  "audience": "Researchers and informed readers in the field, including peer reviewers, who expect enough detail to evaluate and replicate the study.",
+  "tone": "Formal, precise and impersonal-but-direct scholarly prose; hedged where the evidence is uncertain, never promotional.",
+  "preamble": "You are an experienced researcher writing an empirical report for peer review in the IMRaD structure. Keep each section to its job: the Introduction motivates the question and ends with the aim or hypothesis; Methods say what was done, in the past tense, with enough detail to replicate; Results report what was found, with no interpretation or speculation; the Discussion interprets. Never invent data, participants, statistics, citations or findings: where a number, sample detail or reference is not in the provided material, leave a clearly marked placeholder such as [n = ?] or [citation needed] instead of guessing. Report statistics completely (test, statistic, degrees of freedom, exact p value, effect size and confidence interval where applicable) and keep figures consistent across the Abstract, Results and Discussion. Distinguish correlation from causation, state the strength of evidence honestly, and use the field's terminology consistently once defined.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "abstract",
+      "heading": "Abstract",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Write a single self-contained paragraph (or the structured Background/Methods/Results/Conclusions form if the venue requires it) that a reader can understand without the full report. Give one or two sentences each on the problem and aim, the design and sample, the main quantitative results, and the principal conclusion. Use the same numbers as the Results section, include no citations, no results absent from the body, or undefined abbreviations, and do not claim more than the Discussion supports. Draft it last, from the finished report.",
+      "lengthHint": "≤ 250 words",
+      "elements": [
+        "Problem and study aim or hypothesis",
+        "Design, sample and setting",
+        "Main results with key figures",
+        "Principal conclusion or implication",
+        "No citations or undefined abbreviations"
+      ],
+      "sourcesNeeded": [],
+      "dataNeeded": [
+        "Final sample size",
+        "Primary outcome results"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "introduction",
+      "heading": "Introduction",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Move from the broad problem to the specific question in a funnel: establish why the topic matters, summarise what prior research has shown, and identify the specific gap, contradiction or limitation this study addresses. Cite the key prior studies for each claim rather than surveying the whole literature. Close with an explicit statement of the aim, research question or testable hypotheses, so every later section can be checked against it.",
+      "lengthHint": "3–6 paragraphs",
+      "elements": [
+        "Importance of the problem established",
+        "Relevant prior research summarised with citations",
+        "Specific gap or unresolved question identified",
+        "Rationale linking the gap to this study",
+        "Explicit aim, research question or hypothesis"
+      ],
+      "sourcesNeeded": [
+        "Key prior studies in the area",
+        "Recent review or meta-analysis",
+        "Theoretical framework source"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "methods",
+      "heading": "Methods",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Describe what was done, in the past tense, in enough detail that a competent researcher could repeat the study. Cover the design, the participants or materials (with inclusion and exclusion criteria, recruitment and a sample size justification), the measures or instruments and their validity, the procedure in the order it happened, and the analysis plan: software and version, the test tied to each hypothesis, how missing data and exclusions were handled, and which analyses were pre-specified and which exploratory. Cite the pre-registration or protocol if there is one and follow the reporting guideline for the design where one exists (for example CONSORT for randomised trials, STROBE for observational studies, PRISMA for systematic reviews). Note ethics approval and consent for human or animal research. Use sub-headings (Participants, Materials, Procedure, Analysis) when the section is long.",
+      "elements": [
+        "Study design stated",
+        "Participants or materials with selection criteria and sample size justification",
+        "Measures or instruments described",
+        "Procedure in replicable order",
+        "Statistical or analytic approach for each question",
+        "Handling of missing data and exclusions",
+        "Pre-registration or protocol cited and exploratory analyses flagged (where applicable)",
+        "Ethics approval and consent (where applicable)"
+      ],
+      "sourcesNeeded": [
+        "Protocol or pre-registration",
+        "Instrument or measure validation papers",
+        "Methodological references for analyses used"
+      ],
+      "dataNeeded": [
+        "Sample size and power calculation",
+        "Participant demographics or material specifications",
+        "Ethics approval reference"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "results",
+      "heading": "Results",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Report the findings objectively, in the same order as the questions or hypotheses in the Introduction, without interpreting or explaining them. Start with the final sample and descriptive statistics, then give each analysis with complete statistics (test, statistic, degrees of freedom, exact p value, effect size and confidence interval), labelling any exploratory analyses as such. Report results that do not support the hypotheses as plainly as those that do. Use tables or figures for dense data and refer to them in the text, highlighting the key pattern instead of repeating every number.",
+      "elements": [
+        "Final sample and attrition or exclusions reported",
+        "Descriptive statistics",
+        "Result for each research question or hypothesis",
+        "Complete test statistics with effect sizes",
+        "Tables or figures referenced in text",
+        "No interpretation or speculation"
+      ],
+      "sourcesNeeded": [],
+      "dataNeeded": [
+        "Analysis output",
+        "Descriptive statistics table",
+        "Figures or charts of main outcomes"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "discussion",
+      "heading": "Discussion",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Open by restating the main finding in plain terms and answering the research question directly. Interpret what the results mean, compare them with the prior studies cited in the Introduction (agreeing and conflicting), and offer reasoned explanations for unexpected results without overstating them. State the study's limitations honestly and how they affect the conclusions, then give the practical or theoretical implications and specific directions for future research. Do not introduce new results here.",
+      "lengthHint": "4–8 paragraphs",
+      "elements": [
+        "Main finding restated and question answered",
+        "Interpretation of results",
+        "Comparison with prior literature",
+        "Limitations and their effect on conclusions",
+        "Practical or theoretical implications",
+        "Directions for future research"
+      ],
+      "sourcesNeeded": [
+        "Studies cited in the Introduction",
+        "Studies with conflicting findings"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "conclusion",
+      "heading": "Conclusion",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "Use when the venue expects a separate conclusion. In one short paragraph, state the take-home message, what the study adds to the field, and the most important implication, consistent with the Discussion and no stronger than the evidence allows. Do not restate the Results in detail or add new material.",
+      "lengthHint": "1 paragraph",
+      "elements": [
+        "Take-home message stated",
+        "Contribution to the field",
+        "Key implication, within the evidence"
+      ],
+      "sourcesNeeded": [],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "declarations",
+      "heading": "Declarations",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "Include the statements journals and examiners expect after the main text, under their own sub-headings: funding sources and the funders' role, competing interests (state \"none\" explicitly if there are none), author contributions, a data and code availability statement saying where the data can be obtained or why they cannot be shared, and acknowledgements of help that does not merit authorship. Use only facts from the provided material; mark anything missing as a placeholder rather than writing a generic statement.",
+      "lengthHint": "Short statements",
+      "elements": [
+        "Funding sources and funder role",
+        "Competing interests statement",
+        "Data and code availability statement",
+        "Author contributions (where the venue requires them)"
+      ],
+      "sourcesNeeded": [],
+      "dataNeeded": [
+        "Grant numbers and funders",
+        "Data repository location or access restrictions"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "references",
+      "heading": "References",
+      "level": 2,
+      "order": 80,
+      "required": true,
+      "guidance": "List every work cited in the text, and only those, in one consistent citation style (APA unless the venue specifies another). Each entry needs full bibliographic details and a DOI or stable URL where available. Never add a reference that is not in the provided sources; mark any missing citation as [citation needed] in the text instead.",
+      "elements": [
+        "Every in-text citation has an entry",
+        "No uncited entries",
+        "One consistent citation style",
+        "DOIs or stable URLs where available"
+      ],
+      "sourcesNeeded": [
+        "Full bibliographic records of cited works"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "question_alignment",
+      "criterion": "Question alignment: the aim or hypothesis is explicit and every section answers to it.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "The Introduction ends with a precise aim or testable hypothesis grounded in a clearly stated gap. Methods, Results and Discussion each address it in the same order, and the Abstract matches."
+        },
+        {
+          "score": 3,
+          "descriptor": "The aim is stated and mostly followed through, but the gap is loosely argued or one section drifts from the question."
+        },
+        {
+          "score": 2,
+          "descriptor": "The aim is vague or implied. Several results or analyses do not map to a stated question, or the Discussion answers a different one."
+        },
+        {
+          "score": 1,
+          "descriptor": "No identifiable aim or hypothesis; the sections do not connect into a single line of inquiry."
+        }
+      ],
+      "appliesTo": [
+        "abstract",
+        "introduction",
+        "methods",
+        "results",
+        "discussion"
+      ]
+    },
+    {
+      "key": "methodological_transparency",
+      "criterion": "Methodological transparency: the methods are reported fully enough to evaluate and replicate.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Design, sample and selection criteria, sample size rationale, measures, procedure and an analysis plan tied to each question are all described; ethics approval is noted where needed. A peer could repeat the study."
+        },
+        {
+          "score": 3,
+          "descriptor": "Most details are present; one element (such as the sample size rationale or an instrument description) is thin but the study could largely be reproduced."
+        },
+        {
+          "score": 2,
+          "descriptor": "Important details are missing, such as selection criteria, the measures used or which test answers which question, so replication would require guessing."
+        },
+        {
+          "score": 1,
+          "descriptor": "Methods are sketched or absent; the reader cannot tell how the data were obtained or analysed."
+        }
+      ],
+      "appliesTo": [
+        "methods"
+      ]
+    },
+    {
+      "key": "results_reporting",
+      "criterion": "Results reporting: findings are complete, accurate and kept separate from interpretation.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every planned analysis is reported, including null or contrary results, with complete statistics and effect sizes. Tables and figures are referenced and consistent with the text. No interpretation appears in Results."
+        },
+        {
+          "score": 3,
+          "descriptor": "Results are complete and accurate, but some statistics lack effect sizes or intervals, or a little interpretation creeps in."
+        },
+        {
+          "score": 2,
+          "descriptor": "Selective or incomplete reporting: some analyses or unfavourable results are omitted, statistics are partial, or numbers disagree between sections."
+        },
+        {
+          "score": 1,
+          "descriptor": "Results are mostly narrative claims without supporting figures, or are mixed throughout with speculation."
+        }
+      ],
+      "appliesTo": [
+        "results",
+        "abstract"
+      ]
+    },
+    {
+      "key": "warranted_interpretation",
+      "criterion": "Warranted interpretation: conclusions follow from the results, are placed in the literature and acknowledge limitations.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Claims match the strength of the evidence, causal language is used only where the design allows it, findings are compared with prior work including conflicting studies, and limitations are stated with their consequences."
+        },
+        {
+          "score": 3,
+          "descriptor": "Interpretation is mostly sound but occasionally overstated, or limitations are listed without saying how they affect the conclusions."
+        },
+        {
+          "score": 2,
+          "descriptor": "Conclusions frequently outrun the data, comparison with the literature is superficial, or limitations are token."
+        },
+        {
+          "score": 1,
+          "descriptor": "Conclusions are unsupported or contradict the results; no limitations or literature context are given."
+        }
+      ],
+      "appliesTo": [
+        "discussion",
+        "conclusion",
+        "abstract"
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "Hand-written from the IMRaD structure for original research articles described in the ICMJE Recommendations (Preparing a Manuscript: Introduction, Methods, Results, Discussion, plus disclosure statements) and common journal author guidelines; no text copied",
+    "url": "https://www.icmje.org/recommendations/",
+    "license": "Own text",
+    "retrieved": "2026-10-07"
+  }
+}

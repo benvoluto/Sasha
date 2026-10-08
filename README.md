@@ -10,10 +10,11 @@ Sasha started as a pruned copy of `benvoluto/proto-v2-organizer`. See
 
 ## Status
 
-Phases 0–2 are built: the blank-document editor with autosave, versions and
-Claude model routing, and the team-scoped source library (folders, uploads,
-URL and note sources, extraction, summaries and passages). Next is Phase 3,
-document types. See `docs/PLAN.md` §12.
+Phases 0–3 are built: the blank-document editor with autosave, versions and
+Claude model routing; the team-scoped source library (folders, uploads, URL
+and note sources, extraction, summaries and passages); and the document-type
+catalog with outlines, the living outline and per-section drafting tools.
+Next is Phase 4, notes, the classifier and suggestions. See `docs/PLAN.md` §12.
 
 ## Stack
 

@@ -1,0 +1,253 @@
+{
+  "key": "policy-decision-memo",
+  "version": 1,
+  "title": "Policy decision memo",
+  "family": "policy",
+  "summary": "A short internal memo that asks a senior decision-maker to make one specific decision, or to approve a recommendation. It puts the decision and the recommendation first, then gives the background, the problem, two to four options with their trade-offs, and the next steps. It is written in plain language so a busy reader can act on the first paragraph alone.",
+  "signals": [
+    "decision memo",
+    "decision memorandum",
+    "memorandum for",
+    "To: / From: / Date: / Subject:",
+    "bottom line up front",
+    "BLUF",
+    "decision requested",
+    "action requested",
+    "for decision",
+    "action memo",
+    "options considered",
+    "policy options",
+    "recommended option",
+    "approve / disapprove / discuss",
+    "decision needed by",
+    "for your approval"
+  ],
+  "audience": "A senior official or executive (director, minister, board chair, agency head) who has little time, knows the organisation but not the details of this issue, and must make or approve a decision.",
+  "tone": "Plain, direct and neutral: short sentences, active voice, \"we\" for the writing office and \"you\" for the decision-maker; even-handed on options, then clear and confident in the recommendation.",
+  "preamble": "You are an experienced policy adviser writing a decision memo for a senior decision-maker. Follow plain-language practice: lead with what the reader must decide, use short sentences and paragraphs, active voice, everyday words, and \"you\" for the reader and \"we\" for the writing office. Define each acronym on first use, or avoid it. One memo asks for one decision; if the material contains several, say so in the Bottom Line Up Front and keep the memo to the main one. Present every option fairly, including doing nothing when that is a real option, and describe each with the same headings (what it is, pros, cons, cost, risk) so options can be compared side by side. Keep analysis (Background, Issue, Options) separate from advocacy (Recommendation): apart from naming it in the Bottom Line Up Front, do not argue for the recommended option before the Recommendation section. Make the recommendation name exactly one option (or, if the analysis supports it, a stated combination of named options) and use the same wording as the decision requested in the Bottom Line Up Front. Give amounts, dates and deadlines as specific figures; where a figure is not in the material, write a placeholder such as \"[cost estimate needed]\" rather than estimating. Do not invent stakeholders' positions, legal authorities or precedents. The whole memo should normally fit on two pages, excluding attachments.",
+  "aliases": ["memo"],
+  "sections": [
+    {
+      "key": "header",
+      "heading": "Memo header",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "The routing block that identifies the memo. Fill in who the memo is for (name and title), who it is from (name, title and office), the date, and a subject line. The subject line should name the decision, not just the topic, for example \"Decision needed: extend the pilot grant programme to rural counties\". Add a decision deadline when the decision is time-bound.",
+      "elements": [
+        "Recipient name and title",
+        "Sender name, title and office",
+        "Date",
+        "Subject line that names the decision"
+      ],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Decision deadline, if any"],
+      "renderer": "static",
+      "scaffold": "**To:** [Name, title]\n**From:** [Name, title, office]\n**Date:** [Date]\n**Subject:** Decision needed: [the decision in a few words]\n**Decision needed by:** [Date, if time-bound]"
+    },
+    {
+      "key": "bottom-line",
+      "heading": "Bottom Line Up Front",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "State in the first sentence exactly what the reader is being asked to decide or approve, and by when. In the next sentence or two give the recommendation and the single most important reason for it, including the headline cost or impact. A reader who stops here should be able to act. Do not open with background or history.",
+      "lengthHint": "2–4 sentences",
+      "elements": [
+        "The specific decision or approval requested",
+        "Deadline or reason the decision is needed now",
+        "The recommended option, named",
+        "The main reason for the recommendation",
+        "Headline cost or impact"
+      ],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Headline cost or budget figure", "Decision deadline"],
+      "renderer": "narrative"
+    },
+    {
+      "key": "background",
+      "heading": "Background",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Give only the context the decision-maker needs to understand the options: how the issue arose, what policy or programme is in place now, relevant legal or budget authority, and any earlier decisions on the matter. Cite the sources for facts and figures. Leave out history that does not bear on the choice. A short bulleted list of key facts is often clearer than paragraphs.",
+      "lengthHint": "1–2 short paragraphs",
+      "elements": [
+        "How the issue arose",
+        "Current policy, programme or practice",
+        "Relevant legal, regulatory or budget authority",
+        "Prior decisions or commitments on the matter"
+      ],
+      "sourcesNeeded": [
+        "Governing statute, regulation or policy",
+        "Prior decision memos or directives",
+        "Programme reports or evaluations"
+      ],
+      "dataNeeded": ["Current programme budget or spend", "Key dates"],
+      "renderer": "narrative"
+    },
+    {
+      "key": "issue",
+      "heading": "Issue",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Define the problem the decision must solve, in concrete terms: who is affected, how much, and what happens if nothing is done. Quantify the scale with evidence where you can. Note the constraints any option must respect (budget, law, timing), since the Recommendation will be judged against them, and the positions of key stakeholders where the material documents them; if none are documented, say so rather than guessing. Stay neutral; do not argue for an option here.",
+      "lengthHint": "1–2 short paragraphs",
+      "elements": [
+        "Problem statement in one or two sentences",
+        "Who is affected and the scale, with evidence",
+        "Consequence of taking no action",
+        "Constraints any option must meet (budget, legal, timing)",
+        "Stakeholder positions, or a note that none are documented"
+      ],
+      "sourcesNeeded": [
+        "Data or evidence on the problem's scale",
+        "Stakeholder correspondence or consultation responses"
+      ],
+      "dataNeeded": ["Number of people or organisations affected", "Trend over time"],
+      "renderer": "narrative"
+    },
+    {
+      "key": "options",
+      "heading": "Options",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Set out two to four real, distinct options (each a choice the reader could make on its own), including the status quo when doing nothing is a genuine choice. Give each a short descriptive name and the same parts in the same order: what it involves, pros, cons, cost, and risk (including implementation and legal risk). Be even-handed: give the strongest case for each option, and do not signal the recommendation yet. When options are many or the comparison is close, add a small comparison table after the descriptions.",
+      "lengthHint": "About half the memo",
+      "elements": [
+        "Two to four distinct options, each named",
+        "Status quo or no-action option included, or a reason it is not viable",
+        "Pros and cons for every option",
+        "Cost estimate for every option",
+        "Risks for every option",
+        "Same structure used for each option"
+      ],
+      "sourcesNeeded": [
+        "Cost estimates or budget analysis",
+        "Legal review of options",
+        "Evaluations or examples of similar policies elsewhere"
+      ],
+      "dataNeeded": ["Cost of each option", "Expected impact of each option", "Implementation timeline for each option"],
+      "renderer": "narrative"
+    },
+    {
+      "key": "recommendation",
+      "heading": "Recommendation",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Name the recommended option and explain why it is better than the others against the constraints set out in the Issue section. Acknowledge its main drawback and how it would be managed. The recommendation must match the decision requested in the Bottom Line Up Front. End with a clear decision line the reader can mark, such as \"Approve / Disapprove / Discuss\".",
+      "lengthHint": "1 paragraph plus decision line",
+      "elements": [
+        "One recommended option, named",
+        "Reasons it outperforms the alternatives",
+        "Main drawback and how it will be managed",
+        "Consistent with the Bottom Line Up Front",
+        "Decision line (Approve / Disapprove / Discuss)"
+      ],
+      "sourcesNeeded": [],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "next-steps",
+      "heading": "Implementation and Next Steps",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Say what happens once the decision is made: the concrete actions, who owns each, and when it is due. Mention any approvals, consultations, notices or announcements needed, and how progress or success will be measured. A short numbered list or a small table of action, owner and date works best.",
+      "lengthHint": "Short list",
+      "elements": [
+        "Concrete actions after approval",
+        "Owner for each action",
+        "Dates or milestones",
+        "Further approvals, consultation or communications needed",
+        "How success will be measured"
+      ],
+      "sourcesNeeded": ["Implementation plan or project schedule"],
+      "dataNeeded": ["Milestone dates", "Performance measures or targets"],
+      "renderer": "narrative"
+    },
+    {
+      "key": "attachments",
+      "heading": "Attachments and References",
+      "level": 2,
+      "order": 80,
+      "required": false,
+      "guidance": "List the supporting documents attached to the memo and the key sources cited, so the reader can check the detail without it cluttering the memo. Give each attachment a letter and a descriptive title, and note who was consulted or cleared the memo if your organisation requires it.",
+      "elements": [
+        "Lettered list of attachments with descriptive titles",
+        "Key sources cited",
+        "Offices consulted or clearances, where required"
+      ],
+      "sourcesNeeded": ["Supporting analyses, data tables or drafts referred to in the memo"],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "decision-up-front",
+      "criterion": "Decision up front: the reader learns from the opening what they must decide, by when, and what is recommended.",
+      "levels": [
+        { "score": 4, "descriptor": "The first sentence states the specific decision requested and its deadline; the recommendation, its main reason and the headline cost follow immediately. The reader could act on this section alone." },
+        { "score": 3, "descriptor": "The decision and recommendation are in the opening section but are vague, slightly out of order, or missing the deadline or headline cost." },
+        { "score": 2, "descriptor": "The opening starts with background, or the decision is implied rather than stated; the reader must read further to learn what is being asked." },
+        { "score": 1, "descriptor": "No clear decision request anywhere near the top, or the memo informs without asking for a decision at all." }
+      ],
+      "appliesTo": ["header", "bottom-line"]
+    },
+    {
+      "key": "problem-defined",
+      "criterion": "Problem defined: the Issue section states the problem, its scale and the constraints, neutrally and with evidence.",
+      "levels": [
+        { "score": 4, "descriptor": "States the problem in one or two sentences, quantifies who is affected with cited evidence, says what happens if nothing is done, and lists the budget, legal and timing constraints the options must meet, without arguing for any option." },
+        { "score": 3, "descriptor": "Problem and consequences are clear, but the scale is unquantified or uncited, or the constraints are incomplete." },
+        { "score": 2, "descriptor": "The problem is described only in general terms or mixed with background, constraints are absent, or the section already argues for a solution." },
+        { "score": 1, "descriptor": "No identifiable problem statement; the memo moves from background straight to options." }
+      ],
+      "appliesTo": ["issue"]
+    },
+    {
+      "key": "options-fairness",
+      "criterion": "Options fairly presented: real, distinct alternatives compared on the same terms.",
+      "levels": [
+        { "score": 4, "descriptor": "Two to four genuine, distinct options, including no action where relevant, each described with the same parts (what, pros, cons, cost, risk). Each is given its strongest case and the recommendation is not signalled early." },
+        { "score": 3, "descriptor": "Real options with mostly consistent treatment; one option has thinner analysis, or a cost or risk is missing for one option." },
+        { "score": 2, "descriptor": "Options are lopsided: straw-man alternatives, overlapping options, or the analysis argues for one option throughout. Costs or risks are missing for several options." },
+        { "score": 1, "descriptor": "Only one option is offered, or options are listed without trade-offs, so the reader has no real choice." }
+      ],
+      "appliesTo": ["options"]
+    },
+    {
+      "key": "recommendation-justified",
+      "criterion": "Recommendation justified and consistent: one clear choice, reasoned against the alternatives and matching the request.",
+      "levels": [
+        { "score": 4, "descriptor": "Names exactly one option (or a stated combination), explains why it beats the alternatives against the stated constraints, owns its main drawback, matches the Bottom Line Up Front, and ends with a decision line." },
+        { "score": 3, "descriptor": "A clear recommendation with sound reasons, but the comparison with alternatives is thin or the drawback is not addressed." },
+        { "score": 2, "descriptor": "The recommendation is hedged or differs in wording or substance from the opening request; reasons restate the option's merits without comparison." },
+        { "score": 1, "descriptor": "No recommendation, several competing recommendations, or one that contradicts the analysis or the opening." }
+      ],
+      "appliesTo": ["bottom-line", "recommendation"]
+    },
+    {
+      "key": "actionability",
+      "criterion": "Actionability: the reader knows exactly what happens after the decision, who does it and when.",
+      "levels": [
+        { "score": 4, "descriptor": "Every next step has an owner and a date; required approvals, consultation and communications are named, and success measures are stated." },
+        { "score": 3, "descriptor": "Next steps are concrete actions, but some lack an owner or a date, or required approvals or success measures are missing." },
+        { "score": 2, "descriptor": "Next steps are general intentions (\"work with partners\", \"monitor progress\") without owners or timing." },
+        { "score": 1, "descriptor": "No next steps, or the memo ends without saying how the decision would be carried out." }
+      ],
+      "appliesTo": ["next-steps"]
+    }
+  ],
+  "provenance": {
+    "source": "Federal Plain Language Guidelines (digital.gov, formerly plainlanguage.gov) for the writing rules; section structure, guidance and rubric hand-written from common government decision-memo practice",
+    "url": "https://digital.gov/guides/plain-language",
+    "license": "Public domain (US government); section list, guidance and rubric are own text",
+    "retrieved": "2026-10-07"
+  }
+}

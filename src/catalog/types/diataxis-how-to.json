@@ -1,0 +1,259 @@
+{
+  "key": "diataxis-how-to",
+  "version": 1,
+  "title": "How-to guide (Diátaxis)",
+  "family": "technical",
+  "summary": "A goal-oriented guide that walks an already-competent reader through the steps needed to get a specific real-world task done, such as configuring, deploying or troubleshooting something. It contains actions, not lessons: explanation and full reference detail are linked rather than included. Follows the how-to guide form of the Diátaxis documentation framework.",
+  "signals": [
+    "How to …",
+    "how-to guide",
+    "step-by-step instructions for a task",
+    "numbered steps",
+    "if you want to …, do …",
+    "before you begin",
+    "prerequisites",
+    "run the following command",
+    "verify that",
+    "recipe",
+    "related reference",
+    "Diátaxis",
+    "task-oriented documentation",
+    "this guide shows how to",
+    "to <do something>, run …"
+  ],
+  "audience": "Practitioners who already know the product and its basic concepts and need to accomplish one specific task now, usually in the middle of their own work.",
+  "tone": "Direct, practical and economical: imperative and conditional imperative mood, second person, no marketing, no digressions.",
+  "preamble": "You are an experienced technical writer producing a how-to guide in the Diátaxis sense: directions that take a competent user to a goal they have already chosen. Write only what the reader must do and the minimum they must know to do it. Do not teach concepts, justify design choices, or survey alternatives; when background or full option lists matter, point to the relevant reference or explanation instead of including it. Frame the guide around the user's goal and the problem they face, not around the tool's features or menus. The guide need not cover a whole workflow end to end: start where the reader's task starts and stop when the goal is reached, preferring what is practically useful over completeness. Use imperatives and conditional imperatives (\"To keep existing data, run…\", \"If the service fails to start, check…\"), keep steps in the order the reader will perform them, and allow for forks where real situations differ. Assume basic competence; do not explain how to open a terminal or what a file is unless the type's audience demands it. Use code blocks for commands, file contents and expected output, and mark values the reader must replace with clear placeholders such as <PROJECT_ID>. Never invent commands, flags, file paths, settings, version numbers or URLs: take them from the sources or the writer's notes, and where one is unknown write a visible placeholder like \"[command needed]\".",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "goal",
+      "heading": "Goal",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "State in one or two sentences what the reader will have accomplished when they finish, phrased as a practical outcome (\"This guide shows how to rotate the API signing key without downtime\"). Name the situation it applies to so readers can tell quickly whether they are in the right place. Do not explain why the feature exists or how it works internally; at most link to an explanation. The document title should read \"How to <task>\".",
+      "lengthHint": "1–2 sentences",
+      "elements": [
+        "Title phrased as \"How to <task>\"",
+        "Outcome stated as a concrete task the reader will complete",
+        "Situation or context in which the guide applies",
+        "No conceptual explanation beyond one clause (links instead)"
+      ],
+      "sourcesNeeded": [
+        "Product documentation or ticket describing the task",
+        "User question or support request the guide answers"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "before-you-begin",
+      "heading": "Before You Begin",
+      "level": 2,
+      "order": 20,
+      "required": false,
+      "guidance": "List what must already be true before the first step: access and permissions, installed tools with minimum versions, accounts, and any earlier task the reader should have completed. Keep it a short bulleted list of conditions, not instructions for meeting them; link to the guide or reference that covers each one. Skip anything a competent member of the audience can be assumed to have.",
+      "lengthHint": "3–6 bullets",
+      "elements": [
+        "Required access, roles or permissions",
+        "Tools or software with minimum versions",
+        "Prior tasks or configuration, linked rather than explained",
+        "Assumed competence stated briefly where it is not obvious"
+      ],
+      "sourcesNeeded": [
+        "Installation or system requirements reference",
+        "Permissions or roles reference"
+      ],
+      "dataNeeded": [
+        "Supported versions"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "steps",
+      "heading": "Steps",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Write a numbered sequence of actions in the order the reader performs them, one action per step, each starting with an imperative verb. Use conditional imperatives where the path depends on the reader's situation (\"If you use a managed database, skip to step 5\"), and split the guide into short sub-headed parts (###) when the task has distinct phases. Put commands, configuration and expected output in code blocks, with placeholders for values the reader supplies. Include only the explanation needed to choose between branches or avoid a destructive mistake, and give warnings before the step they apply to, not after.",
+      "lengthHint": "Typically 4–12 numbered steps",
+      "elements": [
+        "Numbered, ordered actions each starting with an imperative verb",
+        "Exact commands, settings or UI paths in code blocks or bold",
+        "Placeholders marked for values the reader must supply",
+        "Conditional branches for situations that genuinely differ",
+        "Warnings placed before risky or irreversible steps",
+        "No teaching, history or feature tours between steps"
+      ],
+      "sourcesNeeded": [
+        "CLI or API reference for the commands used",
+        "Configuration reference",
+        "Release notes for the version covered",
+        "Engineer's working notes or a tested runbook"
+      ],
+      "dataNeeded": [
+        "Exact command syntax and flags",
+        "Configuration keys and default values",
+        "Expected command output"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "verify-the-result",
+      "heading": "Verify the Result",
+      "level": 2,
+      "order": 40,
+      "required": false,
+      "guidance": "Tell the reader how to confirm the task worked: a command to run, a page to check, or a log line to look for, together with what success looks like. If there are common failure signs, list each with the single most likely fix or a link to the troubleshooting reference. Keep it to checks and fixes, not a discussion of causes.",
+      "lengthHint": "1–3 checks",
+      "elements": [
+        "A concrete check the reader can perform",
+        "What a successful result looks like (expected output or state)",
+        "Common failure signs with a fix or link"
+      ],
+      "sourcesNeeded": [
+        "Troubleshooting guide or known-issues list"
+      ],
+      "dataNeeded": [
+        "Expected output or status values",
+        "Common error messages"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "related-reference",
+      "heading": "Related Reference",
+      "level": 2,
+      "order": 50,
+      "required": false,
+      "guidance": "Give a short list of links to the material the guide deliberately left out: full reference for the commands and settings used, the explanation of the underlying concepts, and related how-to guides for neighbouring tasks. Label each link with what the reader will find there. Do not summarise the linked content. Use only links that appear in the sources or the writer's notes; where a needed page is known to exist but its URL is not given, write the page name with a visible \"[link needed]\" placeholder. Omit the section if there is genuinely nothing to point to.",
+      "lengthHint": "2–6 links",
+      "elements": [
+        "Reference for the main commands, APIs or settings used in the steps",
+        "Link to an explanation of the underlying concept",
+        "Related how-to guides for next or adjacent tasks",
+        "Each link labelled with what the reader will find"
+      ],
+      "sourcesNeeded": [
+        "Reference documentation index",
+        "Concept or explanation pages",
+        "Neighbouring how-to guides"
+      ],
+      "dataNeeded": [
+        "URLs of the linked pages"
+      ],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "goal-orientation",
+      "criterion": "Goal orientation: the guide is framed around a real task the user wants to accomplish, not around the tool's features.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "The title and goal name a concrete user task and situation; every step moves the reader toward that outcome and nothing exists only to show off a feature."
+        },
+        {
+          "score": 3,
+          "descriptor": "The goal is clear and task-shaped, but a step or two drifts into describing features or options the reader does not need for this task."
+        },
+        {
+          "score": 2,
+          "descriptor": "The guide is organised around the product (a menu, a command, a feature) more than a user goal; the reader has to work out which parts serve their task."
+        },
+        {
+          "score": 1,
+          "descriptor": "No identifiable user goal; the document is a feature tour or reference dump presented as a guide."
+        }
+      ],
+      "appliesTo": [
+        "goal",
+        "steps"
+      ]
+    },
+    {
+      "key": "actionability",
+      "criterion": "Actionability: a competent reader can follow the steps in order and finish the task without guessing.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every step is one imperative action with exact commands, values or UI paths; placeholders are clearly marked; the order matches what the reader actually does; nothing required is missing."
+        },
+        {
+          "score": 3,
+          "descriptor": "Steps are followable, but one or two combine several actions, leave a value implicit, or omit a minor step an experienced reader can infer."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several steps are vague (\"configure the service appropriately\"), out of order, or missing commands; the reader must consult other material to proceed."
+        },
+        {
+          "score": 1,
+          "descriptor": "The task cannot be completed from the guide: key steps are missing, wrong, or described only in general terms."
+        }
+      ],
+      "appliesTo": [
+        "before-you-begin",
+        "steps",
+        "verify-the-result"
+      ]
+    },
+    {
+      "key": "action-not-explanation",
+      "criterion": "Action, not explanation: teaching, background and full reference detail are left out and linked instead.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "The guide contains only actions and the minimum context needed to choose a branch or avoid harm; concepts and exhaustive options are linked from Related Reference."
+        },
+        {
+          "score": 3,
+          "descriptor": "Mostly action, with an occasional paragraph of background or a list of options that could have been a link."
+        },
+        {
+          "score": 2,
+          "descriptor": "Explanation and reference material are interleaved with the steps often enough to slow the reader and hide the actions."
+        },
+        {
+          "score": 1,
+          "descriptor": "Reads as a tutorial or explanation; the actual steps are buried in teaching or digressions."
+        }
+      ]
+    },
+    {
+      "key": "real-world-adaptability",
+      "criterion": "Real-world adaptability: the guide handles the situations real users meet, including forks, risks and confirming success.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Genuine variations are handled with conditional imperatives; warnings precede risky steps; prerequisites are stated; the reader can verify success and recognise common failures."
+        },
+        {
+          "score": 3,
+          "descriptor": "Handles the main path well and most variations, but one realistic fork, warning or success check is missing."
+        },
+        {
+          "score": 2,
+          "descriptor": "Assumes a single ideal environment; important variations, prerequisites or warnings are absent, so many readers will get stuck."
+        },
+        {
+          "score": 1,
+          "descriptor": "Ignores real conditions entirely; following it in a typical environment is likely to fail or cause damage without warning."
+        }
+      ],
+      "appliesTo": [
+        "before-you-begin",
+        "steps",
+        "verify-the-result"
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "Diátaxis documentation framework, \"How-to guides\" (Daniele Procida, diataxis.fr): principles paraphrased; the section list is own text following common technical-writing practice, not prescribed by Diátaxis",
+    "url": "https://diataxis.fr/how-to-guides/",
+    "license": "CC BY-SA 4.0 source (paraphrased, attributed to Daniele Procida, diataxis.fr); section list, guidance and rubric are own text",
+    "retrieved": "2026-10-07"
+  }
+}

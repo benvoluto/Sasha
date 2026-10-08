@@ -1,0 +1,300 @@
+{
+  "key": "standard-operating-procedure",
+  "version": 1,
+  "title": "Standard Operating Procedure (SOP)",
+  "family": "technical",
+  "summary": "A controlled document that tells trained staff exactly how to carry out a routine technical or laboratory operation the same way every time, following the EPA QA/G-6 technical SOP structure. It sets out scope, method summary, safety and cautions, personnel, equipment, numbered procedure steps, records, and quality control so results are consistent, defensible and auditable.",
+  "signals": [
+    "standard operating procedure",
+    "SOP",
+    "SOP number",
+    "revision number",
+    "effective date",
+    "approval signatures",
+    "scope and applicability",
+    "summary of method",
+    "health and safety warnings",
+    "interferences",
+    "personnel qualifications",
+    "equipment and supplies",
+    "calibration",
+    "sample collection",
+    "sample handling and preservation",
+    "chain of custody",
+    "data and records management",
+    "quality control",
+    "QA/QC",
+    "step-by-step procedure"
+  ],
+  "audience": "Trained staff who will perform the procedure at the bench or in the field, plus the supervisors, quality managers and auditors who check that it was followed.",
+  "tone": "Direct, precise and imperative: numbered steps, exact quantities and units, no persuasion and no hedging.",
+  "preamble": "You are an experienced quality assurance writer preparing a standard operating procedure in the style of EPA QA/G-6. Write so that a trained person who has never seen this operation done locally could perform it correctly from the document alone, and so that two people following it would get the same result. Write procedure steps as numbered imperative sentences in the order they are performed, one action per step, with exact quantities, units, settings, tolerances, times and acceptance criteria. Name specific equipment, reagents and forms rather than describing them loosely; where a model number, concentration or limit is not in the sources or notes, insert a bracketed placeholder such as [model], [concentration] or [acceptance limit] instead of guessing. Put each safety warning or caution immediately before the step it applies to as well as in its own section. Use \"must\" for mandatory requirements and \"should\" only for recommendations, and do not mix them. Do not explain the underlying science beyond what is needed to perform the task; cite a reference instead. Keep terminology identical across sections once a term is defined.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "title-page",
+      "heading": "Title Page",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Document-control front matter that identifies the procedure and shows it has been reviewed and approved. It carries the SOP title, a unique SOP identifier, the revision number and effective date, the issuing organization, and the names, titles, signatures and dates of the author and approvers. A long SOP also carries a table of contents, and every page should show the SOP number, revision, date and page x of y. Fill it in directly; it is not drafted by the model.",
+      "elements": [
+        "Descriptive SOP title",
+        "Unique SOP number and revision number",
+        "Effective date",
+        "Issuing organization or unit",
+        "Author and approver names, titles, signatures and dates"
+      ],
+      "sourcesNeeded": ["Document control register", "Previous revision of this SOP"],
+      "dataNeeded": ["SOP numbering scheme", "Approver list"],
+      "renderer": "static",
+      "scaffold": "**Title:** \n**SOP number:** \n**Revision:** \n**Effective date:** \n**Organization / unit:** \n\n**Prepared by:** (name, title, signature, date)\n\n**Reviewed by (QA):** (name, title, signature, date)\n\n**Approved by:** (name, title, signature, date)\n\n**Revision history:** (revision, date, summary of changes)"
+    },
+    {
+      "key": "scope-and-applicability",
+      "heading": "Scope and Applicability",
+      "level": 2,
+      "order": 20,
+      "guidance": "State the purpose of the procedure and exactly what it covers: the operation, the sample types or matrices, the analytes or measurements, and the range over which it is valid. Say who must use it and in which settings, and name any regulatory method, permit or program requirement it satisfies. State explicitly what is out of scope so readers know when to use a different SOP.",
+      "lengthHint": "1-2 paragraphs",
+      "elements": [
+        "Purpose of the procedure in one or two sentences",
+        "Operations, matrices or analytes covered",
+        "Applicable range or limits (for example concentration or detection range)",
+        "Who must follow it and where",
+        "Exclusions or situations where it does not apply",
+        "Regulatory method or program requirement it meets, if any"
+      ],
+      "sourcesNeeded": ["Regulatory or reference method", "Quality assurance project plan"],
+      "dataNeeded": ["Method detection or reporting limits", "Validated working range"]
+    },
+    {
+      "key": "summary-of-method",
+      "heading": "Summary of Method",
+      "level": 2,
+      "order": 30,
+      "guidance": "Give a brief overview of how the procedure works from start to finish so a reader understands the sequence before reaching the detailed steps. Name the principle or technique used and the main stages (for example collection, preservation, preparation, measurement, calculation). Keep it to a short paragraph; detail belongs in the Procedure section.",
+      "lengthHint": "1 short paragraph",
+      "elements": [
+        "Principle or technique the method relies on",
+        "Main stages of the procedure in order",
+        "Final output or result produced"
+      ],
+      "sourcesNeeded": ["Reference method or manufacturer's method description"],
+      "dataNeeded": []
+    },
+    {
+      "key": "definitions",
+      "heading": "Definitions",
+      "level": 2,
+      "order": 40,
+      "guidance": "Define the acronyms, abbreviations and specialized terms used in the SOP, especially those with a specific local or regulatory meaning (for example field blank, holding time, batch). Present them as an alphabetical list or table. Use each term exactly as defined everywhere else in the document.",
+      "lengthHint": "Alphabetical list or table",
+      "elements": [
+        "Every acronym and abbreviation used in the SOP is expanded",
+        "Specialized or quality-control terms defined in plain words",
+        "Entries listed alphabetically"
+      ],
+      "sourcesNeeded": ["Organization glossary", "Reference method definitions"],
+      "dataNeeded": []
+    },
+    {
+      "key": "health-and-safety-warnings",
+      "heading": "Health and Safety Warnings",
+      "level": 2,
+      "order": 50,
+      "required": false,
+      "guidance": "Describe hazards to people from the chemicals, equipment, samples or environment involved, and the controls that reduce them. Name required personal protective equipment, engineering controls such as fume hoods, and emergency actions for spills or exposure. Refer to safety data sheets and the site safety plan rather than reproducing them, and repeat each critical warning at the step where it applies.",
+      "elements": [
+        "Specific hazards (chemical, biological, physical, electrical) identified",
+        "Required personal protective equipment",
+        "Engineering controls or safe-handling requirements",
+        "Emergency, spill or exposure response",
+        "References to safety data sheets or the site safety plan"
+      ],
+      "sourcesNeeded": ["Safety data sheets", "Site health and safety plan", "Chemical hygiene plan"],
+      "dataNeeded": ["Exposure limits for hazardous materials"]
+    },
+    {
+      "key": "cautions",
+      "heading": "Cautions",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "List actions or conditions that could damage equipment, degrade samples or invalidate results, as distinct from risks to people. Say what to avoid, why, and what to do if it happens. Repeat each caution immediately before the step it affects.",
+      "elements": [
+        "Actions that could damage equipment or instruments",
+        "Conditions that could compromise samples or data",
+        "Corrective action if a caution is breached"
+      ],
+      "sourcesNeeded": ["Instrument manuals", "Reference method"],
+      "dataNeeded": []
+    },
+    {
+      "key": "interferences",
+      "heading": "Interferences",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "Identify substances, conditions or practices known to bias or interfere with the measurement, such as matrix effects, contamination sources or temperature extremes. For each one, describe how to recognize it and how to prevent, minimize or correct for it.",
+      "elements": [
+        "Known interferences named",
+        "Effect of each interference on results",
+        "How to prevent, detect or correct for each interference"
+      ],
+      "sourcesNeeded": ["Reference method", "Method validation records"],
+      "dataNeeded": ["Interference or recovery study results"]
+    },
+    {
+      "key": "personnel-qualifications-and-responsibilities",
+      "heading": "Personnel Qualifications and Responsibilities",
+      "level": 2,
+      "order": 80,
+      "guidance": "State the education, training, certification and demonstrated proficiency someone needs before performing the procedure unsupervised. Assign responsibilities by role (for example analyst, supervisor, quality assurance officer) so it is clear who performs, reviews and approves each part. Say how training and proficiency are documented.",
+      "elements": [
+        "Required training, experience or certification",
+        "How proficiency is demonstrated before independent work",
+        "Responsibilities assigned to each role",
+        "How training records are kept"
+      ],
+      "sourcesNeeded": ["Training program requirements", "Organization chart or role descriptions"],
+      "dataNeeded": []
+    },
+    {
+      "key": "equipment-and-supplies",
+      "heading": "Equipment and Supplies",
+      "level": 2,
+      "order": 90,
+      "guidance": "List every instrument, piece of equipment, reagent, standard, consumable and form needed, so the operator can gather everything before starting. Give specifications that matter to the result: grade or purity, concentration, size, model or equivalent, and storage requirements. A table with item, specification and quantity works well.",
+      "lengthHint": "Table or bulleted list",
+      "elements": [
+        "Instruments and equipment with model or required specification",
+        "Reagents and standards with grade, purity or concentration",
+        "Consumables and containers",
+        "Storage conditions and shelf life where relevant",
+        "Forms, logbooks or software used"
+      ],
+      "sourcesNeeded": ["Equipment inventory", "Manufacturer specifications", "Reference method"],
+      "dataNeeded": ["Reagent and standard specifications", "Container and preservative requirements"]
+    },
+    {
+      "key": "procedure",
+      "heading": "Procedure",
+      "level": 2,
+      "order": 100,
+      "guidance": "Give the step-by-step instructions in the order they are performed, as numbered imperative steps grouped under short sub-headings for each stage: instrument or equipment calibration, sample collection, sample handling and preservation, sample preparation and analysis, troubleshooting, data acquisition, calculations and data reduction, and the computer hardware and software used (name and version). Omit a stage that does not apply rather than padding it. Each step states one action with exact quantities, settings, times and acceptance criteria, and says what to do when a criterion is not met. Show any calculation as a formula with every variable and unit defined. Include the decision points and troubleshooting checks an operator will actually face.",
+      "lengthHint": "Numbered steps; typically the longest section",
+      "elements": [
+        "Calibration steps with frequency and acceptance criteria",
+        "Sample collection steps (if applicable)",
+        "Sample handling, preservation, holding times and chain of custody",
+        "Preparation and analysis steps numbered in order of performance",
+        "Troubleshooting for common problems",
+        "Data acquisition, calculations and data reduction with formulas, variables and units defined",
+        "Computer hardware and software named with version, if used"
+      ],
+      "sourcesNeeded": ["Reference method", "Instrument manuals", "Existing bench notes or work instructions"],
+      "dataNeeded": ["Instrument settings", "Calibration standards and acceptance limits", "Holding times and preservation requirements", "Calculation formulas", "Software names and versions"]
+    },
+    {
+      "key": "data-and-records-management",
+      "heading": "Data and Records Management",
+      "level": 2,
+      "order": 110,
+      "guidance": "Describe how data and records are captured, reviewed, reported and retained. Name the forms, logbooks, data systems and file formats used; who reviews and verifies the data; how corrections are made; and where records are stored and for how long. Attach or reference blank forms and checklists.",
+      "elements": [
+        "Forms, logbooks or data systems used to record results",
+        "Data review and verification steps and who performs them",
+        "How errors are corrected and documented",
+        "Reporting format and recipients",
+        "Record storage location and retention period"
+      ],
+      "sourcesNeeded": ["Records retention policy", "Data management plan", "Blank forms and checklists"],
+      "dataNeeded": ["Retention periods", "Reporting units and significant figures"]
+    },
+    {
+      "key": "quality-control-and-quality-assurance",
+      "heading": "Quality Control and Quality Assurance",
+      "level": 2,
+      "order": 120,
+      "guidance": "Specify the quality control checks that show the procedure is performing as intended, such as blanks, duplicates, spikes, check standards or reference materials. For each check give its frequency, its acceptance criterion and the corrective action when it fails. Describe the quality assurance oversight, such as data audits, proficiency tests and periodic review of the SOP itself.",
+      "lengthHint": "Table of QC checks plus a short paragraph",
+      "elements": [
+        "Each QC check named (blanks, duplicates, spikes, standards)",
+        "Frequency for each QC check",
+        "Acceptance criteria for each QC check",
+        "Corrective action when a QC check fails",
+        "QA oversight: audits, proficiency testing, SOP review schedule"
+      ],
+      "sourcesNeeded": ["Quality assurance project plan", "Quality management plan", "Reference method QC requirements"],
+      "dataNeeded": ["QC acceptance limits", "Historical control chart data"]
+    },
+    {
+      "key": "references",
+      "heading": "References",
+      "level": 2,
+      "order": 130,
+      "guidance": "List the documents the SOP relies on or refers to: reference methods, regulations, manufacturer manuals, related SOPs and safety documents. Give enough detail (title, number, version or date, issuer) for a reader to retrieve each one. Cite only documents actually referred to in the SOP.",
+      "elements": [
+        "Reference methods and regulations cited",
+        "Manufacturer manuals cited",
+        "Related SOPs listed by number and revision",
+        "Each entry is complete enough to retrieve"
+      ],
+      "sourcesNeeded": ["Reference methods", "Related SOPs", "Manufacturer manuals"],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "reproducibility",
+      "criterion": "Reproducibility: a trained person could perform the procedure from the document alone and get the same result as a colleague.",
+      "appliesTo": ["procedure", "equipment-and-supplies", "summary-of-method"],
+      "levels": [
+        { "score": 4, "descriptor": "Steps are numbered in performance order, one action each, with exact quantities, units, settings, times and acceptance criteria. Equipment and reagents are fully specified. Decision points and failure actions are spelled out. No step depends on unwritten local knowledge." },
+        { "score": 3, "descriptor": "Steps are complete and in order, but a few lack an exact value, tolerance or failure action, or bundle two actions together. An experienced operator would fill the gaps the same way." },
+        { "score": 2, "descriptor": "Several steps are vague (\"add enough\", \"calibrate the instrument\"), out of order, or missing. Different operators would likely do the work differently." },
+        { "score": 1, "descriptor": "The procedure reads as a general description rather than instructions. It cannot be followed without asking the author." }
+      ]
+    },
+    {
+      "key": "safety-and-cautions",
+      "criterion": "Safety and cautions: hazards to people, equipment and data are identified with controls, and warnings appear where they are needed.",
+      "appliesTo": ["health-and-safety-warnings", "cautions", "interferences", "procedure"],
+      "levels": [
+        { "score": 4, "descriptor": "Every relevant hazard, caution and interference is named with its control or correction. Required protective equipment and emergency actions are stated. Each critical warning is repeated immediately before the step it affects." },
+        { "score": 3, "descriptor": "Main hazards and cautions are covered with controls, but a warning is missing at the point of use or a minor interference is not addressed." },
+        { "score": 2, "descriptor": "Hazards are listed generically without specific controls, or warnings appear only in a separate section and not at the relevant steps." },
+        { "score": 1, "descriptor": "Significant hazards, cautions or interferences are omitted, or controls are wrong or unsafe." }
+      ]
+    },
+    {
+      "key": "quality-control",
+      "criterion": "Quality control: the SOP defines checks, frequencies, acceptance criteria and corrective actions that would show whether results are valid.",
+      "appliesTo": ["quality-control-and-quality-assurance", "procedure", "data-and-records-management"],
+      "levels": [
+        { "score": 4, "descriptor": "Each QC check has a stated frequency, a numeric acceptance criterion and a corrective action. Calibration acceptance is defined. Data review and verification responsibilities are assigned, and records support an audit trail." },
+        { "score": 3, "descriptor": "QC checks and acceptance criteria are present, but one or two lack a frequency or corrective action, or data review is only loosely described." },
+        { "score": 2, "descriptor": "QC is mentioned without measurable criteria, or corrective actions and data review are largely missing." },
+        { "score": 1, "descriptor": "No meaningful quality control or data verification is described; results could not be shown to be valid." }
+      ]
+    },
+    {
+      "key": "document-control",
+      "criterion": "Document control and scope: the SOP is identifiable, approved and clearly bounded, with consistent terms and traceable references.",
+      "appliesTo": ["title-page", "scope-and-applicability", "definitions", "personnel-qualifications-and-responsibilities", "references"],
+      "levels": [
+        { "score": 4, "descriptor": "Title page has a unique number, revision, effective date and approvals. Scope states what is covered and excluded. Every term and acronym is defined and used consistently. Roles and training requirements are explicit. References are complete enough to retrieve." },
+        { "score": 3, "descriptor": "Document control and scope are in place, with minor gaps such as a missing exclusion, an undefined acronym or an incomplete reference." },
+        { "score": 2, "descriptor": "Several control elements are missing (revision, approvals, exclusions, roles), or terms are used inconsistently." },
+        { "score": 1, "descriptor": "The document cannot be identified, its approval status is unknown, or its scope is unclear enough that users could apply it in the wrong situation." }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "EPA QA/G-6, Guidance for Preparing Standard Operating Procedures (technical SOP format, April 2007 revision of the March 2001 guidance)",
+    "url": "https://www.epa.gov/quality/guidance-preparing-standard-operating-procedures-epa-qag-6-march-2001",
+    "license": "Public domain (US government)",
+    "retrieved": "2026-10-07"
+  }
+}

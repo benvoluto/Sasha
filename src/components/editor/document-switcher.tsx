@@ -1,14 +1,17 @@
 "use client";
 
 // The "Docs" button: the team's documents, searchable, with a way to start a
-// new one. It replaces the old case list as the way to move between documents,
-// and is where documents are archived, restored and deleted.
+// new one (blank, or from a document type). It replaces the old case list as
+// the way to move between documents, and is where documents are archived,
+// restored and deleted.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Archive, ArchiveRestore, DocsIcon, FolderOpen, Loader2, Plus, Search, Trash2 } from "@/components/icons";
+import { Archive, ArchiveRestore, ChevronDown, DocsIcon, FileText, FolderOpen, Loader2, Plus, Search, Trash2, TypesIcon } from "@/components/icons";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { createDocumentOfType, TypeGallery, useDocumentTypes } from "./type-picker";
 
 type Summary = { id: string; title: string; excerpt: string; updated_at: string; updated_by: string };
 
@@ -32,6 +35,8 @@ export function DocumentSwitcher({ currentId }: { currentId: string | null }) {
   /** The row asking "delete this?", and the row with a request running. */
   const [confirming, setConfirming] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const catalog = useDocumentTypes();
 
   useEffect(() => {
     setConfirming(null);
@@ -111,16 +116,31 @@ export function DocumentSwitcher({ currentId }: { currentId: string | null }) {
             placeholder="Search documents"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              router.push(`/?n=${Date.now()}`);
-            }}
-            className="flex shrink-0 items-center gap-1 rounded-md bg-[var(--doc-accent)] px-2.5 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-          >
-            <Plus className="h-3.5 w-3.5" /> New
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="flex shrink-0 items-center gap-1 rounded-md bg-[var(--doc-accent)] px-2.5 py-1.5 text-xs font-semibold text-white hover:opacity-90">
+                <Plus className="h-3.5 w-3.5" /> New <ChevronDown className="h-3 w-3 opacity-80" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-48">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setOpen(false);
+                  router.push(`/?n=${Date.now()}`);
+                }}
+              >
+                <FileText className="h-4 w-4" /> Blank document
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setOpen(false);
+                  setGalleryOpen(true);
+                }}
+              >
+                <TypesIcon className="h-4 w-4" /> From a type…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="max-h-[60vh] overflow-y-auto py-1">
           {error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
@@ -192,11 +212,29 @@ export function DocumentSwitcher({ currentId }: { currentId: string | null }) {
           <button type="button" onClick={() => setArchived((a) => !a)} className="flex items-center gap-1 text-[var(--doc-muted)] hover:text-[var(--doc-ink)]">
             <Archive className="h-3.5 w-3.5" /> {archived ? "Show current documents" : "Show archived"}
           </button>
-          <Link href="/library" className="flex items-center gap-1 text-[var(--doc-muted)] hover:text-[var(--doc-ink)]">
-            <FolderOpen className="h-3.5 w-3.5" /> Source library
-          </Link>
+          <span className="flex items-center gap-3">
+            <Link href="/catalog" className="flex items-center gap-1 text-[var(--doc-muted)] hover:text-[var(--doc-ink)]">
+              <TypesIcon className="h-3.5 w-3.5" /> Document types
+            </Link>
+            <Link href="/library" className="flex items-center gap-1 text-[var(--doc-muted)] hover:text-[var(--doc-ink)]">
+              <FolderOpen className="h-3.5 w-3.5" /> Source library
+            </Link>
+          </span>
         </div>
       </PopoverContent>
+      <TypeGallery
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        types={catalog.types}
+        loading={catalog.loading}
+        error={catalog.error}
+        title="New document from a type"
+        onChoose={async (t) => {
+          const id = await createDocumentOfType(t.key);
+          setGalleryOpen(false);
+          router.push(`/d/${id}`);
+        }}
+      />
     </Popover>
   );
 }

@@ -22,6 +22,20 @@ describe("sections", () => {
     expect(s[2].bodyText).toBe("Money.");
   });
 
+  it("with own: stops at a typed sub-heading and leaves sub-heading titles out of the prose", () => {
+    const nested: PMNode = {
+      type: "doc",
+      content: [h(2, "Strategy", "s1", "strategy"), p("Intro."), h(3, "Notes", "s2"), p("Free."), h(3, "Significance", "s3", "significance"), p("Why."), h(2, "Budget", "s4", "budget")],
+    };
+    const s = listSections(nested, { own: true });
+    expect(s[0]).toMatchObject({ bodyText: "Intro.\nNotes\nFree.", proseText: "Intro.\nFree.", hasContent: true });
+    expect(s[2]).toMatchObject({ bodyText: "Why.", hasContent: true });
+    const headingsOnly = listSections({ type: "doc", content: [h(2, "Strategy", "s1", "strategy"), h(3, "Sig", "s3", "significance")] }, { own: true });
+    expect(headingsOnly[0]).toMatchObject({ bodyText: "", hasContent: false });
+    // The default still reads to the next heading at the same or a higher level.
+    expect(listSections(nested)[0].bodyText).toBe("Intro.\nNotes\nFree.\nSignificance\nWhy.");
+  });
+
   it("extracts plain text and counts words", () => {
     expect(docText(doc)).toContain("Reason\nBecause.");
     expect(wordCount("  one two\nthree ")).toBe(3);

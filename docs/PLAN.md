@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phases 0–2 are built. See §12 for progress notes.
+Status (October 2026): Phases 0–3 are built. See §12 for progress notes.
 
 ---
 
@@ -607,12 +607,37 @@ switcher (the legacy `/archived` page is gone); workflow model calls are audited
   and paths cannot be guessed. Moving to a private store is a later option (2.x makes privacy a
   property of the store, which needs a new store and a move of the legacy blobs).
 
+**Phase 3 (done).**
+- Catalog: zod `DocumentTypeDefinition` (`src/catalog/schema.ts`), universal rubric, 12 file types in
+  `src/catalog/types/` (NIH Specific Aims + Research Strategy, business plan, PRD, design doc/RFC, SOP,
+  IMRaD report, policy/decision memo, Diátaxis how-to and tutorial, FIE outline, general report,
+  proposal). `npm run catalog:build` validates them and writes `catalog.bundle.json` and
+  `catalog.index.json`; CI runs it with `--check`. Old keys (`memo`, `general_report`, `fie_basic`) are
+  aliases.
+- `document_type` table for team edits, team-made types and enable/disable; the loader merges file
+  types with team rows. `/api/document-types` (list, get, edit, enable, revert, create,
+  `from-document` = save outline as type) and the `/catalog` admin page (admins edit, members read).
+- New document of a type builds the outline with `specKey` headings; the type picker and gallery read
+  the catalog; "Start from a type" on blank documents.
+- Section tools in a heading gutter: Draft, Rewrite (presets, "less" variants, custom), Section notes
+  with dictation (`src/hooks/use-speech-to-text.ts`, ported from deskapp, `__sashaDictation` bridge)
+  and Draft/Rewrite from notes. Generation (`src/lib/sections/`) runs on Opus, grounded in the
+  document's linked sources and passages and the type's preamble and section guidance, snapshots a
+  version first, and is applied as one undoable step, with a prompt if the section changed meanwhile.
+- Living outline: section and element status (Haiku, cached, rate-gated), links to headings, "Add" for
+  missing sections.
+- The legacy report service reads its templates from the catalog through an adapter.
+- No real model call was exercised in the smoke test (no API key locally); the routes return 503 when
+  Claude is not configured.
+
 **Known debt carried forward.**
 - The workflow engine, report service, assistant and canvas still read legacy upload groups
   (`fetchGroupMetadata`). These routes are not team-scoped. Phase 3 (report service), Phase 4
   (assistant, suggestions) and Phase 6 (engine) move them to sources; then delete `upload-groups`,
   `cases`, `@modal/(.)cases` and the case components.
 - Workflows, runs and `app_setting` have no `team_id` (Phase 6).
+- Section status `edited`/`reviewed` is never set; the outline-status cache and rate gate are per
+  server process.
 - No migration runner yet; schema changes are idempotent DDL kept in step across the store
   constants, `db/schema.sql` and the setup route.
 

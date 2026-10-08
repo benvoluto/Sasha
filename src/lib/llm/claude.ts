@@ -5,7 +5,10 @@
 //
 // Each request has its own timeout and at most one retry, so a slow or hung
 // call fails inside the route's time budget and the caller's catch (and the
-// audit write) still runs.
+// audit write) still runs. Long prose (the draft tier, or a reply too large for
+// a plain request) streams: the timeout then covers only the wait for the
+// reply to start, so a long reply that is still arriving is not cut off and
+// replayed, and an overall deadline bounds the whole call instead.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
@@ -30,6 +33,13 @@ export const CLAUDE_REQUEST_TIMEOUT_MS = 120_000;
  * idle connection is more likely to be dropped anyway.
  */
 const STREAM_ABOVE_TOKENS = 16_000;
+/**
+ * The whole of a streamed call, retries included. It fits a 300s function with
+ * room for the work before the call (loading the document and its grounding),
+ * the audit write and the response, and is not retried: a reply that
+ * ran this long would run as long again.
+ */
+export const CLAUDE_STREAM_DEADLINE_MS = 270_000;
 
 export type ClaudeInput = {
   task: Task;
@@ -40,8 +50,10 @@ export type ClaudeInput = {
   /** Who asked, for the audit log. */
   agent?: string;
   documentId?: string;
-  /** Per-request timeout; defaults to CLAUDE_REQUEST_TIMEOUT_MS. */
+  /** Per-request timeout; defaults to CLAUDE_REQUEST_TIMEOUT_MS. For a streamed call it covers the wait for the reply to start. */
   timeoutMs?: number;
+  /** Streamed calls only: the limit on the whole call; defaults to CLAUDE_STREAM_DEADLINE_MS. */
+  deadlineMs?: number;
 };
 
 export type ClaudeUsage = {
@@ -65,11 +77,12 @@ export class ModelTruncatedError extends Error {
 }
 
 function requestBase(input: ClaudeInput) {
-  const { model, effort, maxTokens } = resolveTask(input.task);
+  const { model, effort, maxTokens, tier } = resolveTask(input.task);
   const fallback = supportsServerFallback(model);
   return {
     model,
     fallback,
+    stream: tier === "draft" || maxTokens > STREAM_ABOVE_TOKENS,
     params: {
       model,
       max_tokens: maxTokens,
@@ -84,12 +97,24 @@ function requestBase(input: ClaudeInput) {
 
 type Params = ReturnType<typeof requestBase>["params"] & { output_config: Record<string, unknown> };
 
-/** Send one request, streaming when the reply may be long. */
-async function send(input: ClaudeInput, params: Params): Promise<BetaMessage> {
+export class ModelDeadlineError extends Error {
+  constructor() {
+    super("Claude took too long to reply.");
+  }
+}
+
+/** Send one request, streaming when the reply may be long (see the file header). */
+async function send(input: ClaudeInput, params: Params, stream: boolean): Promise<BetaMessage> {
   const opts = { timeout: input.timeoutMs ?? CLAUDE_REQUEST_TIMEOUT_MS, maxRetries: 1 };
   const body = params as MessageCreateParamsNonStreaming;
-  if (params.max_tokens > STREAM_ABOVE_TOKENS) return anthropic().beta.messages.stream(body, opts).finalMessage();
-  return anthropic().beta.messages.create(body, opts);
+  if (!stream) return anthropic().beta.messages.create(body, opts);
+  const signal = AbortSignal.timeout(input.deadlineMs ?? CLAUDE_STREAM_DEADLINE_MS);
+  try {
+    return await anthropic().beta.messages.stream(body, { ...opts, signal }).finalMessage();
+  } catch (error) {
+    if (signal.aborted) throw new ModelDeadlineError();
+    throw error;
+  }
 }
 
 type FinishedMessage = {
@@ -135,9 +160,9 @@ async function audit(input: ClaudeInput, usage: ClaudeUsage | null, error?: unkn
 
 /** A plain-text reply (prose tasks). */
 export async function claudeText(input: ClaudeInput): Promise<{ text: string; usage: ClaudeUsage }> {
-  const { params } = requestBase(input);
+  const { params, stream } = requestBase(input);
   try {
-    const message = await send(input, params);
+    const message = await send(input, params, stream);
     checkStop(message);
     const text = message.content
       .map((b) => (b.type === "text" ? b.text : ""))
@@ -160,7 +185,7 @@ export async function claudeText(input: ClaudeInput): Promise<{ text: string; us
 export async function claudeJson<S extends z.ZodType>(
   input: ClaudeInput & { schema: S },
 ): Promise<{ data: z.infer<S>; usage: ClaudeUsage }> {
-  const { params } = requestBase(input);
+  const { params, stream } = requestBase(input);
   // Send only the schema: the SDK's own parse step (messages.parse, or the
   // stream's final message) would throw on a truncated reply before we could
   // look at the stop reason.
@@ -170,7 +195,7 @@ export async function claudeJson<S extends z.ZodType>(
       ...params,
       betas: [...params.betas, STRUCTURED_BETA],
       output_config: { ...params.output_config, format },
-    });
+    }, stream);
     checkStop(message);
     const text = message.content.map((b) => (b.type === "text" ? b.text : "")).join("");
     let data: z.infer<S>;

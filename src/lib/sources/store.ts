@@ -19,6 +19,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "@vercel/postgres";
 import { ensureSchema } from "@/lib/ontology/ensure-schema";
 import { DOCUMENT_SCHEMA, getDocument, isUuid } from "@/lib/documents/store";
+import { processMemory } from "@/lib/process-memory";
 
 export const SOURCE_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS folder (
@@ -213,12 +214,12 @@ export function toDetail(s: SourceRecord): SourceDetail {
 
 // --- In-memory fallback -------------------------------------------------------
 
-const memory = {
+const memory = processMemory("sources", () => ({
   folders: new Map<string, FolderRow>(),
   sources: new Map<string, SourceRecord>(),
   links: new Map<string, LinkRow>(),
   passages: new Map<string, StoredPassage[]>(),
-};
+}));
 
 const linkKey = (documentId: string, sourceId: string) => `${documentId}:${sourceId}`;
 
@@ -230,10 +231,10 @@ export function resetSourceStore() {
   memory.passages.clear();
 }
 
-let lastStamp = 0;
+const stamp = processMemory("sources.stamp", () => ({ last: 0 }));
 function nowIso(): string {
-  lastStamp = Math.max(Date.now(), lastStamp + 1);
-  return new Date(lastStamp).toISOString();
+  stamp.last = Math.max(Date.now(), stamp.last + 1);
+  return new Date(stamp.last).toISOString();
 }
 
 function memoryDocumentIds(sourceId: string): string[] {

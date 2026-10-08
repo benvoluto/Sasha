@@ -1,0 +1,264 @@
+{
+  "key": "diataxis-tutorial",
+  "version": 1,
+  "title": "Tutorial (Diátaxis)",
+  "family": "technical",
+  "summary": "A learning-oriented lesson in which a beginner, guided step by step, builds or does something concrete and gains skill and confidence through the doing rather than through explanation. Every step produces a visible result, the route is fixed and known to work, and explanation is kept to a minimum with links for later. Follows the tutorial form of the Diátaxis documentation framework.",
+  "signals": [
+    "tutorial",
+    "getting started",
+    "your first",
+    "in this tutorial, we will",
+    "what you will build",
+    "we will now",
+    "you should see",
+    "the output should look like",
+    "before you start",
+    "beginner",
+    "hands-on",
+    "lesson",
+    "walkthrough",
+    "what you built",
+    "Diátaxis",
+    "learning-oriented documentation",
+    "you will notice that",
+    "now that we have"
+  ],
+  "audience": "Newcomers to the product or technology who want to learn it by doing, with little prior knowledge and no particular task of their own to finish yet.",
+  "tone": "Encouraging, concrete and patient: first-person plural (\"we\"), short sentences, present tense, frequent confirmation that things are going right, no jargon left undefined.",
+  "preamble": "You are an experienced technical writer and teacher producing a tutorial in the Diátaxis sense: a guided lesson in which the reader learns by doing something meaningful under your direction. You are responsible for the learner's success, so the path must be one fixed route that works every time for a beginner on a typical setup. Write as the teacher alongside the learner, using \"we\" (\"Now we add a route…\"), and keep the reader acting: every step is a concrete action followed by a visible result they can check. Keep explanation to the minimum needed to carry on, one short clause at most, and link to explanation material for the rest; do not offer options, alternatives, best-practice digressions or abstract concepts, even when they would be more correct in general. Get the learner to a first visible result within the first few steps and keep results coming. Show the expected output after actions that produce it, point out what the learner should notice in it, and warn about the mistakes beginners commonly make at the point where they would make them. State at the start what the learner will build or achieve, without promising what they will understand. Use code blocks for commands, file contents and output, and give complete file contents or exact edits rather than fragments the learner must assemble. Never invent commands, flags, file paths, package names, output or version numbers: take them from the sources or the writer's notes, and where one is unknown write a visible placeholder like \"[command needed]\" or \"[expected output needed]\".",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "what-you-will-build",
+      "heading": "What You Will Build",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Tell the learner in a few sentences what they will have made or done by the end, as a concrete, visible result (\"By the end we will have a small web app that lists books from a local database\"). A screenshot description or sample of the final output helps them picture the destination. Describe what they will do, not what they will learn or understand; avoid promises such as \"you will master\". Give a realistic time estimate if the sources support one.",
+      "lengthHint": "2–4 sentences",
+      "elements": [
+        "Concrete end result the learner will have built or done",
+        "Picture of the destination (sample output, screenshot or description)",
+        "Framed as what we will do, not as learning outcomes",
+        "Approximate time to complete, if known"
+      ],
+      "sourcesNeeded": [
+        "Finished example project or working demo",
+        "Product overview for newcomers"
+      ],
+      "dataNeeded": [
+        "Final output or screenshot of the finished result",
+        "Typical completion time"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "before-you-start",
+      "heading": "Before You Start",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Get the learner to a known, working starting point. Name the operating systems or environments the tutorial was tested on, then walk through any installation or setup as explicit steps with a check that it worked (for example a version command and its output). Keep assumed knowledge to the minimum a beginner has, and say plainly what it is. Do not list alternative installers or configurations; pick one route.",
+      "lengthHint": "Short checklist plus setup steps",
+      "elements": [
+        "Environment and versions the tutorial was tested on",
+        "Exact installation or setup steps along one route",
+        "A check that setup worked, with expected output",
+        "Assumed prior knowledge stated briefly"
+      ],
+      "sourcesNeeded": [
+        "Installation guide",
+        "System requirements"
+      ],
+      "dataNeeded": [
+        "Required tool versions",
+        "Install commands",
+        "Version-check output"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "steps",
+      "heading": "Steps",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Lead the learner through a single linear path in small numbered steps, grouped under short ### sub-headings when the work has distinct stages. Each step asks for one action and then shows the result the learner should see, so they can confirm they are on track before moving on; the first visible result should come within the first two or three steps. After showing output, point out the one thing the learner should notice in it (\"Notice that the new book now appears at the top of the list\"). Give complete code or exact edits, show expected output in code blocks, and add a brief warning where beginners commonly go wrong (\"If you see 'port already in use', stop the earlier server first\"). Explain only enough to keep going, in a clause, and link out for depth; never branch into options or alternatives.",
+      "lengthHint": "Typically 6–20 small steps",
+      "elements": [
+        "One linear path with no options or alternatives",
+        "Each step a single concrete action phrased with \"we\"",
+        "First visible result within the first two or three steps",
+        "Visible, checkable result after each meaningful step",
+        "Expected output shown in code blocks, with what to notice in it",
+        "Warnings at the points where beginners commonly go wrong",
+        "Explanation limited to a clause per step, with links for more"
+      ],
+      "sourcesNeeded": [
+        "Tested working example or sample repository",
+        "CLI or API reference for the commands used",
+        "Support questions or common beginner errors"
+      ],
+      "dataNeeded": [
+        "Exact commands and code listings",
+        "Expected output for each step",
+        "Common error messages and their fixes"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "what-you-built",
+      "heading": "What You Built",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Recap what the learner has now made and the things they did along the way, so they recognise their own progress. Point to the finished result they can see or run. Keep it brief and concrete, and do not introduce new concepts or steps here.",
+      "lengthHint": "1 short paragraph or 3–5 bullets",
+      "elements": [
+        "Summary of the finished result the learner now has",
+        "The main things the learner did, in order",
+        "No new concepts or instructions introduced"
+      ],
+      "sourcesNeeded": [
+        "Finished example project"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "next-steps",
+      "heading": "Next Steps",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Give the learner a short list of where to go next: a follow-on tutorial, how-to guides for tasks they are likely to attempt now, and explanation pages for the concepts the tutorial deliberately skipped. Label each link with what the reader will get from it. Do not summarise the linked material.",
+      "lengthHint": "3–6 links",
+      "elements": [
+        "Follow-on tutorial, if one exists",
+        "How-to guides for likely next tasks",
+        "Explanation pages for concepts skipped in the tutorial",
+        "Each link labelled with what the reader will find"
+      ],
+      "sourcesNeeded": [
+        "Documentation index",
+        "Related how-to guides",
+        "Concept or explanation pages"
+      ],
+      "dataNeeded": [
+        "URLs of the linked pages"
+      ],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "learning-by-doing",
+      "criterion": "Learning by doing: the learner is kept acting, and each step ends in a visible result they can check.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every step is a concrete action followed by a result the learner can see and compare against shown output; the first result arrives within the first few steps; there are no stretches of reading without doing."
+        },
+        {
+          "score": 3,
+          "descriptor": "Nearly every step produces a checkable result, but one or two omit the expected output or bundle several actions together."
+        },
+        {
+          "score": 2,
+          "descriptor": "Many steps lack visible results or expected output, so the learner often cannot tell whether they are on track."
+        },
+        {
+          "score": 1,
+          "descriptor": "Mostly description or explanation; the learner does little and has no way to confirm progress."
+        }
+      ],
+      "appliesTo": [
+        "before-you-start",
+        "steps"
+      ]
+    },
+    {
+      "key": "reliability",
+      "criterion": "Reliability: a beginner following the tutorial exactly on the stated setup reaches the promised result.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Setup is explicit and checked; every command, code listing and output is complete and consistent; common beginner mistakes are anticipated where they occur."
+        },
+        {
+          "score": 3,
+          "descriptor": "The path works, but a minor gap (an unstated version, a partial code fragment, a missing warning) could trip some learners."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several gaps or inconsistencies between steps, code and output make failure likely for a beginner."
+        },
+        {
+          "score": 1,
+          "descriptor": "The tutorial cannot be completed as written: steps are missing, wrong, or depend on unstated setup."
+        }
+      ],
+      "appliesTo": [
+        "before-you-start",
+        "steps"
+      ]
+    },
+    {
+      "key": "minimal-explanation",
+      "criterion": "Minimal explanation, single path: concepts, options and alternatives are left out and linked instead.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "One fixed route throughout; explanation never exceeds a short clause per step and deeper material is linked; no alternatives or option lists appear."
+        },
+        {
+          "score": 3,
+          "descriptor": "Mostly a single focused path, with an occasional paragraph of background or a mentioned alternative that could have been cut or linked."
+        },
+        {
+          "score": 2,
+          "descriptor": "Frequent explanatory detours or choices for the learner interrupt the flow and dilute the lesson."
+        },
+        {
+          "score": 1,
+          "descriptor": "Reads as an explanation or reference with steps attached; the learner must make decisions they are not equipped to make."
+        }
+      ]
+    },
+    {
+      "key": "guided-experience",
+      "criterion": "Guided experience: the learner knows the destination at the start, feels accompanied along the way, and sees what they achieved at the end.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "The destination is stated concretely up front without promising understanding; the voice is a supportive \"we\" throughout; the recap and next steps close the lesson and point onward."
+        },
+        {
+          "score": 3,
+          "descriptor": "Destination, voice and closing are present, but one is weak (a vague goal, inconsistent voice, or a thin recap)."
+        },
+        {
+          "score": 2,
+          "descriptor": "The learner is not told where they are heading or what they built, or the voice is impersonal and instructional throughout."
+        },
+        {
+          "score": 1,
+          "descriptor": "No stated destination, recap or onward path; the learner is left without orientation."
+        }
+      ],
+      "appliesTo": [
+        "what-you-will-build",
+        "steps",
+        "what-you-built",
+        "next-steps"
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "Diátaxis documentation framework, \"Tutorials\" (Daniele Procida, diataxis.fr): principles paraphrased; the section list is own text following common tutorial practice, not prescribed by Diátaxis",
+    "url": "https://diataxis.fr/tutorials/",
+    "license": "CC BY-SA 4.0 source (paraphrased, attributed to Daniele Procida, diataxis.fr); section list, guidance and rubric are own text",
+    "retrieved": "2026-10-07"
+  }
+}

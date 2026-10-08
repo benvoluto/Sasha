@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "@vercel/postgres";
 import { ensureSchema } from "@/lib/ontology/ensure-schema";
 import { docText, EMPTY_DOC, type PMNode } from "./sections";
+import { processMemory } from "@/lib/process-memory";
 
 export const DOCUMENT_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS document (
@@ -41,6 +42,7 @@ export const DOCUMENT_SCHEMA = [
      status TEXT NOT NULL DEFAULT 'empty',
      last_generated_at TIMESTAMPTZ,
      PRIMARY KEY (document_id, section_id))`,
+  `ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
   `CREATE TABLE IF NOT EXISTS document_version (
      id BIGSERIAL PRIMARY KEY,
      document_id UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,
@@ -102,23 +104,33 @@ function summarize(d: DocumentRecord): DocumentSummary {
 
 // --- In-memory fallback -------------------------------------------------------
 
-const memory = {
+const memory = processMemory("documents", () => ({
   docs: new Map<string, DocumentRecord>(),
   versions: [] as Array<VersionRecord & { content_json: PMNode }>,
-};
+}));
+
+// Stores keyed by document (section-store.ts) register here so one reset clears
+// them too; they import this module, so this module can't import them.
+const resetHooks = processMemory("documents.resetHooks", () => new Set<() => void>());
+
+/** Run `fn` whenever resetMemoryStore runs (in-memory stores that hang off documents). */
+export function onMemoryStoreReset(fn: () => void) {
+  resetHooks.add(fn);
+}
 
 /** Clears the in-memory store (tests). */
 export function resetMemoryStore() {
   memory.docs.clear();
   memory.versions.length = 0;
+  for (const fn of resetHooks) fn();
 }
 
 // Timestamps must strictly increase per document so a conflict check on
 // `updated_at` can't be fooled by two saves in the same millisecond.
-let lastStamp = 0;
+const stamp = processMemory("documents.stamp", () => ({ last: 0 }));
 function nowIso(): string {
-  lastStamp = Math.max(Date.now(), lastStamp + 1);
-  return new Date(lastStamp).toISOString();
+  stamp.last = Math.max(Date.now(), stamp.last + 1);
+  return new Date(stamp.last).toISOString();
 }
 
 // --- Queries -------------------------------------------------------------------

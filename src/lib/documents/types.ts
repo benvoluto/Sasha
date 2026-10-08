@@ -1,50 +1,27 @@
-// The document types offered in the editor's type picker. Phase 3 replaces this
-// with the zod-validated catalog (PLAN §5); until then the list is the report
-// templates plus a few common outlines.
+// DEPRECATED compatibility shim (Phase 3). Document types now come from the
+// zod-validated catalog: client code reads GET /api/document-types (team view,
+// with overrides and team types) and server code uses getType/listTypes from
+// @/catalog. This module keeps the Phase 1 shape over the bundled file types
+// only, for callers not yet migrated; delete it once nothing imports it.
 
-import { REPORT_TEMPLATES } from "@/lib/ontology/report/template";
+import { fileTypeByKey, fileTypes } from "@/catalog/files";
+import type { DocumentTypeDefinition } from "@/catalog/schema";
 
 export type DocumentTypeOption = {
   key: string;
   title: string;
-  sections: Array<{ key: string; heading: string }>;
+  sections: Array<{ key: string; heading: string; level?: number }>;
 };
 
-const OUTLINES: DocumentTypeOption[] = [
-  {
-    key: "proposal",
-    title: "Proposal",
-    sections: [
-      { key: "summary", heading: "Summary" },
-      { key: "reason", heading: "Reason for Proposal" },
-      { key: "objectives", heading: "Objectives" },
-      { key: "approach", heading: "Approach" },
-      { key: "timeline", heading: "Timeline" },
-      { key: "budget", heading: "Budget" },
-      { key: "evaluation", heading: "Evaluation" },
-    ],
-  },
-  {
-    key: "memo",
-    title: "Memo",
-    sections: [
-      { key: "purpose", heading: "Purpose" },
-      { key: "background", heading: "Background" },
-      { key: "options", heading: "Options" },
-      { key: "recommendation", heading: "Recommendation" },
-    ],
-  },
-];
+function toOption(t: DocumentTypeDefinition): DocumentTypeOption {
+  return { key: t.key, title: t.title, sections: t.sections.map((s) => ({ key: s.key, heading: s.heading, level: s.level })) };
+}
 
-export const DOCUMENT_TYPES: DocumentTypeOption[] = [
-  ...OUTLINES,
-  ...REPORT_TEMPLATES.map((t) => ({
-    key: t.key,
-    title: t.title,
-    sections: [...t.sections].sort((a, b) => a.order - b.order).map((s) => ({ key: s.key, heading: s.heading })),
-  })),
-];
+/** @deprecated Use GET /api/document-types (client) or listTypes (server). */
+export const DOCUMENT_TYPES: DocumentTypeOption[] = fileTypes().map(toOption);
 
+/** @deprecated Use getType (server). Accepts catalog keys and their aliases. */
 export function documentTypeByKey(key: string | null | undefined): DocumentTypeOption | null {
-  return DOCUMENT_TYPES.find((t) => t.key === key) ?? null;
+  const t = fileTypeByKey(key);
+  return t ? toOption(t) : null;
 }

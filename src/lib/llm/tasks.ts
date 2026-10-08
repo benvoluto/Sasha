@@ -27,6 +27,7 @@ export const TASKS = {
   assistant: { tier: "mid", effort: "medium", maxTokens: 16000 },
   /** Prose: drafting, rewriting, drafting from notes, applying a restructure. */
   "draft.section": { tier: "draft", effort: "medium", maxTokens: 16000 },
+  "rewrite.section": { tier: "draft", effort: "medium", maxTokens: 16000 },
   "rewrite.selection": { tier: "draft", effort: "medium", maxTokens: 16000 },
   "draft.from_notes": { tier: "draft", effort: "medium", maxTokens: 16000 },
   /** Large enough that claude.ts streams it (the SDK refuses it as a plain request). */

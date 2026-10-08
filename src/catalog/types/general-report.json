@@ -1,0 +1,102 @@
+{
+  "key": "general-report",
+  "version": 1,
+  "title": "General report",
+  "family": "general",
+  "summary": "A clear, well-organized report for a general professional audience that states its purpose, gives the background, presents findings from the sources, interprets them and recommends next steps. Use it when no more specific document type fits.",
+  "signals": [
+    "report",
+    "introduction",
+    "background",
+    "findings",
+    "discussion",
+    "recommendations",
+    "purpose of this report",
+    "scope",
+    "this report summarizes",
+    "key findings",
+    "we recommend",
+    "next steps"
+  ],
+  "audience": "General professional readers who need the situation, the evidence and the recommended next steps without specialist background.",
+  "tone": "Plain, neutral and professional, with short paragraphs and no jargon.",
+  "preamble": "You are an experienced writer drafting a clear, well-organized report for a general professional audience. Write in plain, neutral prose with short paragraphs.",
+  "aliases": ["general_report"],
+  "sections": [
+    {
+      "key": "introduction",
+      "heading": "Introduction",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "State the purpose and scope of the report and what the reader will find in it.",
+      "lengthHint": "1–2 paragraphs",
+      "elements": ["Purpose of the report", "Scope and what it covers", "What the reader will find in it"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    },
+    {
+      "key": "background",
+      "heading": "Background",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Summarize the context the reader needs: relevant history, prior work, and the situation the report addresses.",
+      "elements": ["Relevant history", "Prior work", "The situation the report addresses"],
+      "sourcesNeeded": ["Background documents", "Prior reports"],
+      "dataNeeded": []
+    },
+    {
+      "key": "findings",
+      "heading": "Findings",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Present the main findings from the sources, organized by theme. Use a Markdown table when comparing several figures.",
+      "elements": ["Main findings organized by theme", "Supporting figures or evidence for each finding", "Table when comparing several figures"],
+      "sourcesNeeded": ["Primary sources and data"],
+      "dataNeeded": ["Key figures"]
+    },
+    {
+      "key": "discussion",
+      "heading": "Discussion",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Interpret the findings: what they mean, how they relate to each other, and their limitations.",
+      "elements": ["What the findings mean", "How the findings relate to each other", "Limitations"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    },
+    {
+      "key": "recommendations",
+      "heading": "Recommendations",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Recommended next steps that follow from the findings, framed as recommendations for the reader to consider.",
+      "elements": ["Recommended next steps", "Link from each recommendation to a finding"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "findings_to_recommendations",
+      "criterion": "Recommendations follow from the findings.",
+      "levels": [
+        { "score": 4, "descriptor": "Every recommendation traces to a stated finding, and every major finding is addressed in the discussion or recommendations." },
+        { "score": 3, "descriptor": "Most recommendations trace to findings; one or two are loosely connected." },
+        { "score": 2, "descriptor": "Several recommendations are not supported by the findings, or major findings are ignored." },
+        { "score": 1, "descriptor": "The recommendations are unrelated to the findings." }
+      ],
+      "appliesTo": ["findings", "discussion", "recommendations"]
+    }
+  ],
+  "provenance": {
+    "source": "Sasha general report template (ported from the Phase 0 report templates)",
+    "url": "",
+    "license": "Own text",
+    "retrieved": "2026-10-07"
+  }
+}

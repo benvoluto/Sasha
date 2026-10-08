@@ -466,3 +466,48 @@
 .section-divider-btn:hover { background: var(--doc-accent-soft); color: var(--doc-accent); }
 .section-divider-btn:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 1px; opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .section-divider-actions { transition: none; } }
+
+/* Heading gutter (extensions.ts SectionGutter): the button that opens a
+   section's actions. In the left margin from sm up, shown on hover, focus, with
+   the caret in the heading, or while Claude writes the section; on phones a
+   copy sits at the end of the heading line and is always visible. */
+.doc-prose h1, .doc-prose h2, .doc-prose h3 { position: relative; }
+.section-gutter {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+  color: var(--doc-muted); vertical-align: middle; user-select: none; cursor: pointer;
+  transition: opacity 120ms, background-color 120ms;
+}
+.section-gutter:hover { background: var(--doc-accent-soft); color: var(--doc-accent); }
+.section-gutter:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 1px; opacity: 1; }
+.section-gutter:not(.section-gutter-inline) { display: none; }
+.section-gutter-inline { margin-left: 0.35rem; font-size: 1rem; }
+@media (min-width: 640px) {
+  .section-gutter-inline { display: none; }
+  .section-gutter:not(.section-gutter-inline) {
+    display: grid; position: absolute; left: -2.6rem; top: 0.63em; top: 0.5lh; transform: translateY(-50%); opacity: 0;
+  }
+  .doc-prose :is(h1, h2, h3):hover > .section-gutter,
+  .doc-prose :is(h1, h2, h3).has-caret > .section-gutter,
+  .doc-prose :is(h1, h2, h3).section-busy > .section-gutter,
+  .section-gutter:focus-visible { opacity: 1; }
+}
+.section-gutter.is-busy { color: var(--doc-accent); }
+.section-gutter-spin { animation: section-gutter-spin 0.9s linear infinite; }
+@keyframes section-gutter-spin { to { transform: rotate(360deg); } }
+.doc-prose .section-busy { color: var(--doc-muted); }
+/* Visual only (empty alternative text): the heading's aria-label names it, and
+   the editor's live region announces the busy state. */
+.doc-prose .section-busy::after {
+  content: "Claude is writing…"; content: "Claude is writing…" / ""; display: block; margin-top: 0.15rem;
+  font-size: 0.8rem; font-weight: 500; letter-spacing: 0; color: var(--doc-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .section-gutter { transition: none; }
+  .section-gutter-spin { animation-duration: 2.4s; }
+}
+
+/* Living outline status dots (outline-panel.tsx). */
+.outline-dot { display: inline-block; width: 9px; height: 9px; flex-shrink: 0; border-radius: 9999px; border: 1.5px solid var(--doc-muted); }
+.outline-dot-done { background: #16a34a; border-color: #16a34a; }
+.outline-dot-partial { background: linear-gradient(90deg, #d97706 50%, transparent 50%); border-color: #d97706; }
+.outline-dot-missing { background: transparent; opacity: 0.7; }

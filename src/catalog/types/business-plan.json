@@ -1,0 +1,384 @@
+{
+  "key": "business-plan",
+  "version": 1,
+  "title": "Business Plan",
+  "family": "business",
+  "summary": "A traditional business plan that describes a company, its market, its products or services, how it will sell them, who runs it and how it will be financed, ending in financial projections. It follows the U.S. Small Business Administration's traditional plan structure and is written for lenders, investors, partners and the owners themselves.",
+  "signals": [
+    "business plan",
+    "executive summary",
+    "company description",
+    "market analysis",
+    "target market",
+    "competitive analysis",
+    "organization and management",
+    "service or product line",
+    "marketing and sales strategy",
+    "funding request",
+    "financial projections",
+    "projected income statement",
+    "cash flow forecast",
+    "break-even analysis",
+    "startup costs",
+    "SBA loan",
+    "projected balance sheet",
+    "mission statement",
+    "total addressable market",
+    "use of funds"
+  ],
+  "audience": "Lenders, investors and prospective partners deciding whether to fund or join the business, plus the owners using the plan to run it.",
+  "tone": "Confident, concrete and businesslike: specific numbers and named markets, realistic rather than promotional, with no hype or unsupported superlatives.",
+  "preamble": "You are an experienced small-business advisor helping the owner write a traditional business plan of the kind lenders and investors expect. Write in the company's voice (\"we\" or the company name), in plain business English. Prefer specific figures, named customer segments, named competitors and dated milestones over general claims; where a figure is not available in the sources or notes, leave a clearly marked placeholder such as [projected year-one revenue] rather than inventing one. Keep every number consistent across sections: the funding request, use of funds, sales forecast and financial projections must agree with each other. State assumptions behind forecasts explicitly. Do not make promises of returns, and do not describe the business as risk-free.",
+  "sections": [
+    {
+      "key": "executive-summary",
+      "heading": "Executive Summary",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Give the reader the whole plan in brief: what the company is, what it sells, to whom, and why it will succeed. Include the mission statement, the leadership and team size, the location, and a short statement of financial standing. If the plan seeks financing, say how much and what it is for, and summarise the growth plans. Write it last so it matches the rest of the plan, and keep it short enough that a lender can decide from it whether to read on.",
+      "lengthHint": "1 page",
+      "elements": [
+        "Mission statement",
+        "Products or services and the customers they serve",
+        "Leadership, number of employees and location",
+        "Current financial standing or key traction figures",
+        "Funding sought and its purpose (if seeking financing)",
+        "Growth plans or goals for the next one to three years"
+      ],
+      "sourcesNeeded": [
+        "the rest of this plan",
+        "company fact sheet"
+      ],
+      "dataNeeded": [
+        "headline revenue or traction figures",
+        "funding amount sought",
+        "headcount"
+      ]
+    },
+    {
+      "key": "company-description",
+      "heading": "Company Description",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Describe the company in detail: the specific problem it solves and the consumers, organisations or businesses it serves. Explain the competitive advantages that will make it succeed, such as experienced staff, a distinctive location or a proprietary method, and why a competitor could not easily copy them. Give the company's history, current stage and location. Be specific about the customer need rather than describing the company in general terms. Leave legal structure, ownership and people to Organization and Management.",
+      "lengthHint": "1-2 pages",
+      "elements": [
+        "Problem the business solves, stated in customer terms",
+        "Customers, organisations or businesses served",
+        "Competitive advantages (people, location, expertise, technology) and why they are hard to copy",
+        "Company history and current stage",
+        "Location and service area"
+      ],
+      "sourcesNeeded": [
+        "founder notes or company fact sheet",
+        "founder backgrounds"
+      ],
+      "dataNeeded": [
+        "founding date",
+        "current customers or locations served"
+      ]
+    },
+    {
+      "key": "market-analysis",
+      "heading": "Market Analysis",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Show that you understand your industry and target market, using research rather than assertion. Describe industry outlook and trends, define the target market and its size, and analyse the main competitors: what they do well, where they fall short and how you will differentiate. Explain what successful businesses in this space do and how you will do it better. Cite the source and date of every market figure.",
+      "lengthHint": "2-3 pages",
+      "elements": [
+        "Industry description, size and outlook",
+        "Target market defined with demographics or firmographics",
+        "Market size estimate with source and method",
+        "Named competitors with strengths and weaknesses",
+        "Differentiation from competitors",
+        "Relevant trends, regulations or barriers to entry"
+      ],
+      "sourcesNeeded": [
+        "industry reports",
+        "government statistics (census, BLS, trade data)",
+        "competitor websites and pricing",
+        "customer surveys or interviews"
+      ],
+      "dataNeeded": [
+        "market size and growth rate",
+        "target customer counts",
+        "competitor pricing and market share"
+      ]
+    },
+    {
+      "key": "organization-and-management",
+      "heading": "Organization and Management",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Explain how the business is structured and who runs it. State the legal structure (sole proprietorship, partnership, corporation or LLC) and, for a corporation, whether it is a C or S corporation. Present an organisational chart or a clear description of roles and reporting lines, and give each key person's relevant experience and how it contributes to the company's success. Include ownership stakes, the board or advisors, and roles still to be hired.",
+      "lengthHint": "1-2 pages",
+      "elements": [
+        "Legal structure",
+        "Organisational chart or description of roles and reporting lines",
+        "Key people with relevant experience and responsibilities",
+        "Ownership breakdown",
+        "Board members or advisors (if any)",
+        "Planned hires and staffing gaps"
+      ],
+      "sourcesNeeded": [
+        "resumes or bios of owners and key staff",
+        "operating or partnership agreement"
+      ],
+      "dataNeeded": [
+        "ownership percentages",
+        "headcount by role",
+        "hiring timeline"
+      ]
+    },
+    {
+      "key": "service-or-product-line",
+      "heading": "Service or Product Line",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Describe what you sell or the service you offer, and how it benefits customers. Explain the product lifecycle, from development stage to launch and planned improvements. Note any intellectual property such as patents, copyrights or trademarks, filed or planned, and any research and development under way. Describe benefits in customer terms, not only features. Leave pricing strategy to Marketing and Sales, but give the cost and margin of each offering here.",
+      "lengthHint": "1-2 pages",
+      "elements": [
+        "Description of each product or service",
+        "Customer benefit for each offering",
+        "Cost to produce or deliver, and margin",
+        "Product lifecycle or development stage",
+        "Intellectual property (patents, trademarks, copyrights) filed or planned",
+        "Research and development plans"
+      ],
+      "sourcesNeeded": [
+        "product specifications or service descriptions",
+        "patent or trademark filings",
+        "supplier agreements"
+      ],
+      "dataNeeded": [
+        "price points",
+        "unit costs or margins",
+        "development milestones"
+      ]
+    },
+    {
+      "key": "marketing-and-sales",
+      "heading": "Marketing and Sales",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Explain how you will attract and keep customers and how a sale actually happens. Choose the strategy that fits this business and follows from the market analysis: describe positioning, pricing, promotion and the channels you will use, and the sales process from first contact to closed sale. Give costs for the main marketing activities. Tie the sales forecast to these activities and state its assumptions (for example leads per month, conversion rate, average order value).",
+      "lengthHint": "1-3 pages",
+      "elements": [
+        "Positioning and value proposition for the target market",
+        "Pricing strategy",
+        "Marketing and promotion channels",
+        "Sales process from lead to closed sale",
+        "Customer retention approach",
+        "Sales forecast with stated assumptions"
+      ],
+      "sourcesNeeded": [
+        "market analysis section",
+        "marketing budget or plan",
+        "existing customer data"
+      ],
+      "dataNeeded": [
+        "marketing budget",
+        "customer acquisition cost",
+        "conversion rates",
+        "sales forecast by period"
+      ]
+    },
+    {
+      "key": "funding-request",
+      "heading": "Funding Request",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "Include this section when the plan asks for financing. State how much funding you need over the next five years and exactly what it will be used for (equipment, salaries, specific bills, working capital). Say whether you want debt or equity, the terms you would like, and the period the request covers. Describe any longer-term financial plans, such as paying off debt or selling the business. The amounts must match the financial projections.",
+      "lengthHint": "1 page",
+      "elements": [
+        "Amount requested",
+        "Debt or equity, with preferred terms",
+        "Detailed use of funds",
+        "Time period the request covers",
+        "Future funding needs over the next five years",
+        "Long-term financial plans (repayment, buyout, sale)"
+      ],
+      "sourcesNeeded": [
+        "financial projections",
+        "quotes for equipment or major purchases",
+        "existing loan documents"
+      ],
+      "dataNeeded": [
+        "funding amount",
+        "use-of-funds breakdown",
+        "existing debt and equity"
+      ]
+    },
+    {
+      "key": "financial-projections",
+      "heading": "Financial Projections",
+      "level": 2,
+      "order": 80,
+      "required": true,
+      "guidance": "Convince the reader that the business is stable and will be a financial success. For an established business, include historical income statements, balance sheets and cash flow statements, usually for the last three to five years, and any collateral you could pledge. Provide a prospective financial outlook for the next five years, with forecast income statements, balance sheets, cash flow statements and capital expenditure budgets; break the first year into quarterly or monthly figures. State the assumptions behind every forecast and explain how the figures connect to the funding request. Include a break-even analysis showing the sales volume at which the business covers its costs.",
+      "lengthHint": "2-4 pages plus tables",
+      "elements": [
+        "Historical income statements, balance sheets and cash flow statements (established businesses)",
+        "Projected income statements for five years",
+        "Projected balance sheets and cash flow statements",
+        "First-year figures broken out monthly or quarterly",
+        "Capital expenditure budget",
+        "Key assumptions behind the forecasts",
+        "Break-even analysis",
+        "Collateral available (if seeking a loan)"
+      ],
+      "sourcesNeeded": [
+        "accounting records and tax returns",
+        "bank statements",
+        "sales forecast",
+        "cost estimates"
+      ],
+      "dataNeeded": [
+        "historical revenue, expenses and profit",
+        "projected revenue and expenses by period",
+        "cash balances",
+        "capital expenditures",
+        "assets available as collateral"
+      ]
+    },
+    {
+      "key": "appendix",
+      "heading": "Appendix",
+      "level": 2,
+      "order": 90,
+      "required": false,
+      "guidance": "Collect supporting documents the reader may ask for: credit histories, resumes, product pictures, letters of reference, licences, permits, patents, legal documents and other contracts. List each item with a one-line description so the reader knows what it supports. Do not put arguments here that belong in the main sections.",
+      "elements": [
+        "List of supporting documents with one-line descriptions",
+        "Resumes of key people",
+        "Permits, licences and legal documents",
+        "Letters of reference or intent"
+      ],
+      "sourcesNeeded": [
+        "resumes",
+        "permits and licences",
+        "contracts and leases",
+        "letters of reference"
+      ],
+      "dataNeeded": [
+        "credit histories"
+      ]
+    }
+  ],
+  "rubric": [
+    {
+      "key": "market-evidence",
+      "criterion": "Market evidence: the target market, its size and the competition are defined with cited research rather than assertion.",
+      "appliesTo": [
+        "market-analysis",
+        "marketing-and-sales",
+        "executive-summary"
+      ],
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Target customers are precisely defined. Market size is estimated with a stated method and dated sources. Named competitors are analysed honestly, and differentiation follows from that analysis."
+        },
+        {
+          "score": 3,
+          "descriptor": "Market and competitors are described with some sourced figures, but sizing method or competitor analysis is thin in places."
+        },
+        {
+          "score": 2,
+          "descriptor": "Market is described in broad terms (\"everyone who…\") with few sources. Competitors are listed without real analysis or dismissed."
+        },
+        {
+          "score": 1,
+          "descriptor": "No credible market definition or sizing. Claims such as \"no competition\" or unsourced large market figures carry the argument."
+        }
+      ]
+    },
+    {
+      "key": "financial-credibility",
+      "criterion": "Financial credibility: projections are complete, grounded in stated assumptions and realistic for the business and market.",
+      "appliesTo": [
+        "financial-projections",
+        "funding-request",
+        "executive-summary"
+      ],
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Five-year projected income, balance sheet and cash flow are present, with first-year detail. Every forecast rests on explicit, defensible assumptions tied to the market and sales sections. Historical figures are included where the business has a history."
+        },
+        {
+          "score": 3,
+          "descriptor": "Core statements are present and mostly reasoned, but some assumptions are unstated or optimistic, or first-year detail is missing."
+        },
+        {
+          "score": 2,
+          "descriptor": "Projections are partial (for example, revenue only) or assumptions are mostly missing. Growth rates look arbitrary."
+        },
+        {
+          "score": 1,
+          "descriptor": "Financials are absent, unsupported or implausible, and a lender could not judge the business's ability to repay or return capital."
+        }
+      ]
+    },
+    {
+      "key": "internal-consistency",
+      "criterion": "Internal consistency: figures, names and claims agree across every section of the plan.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Funding amount, use of funds, sales forecast, headcount and projections match everywhere they appear. The executive summary reflects the body exactly."
+        },
+        {
+          "score": 3,
+          "descriptor": "One or two minor mismatches (a rounded figure, a renamed product) that do not change the picture."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several contradictions, such as a funding request that does not match the projections or a summary that promises what the body does not support."
+        },
+        {
+          "score": 1,
+          "descriptor": "Sections contradict each other on core numbers or strategy, so the reader cannot tell which version is true."
+        }
+      ]
+    },
+    {
+      "key": "funding-case",
+      "criterion": "Funding case: the request states how much is needed, on what terms, for what, and how the money returns.",
+      "appliesTo": [
+        "funding-request"
+      ],
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Amount, debt or equity, preferred terms, period covered and an itemised use of funds are all stated, and repayment or return follows plausibly from the projections."
+        },
+        {
+          "score": 3,
+          "descriptor": "Amount and use of funds are clear, but terms, period or the path to repayment are vague."
+        },
+        {
+          "score": 2,
+          "descriptor": "An amount is named but use of funds is a lump sum or the terms are missing."
+        },
+        {
+          "score": 1,
+          "descriptor": "The request is unclear or unjustified: no amount, no use of funds, or no link to the business's finances."
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "U.S. Small Business Administration, \"Write your business plan\" (traditional business plan format, nine sections including the appendix)",
+    "url": "https://www.sba.gov/business-guide/plan-your-business/write-your-business-plan",
+    "license": "Public domain (US government)",
+    "retrieved": "2026-10-07"
+  }
+}

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createDocument, listDocuments } from "@/lib/documents/store";
+import { getType } from "@/catalog";
+import { outlineDoc } from "@/catalog/outline";
+import { createDocument, listDocuments, type DocumentInit } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 
@@ -24,12 +26,24 @@ const CreateBody = z.object({
   content_json: z.object({ type: z.literal("doc") }).passthrough().optional(),
 });
 
-/** POST /api/documents — create a document (the editor calls this on the first edit of a new document). */
+/**
+ * POST /api/documents — create a document. The editor calls this on the first
+ * edit of a new document (with its body), and "New document of type" calls it
+ * with only `type_key`: the body is then the type's outline (one heading per
+ * section, with scaffolds), and the canonical key is stored for an alias.
+ */
 export async function POST(req: Request) {
   const caller = await requireTeam(PERMISSIONS.documentWrite);
   if (caller instanceof NextResponse) return caller;
   const parsed = CreateBody.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid document." }, { status: 400 });
-  const doc = await createDocument(caller.teamId, caller.agent, parsed.data as Parameters<typeof createDocument>[2]);
+  const init: DocumentInit = { ...(parsed.data as DocumentInit) };
+  if (parsed.data.type_key && !parsed.data.content_json) {
+    const entry = await getType(caller.teamId, parsed.data.type_key);
+    if (!entry || !entry.enabled) return NextResponse.json({ error: "Unknown document type." }, { status: 400 });
+    init.type_key = entry.definition.key;
+    init.content_json = outlineDoc(entry.definition.sections);
+  }
+  const doc = await createDocument(caller.teamId, caller.agent, init);
   return NextResponse.json({ document: doc }, { status: 201 });
 }

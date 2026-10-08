@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS document_section (
   last_generated_at  TIMESTAMPTZ,
   PRIMARY KEY (document_id, section_id)
 );
+ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 -- Snapshots taken before large changes (rewrites, restructures, section deletes).
 CREATE TABLE IF NOT EXISTS document_version (
@@ -219,4 +220,26 @@ CREATE TABLE IF NOT EXISTS source_passage (
   end_offset         INTEGER NOT NULL,
   text               TEXT NOT NULL,
   PRIMARY KEY (source_id, idx)
+);
+
+-- Document types (src/catalog/store.ts owns this; keep in step with CATALOG_SCHEMA).
+-- A team's edits of catalog file types ('override'; a NULL definition only sets
+-- enabled) and its own types ('team'). Catalog file types live in
+-- src/catalog/types/*.json, not here.
+CREATE TABLE IF NOT EXISTS document_type (
+  team_id            TEXT NOT NULL,
+  key                TEXT NOT NULL,
+  origin             TEXT NOT NULL,             -- 'override' (of a file type) | 'team' (team-made)
+  version            INT NOT NULL DEFAULT 1,
+  title              TEXT NOT NULL DEFAULT '',
+  family             TEXT NOT NULL DEFAULT 'general',
+  summary            TEXT NOT NULL DEFAULT '',
+  definition         JSONB,                     -- NULL = row only toggles enabled on a file type
+  provenance         JSONB,
+  enabled            BOOLEAN NOT NULL DEFAULT true,
+  created_by         TEXT NOT NULL,
+  updated_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (team_id, key)
 );

@@ -1,0 +1,245 @@
+{
+  "key": "nih-specific-aims-research-strategy",
+  "version": 1,
+  "title": "NIH Specific Aims and Research Strategy",
+  "family": "grant",
+  "summary": "The scientific core of an NIH research grant application (R01, R21 and similar): a one-page Specific Aims page followed by a Research Strategy with Significance, Innovation and Approach sub-sections, plus a Progress Report for renewals. It argues that a stated problem matters, that the proposed work is new, and that the aims, whether hypothesis-testing or objective-driven, can be achieved rigorously by this team in the time requested.",
+  "signals": [
+    "Specific Aims",
+    "Research Strategy",
+    "Significance",
+    "Innovation",
+    "Approach",
+    "Aim 1",
+    "central hypothesis",
+    "long-term goal",
+    "the objective of this application",
+    "preliminary data",
+    "rigor and reproducibility",
+    "potential pitfalls and alternative strategies",
+    "expected outcomes",
+    "sex as a biological variable",
+    "power analysis",
+    "R01",
+    "R21",
+    "NIH",
+    "NOFO",
+    "study section"
+  ],
+  "audience": "NIH peer reviewers in a study section: expert scientists, often adjacent to rather than inside the applicant's subfield, reading many applications quickly and scoring importance and rigor.",
+  "tone": "Confident, precise and persuasive scientific prose; claims are specific and testable, hedged only where the evidence is genuinely uncertain, never promotional.",
+  "preamble": "You are an experienced NIH-funded principal investigator and grant writer drafting the Research Plan of a PHS 398 / SF424 research application. Write for reviewers who score two things on the 1-9 Simplified Review Framework scale: Importance of the Research (Significance and Innovation) and Rigor and Feasibility (Approach). Every section must trace back to the aims on the Specific Aims page: use the same aim numbers, titles and hypotheses throughout, and do not introduce aims, methods or outcomes in one section that the others contradict. Where an aim tests a hypothesis, state it so it can be falsified and name the measurable outcome that would support or refute it; where an aim develops a method, tool or resource, state a concrete objective and the benchmark that shows it works. Reviewers also judge Expertise and Resources (sufficient or not), so make the team's demonstrated capability for each key method visible without inventing any. Do not invent preliminary data, sample sizes, effect sizes, p-values, citations, investigators, collaborators or institutional resources; where a needed fact is not in the sources, write a clearly marked placeholder such as [preliminary result needed] instead. Respect page limits: the Specific Aims page is one page and the Research Strategy is 12 pages for an R01 or 6 for an R21 unless the funding opportunity says otherwise (Arial or similar at 11 point or larger, margins of at least half an inch), so prefer dense, skimmable prose with bolded aim and sub-aim labels over long background. Use the reviewer's vocabulary (gap, rigor of prior research, biological variables, benchmarks for success, alternative strategies) where it fits, but do not pad with boilerplate.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "specific-aims",
+      "heading": "Specific Aims",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Open with one or two sentences that establish the health problem and why it matters, then name the specific knowledge gap that blocks progress. State the long-term goal, the objective of this application and the central hypothesis, and say briefly what preliminary work or rationale supports it. List two to four aims, each with a bolded short title, a testable hypothesis or clear objective, and one or two sentences on the approach; the aims should be related but not so dependent that the failure of one sinks the others. Close with the expected outcomes and the payoff: what will be known or possible when the aims are achieved, and how it moves the field or improves health. The whole page must fit on one page at NIH formatting (11 point or larger, half-inch margins); cut background before cutting aims.",
+      "lengthHint": "1 page",
+      "elements": [
+        "Problem and specific knowledge gap stated in the opening paragraph",
+        "Long-term goal, objective of this application and central hypothesis stated",
+        "Rationale or preliminary data supporting the hypothesis",
+        "2-4 numbered aims, each with a bolded title and a testable hypothesis or a concrete objective",
+        "Aims are related but can each succeed independently",
+        "Expected outcomes and impact (payoff) paragraph",
+        "Fits on one page"
+      ],
+      "sourcesNeeded": [
+        "Key literature establishing the problem and gap",
+        "Applicant's prior publications or preliminary findings",
+        "Funding opportunity (NOFO) priorities"
+      ],
+      "dataNeeded": [
+        "Disease burden or prevalence figures",
+        "Headline preliminary result supporting the hypothesis"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "research-strategy",
+      "heading": "Research Strategy",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "This heading holds the Significance, Innovation and Approach sub-sections, in that order, and, for renewals, the Progress Report. Keep any text directly under it to a sentence or two at most; the substance belongs in the sub-sections. Reviewers check that the whole Research Strategy fits the page limit for the activity code and follows the order NIH asks for, so do not add extra top-level parts here.",
+      "lengthHint": "12 pages (R01) / 6 pages (R21); the NOFO overrides",
+      "elements": [
+        "Significance, Innovation and Approach sub-sections present in that order",
+        "Whole Research Strategy fits the page limit for the activity code"
+      ],
+      "sourcesNeeded": [
+        "Funding opportunity (NOFO) page limits and special instructions"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "significance",
+      "heading": "Significance",
+      "level": 3,
+      "order": 30,
+      "required": true,
+      "guidance": "Explain the importance of the problem or critical barrier the project addresses and the specific gap in knowledge, technology or practice it will close. Assess the strength and the rigor of the prior research the project builds on, including its weaknesses (small samples, missing controls, unreplicated results, ignored biological variables), and say how this project will address them. Finish by describing how successful completion of the aims will change scientific knowledge, technical capability or clinical practice, and for whom. Keep background lean: cite what a reviewer needs to accept the gap, not a literature review.",
+      "lengthHint": "About 1-2 pages of an R01",
+      "elements": [
+        "Importance of the problem or critical barrier stated",
+        "Specific gap in knowledge, technology or practice identified",
+        "Strength and rigor of prior research assessed, including its weaknesses",
+        "How the project addresses those weaknesses",
+        "How success changes knowledge, technology or practice"
+      ],
+      "sourcesNeeded": [
+        "Peer-reviewed studies the project builds on",
+        "Reviews or guidelines describing the state of the field",
+        "Critiques or failed replications of prior work"
+      ],
+      "dataNeeded": [
+        "Burden, prevalence or cost figures for the problem",
+        "Sample sizes and key results of the prior studies cited"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "innovation",
+      "heading": "Innovation",
+      "level": 3,
+      "order": 40,
+      "required": true,
+      "guidance": "Say concretely how the project challenges or shifts current research or clinical practice. Name the new concepts, approaches, methods, instruments or interventions, or the new application of existing ones, and say what each makes possible that current approaches cannot. Distinguish clearly between what is novel and what is established; reviewers distrust blanket claims that everything is innovative. A short bulleted list of two to four innovations, each with a sentence of justification, is usually clearest.",
+      "lengthHint": "About half a page of an R01",
+      "elements": [
+        "Specific novel concepts, methods, technologies or interventions named",
+        "Advantage of each over current approaches explained",
+        "Novel elements distinguished from established methods",
+        "How the work shifts current research or practice"
+      ],
+      "sourcesNeeded": [
+        "Literature describing current standard methods or paradigms",
+        "Applicant's methods papers or patents, if any"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "approach",
+      "heading": "Approach",
+      "level": 3,
+      "order": 50,
+      "required": true,
+      "guidance": "Organise by aim, using the same numbers and titles as the Specific Aims page. For each aim give the rationale, the study design, the methods and the analysis plan, and say how the design achieves robust and unbiased results: controls, randomisation and blinding where relevant, sample size justified by a power calculation, and how relevant biological variables such as sex are factored into design and analysis for vertebrate animal and human studies. Present preliminary studies where they show feasibility: reviewers expect them for most new R01s, while R21s do not require them. For each aim state expected results, benchmarks for success, potential problems and the alternative strategies you would use; for early-stage or high-risk work, describe how feasibility will be established and the risk managed. Name any hazardous procedures, situations or materials and the precautions taken. A timeline by aim is customary and helps reviewers judge feasibility. Do not put the Data Management and Sharing Plan, inclusion enrollment, vertebrate animal or authentication-of-key-resources details here; each has its own attachment, so refer to it in a phrase if needed.",
+      "lengthHint": "About 8-9 pages of an R01",
+      "elements": [
+        "Sub-section for each aim matching the Specific Aims page",
+        "Design, methods and analysis plan for each aim",
+        "Rigor: controls, randomisation/blinding, sample size and power, biological variables such as sex",
+        "Preliminary studies demonstrating feasibility (expected for most R01s)",
+        "Expected results, potential problems and alternative strategies for each aim",
+        "Benchmarks for success for each aim",
+        "Hazardous procedures and precautions identified, if any",
+        "Timeline by aim"
+      ],
+      "sourcesNeeded": [
+        "Applicant's preliminary data and figures",
+        "Methods references and validated protocols",
+        "Statistical analysis or power analysis notes",
+        "Letters or descriptions of key resources, cores or collaborators"
+      ],
+      "dataNeeded": [
+        "Preliminary results with sample sizes and effect sizes",
+        "Power calculation inputs (effect size, alpha, power, attrition)",
+        "Recruitment or sample availability figures",
+        "Project timeline by aim and year"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "progress-report",
+      "heading": "Progress Report",
+      "level": 3,
+      "order": 60,
+      "required": false,
+      "guidance": "Include only for a renewal application. Give the beginning and ending dates of the period covered since the last competitive review, summarise the specific aims of that period and the importance of the findings, and give a succinct account of published and unpublished results toward each aim, including negative results and any change to the aims with the reason for it. Keep it factual and link the results to the new aims they motivate. NIH allows it as its own sub-heading of the Research Strategy; it counts toward the page limit. The publication list goes in the separate Progress Report Publication List attachment, not here.",
+      "lengthHint": "Counts toward the Research Strategy page limit",
+      "elements": [
+        "Dates of the project period covered",
+        "Original aims summarised",
+        "Progress, key results and their importance reported for each prior aim",
+        "Changes to aims, and negative results, explained",
+        "Link from prior results to the new aims"
+      ],
+      "sourcesNeeded": [
+        "Prior application and its aims",
+        "Annual progress reports (RPPRs)",
+        "Publications and products from the prior period"
+      ],
+      "dataNeeded": [
+        "Project period start and end dates",
+        "Key quantitative results from the prior period"
+      ],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "importance-of-the-research",
+      "criterion": "NIH Factor 1, Importance of the Research (Significance and Innovation), on the NIH 1-9 scale where 1 is best: does the work address an important gap, rest on rigorous prior research, and bring something genuinely new?",
+      "levels": [
+        { "score": 1, "descriptor": "Exceptional: an important, clearly defined gap; prior research is critically and fairly assessed; innovation is concrete and substantial; essentially no weaknesses." },
+        { "score": 2, "descriptor": "Outstanding: extremely strong importance and innovation with only negligible weaknesses." },
+        { "score": 3, "descriptor": "Excellent: very strong case for importance and novelty with only some minor weaknesses." },
+        { "score": 4, "descriptor": "Very good: strong overall, but numerous minor weaknesses, such as a gap stated more broadly than the aims address." },
+        { "score": 5, "descriptor": "Good: strong in places but with at least one moderate weakness, such as a thin assessment of the rigor of prior work or an incremental innovation." },
+        { "score": 6, "descriptor": "Satisfactory: some strengths but some moderate weaknesses; the reviewer has to infer why the work matters." },
+        { "score": 7, "descriptor": "Fair: some strengths but at least one major weakness, such as no clear gap or innovation claims that are really established methods." },
+        { "score": 8, "descriptor": "Marginal: a few strengths and a few major weaknesses; importance and novelty are mostly asserted rather than shown." },
+        { "score": 9, "descriptor": "Poor: very few strengths and numerous major weaknesses; the problem, gap or novelty is missing or unconvincing." }
+      ],
+      "appliesTo": ["specific-aims", "significance", "innovation"]
+    },
+    {
+      "key": "rigor-and-feasibility",
+      "criterion": "NIH Factor 2, Rigor and Feasibility (Approach), on the NIH 1-9 scale where 1 is best: are the design, methods and analysis rigorous, and can the aims realistically be achieved?",
+      "levels": [
+        { "score": 1, "descriptor": "Exceptional: every aim has a rigorous design with appropriate controls, justified sample size and attention to biological variables; preliminary data show feasibility; pitfalls, alternatives, benchmarks and timeline are clear; essentially no weaknesses." },
+        { "score": 2, "descriptor": "Outstanding: extremely strong rigor and feasibility with only negligible weaknesses." },
+        { "score": 3, "descriptor": "Excellent: very strong rigor and feasibility with only some minor weaknesses." },
+        { "score": 4, "descriptor": "Very good: strong, but with numerous minor weaknesses, such as an alternative strategy that is named but not developed." },
+        { "score": 5, "descriptor": "Good: strong in places but with at least one moderate weakness, such as an unjustified sample size or an aim that depends on another succeeding." },
+        { "score": 6, "descriptor": "Satisfactory: workable plan with some moderate weaknesses in controls, analysis or timeline." },
+        { "score": 7, "descriptor": "Fair: at least one major weakness, such as no power analysis, missing controls or no preliminary evidence of feasibility." },
+        { "score": 8, "descriptor": "Marginal: a few strengths and a few major weaknesses; the reviewer doubts the aims can be completed as described." },
+        { "score": 9, "descriptor": "Poor: very few strengths and numerous major weaknesses; methods are vague, unrigorous or unlikely to answer the question." }
+      ],
+      "appliesTo": ["approach", "progress-report"]
+    },
+    {
+      "key": "expertise-and-resources",
+      "criterion": "NIH Factor 3, Expertise and Resources, which NIH rates only sufficient or insufficient (scored here 1 = sufficient, 2 = insufficient so that, as for Factors 1 and 2, the lower score is better): as far as these sections show, do the team's expertise, preliminary work and stated resources fit the proposed methods?",
+      "levels": [
+        { "score": 1, "descriptor": "Sufficient: the methods are ones the team has shown it can carry out (preliminary data, prior publications, named cores or collaborators), and no proposed work lacks an evident source of expertise or resources." },
+        { "score": 2, "descriptor": "Insufficient: key methods have no evident expertise, preliminary work or resource behind them, or the text relies on capabilities the application does not establish." }
+      ],
+      "appliesTo": ["approach"]
+    },
+    {
+      "key": "aims-alignment",
+      "criterion": "Aims alignment: the Specific Aims page and the Research Strategy tell one consistent story, with the same aims, hypotheses and outcomes throughout.",
+      "levels": [
+        { "score": 4, "descriptor": "Every aim on the Specific Aims page has a matching Approach sub-section with the same number, title and hypothesis; Significance and Innovation support those exact aims; expected outcomes agree everywhere." },
+        { "score": 3, "descriptor": "Aims and strategy match, with small drift such as a renamed aim or an outcome mentioned in one place only." },
+        { "score": 2, "descriptor": "Noticeable mismatches: an aim lacks a matching Approach sub-section, hypotheses are worded differently, or Significance argues for a different problem than the aims address." },
+        { "score": 1, "descriptor": "The aims and the strategy describe different projects, or the aims cannot be traced through the Research Strategy at all." }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "NIH G.400 PHS 398 Research Plan form instructions; NIH Simplified Review Framework for research project grants (effective January 25, 2025)",
+    "url": "https://grants.nih.gov/grants/how-to-apply-application-guide/forms-i/general/g.400-phs-398-research-plan-form.htm",
+    "license": "Public domain (US government)",
+    "retrieved": "2026-10-07"
+  }
+}

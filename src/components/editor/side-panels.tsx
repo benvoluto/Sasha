@@ -1,8 +1,9 @@
 "use client";
 
-// The panels that open from the toolbar: the outline on the left and the
-// writing tools on the right. The Sources panel (sources-panel.tsx) shares the
-// right-hand slot and this file's PanelHeader.
+// The writing tools panel on the right, and the PanelHeader every side panel
+// shares. The Sources and Section notes panels (sources-panel.tsx,
+// section-notes-panel.tsx) share the right-hand slot; the outline is
+// outline-panel.tsx.
 
 import type { Editor } from "@tiptap/react";
 import { useEffect, useState } from "react";
@@ -10,27 +11,6 @@ import { Loader2, SparkleIcon, X } from "@/components/icons";
 import { markdownToTiptap } from "@/lib/report/markdown-to-tiptap";
 import { REWRITE_PRESET_ORDER, REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
 import { trackRange } from "./tracked-range";
-
-type HeadingItem = { pos: number; level: number; text: string; id: string };
-
-function useHeadings(editor: Editor): HeadingItem[] {
-  const [items, setItems] = useState<HeadingItem[]>([]);
-  useEffect(() => {
-    const read = () => {
-      const out: HeadingItem[] = [];
-      editor.state.doc.forEach((node, pos) => {
-        if (node.type.name === "heading") out.push({ pos, level: Number(node.attrs.level), text: node.textContent, id: String(node.attrs.sectionId ?? pos) });
-      });
-      setItems(out);
-    };
-    read();
-    editor.on("update", read);
-    return () => {
-      editor.off("update", read);
-    };
-  }, [editor]);
-  return items;
-}
 
 export function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
@@ -40,41 +20,6 @@ export function PanelHeader({ title, onClose }: { title: string; onClose: () => 
         <X className="h-4 w-4" />
       </button>
     </div>
-  );
-}
-
-export function OutlinePanel({ editor, onClose }: { editor: Editor; onClose: () => void }) {
-  const headings = useHeadings(editor);
-  const minLevel = Math.min(...headings.map((h) => h.level), 3);
-  const go = (pos: number) => {
-    editor.chain().focus().setTextSelection(pos + 1).run();
-    const dom = editor.view.nodeDOM(pos);
-    if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-  return (
-    <aside aria-label="Outline" className="flex h-full flex-col">
-      <PanelHeader title="Outline" onClose={onClose} />
-      {headings.length === 0 ? (
-        <p className="px-5 text-sm text-[var(--doc-muted)]">Headings appear here as you add them. Choose a document type to start from an outline.</p>
-      ) : (
-        <nav className="overflow-y-auto px-3 pb-4">
-          <ol className="space-y-0.5">
-            {headings.map((h) => (
-              <li key={h.id}>
-                <button
-                  type="button"
-                  onClick={() => go(h.pos)}
-                  style={{ paddingLeft: `${0.5 + (h.level - minLevel) * 0.9}rem` }}
-                  className={`w-full truncate rounded-md py-1.5 pr-2 text-left text-sm hover:bg-[var(--doc-accent-soft)] ${h.level === minLevel ? "font-medium" : "text-[var(--doc-muted)]"}`}
-                >
-                  {h.text || "Untitled section"}
-                </button>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )}
-    </aside>
   );
 }
 

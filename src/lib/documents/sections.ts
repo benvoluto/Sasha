@@ -20,8 +20,23 @@ export type SectionInfo = {
   specKey: string | null;
   /** Index of the heading among the document's top-level nodes. */
   index: number;
-  /** Plain text of the section body (without the heading). */
+  /** Plain text of the section body (without the heading). With `{ own: true }`, only the section's own body. */
   bodyText: string;
+  /** With `{ own: true }`: the own body's text without sub-heading titles. */
+  proseText?: string;
+  /** With `{ own: true }`: the own body has text, a table, an image or a rule (sub-heading titles don't count). */
+  hasContent?: boolean;
+};
+
+export type ListSectionsOptions = {
+  /**
+   * Each section's own body, as the editor reads it (sectionBodyRange): it
+   * stops early at a sub-heading that carries a `specKey`, which is a section
+   * of its own in the document's type (NIH's Significance under Research
+   * Strategy). Sub-headings without one (a drafted "### Detail") stay part of
+   * the body.
+   */
+  own?: boolean;
 };
 
 export const EMPTY_DOC: PMNode = { type: "doc", content: [{ type: "paragraph" }] };
@@ -45,18 +60,30 @@ export function wordCount(text: string): number {
   return words ? words.length : 0;
 }
 
+const MEDIA = new Set(["table", "image", "horizontalRule"]);
+
+function hasMedia(node: PMNode): boolean {
+  return MEDIA.has(node.type) || (node.content ?? []).some(hasMedia);
+}
+
 /** The document's sections in order. */
-export function listSections(doc: PMNode | null | undefined): SectionInfo[] {
+export function listSections(doc: PMNode | null | undefined, opts: ListSectionsOptions = {}): SectionInfo[] {
   const nodes = doc?.content ?? [];
   const out: SectionInfo[] = [];
   nodes.forEach((node, index) => {
     if (node.type !== "heading") return;
     const level = Number(node.attrs?.level ?? 1);
     let body = "";
+    let prose = "";
+    let media = false;
     for (let i = index + 1; i < nodes.length; i++) {
       const next = nodes[i];
-      if (next.type === "heading" && Number(next.attrs?.level ?? 1) <= level) break;
+      if (next.type === "heading" && (Number(next.attrs?.level ?? 1) <= level || (opts.own && next.attrs?.specKey))) break;
       body += nodeText(next);
+      if (next.type !== "heading") {
+        prose += nodeText(next);
+        media ||= hasMedia(next);
+      }
     }
     out.push({
       sectionId: String(node.attrs?.sectionId ?? ""),
@@ -65,6 +92,7 @@ export function listSections(doc: PMNode | null | undefined): SectionInfo[] {
       specKey: (node.attrs?.specKey as string | null | undefined) ?? null,
       index,
       bodyText: body.trim(),
+      ...(opts.own ? { proseText: prose.trim(), hasContent: !!prose.trim() || media } : {}),
     });
   });
   return out;

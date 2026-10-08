@@ -1,6 +1,7 @@
 // The document editor's extension set: the report editor's schema plus stable
 // section ids on headings, highlight, the "filled" mark for text that came from
-// sources or notes, and the dividers between sections. Client-only.
+// sources or notes, the dividers between sections, and the heading gutter (the
+// button that opens a section's actions). Client-only.
 
 import { Extension, Mark, mergeAttributes } from "@tiptap/core";
 import Heading from "@tiptap/extension-heading";
@@ -251,7 +252,127 @@ export const SectionDividers = Extension.create<SectionDividerHandlers>({
   },
 });
 
-export function documentExtensions(handlers: SectionDividerHandlers = {}): Extensions {
+// --- Heading gutter -------------------------------------------------------------
+
+export type SectionGutterHandlers = {
+  /** The gutter button on a heading was pressed: open the section menu anchored to `anchor`. */
+  onSectionMenu?: (sectionId: string, anchor: DOMRect) => void;
+};
+
+export const gutterKey = new PluginKey<GutterState>("sectionGutter");
+
+/** Sections with a generation running: their heading gets `section-busy` and the gutter a spinner. */
+type GutterState = { busy: ReadonlySet<string> };
+
+/** Mark sections busy (or not). Not an edit: kept out of the history and the document. */
+export function setBusySections(view: EditorView, busy: Iterable<string>) {
+  view.dispatch(view.state.tr.setMeta(gutterKey, { busy: new Set(busy) }).setMeta("addToHistory", false));
+}
+
+// Phosphor "DotsThreeVertical" (bold) and "CircleNotch", inlined like the divider icons.
+const DOTS =
+  "M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM128,72a12,12,0,1,0-12-12A12,12,0,0,0,128,72Zm0,112a12,12,0,1,0,12,12A12,12,0,0,0,128,184Z";
+const SPINNER = "M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C208.19,49.64,232,87,232,128Z";
+
+/**
+ * The gutter button for one heading, as plain DOM. `inline` is the copy shown
+ * at the end of the heading line on phones; the other sits in the left margin.
+ */
+export function gutterButton(doc: Document, sectionId: string, opts: { busy: boolean; inline: boolean; heading: string }, handlers: SectionGutterHandlers): HTMLElement {
+  const b = doc.createElement("button");
+  b.type = "button";
+  b.className = `section-gutter${opts.inline ? " section-gutter-inline" : ""}${opts.busy ? " is-busy" : ""}`;
+  b.contentEditable = "false";
+  b.setAttribute("data-section-id", sectionId);
+  const label = opts.busy ? "Claude is writing this section" : `Section actions${opts.heading ? `: ${opts.heading}` : ""}`;
+  b.setAttribute("aria-label", label);
+  b.title = opts.busy ? "Claude is writing…" : "Section actions";
+  b.setAttribute("aria-haspopup", "menu");
+  b.innerHTML = `<svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"${opts.busy ? ' class="section-gutter-spin"' : ""}><path d="${opts.busy ? SPINNER : DOTS}" fill="currentColor"/></svg>`;
+  // mousedown would move the selection into the widget; keep the editor's.
+  b.addEventListener("mousedown", (e) => e.preventDefault());
+  b.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handlers.onSectionMenu?.(sectionId, b.getBoundingClientRect());
+  });
+  return b;
+}
+
+/** The heading containing the selection's head, if any. */
+function caretHeadingPos(state: EditorState): number | null {
+  const { $head } = state.selection;
+  for (let d = $head.depth; d > 0; d--) {
+    if ($head.node(d).type.name === "heading") return $head.before(d);
+  }
+  return null;
+}
+
+export function gutterDecorations(state: EditorState, busy: ReadonlySet<string>, handlers: SectionGutterHandlers): DecorationSet {
+  const decos: Decoration[] = [];
+  const caret = caretHeadingPos(state);
+  state.doc.forEach((node, pos) => {
+    if (node.type.name !== "heading") return;
+    const id = node.attrs.sectionId as string | null;
+    if (!id) return;
+    const isBusy = busy.has(id);
+    const heading = node.textContent;
+    const classes = [isBusy ? "section-busy" : "", pos === caret ? "has-caret" : ""].filter(Boolean).join(" ");
+    // The gutter buttons sit inside the heading, so name the heading by its own
+    // text: otherwise a screen reader moving by headings would hear the
+    // buttons' labels too. Busy is announced by the editor's live region.
+    const attrs: Record<string, string> = {};
+    if (classes) attrs.class = classes;
+    if (heading.trim()) attrs["aria-label"] = heading;
+    if (isBusy) attrs["aria-busy"] = "true";
+    if (Object.keys(attrs).length) decos.push(Decoration.node(pos, pos + node.nodeSize, attrs));
+    // The label names the heading, so a renamed heading gets a fresh button.
+    const phase = `${isBusy ? "busy" : "idle"}-${heading}`;
+    decos.push(
+      Decoration.widget(pos + 1, (view) => gutterButton(view.dom.ownerDocument, id, { busy: isBusy, inline: false, heading }, handlers), {
+        side: -1,
+        key: `gutter-${id}-${phase}`,
+        ignoreSelection: true,
+        // The button handles its own events; the editor shouldn't move the selection for them.
+        stopEvent: () => true,
+        sectionId: id,
+      }),
+      Decoration.widget(pos + node.nodeSize - 1, (view) => gutterButton(view.dom.ownerDocument, id, { busy: isBusy, inline: true, heading }, handlers), {
+        side: 1,
+        key: `gutter-inline-${id}-${phase}`,
+        ignoreSelection: true,
+        // The button handles its own events; the editor shouldn't move the selection for them.
+        stopEvent: () => true,
+        sectionId: id,
+      }),
+    );
+  });
+  return DecorationSet.create(state.doc, decos);
+}
+
+export const SectionGutter = Extension.create<SectionGutterHandlers>({
+  name: "sectionGutter",
+  addOptions: () => ({}),
+  addProseMirrorPlugins() {
+    const handlers = this.options;
+    return [
+      new Plugin<GutterState>({
+        key: gutterKey,
+        state: {
+          init: () => ({ busy: new Set<string>() }),
+          apply: (tr, value) => (tr.getMeta(gutterKey) as GutterState | undefined) ?? value,
+        },
+        props: {
+          decorations: (state) => gutterDecorations(state, gutterKey.getState(state)?.busy ?? new Set(), handlers),
+        },
+      }),
+    ];
+  },
+});
+
+export type DocumentHandlers = SectionDividerHandlers & SectionGutterHandlers;
+
+export function documentExtensions(handlers: DocumentHandlers = {}): Extensions {
   return [
     StarterKit.configure({ heading: false }),
     SectionHeading.configure({ levels: [1, 2, 3] }),
@@ -270,6 +391,7 @@ export function documentExtensions(handlers: SectionDividerHandlers = {}): Exten
         node.type.name === "heading" ? "Heading" : editor.isEmpty ? "Start writing, or choose a document type above…" : "Write this section…",
       showOnlyCurrent: false,
     }),
-    SectionDividers.configure(handlers),
+    SectionDividers.configure({ onDeleteSection: handlers.onDeleteSection }),
+    SectionGutter.configure({ onSectionMenu: handlers.onSectionMenu }),
   ];
 }
