@@ -3,7 +3,7 @@
 //   SASHA_LIVE_TESTS=1 npx vitest run src/lib/suggestions/generate.live.test.ts
 // Logs latency and token counts only (never keys or other env values).
 // With SASHA_RECORD_FIXTURES=1 as well, the raw reply (with the item labels,
-// source ids and section keys it was given) is written to
+// source ids, data table ids and section keys it was given) is written to
 // __fixtures__/suggest.items.recorded.json, which recorded.test.ts replays offline.
 
 import { writeFileSync } from "node:fs";
@@ -18,11 +18,13 @@ try {
 delete process.env.POSTGRES_URL;
 
 import { fileTypeByKey } from "@/catalog/files";
+import { columnKey } from "@/lib/data/contract";
+import { linkTable, listTables, replaceSourceTables } from "@/lib/data/store";
 import { createDocument, updateDocument } from "@/lib/documents/store";
 import { claudeJson } from "@/lib/llm/claude";
 import { createSource, linkSource, setSummary } from "@/lib/sources/store";
 import { typeNeeds } from "./diff";
-import { generateSuggestions } from "./generate";
+import { generateSuggestions, promptTable } from "./generate";
 import { SUGGEST_SYSTEM, SuggestModelOutput, suggestUserPrompt } from "./prompt";
 
 const live = process.env.SASHA_LIVE_TESTS === "1" && !!process.env.ANTHROPIC_API_KEY;
@@ -43,6 +45,30 @@ describe.skipIf(!live)("suggest.items (live)", () => {
     await setSummary(T, b.id, "A survey of the riverside path counting about 900 walkers a week in spring, with two collapsed sections since last winter's floods.");
     await linkSource(T, "live", d.id, a.id);
     await linkSource(T, "live", d.id, b.id);
+    // A spreadsheet with the project timeline, linked as a data table (Phase 5).
+    const sheet = await createSource(T, "live", { kind: "file", title: "Project plan.xlsx", filename: "Project plan.xlsx", extraction_status: "ready" });
+    const labels: Array<[string, "text" | "date"]> = [["Milestone", "text"], ["Target date", "date"], ["Owner", "text"]];
+    await replaceSourceTables(T, sheet.id, "live", [
+      {
+        match_key: "sheet:Timeline",
+        name: "Project timeline",
+        columns: labels.map(([label, type], i) => ({ key: columnKey(i), label, type, inferred: type, unit: null })),
+        rows: [
+          ["Contractor appointed", "2027-03-01", "Parish clerk"],
+          ["Bank stabilization complete", "2027-06-30", "Greenbank"],
+          ["Path reopened", "2027-09-15", "Parish council"],
+        ],
+        extraction_method: "xlsx",
+        sheet: "Timeline",
+        page: null,
+        page_end: null,
+        confidence: null,
+        notes: "",
+        truncated: false,
+      },
+    ]);
+    const [timeline] = await listTables(T, { sourceId: sheet.id });
+    await linkTable(T, "live", d.id, timeline.id);
 
     // The raw reply, to check the indices the model used.
     const items = typeNeeds(fileTypeByKey("proposal")!);
@@ -56,6 +82,7 @@ describe.skipIf(!live)("suggest.items (live)", () => {
           { id: a.id, title: "Contractor quote", summary: "A quote from Greenbank Contractors for rebuilding 400 m of riverside path and stabilizing the bank: £38,400 including VAT, valid for 90 days." },
           { id: b.id, title: "Path survey", summary: "A survey of the riverside path counting about 900 walkers a week in spring, with two collapsed sections since last winter's floods." },
         ],
+        tables: [promptTable({ ...timeline, added_by: "live", added_at: timeline.created_at })],
         notes: NOTES,
         type: { title: "Proposal", sections: fileTypeByKey("proposal")!.sections.map((s) => ({ key: s.key, heading: s.heading })) },
       }),
@@ -70,6 +97,7 @@ describe.skipIf(!live)("suggest.items (live)", () => {
         type_key: "proposal",
         items: items.map((i) => i.label),
         source_ids: [a.id, b.id],
+        table_ids: [timeline.id],
         section_keys: fileTypeByKey("proposal")!.sections.map((s) => s.key),
         data,
       };
@@ -79,7 +107,10 @@ describe.skipIf(!live)("suggest.items (live)", () => {
     for (const c of data.coverage) {
       expect(c.item).toBeGreaterThanOrEqual(1);
       expect(c.item).toBeLessThanOrEqual(items.length);
-      if (c.status !== "missing") expect([a.id, b.id]).toContain(c.source_id);
+      if (c.status === "missing") continue;
+      // A table only ever covers a data item.
+      if (c.source_id === timeline.id) expect(items[c.item - 1].kind).toBe("data");
+      else expect([a.id, b.id]).toContain(c.source_id);
     }
 
     // The whole service, end to end.
@@ -92,5 +123,6 @@ describe.skipIf(!live)("suggest.items (live)", () => {
     expect(notes.length).toBeGreaterThan(0);
     expect(notes.some((s) => /financ|account|audit/i.test(s.label))).toBe(true);
     expect(r.suggestions.find((s) => s.label === "Quotes or cost estimates")).toMatchObject({ state: "added", source_id: a.id });
+    expect(r.suggestions.find((s) => s.label === "Milestone dates")).toMatchObject({ state: "added", data_table_id: timeline.id, source_id: null });
   }, 120_000);
 });

@@ -5,6 +5,7 @@ import { applyGenerated, createUserSuggestion, getRun, getSuggestion, listSugges
 const A = "org:a";
 const B = "org:b";
 const SRC = "11111111-1111-4111-8111-111111111111";
+const TBL = "33333333-3333-4333-8333-333333333333";
 const item = (kind: "source" | "data" | "web", label: string, extra: Record<string, unknown> = {}) => ({ kind, label, reason: `why ${label}`, spec_ref: null, ...extra });
 
 describe("suggestion store", () => {
@@ -117,6 +118,39 @@ describe("suggestion store", () => {
     const other = await createDocument(A, "ann");
     expect(await getSuggestion(A, other.id, s.id)).toBeNull();
     expect((await listSuggestions(A, d.id))![0].state).toBe("open");
+  });
+
+  it("records the data table that covers a data item, and only for data items", async () => {
+    const d = await createDocument(A, "ann");
+    const list = (await applyGenerated(A, "ann", d.id, "type", [
+      item("data", "Milestones", { covered_by_table: TBL }),
+      item("source", "Plan", { covered_by_table: TBL }),
+      item("data", "Later"),
+      item("data", "Mine later"),
+    ]))!;
+    const by = (label: string) => list.find((r) => r.label === label)!;
+    expect(by("Milestones")).toMatchObject({ state: "added", data_table_id: TBL, source_id: null });
+    expect(by("Plan")).toMatchObject({ state: "open", data_table_id: null });
+
+    // An open row, generated or the person's own, becomes covered by a table on a later run.
+    const own = (await createUserSuggestion(A, "ann", d.id, { kind: "data", label: "Own figures" }))!.suggestion;
+    const plan = planApply([...list, own], "type", [item("data", "Later", { covered_by_table: TBL }), item("data", "Own figures", { covered_by_table: TBL })]);
+    expect(plan.update).toEqual([
+      { id: by("Later").id, change: { state: "added", source_id: null, data_table_id: TBL } },
+      { id: own.id, change: { state: "added", source_id: null, data_table_id: TBL } },
+    ]);
+  });
+
+  it("adds a data suggestion with a table, keeps it on a plain add, and dismiss or restore forgets it", async () => {
+    const d = await createDocument(A, "ann");
+    const [data, source] = (await applyGenerated(A, "ann", d.id, "type", [item("data", "Figures"), item("source", "Report")]))!;
+    expect(await setSuggestionState(A, d.id, data.id, "add", SRC, TBL)).toMatchObject({ state: "added", data_table_id: TBL, source_id: null });
+    expect(await setSuggestionState(A, d.id, data.id, "add")).toMatchObject({ state: "added", data_table_id: TBL });
+    expect(await setSuggestionState(A, d.id, data.id, "dismiss")).toMatchObject({ state: "dismissed", data_table_id: null });
+    await setSuggestionState(A, d.id, data.id, "add", undefined, TBL);
+    expect(await setSuggestionState(A, d.id, data.id, "restore")).toMatchObject({ state: "open", data_table_id: null, source_id: null });
+    // A source item never takes a table.
+    expect(await setSuggestionState(A, d.id, source.id, "add", SRC, TBL)).toMatchObject({ state: "added", source_id: SRC, data_table_id: null });
   });
 
   it("is cleared by resetMemoryStore", async () => {

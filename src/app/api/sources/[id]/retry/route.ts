@@ -3,7 +3,7 @@ import { requireTeam } from "@/lib/documents/team";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { findPresignedUpload } from "@/lib/sources/blobs";
 import { ingestSource } from "@/lib/sources/ingest";
-import { getSource, setSourceFile, setSourceStatus, toSummary, type SourceRecord } from "@/lib/sources/store";
+import { claimSourceStatus, getSource, setSourceFile, TERMINAL_STATUSES, toSummary, type SourceRecord } from "@/lib/sources/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +12,7 @@ export const maxDuration = 300; // ingest runs in after() and shares this budget
 type Ctx = { params: Promise<{ id: string }> };
 
 const NOT_UPLOADED = "This file hasn't finished uploading. Remove it and upload it again.";
+const STILL_READING = "This source is still being read. Wait for it to finish, then try again.";
 
 /**
  * A file whose upload reached Blob but was never reported (the tab closed, or
@@ -32,6 +33,7 @@ async function adoptUpload(teamId: string, source: SourceRecord): Promise<boolea
 /**
  * POST /api/sources/[id]/retry — read the source again: after an error, one
  * that looks stuck, or a file whose upload finished but was never completed.
+ * 409 while a read is still under way.
  */
 export async function POST(_req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.sourceWrite);
@@ -41,8 +43,9 @@ export async function POST(_req: Request, { params }: Ctx) {
   if (!source) return NextResponse.json({ error: "Source not found." }, { status: 404 });
   if (source.extraction_status === "uploading") {
     if (!(await adoptUpload(teamId, source))) return NextResponse.json({ error: NOT_UPLOADED }, { status: 409 });
-  } else {
-    await setSourceStatus(teamId, source.id, "pending");
+  } else if (!(await claimSourceStatus(teamId, source.id, "pending", TERMINAL_STATUSES))) {
+    // A read already under way (and not stale) would race this one over the tables.
+    return NextResponse.json({ error: STILL_READING }, { status: 409 });
   }
   after(() => ingestSource(teamId, source.id, agent));
   const current = await getSource(teamId, source.id);

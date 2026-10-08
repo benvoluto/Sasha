@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkExtraction, documentSections, hasReadableText, readableText } from "./extracted-text";
+import { checkExtraction, documentSections, emptyExtractionMessage, hasReadableText, LINKED_PDF_ADVICE, readableText, UPLOAD_ADVICE } from "./extracted-text";
 import { reconcileGeminiStatus } from "./processing-status";
 
 // What the parallel extractor stored for the Jordan S. packet: the header it adds itself, and nothing else.
@@ -47,6 +47,25 @@ describe("checkExtraction", () => {
     expect(checkExtraction(ok, [{ name: "a.pdf" }])).toBe(ok);
     const err = { extractedContent: "", status: "error" as const, fileCount: 0, error: "Gemini API not configured" };
     expect(checkExtraction(err, files)).toBe(err);
+  });
+});
+
+describe("emptyExtractionMessage", () => {
+  it("advises uploading again by default", () => {
+    expect(emptyExtractionMessage(["a.pdf"], "MAX_TOKENS")).toBe(`No text could be read from "a.pdf" (the AI service ran out of room for its reply). ${UPLOAD_ADVICE}`);
+  });
+
+  it("takes a hint in place of the default advice", () => {
+    const m = emptyExtractionMessage(["r.pdf"], undefined, LINKED_PDF_ADVICE);
+    expect(m).toBe('No text could be read from "r.pdf". Read it again, or download the PDF and upload it as a file.');
+    expect(m).not.toContain("Try uploading");
+  });
+
+  it("passes the hint through checkExtraction", () => {
+    const r = checkExtraction(result({ extractedContent: HEADER_ONLY, status: "success", fileCount: 1 }), [{ name: "r.pdf" }], LINKED_PDF_ADVICE);
+    expect(r.error).toContain(LINKED_PDF_ADVICE);
+    const partial = checkExtraction(result({ extractedContent: `${READ}\n\n${HEADER_ONLY}`, status: "success", fileCount: 2 }), [{ name: "a.pdf" }], LINKED_PDF_ADVICE);
+    expect(partial.error).toContain(LINKED_PDF_ADVICE);
   });
 });
 

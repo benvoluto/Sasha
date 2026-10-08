@@ -7,6 +7,7 @@ import { deleteDocument, getDocument, updateDocument, type DocumentPatch } from 
 import { requireTeam } from "@/lib/documents/team";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -40,7 +41,8 @@ const PatchBody = z.object({
 export async function PATCH(req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.documentWrite);
   if (caller instanceof NextResponse) return caller;
-  const parsed = PatchBody.safeParse(await req.json().catch(() => ({})));
+  // Invalid JSON fails the parse (never defaulted to {}), so it can't save an empty change and bump updated_at.
+  const parsed = PatchBody.safeParse(await req.json().catch(() => undefined));
   if (!parsed.success) return NextResponse.json({ error: "Invalid changes." }, { status: 400 });
   const { base_updated_at, force, ...patch } = parsed.data;
   if (patch.doc_folder_id) {

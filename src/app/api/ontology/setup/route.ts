@@ -5,6 +5,7 @@ import { DOCUMENT_SCHEMA } from "@/lib/documents/store";
 import { SOURCE_SCHEMA } from "@/lib/sources/store";
 import { CATALOG_SCHEMA } from "@/catalog/store";
 import { SUGGESTION_SCHEMA } from "@/lib/suggestions/schema";
+import { DATA_SCHEMA } from "@/lib/data/schema";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,8 @@ const STATEMENTS = [
   ...DOCUMENT_SCHEMA,
   // The sources library (after the documents: links reference document).
   ...SOURCE_SCHEMA,
+  // Data tables read from sources, and their document links (src/lib/data/schema.ts).
+  ...DATA_SCHEMA,
   // Team overrides and team-made document types (src/catalog/store.ts).
   ...CATALOG_SCHEMA,
   // Suggested sources, data and web resources per document (src/lib/suggestions/schema.ts).
@@ -64,6 +67,10 @@ const EXPECTED_TABLES = [
   "source",
   "document_source",
   "source_passage",
+  "data_table",
+  "data_row",
+  "data_cell_override",
+  "document_data",
   "document_type",
   "suggestion",
   "suggestion_run",
@@ -99,6 +106,7 @@ async function inspectSchema() {
     "document_section.updated_at": !!columns.document_section?.includes("updated_at"),
     "document.doc_folder_id": !!columns.document?.includes("doc_folder_id"),
     "document.classifier_state": !!columns.document?.includes("classifier_state"),
+    "suggestion.data_table_id": !!columns.suggestion?.includes("data_table_id"),
   };
   return {
     ok: missingTables.length === 0 && Object.values(migrations).every(Boolean),

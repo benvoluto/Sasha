@@ -56,18 +56,30 @@ export function dismissedItems(rows: SuggestionRecord[]): SuggestionRecord[] {
   return rows.filter((r) => r.state === "dismissed").sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
-/** What a done row says: the source that covers it, or "Noted" (data items until Phase 5). */
-export function doneText(row: Pick<SuggestionRecord, "kind" | "source_id">, sourceTitles: ReadonlyMap<string, string>): string {
+/** What a done row says: the source or data table that covers it, or "Noted" / "Added". */
+export function doneText(
+  row: Pick<SuggestionRecord, "kind" | "source_id"> & Partial<Pick<SuggestionRecord, "data_table_id">>,
+  sourceTitles: ReadonlyMap<string, string>,
+  tableNames: ReadonlyMap<string, string> = new Map(),
+): string {
+  if (row.kind === "data" && row.data_table_id) return `Covered by ${tableNames.get(row.data_table_id) ?? "a linked table"}`;
   if (row.source_id) return `Covered by ${sourceTitles.get(row.source_id) ?? "a linked source"}`;
   return row.kind === "data" ? "Noted" : "Added";
 }
 
-/** The row as it will be after `action` (the optimistic update; the server's reply replaces it). */
-export function applyAction(row: SuggestionRecord, action: SuggestionActionRequest["action"], sourceId?: string | null): SuggestionRecord {
+/**
+ * The row as it will be after `action` (the optimistic update; the server's
+ * reply replaces it). Mirrors setSuggestionState: "add" on a data item keeps
+ * or sets its table and never a source; dismiss and restore clear both.
+ */
+export function applyAction(row: SuggestionRecord, action: SuggestionActionRequest["action"], sourceId?: string | null, dataTableId?: string | null): SuggestionRecord {
   const updated_at = new Date().toISOString();
-  if (action === "add") return { ...row, state: "added", source_id: row.kind === "data" ? null : (sourceId ?? row.source_id), updated_at };
-  if (action === "dismiss") return { ...row, state: "dismissed", source_id: null, updated_at };
-  return { ...row, state: "open", source_id: null, updated_at };
+  if (action === "add") {
+    return row.kind === "data"
+      ? { ...row, state: "added", source_id: null, data_table_id: dataTableId ?? row.data_table_id ?? null, updated_at }
+      : { ...row, state: "added", source_id: sourceId ?? row.source_id, updated_at };
+  }
+  return { ...row, state: action === "dismiss" ? "dismissed" : "open", source_id: null, data_table_id: null, updated_at };
 }
 
 /** Replace one row by id (or append it when new). */

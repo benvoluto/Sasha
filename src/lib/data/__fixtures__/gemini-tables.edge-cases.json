@@ -1,0 +1,46 @@
+{
+  "note": "Hand-written replies in the shape GeminiTablesReply accepts, covering what repair has to handle. Each case gives the chunk it came from and what repair and buildTable should make of it.",
+  "cases": [
+    {
+      "name": "a table continuing over two pages, with ragged rows and a blank header",
+      "chunk": { "first": 11, "last": 20 },
+      "data": {
+        "tables": [
+          {
+            "title": "Staff costs by year",
+            "page": 14,
+            "page_end": 15,
+            "columns": ["Role", "", "2024"],
+            "rows": [["Director", "1.0 FTE", "£82,000"], ["Officer", "2.5 FTE"], ["Assistant", "0.5 FTE", "£11,500", "extra"]],
+            "confidence": 0.82,
+            "notes": "Rows continue on page 15."
+          }
+        ]
+      },
+      "expect": { "tables": 1, "match_keys": ["page:14#1"], "pages": [[14, 15]], "labels": [["Role", "Column 2", "2024"]], "types": [["text", "text", "currency"]], "rows": [3] }
+    },
+    {
+      "name": "pages outside the chunk, a one-column list and an empty table",
+      "chunk": { "first": 1, "last": 10 },
+      "data": {
+        "tables": [
+          { "title": "Milestones", "page": 0, "page_end": 12, "columns": ["Milestone", "Date"], "rows": [["Survey", "Jan 5, 2024"], ["Permits", "March 2024"]], "confidence": 0.95, "notes": "" },
+          { "title": "List of partners", "page": 3, "page_end": null, "columns": ["Partner"], "rows": [["Parks Trust"], ["Friends of the River"]], "confidence": 0.9, "notes": "" },
+          { "title": "Empty grid", "page": 4, "page_end": null, "columns": ["A", "B"], "rows": [[null, null]], "confidence": 0.9, "notes": "" }
+        ]
+      },
+      "expect": { "tables": 1, "dropped": ["fewer than 2 columns", "no rows"], "match_keys": ["page:1#1"], "pages": [[1, 10]], "labels": [["Milestone", "Date"]], "types": [["text", "date"]], "rows": [2] }
+    },
+    {
+      "name": "two tables on one page, one read with low confidence",
+      "chunk": { "first": 1, "last": 3 },
+      "data": {
+        "tables": [
+          { "title": "", "page": 2, "page_end": 2, "columns": ["Item", "Share"], "rows": [["Groundworks", "45%"], ["Surfacing", "21%"]], "confidence": 0.55, "notes": "Two cells were blurred." },
+          { "title": "Funding", "page": 2, "page_end": null, "columns": ["Source", "Amount"], "rows": [["Council", "(1,200)"], ["Trust", "3,400"]], "confidence": 0.9, "notes": "" }
+        ]
+      },
+      "expect": { "tables": 2, "match_keys": ["page:2#1", "page:2#2"], "pages": [[2, null], [2, null]], "labels": [["Item", "Share"], ["Source", "Amount"]], "types": [["text", "percent"], ["text", "number"]], "rows": [2, 2], "names": ["Table 1", "Funding"], "low_confidence": [true, false] }
+    }
+  ]
+}

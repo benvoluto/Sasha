@@ -1,7 +1,8 @@
 // The document editor's extension set: the report editor's schema plus stable
 // section ids on headings, highlight, the "filled" mark for text that came from
-// sources or notes, the dividers between sections, and the heading gutter (the
-// button that opens a section's actions). Client-only.
+// sources or notes, the dividers between sections, the heading gutter (the
+// button that opens a section's actions) and tables that remember the data
+// table they were inserted from. Client-only.
 
 import { Extension, Mark, mergeAttributes } from "@tiptap/core";
 import Heading from "@tiptap/extension-heading";
@@ -21,6 +22,7 @@ import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } 
 import { Mapping } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import type { Extensions } from "@tiptap/react";
+import { DATA_TABLE_ATTR } from "@/lib/data/contract";
 
 export const newSectionId = () => `s_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -105,6 +107,29 @@ export const Filled = Mark.create({
   inclusive: false,
   parseHTML: () => [{ tag: "span[data-filled]" }],
   renderHTML: ({ HTMLAttributes }) => ["span", mergeAttributes(HTMLAttributes, { "data-filled": "", class: "filled-text" }), 0],
+});
+
+/** A string attribute kept as `name` (a data-* attribute) on the element, written only when set. */
+const dataAttr = (name: string, key: string) => ({
+  default: null,
+  parseHTML: (el: HTMLElement) => el.getAttribute(name),
+  renderHTML: (attrs: Record<string, unknown>) => (attrs[key] ? { [name]: attrs[key] } : {}),
+});
+
+/**
+ * Tables, plus where a table inserted from the Data tab came from (snapshot.ts):
+ * the data table, its source and when the snapshot was taken. Plain tables
+ * carry none of them.
+ */
+export const DataTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      dataTableId: dataAttr(DATA_TABLE_ATTR, "dataTableId"),
+      sourceId: dataAttr("data-source-id", "sourceId"),
+      snapshotAt: dataAttr("data-snapshot-at", "snapshotAt"),
+    };
+  },
 });
 
 // --- Section dividers ---------------------------------------------------------
@@ -379,9 +404,10 @@ export function documentExtensions(handlers: DocumentHandlers = {}): Extensions 
     Underline,
     Highlight,
     Filled,
+    // Relative hrefs ("/library?source=…&table=…", the snapshot citations) pass Link's default check.
     Link.configure({ openOnClick: false, autolink: true }),
     TextAlign.configure({ types: ["heading", "paragraph"] }),
-    Table.configure({ resizable: true }),
+    DataTable.configure({ resizable: true }),
     TableRow,
     TableHeader,
     TableCell,

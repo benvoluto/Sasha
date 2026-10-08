@@ -10,10 +10,13 @@
 // is being added for, the link form opens with the suggestion's link (or the
 // library picker is offered, searching its label), and the first source linked
 // while the prefill is active marks the suggestion added.
+//
+// An expanded source shows how many tables were read from it ("N tables"),
+// which opens the Data tab when the panel is in the document modal.
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, LibraryIcon, Loader2, Plus, Search, Unlink, X } from "@/components/icons";
+import { ExternalLink, LibraryIcon, Loader2, Plus, Search, Table as TableIcon, Unlink, X } from "@/components/icons";
 import { FileDropzone } from "@/components/file-dropzone";
 import {
   AddNoteForm,
@@ -30,7 +33,9 @@ import {
 } from "@/components/sources/shared";
 import { SourcePicker } from "@/components/sources/source-picker";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import type { TableListResponse } from "@/lib/data/contract";
 import type { SourcePrefill, SuggestionResponse } from "@/lib/suggestions/contract";
+import { countBySource, tablesText } from "./data-pane-model";
 import { PanelHeader } from "./side-panels";
 
 type Mode = "upload" | "url" | "note" | null;
@@ -44,6 +49,7 @@ export function SourcesPanel({
   prefill = null,
   onPrefillDone,
   onSourcesChange,
+  onShowData,
 }: {
   documentId: string | null;
   documentTitle: string;
@@ -62,6 +68,8 @@ export function SourcesPanel({
   onPrefillDone?: () => void;
   /** The linked sources once loaded, and again whenever they change (so suggestions can refresh). */
   onSourcesChange?: (sources: LinkedSource[]) => void;
+  /** "N tables" on an expanded source: show the Data tab. Without it the count is plain text. */
+  onShowData?: () => void;
 }) {
   const [sources, setSources] = useState<LinkedSource[] | null>(documentId ? null : []);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +133,20 @@ export function SourcesPanel({
   }, [documentId, load]);
 
   usePollSources(sources ?? [], (fresh) => setSources((list) => (list ? mergeFresh(list, fresh) : list)));
+
+  // Tables read from the linked sources, counted per source; reloaded as sources finish reading.
+  const [tableCounts, setTableCounts] = useState<Map<string, number>>(new Map());
+  const sourcesState = (sources ?? []).map((s) => `${s.id}:${s.extraction_status}`).join(",");
+  useEffect(() => {
+    if (!documentId || !sourcesState) return;
+    let cancelled = false;
+    api<TableListResponse>(`/api/data/tables?for_document=${encodeURIComponent(documentId)}`)
+      .then(({ tables }) => !cancelled && setTableCounts(countBySource(tables)))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, sourcesState]);
 
   // Report the list only when it reflects the server (not the empty stand-in after a failed load).
   useEffect(() => {
@@ -294,6 +316,20 @@ export function SourcesPanel({
                     : s.summary && <p className={`mt-1.5 text-xs leading-relaxed text-[var(--doc-muted)] ${open ? "" : "line-clamp-3"}`}>{s.summary}</p>}
                   {open && (
                     <div className="mt-2 flex flex-wrap items-center gap-1">
+                      {(tableCounts.get(s.id) ?? 0) > 0 &&
+                        (onShowData ? (
+                          <button
+                            type="button"
+                            onClick={onShowData}
+                            className="flex min-h-11 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)] sm:min-h-0"
+                          >
+                            <TableIcon className="h-3.5 w-3.5" aria-hidden /> {tablesText(tableCounts.get(s.id)!)}
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--doc-muted)]">
+                            <TableIcon className="h-3.5 w-3.5" aria-hidden /> {tablesText(tableCounts.get(s.id)!)}
+                          </span>
+                        ))}
                       {href && (
                         <a href={href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]">
                           <ExternalLink className="h-3.5 w-3.5" /> {s.kind === "url" ? "Open page" : "Open file"}

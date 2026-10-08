@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-08T17:43:02.186Z",
+  "recorded_at": "2026-10-08T19:10:43.900Z",
   "model": "claude-haiku-5-5",
   "type_key": "proposal",
   "items": [
@@ -13,8 +13,11 @@
     "Cost figures"
   ],
   "source_ids": [
-    "6a924018-d85b-4e7e-bb8c-a529b10b6e64",
-    "0a37c3f7-28e0-43d0-94c5-2f2f546391bf"
+    "a6e63def-7f1e-4ecb-831d-07aad4f3b2dd",
+    "e73f9626-0f57-4f00-bd41-8f7124585f28"
+  ],
+  "table_ids": [
+    "d26024a0-c414-482e-9406-42bd06abc203"
   ],
   "section_keys": [
     "summary",
@@ -39,13 +42,13 @@
       },
       {
         "item": 3,
-        "status": "partial",
-        "source_id": "0a37c3f7-28e0-43d0-94c5-2f2f546391bf"
+        "status": "covered",
+        "source_id": "e73f9626-0f57-4f00-bd41-8f7124585f28"
       },
       {
         "item": 4,
         "status": "partial",
-        "source_id": "0a37c3f7-28e0-43d0-94c5-2f2f546391bf"
+        "source_id": "e73f9626-0f57-4f00-bd41-8f7124585f28"
       },
       {
         "item": 5,
@@ -54,37 +57,31 @@
       },
       {
         "item": 6,
-        "status": "missing",
-        "source_id": null
+        "status": "covered",
+        "source_id": "d26024a0-c414-482e-9406-42bd06abc203"
       },
       {
         "item": 7,
         "status": "covered",
-        "source_id": "6a924018-d85b-4e7e-bb8c-a529b10b6e64"
+        "source_id": "a6e63def-7f1e-4ecb-831d-07aad4f3b2dd"
       },
       {
         "item": 8,
         "status": "partial",
-        "source_id": "6a924018-d85b-4e7e-bb8c-a529b10b6e64"
+        "source_id": "a6e63def-7f1e-4ecb-831d-07aad4f3b2dd"
       }
     ],
     "proposals": [
       {
-        "kind": "data",
+        "kind": "source",
         "label": "Last year's audited financials",
-        "reason": "The Hartley Foundation requires last year's audited financials with every application, as stated in the notes.",
-        "spec_ref": null
+        "reason": "The notes say the Hartley Foundation requires last year's audited financials with every application.",
+        "spec_ref": "budget"
       },
       {
         "kind": "source",
-        "label": "Parish council formal backing resolution",
-        "reason": "The foundation wants evidence that the parish council has formally backed the project, per the notes.",
-        "spec_ref": "reason"
-      },
-      {
-        "kind": "data",
-        "label": "Weekly path user count estimate",
-        "reason": "The notes ask for an estimate of how many people use the path each week, which the survey only gives for spring.",
+        "label": "Parish council resolution backing the project",
+        "reason": "The notes say the foundation wants to see that the parish council has formally backed the project.",
         "spec_ref": "reason"
       }
     ]

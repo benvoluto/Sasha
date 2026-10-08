@@ -47,14 +47,19 @@ export function describeStop(reason?: string): string | undefined {
   return STOP_REASONS[reason] ?? `the AI service stopped with ${reason}`;
 }
 
-/** The user-facing message when nothing could be read from `names`; `reason` is the model's finish or block reason. */
-export function emptyExtractionMessage(names: string[], reason?: string): string {
+/** What an empty read advises by default: for a file someone uploaded. */
+export const UPLOAD_ADVICE = "Try uploading the file again. If it fails again, check that it opens, is not password-protected, and is not blank.";
+/** The advice for a PDF that came from a link rather than an upload. */
+export const LINKED_PDF_ADVICE = "Read it again, or download the PDF and upload it as a file.";
+
+/**
+ * The user-facing message when nothing could be read from `names`; `reason` is
+ * the model's finish or block reason. `hint` replaces the closing advice (a
+ * linked PDF can't be "uploaded again").
+ */
+export function emptyExtractionMessage(names: string[], reason?: string, hint: string = UPLOAD_ADVICE): string {
   const why = describeStop(reason);
-  return (
-    `No text could be read from ${names.length ? list(names) : "the uploaded documents"}` +
-    (why ? ` (${why})` : "") +
-    ". Try uploading the file again. If it fails again, check that it opens, is not password-protected, and is not blank."
-  );
+  return `No text could be read from ${names.length ? list(names) : "the uploaded documents"}` + (why ? ` (${why})` : "") + `. ${hint}`;
 }
 
 type Extraction = { extractedContent: string; status: "success" | "error" | "partial"; error?: string; fileCount: number };
@@ -64,16 +69,16 @@ type Extraction = { extractedContent: string; status: "success" | "error" | "par
  * documents came back empty to partial, naming them. Applied to every
  * extraction backend's result, so none can report an empty read as a success.
  */
-export function checkExtraction<T extends Extraction>(result: T, files: Array<{ name: string }>): T {
+export function checkExtraction<T extends Extraction>(result: T, files: Array<{ name: string }>, hint?: string): T {
   if (result.status === "error") return result;
   if (!hasReadableText(result.extractedContent)) {
     const names = files.map((f) => f.name);
     console.error(`[Extraction] no readable text from ${names.join(", ")} (${result.extractedContent.length} chars incl. markers)`);
-    return { ...result, status: "error", fileCount: 0, error: emptyExtractionMessage(names) };
+    return { ...result, status: "error", fileCount: 0, error: emptyExtractionMessage(names, undefined, hint) };
   }
   const empty = documentSections(result.extractedContent).filter((d) => !d.readable).map((d) => d.name);
   if (!empty.length) return result;
   console.warn(`[Extraction] no readable text from ${empty.join(", ")}`);
-  const message = emptyExtractionMessage(empty);
+  const message = emptyExtractionMessage(empty, undefined, hint);
   return { ...result, status: "partial", error: result.error ? `${result.error}. ${message}` : message };
 }

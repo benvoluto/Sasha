@@ -32,7 +32,7 @@ const MAX_OUTPUT_TOKENS = 65_536;
  * the upload phase and the per-document generation phase both become
  * bounded-concurrency maps instead of serial loops.
  */
-async function mapWithConcurrency<T, R>(
+export async function mapWithConcurrency<T, R>(
   items: T[],
   limit: number,
   fn: (item: T, index: number) => Promise<R>,

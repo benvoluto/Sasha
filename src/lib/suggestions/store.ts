@@ -65,6 +65,7 @@ function rowToRecord(r: Record<string, unknown>): SuggestionRecord {
     origin: oneOf(SUGGESTION_ORIGINS, r.origin, "type"),
     state: oneOf(SUGGESTION_STATES, r.state, "open"),
     source_id: r.source_id == null ? null : String(r.source_id),
+    data_table_id: r.data_table_id == null ? null : String(r.data_table_id),
     created_at: iso(r.created_at),
     updated_at: iso(r.updated_at),
   };
@@ -120,6 +121,22 @@ export async function getSuggestion(teamId: string, documentId: string, id: stri
   return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
+/**
+ * A fresh read of a source replaced table `fromId` with `toId` (the data
+ * store's replaceSourceTables moves the document links the same way): data
+ * suggestions the old table covered now name the new one, so "Covered by" and
+ * the link check keep working.
+ */
+export async function retargetSuggestionTable(teamId: string, fromId: string, toId: string): Promise<void> {
+  if (!isUuid(fromId) || !isUuid(toId)) return;
+  if (!hasDb()) {
+    for (const [id, r] of memory.rows) if (r.team_id === teamId && r.data_table_id === fromId) memory.rows.set(id, { ...r, data_table_id: toId });
+    return;
+  }
+  await schema();
+  await sql`UPDATE suggestion SET data_table_id = ${toId} WHERE data_table_id = ${fromId} AND team_id = ${teamId}`;
+}
+
 /** The document's last generation, or null (none yet, or not the team's document). */
 export async function getRun(teamId: string, documentId: string): Promise<SuggestionRun | null> {
   if (!(await canTouch(teamId, documentId))) return null;
@@ -160,9 +177,9 @@ async function insertRow(row: Row): Promise<SuggestionRecord | null> {
     return strip(row);
   }
   const { rows } = await sql`
-    INSERT INTO suggestion (id, team_id, document_id, kind, label, reason, spec_ref, url, origin, state, dedupe_key, source_id, created_by, created_at, updated_at)
+    INSERT INTO suggestion (id, team_id, document_id, kind, label, reason, spec_ref, url, origin, state, dedupe_key, source_id, data_table_id, created_by, created_at, updated_at)
     VALUES (${row.id}, ${row.team_id}, ${row.document_id}, ${row.kind}, ${row.label}, ${row.reason}, ${row.spec_ref}, ${row.url}, ${row.origin},
-            ${row.state}, ${row.dedupe_key}, ${row.source_id}, ${row.created_by}, now(), now())
+            ${row.state}, ${row.dedupe_key}, ${row.source_id}, ${row.data_table_id}, ${row.created_by}, now(), now())
     ON CONFLICT (document_id, dedupe_key) DO NOTHING
     RETURNING *`;
   return rows[0] ? rowToRecord(rows[0]) : null;
@@ -177,7 +194,7 @@ async function findByKey(teamId: string, documentId: string, key: string): Promi
   return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
-type Change = { state?: SuggestionState; source_id?: string | null; reason?: string; spec_ref?: string | null; url?: string | null; origin?: SuggestionOrigin };
+type Change = { state?: SuggestionState; source_id?: string | null; data_table_id?: string | null; reason?: string; spec_ref?: string | null; url?: string | null; origin?: SuggestionOrigin };
 
 async function updateRow(teamId: string, documentId: string, id: string, c: Change): Promise<SuggestionRecord | null> {
   if (!hasDb()) {
@@ -192,6 +209,7 @@ async function updateRow(teamId: string, documentId: string, id: string, c: Chan
     UPDATE suggestion SET
       state = COALESCE(${c.state ?? null}, state),
       source_id = CASE WHEN ${c.source_id !== undefined} THEN ${c.source_id ?? null}::uuid ELSE source_id END,
+      data_table_id = CASE WHEN ${c.data_table_id !== undefined} THEN ${c.data_table_id ?? null}::uuid ELSE data_table_id END,
       reason = COALESCE(${c.reason ?? null}, reason),
       spec_ref = CASE WHEN ${c.spec_ref !== undefined} THEN ${c.spec_ref ?? null} ELSE spec_ref END,
       url = CASE WHEN ${c.url !== undefined} THEN ${c.url ?? null} ELSE url END,
@@ -218,7 +236,7 @@ export async function createUserSuggestion(
   const existing = await findByKey(teamId, documentId, item.dedupe_key);
   if (existing) {
     if (existing.state !== "dismissed") return { suggestion: existing, created: false };
-    const restored = await updateRow(teamId, documentId, existing.id, { state: "open", source_id: null });
+    const restored = await updateRow(teamId, documentId, existing.id, { state: "open", source_id: null, data_table_id: null });
     return restored ? { suggestion: restored, created: false } : null;
   }
   const at = nowIso();
@@ -235,6 +253,7 @@ export async function createUserSuggestion(
     state: "open",
     dedupe_key: item.dedupe_key,
     source_id: null,
+    data_table_id: null,
     created_by: agent,
     created_at: at,
     updated_at: at,
@@ -247,9 +266,10 @@ export async function createUserSuggestion(
 }
 
 /**
- * Add, dismiss or restore one suggestion. "add" marks it added (with the
- * linked source for a source/web item; a data item is just "noted"),
- * "dismiss" hides it, "restore" reopens it and forgets the source.
+ * Add, dismiss or restore one suggestion. "add" marks it added: a source/web
+ * item with the linked source, a data item with the data table linked for it
+ * (or just "noted" without one). "dismiss" hides it and "restore" reopens it;
+ * both forget the source and the table.
  */
 export async function setSuggestionState(
   teamId: string,
@@ -257,19 +277,25 @@ export async function setSuggestionState(
   id: string,
   action: SuggestionActionRequest["action"],
   sourceId?: string | null,
+  dataTableId?: string | null,
 ): Promise<SuggestionRecord | null> {
   const current = await getSuggestion(teamId, documentId, id);
   if (!current) return null;
   const change: Change =
     action === "add"
-      ? { state: "added", source_id: current.kind === "data" ? null : (sourceId ?? current.source_id ?? null) }
+      ? current.kind === "data"
+        ? { state: "added", source_id: null, data_table_id: dataTableId ?? current.data_table_id ?? null }
+        : { state: "added", source_id: sourceId ?? current.source_id ?? null }
       : action === "dismiss"
-        ? { state: "dismissed", source_id: null }
-        : { state: "open", source_id: null };
+        ? { state: "dismissed", source_id: null, data_table_id: null }
+        : { state: "open", source_id: null, data_table_id: null };
   return updateRow(teamId, documentId, id, change);
 }
 
 // --- Regeneration ----------------------------------------------------------------
+
+/** Only a data item can be covered by a data table. */
+const coveringTable = (item: GeneratedItem): string | null => (item.kind === "data" ? (item.covered_by_table ?? null) : null);
 
 export type ApplyPlan = {
   insert: Array<GeneratedItem & { dedupe_key: string }>;
@@ -279,7 +305,8 @@ export type ApplyPlan = {
 
 /**
  * What a generation for `origin` changes, given the document's current rows:
- * - a new item is inserted open, or added with its source when covered;
+ * - a new item is inserted open, or added with its source (or, for a data
+ *   item, its data table) when covered;
  * - an existing OPEN row (not the person's own) gets the fresh reason,
  *   spec_ref and url, takes this origin, and becomes added when now covered;
  *   the person's own open rows only become added when covered;
@@ -291,7 +318,7 @@ export function planApply(existing: Array<Pick<SuggestionRecord, "id" | "kind" |
   const proposed = new Set<string>();
   const plan: ApplyPlan = { insert: [], update: [], remove: [] };
   for (const raw of items) {
-    const item = { ...neededItem(raw.kind, raw.label, raw.reason, raw.spec_ref), url: safeUrl(raw.url), covered_by: raw.covered_by ?? null };
+    const item = { ...neededItem(raw.kind, raw.label, raw.reason, raw.spec_ref), url: safeUrl(raw.url), covered_by: raw.covered_by ?? null, covered_by_table: coveringTable(raw) };
     if (!item.label || proposed.has(item.dedupe_key)) continue;
     proposed.add(item.dedupe_key);
     const row = byKey.get(item.dedupe_key);
@@ -300,9 +327,13 @@ export function planApply(existing: Array<Pick<SuggestionRecord, "id" | "kind" |
       continue;
     }
     if (row.state !== "open") continue;
-    const covered: Change = item.covered_by ? { state: "added", source_id: item.covered_by } : {};
+    const covered: Change = item.covered_by_table
+      ? { state: "added", source_id: null, data_table_id: item.covered_by_table }
+      : item.covered_by
+        ? { state: "added", source_id: item.covered_by }
+        : {};
     if (row.origin === "user") {
-      if (item.covered_by) plan.update.push({ id: row.id, change: covered });
+      if (covered.state) plan.update.push({ id: row.id, change: covered });
       continue;
     }
     const change: Change = { ...covered };
@@ -338,9 +369,10 @@ export async function applyGenerated(teamId: string, agent: string, documentId: 
       spec_ref: item.spec_ref,
       url: item.url ?? null,
       origin,
-      state: item.covered_by ? "added" : "open",
+      state: item.covered_by || item.covered_by_table ? "added" : "open",
       dedupe_key: item.dedupe_key,
-      source_id: item.covered_by ?? null,
+      source_id: item.covered_by_table ? null : (item.covered_by ?? null),
+      data_table_id: item.covered_by_table ?? null,
       created_by: agent,
       created_at: at,
       updated_at: at,

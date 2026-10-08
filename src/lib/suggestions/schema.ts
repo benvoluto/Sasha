@@ -18,9 +18,13 @@ export const SUGGESTION_SCHEMA = [
      state TEXT NOT NULL DEFAULT 'open',
      dedupe_key TEXT NOT NULL,
      source_id UUID,
+     data_table_id UUID,
      created_by TEXT NOT NULL,
      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
      updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
+  // Phase 5: the data table that satisfied a data suggestion (no foreign key:
+  // this table is applied without the data tables; a deleted table reads as none).
+  `ALTER TABLE suggestion ADD COLUMN IF NOT EXISTS data_table_id UUID`,
   `CREATE UNIQUE INDEX IF NOT EXISTS suggestion_doc_dedupe_uidx ON suggestion (document_id, dedupe_key)`,
   `CREATE INDEX IF NOT EXISTS suggestion_team_doc_idx ON suggestion (team_id, document_id, state)`,
   // One row per document: the inputs hash and time of the last generation, for

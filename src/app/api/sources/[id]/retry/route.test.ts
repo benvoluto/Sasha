@@ -8,7 +8,7 @@ vi.mock("@/lib/sources/ingest", () => ({ ingestSource: mocks.ingest }));
 
 import { resetMemoryStore } from "@/lib/documents/store";
 import { sourceBlobPath, sourceBlobPrefix } from "@/lib/sources/blob-paths";
-import { createSource, getSource, resetSourceStore, setSourceStatus } from "@/lib/sources/store";
+import { createSource, getSource, resetSourceStore, setSourceStatus, STALE_BUSY_MS } from "@/lib/sources/store";
 import { POST } from "./route";
 
 const T = "org:a";
@@ -34,10 +34,28 @@ describe("POST /api/sources/[id]/retry", () => {
   it("re-reads a source stuck mid-read", async () => {
     const s = await createSource(T, "ann", { kind: "note", title: "n", extracted_text: "t" });
     await setSourceStatus(T, s.id, "summarizing");
-    const res = await POST(req(), ctx(s.id));
-    expect(res.status).toBe(200);
-    expect((await getSource(T, s.id))?.extraction_status).toBe("pending");
+    // Long enough later that the read counts as stopped.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + STALE_BUSY_MS + 60_000);
+      const res = await POST(req(), ctx(s.id));
+      expect(res.status).toBe(200);
+      expect((await getSource(T, s.id))?.extraction_status).toBe("pending");
+      expect(mocks.after).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refuses while a read is under way, so two reads never race over the tables", async () => {
+    const s = await createSource(T, "ann", { kind: "note", title: "n", extracted_text: "t" });
+    await setSourceStatus(T, s.id, "ready");
+    const [a, b] = await Promise.all([POST(req(), ctx(s.id)), POST(req(), ctx(s.id))]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
     expect(mocks.after).toHaveBeenCalledTimes(1);
+    await setSourceStatus(T, s.id, "extracting");
+    expect((await POST(req(), ctx(s.id))).status).toBe(409);
+    expect((await getSource(T, s.id))?.extraction_status).toBe("extracting");
   });
 
   it("picks up a file whose upload reached storage but was never completed", async () => {

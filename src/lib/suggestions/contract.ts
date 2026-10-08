@@ -35,6 +35,8 @@ export type SuggestionRecord = {
   state: SuggestionState;
   /** The linked source that satisfied it (state "added", kind source/web), or null. */
   source_id: string | null;
+  /** The data table that satisfied it (state "added", kind data; Phase 5), or null. */
+  data_table_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -98,6 +100,8 @@ export const SuggestionActionRequest = z.strictObject({
   action: z.enum(["add", "dismiss", "restore"]),
   /** With "add" on a source/web suggestion: the source that was linked for it. */
   source_id: z.string().uuid().optional(),
+  /** With "add" on a data suggestion: a data table linked to this document for it (Phase 5). */
+  data_table_id: z.string().uuid().optional(),
 });
 export type SuggestionActionRequest = z.infer<typeof SuggestionActionRequest>;
 export type SuggestionResponse = { suggestion: SuggestionRecord };
@@ -120,3 +124,13 @@ export type SuggestionCreateRequest = z.infer<typeof SuggestionCreateRequest>;
  * suggestion added (PATCH action "add" with the source id).
  */
 export type SourcePrefill = { suggestionId: string; label: string; url: string | null };
+
+// --- Add-data hand-off (Suggestions tab → Data tab; Phase 5) --------------------
+
+/**
+ * "Add" on a data suggestion opens the Data tab with this. The Data pane shows
+ * "Adding for: <label>", opens its table picker searching `label`, and when a
+ * table gets linked while the prefill is active it marks the suggestion added
+ * (PATCH action "add" with the table id).
+ */
+export type DataPrefill = { suggestionId: string; label: string };

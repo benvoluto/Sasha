@@ -106,3 +106,20 @@ describe("PATCH /api/documents/[id] notes and type_source", () => {
     expect((await getDocument("org:b", theirs.id))?.notes).toBe("");
   });
 });
+
+describe("PATCH /api/documents/[id] invalid JSON", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    resetMemoryStore();
+  });
+
+  it("400s a body that isn't JSON and writes nothing", async () => {
+    const d = await createDocument("org:a", "ann");
+    for (const body of ["{not json", "", "undefined"]) {
+      const res = await PATCH(new Request(`http://x/api/documents/${d.id}`, { method: "PATCH", body }), { params: Promise.resolve({ id: d.id }) });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Invalid changes." });
+    }
+    expect((await getDocument("org:a", d.id))?.updated_at).toBe(d.updated_at);
+  });
+});

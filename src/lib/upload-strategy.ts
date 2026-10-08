@@ -29,9 +29,6 @@ export const SOURCE_FILE_TYPES: Record<string, string> = {
 /** Read as text directly, without Gemini. */
 export const TEXT_MIME_TYPES = ['text/plain', 'text/markdown', 'text/csv'];
 
-/** Stored now; their contents are read in a later phase. */
-export const DEFERRED_MIME_TYPES = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-
 const ALLOWED_MIMES = new Set(Object.values(SOURCE_FILE_TYPES));
 // Browsers report some types inconsistently (an .md file is often "" and a .csv
 // on Windows is "application/vnd.ms-excel"); for those the extension decides.

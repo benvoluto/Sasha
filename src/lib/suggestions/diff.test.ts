@@ -88,4 +88,17 @@ describe("inputsHash", () => {
     expect(inputsHash({ typeKey: "proposal", typeVersion: 1, notes: "n", sources: [{ ...a, summary: "y" }] })).not.toBe(h);
     expect(inputsHash({ typeKey: "proposal", typeVersion: 1, notes: "n", sources: [] })).not.toBe(h);
   });
+  it("covers the linked tables: order-free, unchanged with none, changed by a link, rename, status or column type", () => {
+    const base = { typeKey: "proposal", typeVersion: 1, notes: "n", sources: [a] };
+    const t1 = { id: "t1", name: "Plan", status: "active", columns: [{ label: "Due", type: "date" }] };
+    const t2 = { id: "t2", name: "Costs", status: "active", columns: [{ label: "Cost", type: "currency" }] };
+    const h = inputsHash(base);
+    expect(inputsHash({ ...base, tables: [] })).toBe(h);
+    const linked = inputsHash({ ...base, tables: [t1, t2] });
+    expect(linked).not.toBe(h);
+    expect(inputsHash({ ...base, tables: [t2, t1] })).toBe(linked);
+    expect(inputsHash({ ...base, tables: [{ ...t1, name: "Plan v2" }, t2] })).not.toBe(linked);
+    expect(inputsHash({ ...base, tables: [{ ...t1, status: "hidden" }, t2] })).not.toBe(linked);
+    expect(inputsHash({ ...base, tables: [{ ...t1, columns: [{ label: "Due", type: "text" }] }, t2] })).not.toBe(linked);
+  });
 });

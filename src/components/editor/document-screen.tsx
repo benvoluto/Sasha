@@ -6,7 +6,7 @@
 // page; a right column with the living outline over the tools or section notes
 // (right-column.tsx); floating Outline / Tools / Sources buttons. Sources and
 // the Notes control beside the title open the document modal (Notes / Sources /
-// Suggestions). Each heading has a gutter button that opens the section's actions
+// Data / Suggestions). Each heading has a gutter button that opens the section's actions
 // (draft, rewrite, notes).
 
 import { OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
@@ -22,6 +22,8 @@ import type { LinkedSource } from "@/components/sources/shared";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { outlineDoc } from "@/catalog/outline";
 import type { DocumentTypeSummary } from "@/catalog/schema";
+import type { TableSnapshot } from "@/lib/data/contract";
+import { tableSnapshotNodes } from "@/lib/data/snapshot";
 import type { PMNode } from "@/lib/documents/sections";
 import type { SaveOutlineAsTypeResponse, SectionListResponse } from "@/lib/sections/contract";
 import { applyOutlineMerge } from "./apply-outline";
@@ -273,7 +275,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const currentType = findType(types, doc.type_key);
   // The right column: the outline on top, Tools or Section notes below (right-column-model.ts).
   const [column, setColumn] = useState<RightColumnState>(CLOSED_COLUMN);
-  // The document modal (Notes / Sources / Suggestions), and the control that opened it.
+  // The document modal (Notes / Sources / Data / Suggestions), and the control that opened it.
   const [modalTab, setModalTab] = useState<DocumentModalTab | null>(null);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
   const notesButtonRef = useRef<HTMLButtonElement>(null);
@@ -397,6 +399,20 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const [sourcesKey, setSourcesKey] = useState<string | null>(null);
   const onSourcesChange = useCallback((list: LinkedSource[]) => setSourcesKey(linkedSourcesKey(list)), []);
   useSuggestionsRefresh({ documentId: doc.id, typeKey: doc.type_key, notes: doc.notes, sources: sourcesKey });
+
+  /** The Data tab's "Insert table": the snapshot and its citation at the cursor, then back to the document. */
+  const insertTable = useCallback(
+    (snap: TableSnapshot) => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      ed.chain().focus().insertContent(tableSnapshotNodes(snap, { rows: snap.rows.length, at: new Date().toISOString() })).run();
+      setModalTab(null);
+      // The dialog held focus until now (and leaves it alone after an insert): back to the text.
+      requestAnimationFrame(() => editorRef.current?.commands.focus(null, { scrollIntoView: true }));
+      notify(undoNotice("Table inserted."));
+    },
+    [notify, undoNotice],
+  );
 
   /** A new document of the type, opened in place of this one. Resolves to an error message, or null. */
   const startNewOfType = async (t: DocumentTypeSummary): Promise<string | null> => {
@@ -638,6 +654,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         ensureSaved={ensureSaved}
         returnFocusRef={modalOpener === "notes" ? notesButtonRef : sourcesButtonRef}
         onSourcesChange={onSourcesChange}
+        onInsertTable={insertTable}
       />
 
       <span role="status" aria-live="polite" className="sr-only">

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ claudeJson: vi.fn(), getType: vi.fn(), listDocumentSources: vi.fn(), configured: { value: true } }));
+const mocks = vi.hoisted(() => ({ claudeJson: vi.fn(), getType: vi.fn(), listDocumentSources: vi.fn(), listDocumentTables: vi.fn(), configured: { value: true } }));
 vi.mock("@/lib/llm/claude", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/llm/claude")>()),
   claudeJson: mocks.claudeJson,
@@ -8,6 +8,7 @@ vi.mock("@/lib/llm/claude", async (importOriginal) => ({
 }));
 vi.mock("@/catalog", () => ({ getType: mocks.getType }));
 vi.mock("@/lib/sources/store", () => ({ listDocumentSources: mocks.listDocumentSources }));
+vi.mock("@/lib/data/store", () => ({ listDocumentTables: mocks.listDocumentTables }));
 
 import { fileTypeByKey } from "@/catalog/files";
 import { createDocument, resetMemoryStore, updateDocument } from "@/lib/documents/store";
@@ -25,6 +26,34 @@ const def = fileTypeByKey("proposal")!;
 const entry = { definition: def, origin: "file", enabled: true, overridden: false, updated_at: null };
 const linked = (id: string, title: string, summary: string | null) => ({ id, kind: "note", title, filename: null, url: null, summary, role: null, added_at: "2026-01-01T00:00:00.000Z" });
 const SOURCES = [linked(S1, "Budget note", "Total cost £40k; quotes from two contractors."), linked(S2, "Cost sheet", "Some cost lines.")];
+const T1 = "33333333-3333-4333-8333-333333333333";
+const T2 = "44444444-4444-4444-8444-444444444444";
+const linkedTable = (id: string, name: string, status = "active") => ({
+  id,
+  source_id: S2,
+  source: { id: S2, title: "Plan.xlsx", filename: "Plan.xlsx", kind: "file", mime: null },
+  name,
+  columns: [
+    { key: "c1", label: "Milestone", type: "text", inferred: "text", unit: null },
+    { key: "c2", label: "Due", type: "date", inferred: "date", unit: null },
+  ],
+  row_count: 6,
+  status,
+  superseded_by: null,
+  extraction_method: "xlsx",
+  sheet: "Plan",
+  page: null,
+  page_end: null,
+  confidence: null,
+  notes: "",
+  truncated: false,
+  override_count: 0,
+  document_ids: [],
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
+  added_by: "ann",
+  added_at: "2026-01-01T00:00:00.000Z",
+});
 const NOTES = "The foundation asks for audited accounts with every application, and the county council has backed the river bank restoration work for years.";
 
 describe("generateSuggestions", () => {
@@ -39,6 +68,7 @@ describe("generateSuggestions", () => {
     mocks.configured.value = true;
     mocks.getType.mockReset().mockImplementation(async (_t: string, key: string | null) => (key ? entry : null));
     mocks.listDocumentSources.mockReset().mockResolvedValue(SOURCES);
+    mocks.listDocumentTables.mockReset().mockResolvedValue([]);
     mocks.claudeJson.mockReset().mockResolvedValue({ data: SuggestModelOutput.parse(fixture), usage: {} });
   });
 
@@ -102,6 +132,66 @@ describe("generateSuggestions", () => {
     expect(out.typeItems[0].covered_by).toBeUndefined();
     expect(out.typeItems[1].covered_by).toBe(S1);
     expect(out.proposals).toEqual([]);
+  });
+
+  it("covers a data item with a linked active table, never a source item, and leaves hidden tables out", async () => {
+    mocks.listDocumentTables.mockResolvedValue([linkedTable(T1, "Milestones"), linkedTable(T2, "Old plan", "hidden")]);
+    const d = await typedDoc();
+    const r = (await generateSuggestions(T, d.id, { now }))!;
+    const user = mocks.claudeJson.mock.calls[0][0].user as string;
+    expect(user).toContain(`<data_table id="${T1}" name="Milestones">\nMilestone (text), Due (date); 6 rows; from Plan.xlsx, Sheet: Plan\n</data_table>`);
+    expect(user).not.toContain(T2);
+    const by = (label: string) => r.suggestions.find((s) => s.label === label);
+    expect(by("Milestone dates")).toMatchObject({ state: "added", data_table_id: T1, source_id: null });
+    // A table cited for a source item is dropped: the item stays missing.
+    expect(by("Evidence of the problem or opportunity")).toMatchObject({ state: "open", data_table_id: null, source_id: null });
+    expect(by("Targets")!.reason).toContain("(partly covered by Milestones)");
+    // Source coverage is unchanged.
+    expect(by("Total cost")).toMatchObject({ state: "added", source_id: S1, data_table_id: null });
+  });
+
+  it("asks the model when only tables could cover the type items", async () => {
+    mocks.listDocumentSources.mockResolvedValue([]);
+    mocks.listDocumentTables.mockResolvedValue([linkedTable(T1, "Milestones")]);
+    const d = await typedDoc("");
+    await generateSuggestions(T, d.id, { now });
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(1);
+  });
+
+  it("goes stale when an active table is linked, not when a hidden one is", async () => {
+    const d = await typedDoc();
+    await generateSuggestions(T, d.id, { now });
+    mocks.listDocumentTables.mockResolvedValue([linkedTable(T2, "Old plan", "hidden")]);
+    expect((await getSuggestionList(T, d.id))!.stale).toBe(false);
+    mocks.listDocumentTables.mockResolvedValue([linkedTable(T1, "Milestones")]);
+    expect((await getSuggestionList(T, d.id))!.stale).toBe(true);
+  });
+
+  it("whitelists table ids for data items only (pure)", () => {
+    const items = typeNeeds(def);
+    const kinds = items.map((i) => i.kind);
+    const dataAt = kinds.indexOf("data") + 1;
+    const sourceAt = kinds.indexOf("source") + 1;
+    const out = judgeReply(
+      {
+        coverage: [
+          { item: dataAt, status: "covered", source_id: T1 },
+          { item: sourceAt, status: "covered", source_id: T1 },
+          { item: dataAt, status: "partial", source_id: S1 },
+        ],
+        proposals: [],
+      },
+      items,
+      [{ id: S1, title: "A" }],
+      new Set(),
+      [{ id: T1, name: "Milestones" }],
+    );
+    expect(out.typeItems[dataAt - 1]).toMatchObject({ covered_by_table: T1 });
+    expect(out.typeItems[dataAt - 1].covered_by).toBeUndefined();
+    expect(out.typeItems[sourceAt - 1].covered_by).toBeUndefined();
+    expect(out.typeItems[sourceAt - 1].covered_by_table).toBeUndefined();
+    // Without the table in the whitelist, the id is ignored.
+    expect(judgeReply({ coverage: [{ item: dataAt, status: "covered", source_id: T1 }], proposals: [] }, items, [], new Set()).typeItems[dataAt - 1].covered_by_table).toBeUndefined();
   });
 
   it("skips unchanged inputs and gates runs to once a minute", async () => {

@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phases 0–4 and the editor layout are built. See §12 for progress notes.
+Status (October 2026): Phases 0–5 and the editor layout are built. See §12 for progress notes.
 
 ---
 
@@ -406,6 +406,39 @@ as in §4.3.
   starts or bundle size are a problem, the fallback is client-side `window.print()`
   with print CSS.
 
+### 6.11 Learn from an example (evaluation, Phase 8)
+Given one or more example documents (uploaded as sources), extract a reusable
+**skill** (a document type) and a **workflow** that produce documents like the
+example. Built as an evaluation first: it ships only if the round-trip test
+below shows it beats starting from the nearest catalog type.
+
+- **Extract the skill** (Opus, examples as delimited data): outline with section
+  purposes and lengths, per-section guidance, sources and data each section
+  draws on (`sourcesNeeded`/`dataNeeded`), voice and formatting conventions,
+  classifier signals, and a draft rubric. The result is a
+  `DocumentTypeDefinition` saved as a team type through the existing
+  `from-document` path, so the catalog editor, classifier and suggestions pick
+  it up unchanged. Guidance describes the pattern and never copies the
+  example's facts, names or sentences; a check flags long verbatim overlaps.
+- **Extract the workflow:** infer the outcome and checks the example implies
+  (totals that must agree, required elements, sign-offs) and express them as a
+  graph of the seven shared steps (§6.7, `docs/workflows-by-document-type.md`).
+  Requirement sets the example implies are saved as dated data, marked inferred.
+- **Checkpoint:** the author reviews the proposed type and workflow side by side
+  with the example (what was inferred from where) before either is saved.
+- **More examples, better result:** with two or more, keep what they share and
+  report where they differ; a single example is labelled low confidence.
+- **Evaluation (round trip):** for an example whose own sources are available,
+  generate a new document from those sources with the extracted type and
+  workflow, then score it against the example on structure (section match),
+  coverage of the example's key points, rubric score, and workflow findings.
+  Compare with the same run using the nearest catalog type and with no type.
+  Use a small set of public examples per family (e.g. NIAID sample
+  applications, published SOPs and design docs) as a fixed test set.
+- **Privacy:** examples may be confidential or contain personal data (FIE,
+  resumes). They stay team-scoped sources; extracted types keep no personal
+  details.
+
 ---
 
 ## 7. Implementation phases
@@ -480,10 +513,14 @@ suggested data.
 Citation mark and quote verification, the rubric panel with apply-fix, and
 Markdown/DOCX/PDF export with footnotes.
 
-### Phase 8: FIE type and the rest of the catalog (3–4 d)
+### Phase 8: FIE type, the rest of the catalog, learn from an example (5–7 d)
 1. FIE as a document type: outline and narrative guidance only (decided). The
    clinical pipeline is not ported.
 2. Expand to 25–30 types, including curated ClawHub imports.
+3. Learn from an example (§6.11): extract a type (skill) and workflow from
+   example documents, with an author checkpoint, then run the round-trip
+   evaluation against the nearest catalog type. Needs the Phase 6 engine and
+   the Phase 7 rubric. Also used to draft some of the new catalog types.
 
 ### Phase 9: Hardening (3–4 d)
 Rate limits per user on model routes, cost dashboard (tokens by task from
@@ -674,13 +711,31 @@ the interface, Hanken Grotesk for the document.
 - Smoke-tested in Chrome with real Haiku: the chip appeared after typing a business plan, Apply added
   9 headings with prose byte-identical, and the Suggestions tab listed items from the type and notes.
 
+**Phase 5 (done).**
+- `data_table`, `data_row`, `document_data` and cell overrides (`src/lib/data/store.ts`), team-scoped,
+  memory fallback; deleting a source removes its tables and links.
+- Extraction (`src/lib/data/`) inside source ingest: CSV through papaparse (encoding detection,
+  windows-1252), XLSX through SheetJS 0.20.3 from cdn.sheetjs.com (no formulas or macros, zip-bomb
+  guard on both central-directory and local headers, size caps), header detection including merged
+  two-row headers and year/month header rows, column types number/date/currency/percent/text.
+  PDFs and images: Gemini table pass to strict JSON alongside the summary; a partial failure keeps
+  the other tables. Re-reading supersedes old tables and moves document links and suggestion
+  coverage to the new ones.
+- API: `/api/data/tables` (list, get with paged rows, patch: rename, column, hide, supersede,
+  restore, cell override and revert, all audited), `/csv` export (BOM, formula-safe),
+  `/api/documents/[id]/data` (link, unlink).
+- UI: a Data tab in the document modal (preview with typed columns, link from linked sources or
+  the library, hide/supersede/override), Insert table at the cursor as one undo step with a source
+  line and `dataTableId` saved on the node; the library drawer lists a source's tables.
+- Suggested data: linked tables cover data items and "Add" records the table.
+- Debts closed: PATCH document returns 400 on invalid JSON; failed linked PDFs give link advice.
+
 **Known debt carried forward.**
+- Re-reading a source drops table renames and cell overrides (v1 behaviour).
+- Suggestions marked added keep pointing at a table or source after it is deleted.
 - Deployments with a public Blob store must set `BLOB_ACCESS=public`.
-- The PATCH document route treats an invalid JSON body as an empty patch (returns 200 and bumps
-  `updated_at`).
 - Suggestions only learn of source changes while the Sources tab is open; near-duplicate catalog
   labels are not merged; some business-plan item labels are lowercase.
-- A failed linked-PDF source says "Try uploading the file again".
 - The workflow engine, report service, assistant and canvas still read legacy upload groups
   (`fetchGroupMetadata`). These routes are not team-scoped. The assistant and Phase 6 (engine)
   still need moving to sources; then delete `upload-groups`,

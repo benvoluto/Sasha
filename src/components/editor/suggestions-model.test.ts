@@ -6,7 +6,7 @@ let n = 0;
 const rec = (over: Partial<SuggestionRecord>): SuggestionRecord => {
   n += 1;
   const at = new Date(Date.UTC(2026, 0, 1, 0, 0, n)).toISOString();
-  return { id: `id${n}`, document_id: "d", kind: "source", label: `L${n}`, reason: "", spec_ref: null, url: null, origin: "type", state: "open", source_id: null, created_at: at, updated_at: at, ...over };
+  return { id: `id${n}`, document_id: "d", kind: "source", label: `L${n}`, reason: "", spec_ref: null, url: null, origin: "type", state: "open", source_id: null, data_table_id: null, created_at: at, updated_at: at, ...over };
 };
 const sections = [
   { key: "summary", heading: "Summary" },
@@ -62,6 +62,26 @@ describe("suggestions-model", () => {
     const list = [r];
     expect(upsertRow(list, { ...r, label: "x" })).toEqual([{ ...r, label: "x" }]);
     expect(upsertRow(list, rec({}))).toHaveLength(2);
+  });
+
+  it("covers a data item with a linked table", () => {
+    const d = rec({ kind: "data", state: "added", data_table_id: "t1" });
+    expect(doneText(d, new Map(), new Map([["t1", "Monthly sales"]]))).toBe("Covered by Monthly sales");
+    expect(doneText(d, new Map())).toBe("Covered by a linked table");
+    expect(doneText({ ...d, data_table_id: null }, new Map())).toBe("Noted");
+    // A table id never names a source item.
+    expect(doneText({ kind: "source", source_id: null, data_table_id: "t1" }, new Map(), new Map([["t1", "X"]]))).toBe("Added");
+  });
+
+  it("adds a data item with its table, keeps an earlier table, and clears it on dismiss and restore", () => {
+    const d = rec({ kind: "data" });
+    expect(applyAction(d, "add", "s1", "t1")).toMatchObject({ state: "added", source_id: null, data_table_id: "t1" });
+    expect(applyAction({ ...d, data_table_id: "t0" }, "add")).toMatchObject({ state: "added", data_table_id: "t0" });
+    expect(applyAction(d, "add")).toMatchObject({ state: "added", data_table_id: null });
+    expect(applyAction({ ...d, state: "added", data_table_id: "t1" }, "restore")).toMatchObject({ state: "open", data_table_id: null, source_id: null });
+    expect(applyAction({ ...d, data_table_id: "t1" }, "dismiss")).toMatchObject({ state: "dismissed", data_table_id: null });
+    // A source item never takes a table.
+    expect(applyAction(rec({}), "add", "s1", "t1")).toMatchObject({ source_id: "s1", data_table_id: null });
   });
 
   it("shows the empty hint only for an untyped document with nothing suggested", () => {

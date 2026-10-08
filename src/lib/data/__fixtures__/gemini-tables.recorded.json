@@ -1,0 +1,69 @@
+{
+  "recorded_at": "2026-10-08T19:13:49.034Z",
+  "model": "gemini-3.6-flash",
+  "file": "regional-sales.pdf (2 pages, generated)",
+  "replies": [
+    {
+      "call": "check",
+      "chunk": {
+        "first": 1,
+        "last": 2
+      },
+      "data": {
+        "pages": [
+          2
+        ]
+      }
+    },
+    {
+      "call": "extract",
+      "chunk": {
+        "first": 1,
+        "last": 2
+      },
+      "data": {
+        "tables": [
+          {
+            "title": "Table 1. Revenue by region, first half",
+            "page": 2,
+            "page_end": null,
+            "columns": [
+              "Region",
+              "Q1 revenue",
+              "Q2 revenue",
+              "Growth"
+            ],
+            "rows": [
+              [
+                "North",
+                " $12,400",
+                " $13,950",
+                "12.5%"
+              ],
+              [
+                "South",
+                " $9,800",
+                " $9,310",
+                "(5.0%)"
+              ],
+              [
+                "East",
+                " $15,200",
+                " $16,720",
+                "10.0%"
+              ],
+              [
+                "West",
+                " $7,650",
+                " $8,415",
+                "10.0%"
+              ]
+            ],
+            "confidence": 1,
+            "notes": ""
+          }
+        ]
+      }
+    }
+  ]
+}

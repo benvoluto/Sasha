@@ -4,7 +4,8 @@
 // from. Folders on the left (each document gets its own the first time a source
 // is added to it), the sources in the chosen folder in the middle, and the
 // chosen source's details on the right. ?folder= and ?source= keep the place in
-// the URL, so the tracker and the editor can link straight to a source.
+// the URL, so the tracker and the editor can link straight to a source;
+// ?table= opens one of its tables (a table snapshot's citation link).
 
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
@@ -27,6 +28,7 @@ import {
   UploadCloud,
   X,
 } from "@/components/icons";
+import { canHaveTables } from "@/components/editor/data-pane-model";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AddNoteForm,
@@ -34,6 +36,7 @@ import {
   api,
   errorText,
   formatBytes,
+  isBusy,
   KindIcon,
   mergeFresh,
   sourceHref,
@@ -47,6 +50,7 @@ import {
   type SourceKind,
   type SourceSummary,
 } from "./shared";
+import { SourceTables } from "./source-tables";
 
 /** Which sources the list shows: everything, the unfiled ones, or one folder. */
 type FolderFilter = { kind: "all" } | { kind: "root" } | { kind: "folder"; id: string };
@@ -294,7 +298,7 @@ export function SourceLibrary() {
                     <button
                       type="button"
                       aria-current={active ? "true" : undefined}
-                      onClick={() => setParams({ source: active ? null : s.id })}
+                      onClick={() => setParams({ source: active ? null : s.id, table: null })}
                       className={`flex w-full items-start gap-3 px-4 py-3 text-left sm:px-6 ${active ? "bg-[var(--doc-accent-soft)]" : "hover:bg-[var(--doc-accent-soft)]/60"}`}
                     >
                       <KindIcon kind={s.kind} className="mt-0.5 h-4 w-4 shrink-0 text-[var(--doc-muted)]" />
@@ -317,14 +321,15 @@ export function SourceLibrary() {
           <SourceDrawer
             key={selectedId}
             id={selectedId}
+            focusTableId={params.get("table")}
             folders={tree}
-            onClose={() => setParams({ source: null })}
+            onClose={() => setParams({ source: null, table: null })}
             onChanged={(s) => {
               setSources((list) => (list ? mergeFresh(list, [s]) : list));
               void loadSources();
             }}
             onDeleted={() => {
-              setParams({ source: null });
+              setParams({ source: null, table: null });
               void loadSources();
             }}
           />
@@ -641,12 +646,15 @@ type DocRef = { id: string; title: string };
 
 function SourceDrawer({
   id,
+  focusTableId,
   folders,
   onClose,
   onChanged,
   onDeleted,
 }: {
   id: string;
+  /** ?table=: the table to scroll to and expand in the Tables section (a snapshot's citation link). */
+  focusTableId: string | null;
   folders: TreeNode[];
   onClose: () => void;
   onChanged: (s: SourceSummary) => void;
@@ -897,6 +905,8 @@ function SourceDrawer({
               {source.summary ?? (status === "ready" || status === "partial" ? "No summary." : status === "error" ? "Not available." : "Appears once the source has been read.")}
             </p>
           </section>
+
+          <SourceTables sourceId={source.id} canHave={canHaveTables(source)} busy={isBusy(source)} status={source.extraction_status} focusTableId={focusTableId} />
 
           <section className="space-y-1.5">
             <label htmlFor="source-folder" className="text-xs font-semibold uppercase tracking-wider text-[var(--doc-muted)]">

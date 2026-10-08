@@ -147,7 +147,7 @@ function firstLine(text: string): string {
  */
 export async function withGeminiRetry<T>(
   fn: () => Promise<T>,
-  opts: { attempts?: number; backoffMs?: number; label?: string } = {},
+  opts: { attempts?: number; backoffMs?: number; label?: string; /** Epoch ms after which no retry starts. */ deadline?: number } = {},
 ): Promise<T> {
   const attempts = opts.attempts ?? 3;
   const backoffMs = opts.backoffMs ?? 2_000;
@@ -158,9 +158,11 @@ export async function withGeminiRetry<T>(
     } catch (error) {
       last = error;
       const { transient } = classifyGeminiError(error);
+      const wait = backoffMs * (i + 1);
       if (!transient || i === attempts - 1) throw error;
+      if (opts.deadline !== undefined && Date.now() + wait >= opts.deadline) throw error;
       console.warn(`[gemini] ${opts.label ?? "request"} failed (attempt ${i + 1}/${attempts}), retrying:`, errorText(error));
-      await new Promise((r) => setTimeout(r, backoffMs * (i + 1)));
+      await new Promise((r) => setTimeout(r, wait));
     }
   }
   throw last;

@@ -235,6 +235,60 @@ CREATE TABLE IF NOT EXISTS source_passage (
   PRIMARY KEY (source_id, idx)
 );
 
+-- Data tables read from sources (src/lib/data/schema.ts owns these; keep in step
+-- with DATA_SCHEMA). One row per table found in a CSV, an XLSX sheet or a PDF;
+-- a re-read supersedes the source's earlier tables. Rows are in data_row
+-- (`cells`, because VALUES is reserved); a person's cell edits are
+-- data_cell_override rows, each change also written to audit_log.
+CREATE TABLE IF NOT EXISTS data_table (
+  id                 UUID PRIMARY KEY,
+  team_id            TEXT NOT NULL,
+  source_id          UUID NOT NULL REFERENCES source(id) ON DELETE CASCADE,
+  idx                INTEGER NOT NULL DEFAULT 0,      -- order within its extraction
+  match_key          TEXT NOT NULL,                   -- csv | sheet:<name> | page:<n>#<k>, matched across re-reads
+  name               TEXT NOT NULL,
+  columns            JSONB NOT NULL,                  -- [{key, label, type, inferred, unit}]
+  row_count          INTEGER NOT NULL DEFAULT 0,
+  status             TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'superseded', 'hidden')),
+  superseded_by      UUID REFERENCES data_table(id) ON DELETE SET NULL,
+  extraction_method  TEXT NOT NULL CHECK (extraction_method IN ('csv', 'xlsx', 'gemini-pdf', 'gemini-image')),
+  sheet              TEXT,
+  page               INTEGER,
+  page_end           INTEGER,
+  confidence         REAL,                            -- Gemini tables only
+  notes              TEXT NOT NULL DEFAULT '',
+  truncated          BOOLEAN NOT NULL DEFAULT false,
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS data_table_team_source_idx ON data_table (team_id, source_id, status);
+CREATE TABLE IF NOT EXISTS data_row (
+  table_id           UUID NOT NULL REFERENCES data_table(id) ON DELETE CASCADE,
+  idx                INTEGER NOT NULL,
+  cells              JSONB NOT NULL,                  -- display strings (or null), aligned with columns
+  PRIMARY KEY (table_id, idx)
+);
+CREATE TABLE IF NOT EXISTS data_cell_override (
+  table_id           UUID NOT NULL REFERENCES data_table(id) ON DELETE CASCADE,
+  row_idx            INTEGER NOT NULL,
+  col_key            TEXT NOT NULL,
+  value              TEXT,                            -- the person's value (null = blank)
+  original           TEXT,                            -- what the source said
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (table_id, row_idx, col_key)
+);
+CREATE TABLE IF NOT EXISTS document_data (
+  document_id        UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,
+  table_id           UUID NOT NULL REFERENCES data_table(id) ON DELETE CASCADE,
+  team_id            TEXT NOT NULL,
+  added_by           TEXT NOT NULL,
+  added_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (document_id, table_id)
+);
+CREATE INDEX IF NOT EXISTS document_data_table_idx ON document_data (table_id);
+
 -- Document types (src/catalog/store.ts owns this; keep in step with CATALOG_SCHEMA).
 -- A team's edits of catalog file types ('override'; a NULL definition only sets
 -- enabled) and its own types ('team'). Catalog file types live in
@@ -272,10 +326,12 @@ CREATE TABLE IF NOT EXISTS suggestion (
   state              TEXT NOT NULL DEFAULT 'open',  -- open | added | dismissed
   dedupe_key         TEXT NOT NULL,             -- suggestionDedupeKey(kind, label)
   source_id          UUID,                      -- the linked source that satisfied it
+  data_table_id      UUID,                      -- the data table that satisfied it (kind data; no FK)
   created_by         TEXT NOT NULL,
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE suggestion ADD COLUMN IF NOT EXISTS data_table_id UUID;  -- Phase 5, for older databases
 CREATE UNIQUE INDEX IF NOT EXISTS suggestion_doc_dedupe_uidx ON suggestion (document_id, dedupe_key);
 CREATE INDEX IF NOT EXISTS suggestion_team_doc_idx ON suggestion (team_id, document_id, state);
 CREATE TABLE IF NOT EXISTS suggestion_run (

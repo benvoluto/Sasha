@@ -26,9 +26,10 @@ export type NeededItem = {
 
 /**
  * What a generation writes for one origin: the item plus, when a linked source
- * covers it, that source (stored as state "added" with the source id).
+ * covers it, that source (stored as state "added" with the source id), or for
+ * a data item, the linked data table that covers it (stored with data_table_id).
  */
-export type GeneratedItem = Omit<NeededItem, "dedupe_key"> & { url?: string | null; covered_by?: string | null };
+export type GeneratedItem = Omit<NeededItem, "dedupe_key"> & { url?: string | null; covered_by?: string | null; covered_by_table?: string | null };
 
 const clip = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
 
@@ -98,13 +99,21 @@ export type SuggestionInputs = {
   typeVersion: number | null;
   notes: string;
   sources: Array<{ id: string; title: string | null; summary: string | null }>;
+  /** The document's linked data tables (Phase 5). */
+  tables?: Array<{ id: string; name: string; status: string; columns: Array<{ label: string; type: string }> }>;
 };
 
-/** sha256 of the generation inputs as stable JSON (sources sorted by id, so link order doesn't matter). */
+const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+/**
+ * sha256 of the generation inputs as stable JSON (sources and tables sorted by
+ * id, so link order doesn't matter). With no linked tables the hash is the
+ * same as before tables existed, so documents without data don't all go stale.
+ */
 export function inputsHash(i: SuggestionInputs): string {
-  const sources = [...i.sources]
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-    .map((s) => [s.id, s.title ?? "", s.summary ?? ""]);
-  const stable = JSON.stringify([i.typeKey ?? null, i.typeVersion ?? null, i.notes.trim(), sources]);
-  return createHash("sha256").update(stable).digest("hex");
+  const sources = [...i.sources].sort(byId).map((s) => [s.id, s.title ?? "", s.summary ?? ""]);
+  const tables = [...(i.tables ?? [])].sort(byId).map((t) => [t.id, t.name, t.status, t.columns.map((c) => [c.label, c.type])]);
+  const parts: unknown[] = [i.typeKey ?? null, i.typeVersion ?? null, i.notes.trim(), sources];
+  if (tables.length) parts.push(tables);
+  return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
 }

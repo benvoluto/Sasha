@@ -10,12 +10,15 @@
 // server rate-gates and short-circuits).
 // Actions update the list at once and roll back with an inline error if the
 // save fails. "Add" on a source or web item hands over to the Sources tab
-// (onAddSource), which marks the suggestion added once a source is linked.
+// (onAddSource), and on a data item to the Data tab (onAddData); each marks
+// the suggestion added once a source or table is linked for it.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Plus, RefreshCw, X } from "@/components/icons";
 import { api, errorText, sourceTitle, styles, type LinkedSource } from "@/components/sources/shared";
+import type { DocumentDataResponse } from "@/lib/data/contract";
 import type {
+  DataPrefill,
   SourcePrefill,
   SuggestionActionRequest,
   SuggestionGenerateResponse,
@@ -36,6 +39,7 @@ export function SuggestionsPane({
   typeKey,
   ensureSaved,
   onAddSource,
+  onAddData,
 }: {
   documentId: string | null;
   typeKey: string | null;
@@ -43,6 +47,8 @@ export function SuggestionsPane({
   ensureSaved?: () => Promise<string | null>;
   /** "Add" on a source or web suggestion: switch to the Sources tab with this prefill. */
   onAddSource: (prefill: SourcePrefill) => void;
+  /** "Add" on a data suggestion: switch to the Data tab with this prefill (without it, the item is just marked added). */
+  onAddData?: (prefill: DataPrefill) => void;
 }) {
   const { types } = useDocumentTypes();
   const type = findType(types, typeKey);
@@ -56,6 +62,7 @@ export function SuggestionsPane({
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<string | null>(null);
   const [sourceTitles, setSourceTitles] = useState<Map<string, string>>(new Map());
+  const [tableNames, setTableNames] = useState<Map<string, string>>(new Map());
   const retry = useRef<number | null>(null);
   const alive = useRef(true);
   // Read through a ref so a new callback identity doesn't reload the list.
@@ -109,15 +116,17 @@ export function SuggestionsPane({
     setLoadError(null);
     (async () => {
       try {
-        const [list, linked] = await loadAfterSave(ensureSavedRef.current, () =>
+        const [list, linked, data] = await loadAfterSave(ensureSavedRef.current, () =>
           Promise.all([
             api<SuggestionListResponse>(base(documentId)),
             api<{ sources: LinkedSource[] }>(`/api/documents/${encodeURIComponent(documentId)}/sources`).catch(() => ({ sources: [] as LinkedSource[] })),
+            api<DocumentDataResponse>(`/api/documents/${encodeURIComponent(documentId)}/data`).catch((): DocumentDataResponse => ({ tables: [] })),
           ]),
         );
         if (cancelled) return;
         adopt(list);
         setSourceTitles(new Map(linked.sources.map((s) => [s.id, sourceTitle(s)])));
+        setTableNames(new Map(data.tables.map((t) => [t.id, t.name])));
         if (list.stale) void generate(documentId, false);
       } catch (e) {
         if (!cancelled) {
@@ -149,8 +158,10 @@ export function SuggestionsPane({
   };
 
   const add = (row: SuggestionRecord) => {
-    if (row.kind === "data") void act(row, "add");
-    else onAddSource({ suggestionId: row.id, label: row.label, url: row.url });
+    if (row.kind === "data") {
+      if (onAddData) onAddData({ suggestionId: row.id, label: row.label });
+      else void act(row, "add");
+    } else onAddSource({ suggestionId: row.id, label: row.label, url: row.url });
   };
 
   if (!documentId) return <p className="px-6 pb-6 text-sm text-[var(--doc-muted)]">Suggestions appear once the document is saved.</p>;
@@ -257,7 +268,7 @@ export function SuggestionsPane({
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--go)]" aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block break-words">{row.label}</span>
-                    <span className="block text-xs text-[var(--doc-muted)]">{doneText(row, sourceTitles)}</span>
+                    <span className="block text-xs text-[var(--doc-muted)]">{doneText(row, sourceTitles, tableNames)}</span>
                     {rowErrors[row.id] && <span role="alert" className="block text-xs text-red-600 dark:text-red-400">{rowErrors[row.id]}</span>}
                   </span>
                   <button type="button" onClick={() => void act(row, "restore")} disabled={pending === row.id} className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-[var(--action)] hover:bg-[var(--action-soft)] disabled:opacity-50">

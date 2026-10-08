@@ -7,13 +7,17 @@
 // closing puts focus back on the control that opened it.
 //
 // Owned by the notes-and-modal track (phase4-spec.md §2). The Suggestions pane
-// and the Sources panel's prefill belong to the suggestions track.
+// and the Sources panel's prefill belong to the suggestions track; the Data
+// tab (phase5-spec.md §5) to the data-ui track. "Add" on a suggestion hands
+// over to Sources or Data with a prefill.
 
 import { useRef, useState, type RefObject } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { LinkedSource } from "@/components/sources/shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { SourcePrefill } from "@/lib/suggestions/contract";
+import type { TableSnapshot } from "@/lib/data/contract";
+import type { DataPrefill, SourcePrefill } from "@/lib/suggestions/contract";
+import { DataPane } from "./data-pane";
 import { DOCUMENT_MODAL_TABS, escapeAction, modalTitle, TAB_LABELS, type DocumentModalTab } from "./document-modal-model";
 import { NotesPane, type NotesPaneHandle } from "./notes-pane";
 import { SourcesPanel } from "./sources-panel";
@@ -33,6 +37,7 @@ export function DocumentModal({
   ensureSaved,
   returnFocusRef,
   onSourcesChange,
+  onInsertTable,
 }: {
   /** The open tab, or null when the dialog is closed. */
   tab: DocumentModalTab | null;
@@ -52,15 +57,38 @@ export function DocumentModal({
   returnFocusRef?: RefObject<HTMLButtonElement | null>;
   /** The Sources tab's linked sources whenever they load or change. */
   onSourcesChange?: (sources: LinkedSource[]) => void;
+  /** The Data tab's "Insert table": put the snapshot at the editor's cursor. */
+  onInsertTable?: (snapshot: TableSnapshot) => void;
 }) {
   const open = tab !== null;
   // "Add" on a source suggestion hands over to the Sources tab with this.
   const [prefill, setPrefill] = useState<SourcePrefill | null>(null);
+  // "Add" on a data suggestion hands over to the Data tab with this.
+  const [dataPrefill, setDataPrefill] = useState<DataPrefill | null>(null);
+  // The parent can close the dialog without close() ("Insert table" does): the
+  // hand-overs still end with it, so they don't come back the next time it opens.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (!open) {
+      setPrefill(null);
+      setDataPrefill(null);
+    }
+  }
   // The Notes pane, so Esc can cancel its dictation. Closing (or switching tabs)
   // unmounts the pane, which keeps a running dictation's words.
   const notesPane = useRef<NotesPaneHandle>(null);
+  // Closed by "Insert table": focus goes to the editor (document-screen), not back to the opener.
+  const inserted = useRef(false);
+  const insertTable = onInsertTable
+    ? (snapshot: TableSnapshot) => {
+        inserted.current = true;
+        onInsertTable(snapshot);
+      }
+    : undefined;
   const close = () => {
     setPrefill(null);
+    setDataPrefill(null);
     onTabChange(null);
   };
   return (
@@ -75,6 +103,11 @@ export function DocumentModal({
           }
         }}
         onCloseAutoFocus={(e) => {
+          if (inserted.current) {
+            inserted.current = false;
+            e.preventDefault();
+            return;
+          }
           const button = returnFocusRef?.current;
           if (button?.isConnected) {
             e.preventDefault();
@@ -84,7 +117,7 @@ export function DocumentModal({
       >
         <DialogHeader className="px-4 pb-3 pr-12 pt-5 text-left sm:px-6 sm:pr-14 sm:pt-6">
           <DialogTitle className="truncate text-xl font-semibold tracking-tight">{modalTitle(documentTitle)}</DialogTitle>
-          <DialogDescription className="sr-only">Notes, sources and suggestions for this document.</DialogDescription>
+          <DialogDescription className="sr-only">Notes, sources, data and suggestions for this document.</DialogDescription>
         </DialogHeader>
         {tab && (
           <Tabs value={tab} onValueChange={(v) => onTabChange(v as DocumentModalTab)} className="flex min-h-0 flex-1 flex-col gap-0">
@@ -116,6 +149,19 @@ export function DocumentModal({
                   prefill={prefill}
                   onPrefillDone={() => setPrefill(null)}
                   onSourcesChange={onSourcesChange}
+                  onShowData={() => onTabChange("data")}
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="data" className="flex min-h-0 min-w-0 flex-col">
+              {tab === "data" && (
+                <DataPane
+                  documentId={documentId}
+                  ensureSaved={ensureSaved}
+                  onInsertTable={insertTable}
+                  prefill={dataPrefill}
+                  onPrefillDone={() => setDataPrefill(null)}
+                  onGoToSources={() => onTabChange("sources")}
                 />
               )}
             </TabsContent>
@@ -128,6 +174,10 @@ export function DocumentModal({
                   onAddSource={(p) => {
                     setPrefill(p);
                     onTabChange("sources");
+                  }}
+                  onAddData={(p) => {
+                    setDataPrefill(p);
+                    onTabChange("data");
                   }}
                 />
               )}

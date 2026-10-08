@@ -570,6 +570,36 @@ export async function setSourceStatus(teamId: string, id: string, status: Extrac
   await writeSource(teamId, id, { extraction_status: status, extraction_error: error });
 }
 
+const BUSY_STATUSES: ExtractionStatus[] = ["pending", "extracting", "summarizing"];
+
+/**
+ * Move a source to `to`, but only from one of `from` or from a busy status
+ * left stale (a run that was stopped). False when the source is missing or
+ * another read holds it. One conditional write, so of two callers racing for
+ * the same source only one wins: two reads never overlap and write two sets
+ * of tables.
+ */
+export async function claimSourceStatus(teamId: string, id: string, to: ExtractionStatus, from: ExtractionStatus[]): Promise<boolean> {
+  const staleBefore = new Date(Date.now() - STALE_BUSY_MS).toISOString();
+  if (!hasDb()) {
+    // No await between the check and the write: atomic within the process.
+    const s = memory.sources.get(id);
+    if (!s || s.team_id !== teamId) return false;
+    const stale = BUSY_STATUSES.includes(s.extraction_status) && s.updated_at < staleBefore;
+    if (!from.includes(s.extraction_status) && !stale) return false;
+    memory.sources.set(id, { ...s, extraction_status: to, extraction_error: null, updated_at: nowIso() });
+    return true;
+  }
+  await schema();
+  const { rowCount } = await sql.query(
+    `UPDATE source SET extraction_status = $3, extraction_error = NULL, updated_at = now()
+      WHERE id = $1 AND team_id = $2
+        AND (extraction_status = ANY($4::text[]) OR (extraction_status = ANY($5::text[]) AND updated_at < $6::timestamptz))`,
+    [id, teamId, to, from, BUSY_STATUSES, staleBefore],
+  );
+  return !!rowCount;
+}
+
 /** Record where a source's file is stored (after an upload, or a PDF fetched from a link). */
 export async function setSourceFile(
   teamId: string,

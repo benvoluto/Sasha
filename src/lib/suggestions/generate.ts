@@ -4,27 +4,32 @@
 // configured and there is something to judge (type items and linked sources
 // with summaries, or notes of some length), ONE fast-tier call (`suggest.items`)
 // says which items a linked source already covers and proposes up to 8 more
-// items the notes imply ("notes" origin). Everything the model returns is
-// whitelisted: source ids against the document's linked sources, spec_refs
-// against the type's section keys. Without Claude the type items are written
+// items the notes imply ("notes" origin). The document's linked active data
+// tables go in the prompt too (Phase 5), and a data item a table clearly
+// provides is covered by that table. Everything the model returns is
+// whitelisted: source ids against the document's linked sources (and, for data
+// items only, its linked active tables), spec_refs against the type's section
+// keys. Without Claude the type items are written
 // uncovered and there are no notes items.
 //
 // A generation runs at most once a minute per document (suggestion_run, so the
 // gate holds across server processes), concurrent requests for a document
-// share one run, and unchanged inputs (type, notes, linked sources) skip it.
+// share one run, and unchanged inputs (type, notes, linked sources and tables) skip it.
 // A failed model call records its error, adds any type items still missing
 // (uncovered) and otherwise leaves the list as it was; the list stays stale
 // so the next open of the tab retries.
 
 import { getType } from "@/catalog";
 import { sortedSections, type DocumentTypeDefinition } from "@/catalog/schema";
+import { tableLocation, type LinkedDataTable } from "@/lib/data/contract";
+import { listDocumentTables } from "@/lib/data/store";
 import { getDocument, type DocumentRecord } from "@/lib/documents/store";
 import { claudeConfigured, claudeJson } from "@/lib/llm/claude";
 import { processMemory } from "@/lib/process-memory";
 import { listDocumentSources, type LinkedSource } from "@/lib/sources/store";
 import { MAX_SUGGESTION_LABEL, MAX_SUGGESTION_REASON, suggestionDedupeKey, type SuggestionGenerateResponse, type SuggestionListResponse, type SuggestionRecord } from "./contract";
 import { inputsHash, mergeProposals, MAX_NOTES_PROPOSALS, subtractDismissed, typeNeeds, type GeneratedItem, type NeededItem } from "./diff";
-import { SUGGEST_SYSTEM, SuggestModelOutput, suggestUserPrompt, type PromptSource } from "./prompt";
+import { MAX_PROMPT_TABLES, SUGGEST_SYSTEM, SuggestModelOutput, suggestUserPrompt, type PromptSource, type PromptTable } from "./prompt";
 import { applyGenerated, getRun, listSuggestions, setRun } from "./store";
 
 /** At most one generation per document per minute. */
@@ -48,21 +53,31 @@ export function sourceLabel(s: Pick<LinkedSource, "title" | "filename" | "url" |
   return s.title?.trim() || s.filename?.trim() || s.url?.trim() || (s.kind === "note" ? "Untitled note" : "Untitled source");
 }
 
-type Inputs = { doc: DocumentRecord; def: DocumentTypeDefinition | null; sources: LinkedSource[]; hash: string };
+/** A linked table for the prompt: "label (type)" columns, and its source with where in it the table sits. */
+export function promptTable(t: LinkedDataTable): PromptTable {
+  const where = tableLocation(t);
+  const source = t.source.title?.trim() || t.source.filename?.trim() || "an untitled source";
+  return { id: t.id, name: t.name, columns: t.columns.map((c) => `${c.label} (${c.type})`), row_count: t.row_count, source: where ? `${source}, ${where}` : source };
+}
+
+type Inputs = { doc: DocumentRecord; def: DocumentTypeDefinition | null; sources: LinkedSource[]; tables: LinkedDataTable[]; hash: string };
 
 async function loadInputs(teamId: string, documentId: string): Promise<Inputs | null> {
   const doc = await getDocument(teamId, documentId);
   if (!doc) return null;
-  const [entry, linked] = await Promise.all([getType(teamId, doc.type_key), listDocumentSources(teamId, documentId)]);
+  const [entry, linked, linkedTables] = await Promise.all([getType(teamId, doc.type_key), listDocumentSources(teamId, documentId), listDocumentTables(teamId, documentId)]);
   const def = entry?.definition ?? null;
   const sources = linked ?? [];
+  // Hidden and superseded tables are on the Data tab but don't cover anything.
+  const tables = (linkedTables ?? []).filter((t) => t.status === "active").slice(0, MAX_PROMPT_TABLES);
   const hash = inputsHash({
     typeKey: def?.key ?? null,
     typeVersion: def?.version ?? null,
     notes: doc.notes,
     sources: sources.map((s) => ({ id: s.id, title: sourceLabel(s), summary: s.summary })),
+    tables: tables.map((t) => ({ id: t.id, name: t.name, status: t.status, columns: t.columns.map((c) => ({ label: c.label, type: c.type })) })),
   });
-  return { doc, def, sources, hash };
+  return { doc, def, sources, tables, hash };
 }
 
 async function listResponse(teamId: string, documentId: string, hash: string): Promise<SuggestionListResponse | null> {
@@ -80,33 +95,39 @@ export async function getSuggestionList(teamId: string, documentId: string): Pro
 
 /**
  * The model's reply, whitelisted: coverage entries for items that exist and
- * sources that are linked; proposals with trimmed labels/reasons and spec_refs
- * that name one of the type's sections.
+ * sources that are linked (a linked table's id only for a data item, which it
+ * then covers as `covered_by_table`); proposals with trimmed labels/reasons
+ * and spec_refs that name one of the type's sections.
  */
 export function judgeReply(
   reply: SuggestModelOutput,
   items: NeededItem[],
   sources: Array<{ id: string; title: string }>,
   sectionKeys: Set<string>,
+  tables: Array<{ id: string; name: string }> = [],
 ): { typeItems: GeneratedItem[]; proposals: GeneratedItem[] } {
   const titles = new Map(sources.map((s) => [s.id, s.title]));
-  const verdict = new Map<number, { status: "covered" | "partial"; source: string }>();
+  const tableNames = new Map(tables.map((t) => [t.id, t.name]));
+  const verdict = new Map<number, { status: "covered" | "partial"; source: string; table: boolean }>();
   for (const c of reply.coverage) {
     const index = c.item - 1;
     if (!Number.isInteger(index) || index < 0 || index >= items.length || c.status === "missing") continue;
     const source = c.source_id?.trim() ?? "";
-    if (!titles.has(source)) continue;
+    // A table covers only data items; on any other item the verdict is dropped (the item stays missing).
+    const table = !titles.has(source) && tableNames.has(source);
+    if (!titles.has(source) && !(table && items[index].kind === "data")) continue;
     // Keep the strongest verdict when an item is listed twice.
     if (verdict.get(index)?.status === "covered") continue;
-    verdict.set(index, { status: c.status, source });
+    verdict.set(index, { status: c.status, source, table });
   }
   const typeItems: GeneratedItem[] = items.map((item, i) => {
     const v = verdict.get(i);
     const { dedupe_key: _k, ...rest } = item;
     void _k;
     if (!v) return rest;
-    if (v.status === "covered") return { ...rest, covered_by: v.source };
-    return { ...rest, reason: `${item.reason} (partly covered by ${titles.get(v.source)})`.slice(0, MAX_SUGGESTION_REASON) };
+    if (v.status === "covered") return v.table ? { ...rest, covered_by_table: v.source } : { ...rest, covered_by: v.source };
+    const by = v.table ? tableNames.get(v.source) : titles.get(v.source);
+    return { ...rest, reason: `${item.reason} (partly covered by ${by})`.slice(0, MAX_SUGGESTION_REASON) };
   });
   const proposals: GeneratedItem[] = reply.proposals
     .map((p) => ({
@@ -131,7 +152,7 @@ function keepExisting(items: GeneratedItem[], existing: SuggestionRecord[]): Gen
 }
 
 async function run(teamId: string, inputs: Inputs, opts: GenerateOptions): Promise<GenerateResult | null> {
-  const { doc, def, sources, hash } = inputs;
+  const { doc, def, sources, tables, hash } = inputs;
   const agent = opts.agent ?? "system";
   const now = opts.now ?? Date.now;
   const existing = (await listSuggestions(teamId, doc.id)) ?? [];
@@ -139,7 +160,7 @@ async function run(teamId: string, inputs: Inputs, opts: GenerateOptions): Promi
   const summarized: PromptSource[] = sources.filter((s) => s.summary?.trim()).map((s) => ({ id: s.id, title: sourceLabel(s), summary: s.summary!.trim() }));
   const notesWords = wordCount(doc.notes);
   const configured = claudeConfigured();
-  const useModel = configured && ((needed.length > 0 && summarized.length > 0) || notesWords >= NOTES_MIN_WORDS);
+  const useModel = configured && ((needed.length > 0 && (summarized.length > 0 || tables.length > 0)) || notesWords >= NOTES_MIN_WORDS);
 
   let typeItems: GeneratedItem[] = needed.map(({ dedupe_key: _k, ...rest }) => (void _k, rest));
   let notesItems: GeneratedItem[] = [];
@@ -152,6 +173,7 @@ async function run(teamId: string, inputs: Inputs, opts: GenerateOptions): Promi
         user: suggestUserPrompt({
           items: needed,
           sources: summarized,
+          tables: tables.map(promptTable),
           notes: doc.notes,
           type: def ? { title: def.title, sections } : null,
           earlier: existing.filter((r) => r.origin === "notes").map((r) => ({ kind: r.kind, label: r.label, state: r.state })),
@@ -160,7 +182,7 @@ async function run(teamId: string, inputs: Inputs, opts: GenerateOptions): Promi
         agent,
         documentId: doc.id,
       });
-      const judged = judgeReply(data, needed, summarized, new Set(sections.map((s) => s.key)));
+      const judged = judgeReply(data, needed, summarized, new Set(sections.map((s) => s.key)), tables);
       typeItems = judged.typeItems;
       notesItems = judged.proposals;
     } catch (error) {

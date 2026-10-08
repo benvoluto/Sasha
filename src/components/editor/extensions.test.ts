@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { Schema, type Node as PMNode } from "@tiptap/pm/model";
+import { getSchema } from "@tiptap/core";
+import { isAllowedUri } from "@tiptap/extension-link";
+import { DOMParser as PMDOMParser, DOMSerializer, Node as PMNodeClass, Schema, type Node as PMNode } from "@tiptap/pm/model";
 import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { parseHTML } from "linkedom";
-import { fixSectionIds, gutterButton, gutterDecorations } from "./extensions";
+import type { PMNode as PMJSON } from "@/lib/documents/sections";
+import { tableSnapshotNodes } from "@/lib/data/snapshot";
+import { documentExtensions, fixSectionIds, gutterButton, gutterDecorations } from "./extensions";
 
 const schema = new Schema({
   nodes: {
@@ -107,5 +111,87 @@ describe("heading gutter", () => {
     b.getBoundingClientRect = () => ({ left: 0, top: 0, width: 10, height: 10 }) as DOMRect;
     b.dispatchEvent(new DomEvent("click"));
     expect(calls).toEqual(["s_a"]);
+  });
+});
+
+describe("DataTable", () => {
+  // The document schema (no editor view needed), serialized and parsed through a linkedom document as getHTML and setContent do.
+  const docSchema = getSchema(documentExtensions());
+  const { document } = parseHTML("<!doctype html><html><body></body></html>") as unknown as { document: Document };
+
+  const toHTML = (json: PMJSON) => {
+    const node = PMNodeClass.fromJSON(docSchema, json);
+    const wrap = document.createElement("div");
+    wrap.appendChild(DOMSerializer.fromSchema(docSchema).serializeFragment(node.content, { document }));
+    return wrap.innerHTML;
+  };
+  const fromHTML = (html: string) => {
+    const wrap = document.createElement("div");
+    wrap.innerHTML = html;
+    return PMDOMParser.fromSchema(docSchema).parse(wrap as unknown as globalThis.Node).toJSON() as PMJSON;
+  };
+
+  const snap = tableSnapshotNodes(
+    {
+      table: {
+        id: "11111111-1111-4111-8111-111111111111",
+        source_id: "22222222-2222-4222-8222-222222222222",
+        source: { id: "22222222-2222-4222-8222-222222222222", title: "Budget", filename: null, kind: "file", mime: null },
+        name: "Costs",
+        columns: [
+          { key: "c1", label: "Item", type: "text", inferred: "text", unit: null },
+          { key: "c2", label: "Amount", type: "number", inferred: "number", unit: null },
+        ],
+        row_count: 1,
+        status: "active",
+        superseded_by: null,
+        extraction_method: "csv",
+        sheet: null,
+        page: null,
+        page_end: null,
+        confidence: null,
+        notes: "",
+        truncated: false,
+        override_count: 0,
+        document_ids: [],
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z",
+      },
+      rows: [{ idx: 0, cells: ["Rent", "1200"] }],
+    },
+    { rows: 1, at: "2026-10-08T09:00:00.000Z" },
+  );
+
+  it("writes the data-table attributes and reads them back", () => {
+    const html = toHTML({ type: "doc", content: snap });
+    expect(html).toContain('data-table-id="11111111-1111-4111-8111-111111111111"');
+    expect(html).toContain('data-source-id="22222222-2222-4222-8222-222222222222"');
+    expect(html).toContain('data-snapshot-at="2026-10-08T09:00:00.000Z"');
+    const back = fromHTML(html);
+    const table = back.content!.find((n) => n.type === "table")!;
+    expect(table.attrs).toMatchObject({ dataTableId: "11111111-1111-4111-8111-111111111111", sourceId: "22222222-2222-4222-8222-222222222222", snapshotAt: "2026-10-08T09:00:00.000Z" });
+  });
+
+  it("keeps the citation's relative library link", () => {
+    const html = toHTML({ type: "doc", content: snap });
+    // linkedom leaves "&" unescaped in attributes; a browser writes "&amp;".
+    expect(html).toMatch(/href="\/library\?source=22222222-2222-4222-8222-222222222222&(amp;)?table=11111111-1111-4111-8111-111111111111"/);
+    const back = fromHTML(html);
+    const cite = back.content!.find((n) => n.type === "paragraph" && n.content?.some((c) => c.marks?.length))!;
+    const mark = cite.content!.find((c) => c.marks?.length)!.marks![0];
+    expect(mark.type).toBe("link");
+    expect(mark.attrs?.href).toBe("/library?source=22222222-2222-4222-8222-222222222222&table=11111111-1111-4111-8111-111111111111");
+    expect(isAllowedUri("/library?source=a&table=b")).toBeTruthy();
+  });
+
+  it("leaves a plain table without the attributes", () => {
+    const plain: PMJSON = {
+      type: "doc",
+      content: [{ type: "table", content: [{ type: "tableRow", content: [{ type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "a" }] }] }] }] }],
+    };
+    const html = toHTML(plain);
+    expect(html).not.toContain("data-table-id");
+    expect(html).not.toContain("data-source-id");
+    expect(fromHTML(html).content![0].attrs).toMatchObject({ dataTableId: null, sourceId: null, snapshotAt: null });
   });
 });
