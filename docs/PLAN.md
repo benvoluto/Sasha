@@ -370,6 +370,14 @@ Built-in workflows:
 3. **Draft all empty sections:** for each empty section, draft from notes and
    sources, then `rubric.score`.
 
+Per-type workflows are specified in `docs/workflows-by-document-type.md`. They
+are built from seven shared steps (gate, extract, trace, compute, independent
+review with differing briefs, agreement without averaging, checkpoint);
+outcomes are advisory until their checkpoint and always allow "blocked: missing
+input"; requirement sets (state criteria, NIH/NSF rules, reporting guidelines)
+are stored as dated data beside the type. "Draft all empty sections" is off by
+default for NIH (NOT-OD-25-132).
+
 The engine's 200 s budget with pause and continue is kept. The tables are renamed
 as in §4.3.
 

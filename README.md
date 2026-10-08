@@ -17,7 +17,8 @@ catalog with outlines, the living outline and per-section drafting tools; the
 editor layout (docs panel, document folders, floating Outline/Tools/Sources);
 and Phase 4: document notes with dictation, the type classifier with an
 apply-outline chip, and source and data suggestions. Next is Phase 5, data.
-Per-type workflow notes for Phase 6 go in `docs/WORKFLOWS.md`. See
+Per-type workflow specs for Phase 6 are in
+`docs/workflows-by-document-type.md`. See
 `docs/PLAN.md` §12.
 
 ## Stack
