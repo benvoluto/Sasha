@@ -1,31 +1,49 @@
 "use client";
 
-// The editing screen: the first thing a person sees. A header with the
-// document switcher, title, type, sources and sharing; a card holding the
-// toolbar, the document, the living outline on the left and the tools, sources
-// or section notes panel on the right. Each heading has a gutter button that
-// opens the section's actions (draft, rewrite, notes).
+// The editing screen: the first thing a person sees, inside the app frame
+// (rail and documents panel, src/components/shell). A header with the title,
+// type and sharing; a sticky formatting toolbar; the document on a plain white
+// page; a right column with the living outline over the tools or section notes
+// (right-column.tsx); floating Outline / Tools / Sources buttons, Sources being
+// a dialog. Each heading has a gutter button that opens the section's actions
+// (draft, rewrite, notes).
 
-import { OrganizationSwitcher, UserButton, useOrganization } from "@clerk/nextjs";
+import { OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { useSetAtom } from "jotai";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, LibraryIcon, Loader2, OutlineIcon, Share, SourcesIcon, SparkleIcon, TypesIcon } from "@/components/icons";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Check, Copy, Loader2, ShareArrowIcon } from "@/components/icons";
+import { activeDocumentAtom } from "@/components/shell/active-document";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { outlineDoc, sectionNodes } from "@/catalog/outline";
 import type { DocumentTypeSummary } from "@/catalog/schema";
 import type { PMNode } from "@/lib/documents/sections";
 import type { SaveOutlineAsTypeResponse, SectionListResponse } from "@/lib/sections/contract";
-import { DocumentSwitcher } from "./document-switcher";
 import { EditorToolbar } from "./editor-toolbar";
 import { documentExtensions, newSectionId } from "./extensions";
+import { FloatingActions } from "./floating-actions";
 import { NoticeStack, useNotices, type Notice } from "./notice";
 import { goToHeading, OutlinePanel } from "./outline-panel";
 import { SectionMenu, type SectionMenuTarget } from "./section-menu";
 import { SectionNotesPanel, useCaretSectionId } from "./section-notes-panel";
+import { RightColumn } from "./right-column";
+import {
+  CLOSED_COLUMN,
+  closeLower,
+  closeOutline,
+  columnCloseFocus,
+  openNotes,
+  rightColumnMode,
+  toggleOutline,
+  toggleTools,
+  type ColumnSlot,
+  type RightColumnMode,
+  type RightColumnState,
+} from "./right-column-model";
 import { ToolsPanel } from "./side-panels";
-import { SourcesPanel } from "./sources-panel";
+import { SourcesModal } from "./sources-modal";
 import { sectionBodyRange } from "./tracked-range";
 import { createDocumentOfType, findType, SaveOutlineDialog, StartFromTypeStrip, TypeGallery, TypePicker, useDocumentTypes } from "./type-picker";
 import { useDocument, type SaveStatus } from "./use-document";
@@ -48,8 +66,13 @@ function SharePopover({ documentId }: { documentId: string | null }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" className="flex h-11 items-center gap-2 rounded-full px-4 text-[17px] font-semibold text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]">
-          <Share className="h-5 w-5" /> Share
+        <button
+          type="button"
+          aria-label="Share"
+          title="Share"
+          className="flex h-11 w-11 shrink-0 items-center justify-center gap-2.5 rounded-xl border border-[var(--go-line)] text-[18px] font-semibold text-[var(--go)] hover:bg-[var(--go-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] data-[state=open]:bg-[var(--go-soft)] sm:h-12 sm:w-auto sm:px-5"
+        >
+          <ShareArrowIcon className="h-6 w-6" /> <span className="hidden sm:inline">Share</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] space-y-3 rounded-xl">
@@ -88,6 +111,14 @@ function StatusText({ status, error, isNew }: { status: SaveStatus; error: strin
 export function DocumentScreen({ documentId }: { documentId: string | null }) {
   const { doc, loading, notFound, status, error, conflict, change, flush, resolveConflict } = useDocument(documentId);
   const catalog = useDocumentTypes();
+
+  // The app frame's documents panel shows which document is open, with its live title.
+  const setActiveDocument = useSetAtom(activeDocumentAtom);
+  const activeId = doc.id || null;
+  useEffect(() => {
+    setActiveDocument({ id: activeId, title: doc.title });
+  }, [setActiveDocument, activeId, doc.title]);
+  useEffect(() => () => setActiveDocument(null), [setActiveDocument]);
 
   if (notFound) {
     return (
@@ -128,7 +159,7 @@ export function DocumentScreen({ documentId }: { documentId: string | null }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="doc-screen min-h-screen bg-[var(--doc-bg)] text-[var(--doc-ink)]">{children}</div>;
+  return <div className="doc-screen doc-editor min-h-dvh">{children}</div>;
 }
 
 type WorkspaceProps = {
@@ -143,7 +174,60 @@ type WorkspaceProps = {
   resolveConflict: ReturnType<typeof useDocument>["resolveConflict"];
 };
 
-type RightPanel = "tools" | "sources" | "notes";
+/**
+ * Where the right column goes (rightColumnMode), from the body row's width and
+ * the viewport's, plus the body row's left edge for the phone sheet. Also
+ * publishes the sticky toolbar's height as --toolbar-h on the row, so the
+ * in-flow column sticks just under it, and --column-top for its height.
+ */
+function useColumnLayout(rowRef: RefObject<HTMLDivElement | null>, toolbarRef: RefObject<HTMLDivElement | null>) {
+  const [layout, setLayout] = useState<{ mode: RightColumnMode; left: number }>({ mode: "inline", left: 0 });
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    // --column-top: where the sticky column's top is right now (below the
+    // header until the page scrolls, then under the toolbar), so its height
+    // ends at the viewport's bottom and its last controls clear the floating
+    // buttons instead of running off-screen.
+    let toolbar = 0;
+    const placeTop = () => {
+      const top = Math.max(toolbar, Math.round(row.getBoundingClientRect().top));
+      row.style.setProperty("--column-top", `${top}px`);
+    };
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        placeTop();
+      });
+    };
+    const measure = () => {
+      const rect = row.getBoundingClientRect();
+      toolbar = Math.round(toolbarRef.current?.getBoundingClientRect().height ?? 0);
+      row.style.setProperty("--toolbar-h", `${toolbar}px`);
+      placeTop();
+      const next = { mode: rightColumnMode(rect.width, window.innerWidth), left: Math.max(0, Math.round(rect.left)) };
+      setLayout((prev) => (prev.mode === next.mode && prev.left === next.left ? prev : next));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    if (toolbarRef.current) ro.observe(toolbarRef.current);
+    // The header and banners above the row move it without resizing it.
+    for (let el = row.previousElementSibling; el; el = el.previousElementSibling) ro.observe(el);
+    if (row.parentElement) ro.observe(row.parentElement);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [rowRef, toolbarRef]);
+  return layout;
+}
 
 /** The section notes saved for each section of the document (for the outline's notes marker). */
 function useSectionNotes(documentId: string | null) {
@@ -167,10 +251,15 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const router = useRouter();
   const types = catalog.types;
   const currentType = findType(types, doc.type_key);
-  const [outlineOpen, setOutlineOpen] = useState(false);
-  // The right-hand slot holds one panel at a time.
-  const [rightPanel, setRightPanel] = useState<RightPanel | null>(null);
-  const toggleRight = (panel: RightPanel) => setRightPanel((p) => (p === panel ? null : panel));
+  // The right column: the outline on top, Tools or Section notes below (right-column-model.ts).
+  const [column, setColumn] = useState<RightColumnState>(CLOSED_COLUMN);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const sourcesButtonRef = useRef<HTMLButtonElement>(null);
+  const outlineButtonRef = useRef<HTMLButtonElement>(null);
+  const toolsButtonRef = useRef<HTMLButtonElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const layout = useColumnLayout(rowRef, toolbarRef);
   // Passing notices replace each other; a pending decision (a sticky notice) stays until it is made.
   const { notices, notify, dismiss: dismissNotice } = useNotices();
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
@@ -316,7 +405,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       const s = sectionBodyRange(editor.state.doc, sectionId);
       if (s) goToHeading(editor, s.headingPos);
     }
-    setRightPanel("notes");
+    setColumn(openNotes);
   };
 
   const setLink = () => {
@@ -328,11 +417,50 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
 
   const showStrip = !doc.id && !doc.type_key && isEmpty && types.length > 0;
 
+  // A panel closed from its own X unmounts the focused button: hand focus to the
+  // floating button that reopens it (Tools for Section notes too), or to the
+  // editor if that button isn't there, rather than letting it drop to <body>.
+  const closeColumnPanel = (slot: ColumnSlot) => {
+    setColumn(slot === "outline" ? closeOutline : closeLower);
+    const ref = columnCloseFocus(slot) === "outline" ? outlineButtonRef : toolsButtonRef;
+    requestAnimationFrame(() => {
+      const button = ref.current;
+      if (button?.isConnected) button.focus();
+      else editor?.commands.focus();
+    });
+  };
+
+  const outlinePanel =
+    column.outline && editor ? (
+      <OutlinePanel
+        editor={editor}
+        type={currentType}
+        status={outlineStatus.status}
+        statusError={outlineStatus.error}
+        notes={sectionNotes.notes}
+        onChooseType={() => setGallery("set")}
+        onClose={() => closeColumnPanel("outline")}
+      />
+    ) : null;
+  const lowerPanel = !editor ? null : column.lower === "tools" ? (
+    <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => closeColumnPanel("lower")} />
+  ) : column.lower === "notes" ? (
+    <SectionNotesPanel
+      editor={editor}
+      documentId={doc.id}
+      ensureSaved={ensureSaved}
+      sectionId={caretSection}
+      busy={generation.busy}
+      run={generation.run}
+      onSaved={sectionNotes.update}
+      onClose={() => closeColumnPanel("lower")}
+    />
+  ) : null;
+
   return (
     <>
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 pb-6 pt-6 sm:px-10 sm:pt-8">
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-x-5 gap-y-2 md:w-auto md:flex-1">
-          <DocumentSwitcher currentId={doc.id} />
+      <header className="flex items-start justify-between gap-3 px-5 pb-4 pt-6 sm:px-12 sm:pt-8">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">
           <label htmlFor="doc-title" className="sr-only">
             Document title
           </label>
@@ -342,43 +470,16 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
             onChange={(e) => change({ title: e.target.value })}
             placeholder="Untitled document"
             style={{ fieldSizing: "content" } as React.CSSProperties}
-            className="min-w-[10ch] max-w-full bg-transparent text-[22px] font-medium tracking-tight outline-none placeholder:text-[var(--doc-muted)] sm:max-w-[28rem]"
+            className="min-w-[10ch] max-w-full rounded-md bg-transparent text-[28px] font-medium tracking-tight text-[var(--ink)] outline-none placeholder:text-[var(--doc-muted)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)] sm:text-[32px]"
           />
           <TypePicker types={types} value={doc.type_key} onChange={chooseType} onBrowse={() => setGallery("set")} onSaveOutline={() => setSaveTypeOpen(true)} />
           <StatusText status={status} error={error} isNew={!doc.id} />
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-pressed={rightPanel === "sources"}
-            onClick={() => toggleRight("sources")}
-            className={`flex h-11 items-center gap-2 rounded-full px-5 text-[17px] font-semibold text-[var(--doc-accent)] shadow-sm hover:bg-[var(--doc-accent-soft)] ${
-              rightPanel === "sources" ? "bg-[var(--doc-accent-soft)]" : "bg-[var(--doc-surface)]"
-            }`}
-          >
-            <SourcesIcon className="h-5 w-5" /> Sources
-          </button>
-          <Link
-            href="/library"
-            aria-label="Sources library"
-            title="Sources library"
-            className="grid h-11 w-11 place-items-center rounded-full text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
-          >
-            <LibraryIcon className="h-5 w-5" />
-          </Link>
-          <SharePopover documentId={doc.id} />
-          <div className="ml-1 grid h-11 w-11 place-items-center">
-            <UserButton>
-              <UserButton.MenuItems>
-                <UserButton.Link label="Document types" labelIcon={<TypesIcon className="h-4 w-4" />} href="/catalog" />
-              </UserButton.MenuItems>
-            </UserButton>
-          </div>
-        </div>
+        <SharePopover documentId={doc.id} />
       </header>
 
       {conflict && (
-        <div role="alert" className="mx-4 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:mx-10 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+        <div role="alert" className="mx-5 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:mx-12 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
           <span className="flex-1">Someone else saved this document while you were editing. Your latest changes are not saved.</span>
           <button type="button" onClick={() => void resolveConflict("theirs").then(() => window.location.reload())} className="rounded-md border border-current px-3 py-1 font-medium">
             Load their version
@@ -389,27 +490,8 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         </div>
       )}
 
-      <main className="mx-2 mb-10 overflow-hidden rounded-2xl bg-[var(--doc-surface)] shadow-[0_1px_3px_rgba(16,24,40,0.06),0_8px_24px_rgba(16,24,40,0.05)] sm:mx-10">
-        <div className="sticky top-[env(safe-area-inset-top,0px)] z-20 grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-[var(--doc-line)] bg-[var(--doc-toolbar)] px-3 py-3 backdrop-blur sm:px-6">
-          <button
-            type="button"
-            aria-pressed={outlineOpen}
-            onClick={() => setOutlineOpen((o) => !o)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[17px] font-semibold text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
-          >
-            <OutlineIcon className="h-5 w-5" /> <span className="hidden sm:inline">Outline</span>
-          </button>
-          <div className="min-w-0 overflow-x-auto">{editor && <EditorToolbar editor={editor} onLink={setLink} />}</div>
-          <button
-            type="button"
-            aria-pressed={rightPanel === "tools"}
-            onClick={() => toggleRight("tools")}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[17px] font-semibold text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
-          >
-            <SparkleIcon className="h-5 w-5" /> <span className="hidden sm:inline">Tools</span>
-          </button>
-        </div>
-
+      <div ref={toolbarRef} className="sticky top-0 z-[15] bg-[var(--editor-bg)]/95 backdrop-blur">
+        <div className="overflow-x-auto px-5 py-3 sm:px-12">{editor && <EditorToolbar editor={editor} onLink={setLink} />}</div>
         {linkDraft !== null && editor && (
           <form
             onSubmit={(e) => {
@@ -419,65 +501,77 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
               else editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
               setLinkDraft(null);
             }}
-            className="flex flex-wrap items-center gap-2 border-b border-[var(--doc-line)] px-6 py-2 text-sm"
+            data-inline-edit
+            className="flex max-w-[52rem] flex-wrap items-center gap-2 px-5 pb-3 text-sm sm:px-12"
           >
             <label htmlFor="link-url">Link to</label>
-            <input id="link-url" autoFocus value={linkDraft} onChange={(e) => setLinkDraft(e.target.value)} className="min-w-0 flex-1 rounded-md border border-[var(--doc-line)] bg-transparent px-2 py-1" />
-            <button type="submit" className="rounded-md bg-[var(--doc-accent)] px-3 py-1 font-semibold text-white">
+            <input
+              id="link-url"
+              autoFocus
+              value={linkDraft}
+              onChange={(e) => setLinkDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Esc cancels the link form (and doesn't reach the docs panel).
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setLinkDraft(null);
+                  editor.commands.focus();
+                }
+              }}
+              className="min-w-0 flex-1 rounded-md border border-[var(--divider)] bg-transparent px-2 py-1 outline-none focus:border-[var(--action)]"
+            />
+            <button type="submit" className="rounded-md bg-[var(--action)] px-3 py-1 font-semibold text-white dark:text-[var(--editor-bg)]">
               Apply
             </button>
-            <button type="button" onClick={() => setLinkDraft(null)} className="rounded-md px-2 py-1 text-[var(--doc-muted)]">
+            <button type="button" onClick={() => setLinkDraft(null)} className="rounded-md px-2 py-1 text-[var(--doc-muted)] hover:text-[var(--ink)]">
               Cancel
             </button>
           </form>
         )}
+      </div>
 
-        <div className="relative flex min-h-[70vh]">
-          {outlineOpen && editor && (
-            <div className="absolute inset-y-0 left-0 z-10 w-72 max-w-[85vw] border-r border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static lg:w-72">
-              <OutlinePanel
-                editor={editor}
-                type={currentType}
-                status={outlineStatus.status}
-                statusError={outlineStatus.error}
-                notes={sectionNotes.notes}
-                onChooseType={() => setGallery("set")}
-                onClose={() => setOutlineOpen(false)}
-              />
-            </div>
-          )}
-          <div className="min-w-0 flex-1 px-5 py-10 sm:px-14">
-            <div className="mx-auto max-w-[44rem]">
-              <EditorContent editor={editor} />
-            </div>
-            {showStrip && <StartFromTypeStrip types={types} onChoose={startNewOfType} onBrowse={() => setGallery("new")} />}
+      {/* The column's placement is measured (useColumnLayout) rather than a CSS
+          container query: a query container can become the containing block of
+          the fixed drawer/sheet in some engines. */}
+      <div ref={rowRef} className="flex min-h-[70vh]">
+        <main className="min-w-0 flex-1 px-5 pb-32 pt-6 sm:px-12">
+          <div className="max-w-[64rem]">
+            <EditorContent editor={editor} />
           </div>
-          {rightPanel === "tools" && editor && (
-            <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
-              <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => setRightPanel(null)} />
-            </div>
-          )}
-          {rightPanel === "sources" && (
-            <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
-              <SourcesPanel documentId={doc.id || null} documentTitle={doc.title} ensureSaved={ensureSaved} onClose={() => setRightPanel(null)} />
-            </div>
-          )}
-          {rightPanel === "notes" && editor && (
-            <div className="absolute inset-y-0 right-0 z-10 w-80 max-w-[85vw] border-l border-[var(--doc-line)] bg-[var(--doc-surface)] lg:static">
-              <SectionNotesPanel
-                editor={editor}
-                documentId={doc.id}
-                ensureSaved={ensureSaved}
-                sectionId={caretSection}
-                busy={generation.busy}
-                run={generation.run}
-                onSaved={sectionNotes.update}
-                onClose={() => setRightPanel(null)}
-              />
-            </div>
-          )}
-        </div>
-      </main>
+          {showStrip && <StartFromTypeStrip types={types} onChoose={startNewOfType} onBrowse={() => setGallery("new")} />}
+        </main>
+        <RightColumn
+          mode={layout.mode}
+          sheetLeft={layout.left}
+          top={outlinePanel}
+          bottom={lowerPanel}
+          onDismiss={() => {
+            setColumn(CLOSED_COLUMN);
+            editor?.commands.focus();
+          }}
+        />
+      </div>
+
+      <FloatingActions
+        ref={sourcesButtonRef}
+        outlineRef={outlineButtonRef}
+        toolsRef={toolsButtonRef}
+        outlineOpen={column.outline}
+        toolsOpen={column.lower === "tools"}
+        sourcesOpen={sourcesOpen}
+        onOutline={() => setColumn(toggleOutline)}
+        onTools={() => setColumn(toggleTools)}
+        onSources={() => setSourcesOpen(true)}
+      />
+      <SourcesModal
+        open={sourcesOpen}
+        onOpenChange={setSourcesOpen}
+        documentId={doc.id || null}
+        documentTitle={doc.title}
+        ensureSaved={ensureSaved}
+        returnFocusRef={sourcesButtonRef}
+      />
 
       <span role="status" aria-live="polite" className="sr-only">
         {editor ? busyAnnouncement([...generation.busy].map((id) => sectionBodyRange(editor.state.doc, id)?.heading ?? "")) : ""}

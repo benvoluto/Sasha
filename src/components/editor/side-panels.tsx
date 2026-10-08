@@ -1,9 +1,9 @@
 "use client";
 
-// The writing tools panel on the right, and the PanelHeader every side panel
-// shares. The Sources and Section notes panels (sources-panel.tsx,
-// section-notes-panel.tsx) share the right-hand slot; the outline is
-// outline-panel.tsx.
+// The writing tools panel, and the PanelHeader every side panel shares. Tools
+// and Section notes (section-notes-panel.tsx) share the lower half of the
+// editor's right column, under the outline (outline-panel.tsx); see
+// right-column.tsx. The Sources panel is the body of the Sources dialog.
 
 import type { Editor } from "@tiptap/react";
 import { useEffect, useState } from "react";
@@ -16,7 +16,7 @@ export function PanelHeader({ title, onClose }: { title: string; onClose: () => 
   return (
     <div className="flex items-center justify-between px-5 pb-2 pt-5">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--doc-muted)]">{title}</h2>
-      <button type="button" onClick={onClose} aria-label={`Close ${title.toLowerCase()}`} className="rounded-md p-1 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)]">
+      <button type="button" onClick={onClose} aria-label={`Close ${title.toLowerCase()}`} className="grid h-8 w-8 place-items-center rounded-md text-[var(--doc-muted)] hover:bg-[var(--action-soft)] hover:text-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -103,7 +103,7 @@ export function ToolsPanel({
   return (
     <aside aria-label="Tools" className="flex h-full flex-col">
       <PanelHeader title="Tools" onClose={onClose} />
-      <div className="space-y-5 overflow-y-auto px-5 pb-6">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6">
         <section className="space-y-2">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold">
             <SparkleIcon className="h-4 w-4 text-[var(--doc-accent)]" /> Rewrite selection

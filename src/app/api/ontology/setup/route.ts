@@ -59,6 +59,7 @@ const EXPECTED_TABLES = [
   "document",
   "document_section",
   "document_version",
+  "document_folder",
   "folder",
   "source",
   "document_source",
@@ -94,6 +95,7 @@ async function inspectSchema() {
     "determination_workflow.workflow_id": !!columns.determination_workflow?.includes("workflow_id"),
     "agent_determination_run.outputs": !!columns.agent_determination_run?.includes("outputs"),
     "document_section.updated_at": !!columns.document_section?.includes("updated_at"),
+    "document.doc_folder_id": !!columns.document?.includes("doc_folder_id"),
   };
   return {
     ok: missingTables.length === 0 && Object.values(migrations).every(Boolean),

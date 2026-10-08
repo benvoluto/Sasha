@@ -68,7 +68,7 @@ export function NoticeStack({ notices, onDismiss }: { notices: NoticeState; onDi
   const shown = [...notices.decisions, ...(notices.passing ? [notices.passing] : [])];
   if (!shown.length) return null;
   return (
-    <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
+    <div className="fixed bottom-[calc(1.5rem+var(--fab-clearance,0px)+env(safe-area-inset-bottom,0px))] left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
       {shown.map((n) => (
         <NoticeToast key={n.id} notice={n} onDismiss={() => onDismiss(n.id)} />
       ))}

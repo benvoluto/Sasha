@@ -14,6 +14,7 @@ import { sql } from "@vercel/postgres";
 import { ensureSchema } from "@/lib/ontology/ensure-schema";
 import { docText, EMPTY_DOC, type PMNode } from "./sections";
 import { processMemory } from "@/lib/process-memory";
+import { DOC_FOLDER_ROOT, type BulkDocumentsBody } from "./folders-contract";
 
 export const DOCUMENT_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS document (
@@ -52,6 +53,19 @@ export const DOCUMENT_SCHEMA = [
      created_by TEXT NOT NULL,
      created_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
   `CREATE INDEX IF NOT EXISTS document_version_doc_idx ON document_version (document_id, id DESC)`,
+  // Document folders (folder-store.ts): one level, team-owned, names unique per
+  // team ignoring case. Not the Phase 2 source folders: `document.folder_id`
+  // is that link, `doc_folder_id` is the document's folder in the panel.
+  `CREATE TABLE IF NOT EXISTS document_folder (
+     id UUID PRIMARY KEY,
+     team_id TEXT NOT NULL,
+     name TEXT NOT NULL,
+     created_by TEXT NOT NULL,
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+     updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS document_folder_team_name_uidx ON document_folder (team_id, lower(name))`,
+  `ALTER TABLE document ADD COLUMN IF NOT EXISTS doc_folder_id UUID REFERENCES document_folder(id) ON DELETE SET NULL`,
+  `CREATE INDEX IF NOT EXISTS document_team_doc_folder_idx ON document (team_id, doc_folder_id, archived, updated_at DESC)`,
 ];
 
 const hasDb = () => !!process.env.POSTGRES_URL;
@@ -66,6 +80,8 @@ export type DocumentRecord = {
   content_text: string;
   notes: string;
   archived: boolean;
+  /** The document folder (document_folder), or null at the top level. */
+  doc_folder_id: string | null;
   created_by: string;
   updated_by: string;
   created_at: string;
@@ -88,6 +104,7 @@ function rowToRecord(r: Record<string, unknown>): DocumentRecord {
     content_text: String(r.content_text ?? ""),
     notes: String(r.notes ?? ""),
     archived: !!r.archived,
+    doc_folder_id: r.doc_folder_id == null ? null : String(r.doc_folder_id),
     created_by: String(r.created_by),
     updated_by: String(r.updated_by),
     created_at: iso(r.created_at),
@@ -118,31 +135,56 @@ export function onMemoryStoreReset(fn: () => void) {
   resetHooks.add(fn);
 }
 
+/** A document folder row in the in-memory store (folder-store.ts reads and writes these). */
+export type DocFolderRow = { id: string; team_id: string; name: string; created_by: string; created_at: string; updated_at: string };
+
+// The in-memory document folders live here rather than in folder-store.ts
+// because moves made through this module bump a folder's updated_at, and
+// folder-store.ts imports this module (so this one can't import it).
+export const docFolderMemory = processMemory("documents.folders", () => new Map<string, DocFolderRow>());
+
+/** The in-memory documents (folder-store.ts counts and re-files them). */
+export const memoryDocuments = () => memory.docs;
+
 /** Clears the in-memory store (tests). */
 export function resetMemoryStore() {
   memory.docs.clear();
   memory.versions.length = 0;
   for (const fn of resetHooks) fn();
 }
+onMemoryStoreReset(() => docFolderMemory.clear());
 
 // Timestamps must strictly increase per document so a conflict check on
 // `updated_at` can't be fooled by two saves in the same millisecond.
 const stamp = processMemory("documents.stamp", () => ({ last: 0 }));
-function nowIso(): string {
+/** A strictly increasing ISO timestamp for in-memory rows (shared with folder-store.ts). */
+export function nowIso(): string {
   stamp.last = Math.max(Date.now(), stamp.last + 1);
   return new Date(stamp.last).toISOString();
 }
 
 // --- Queries -------------------------------------------------------------------
 
-export async function listDocuments(teamId: string, opts: { archived?: boolean; query?: string; limit?: number } = {}): Promise<DocumentSummary[]> {
+export type ListDocumentsOptions = {
+  archived?: boolean;
+  query?: string;
+  limit?: number;
+  /** "root": documents in no folder; a folder id: that folder's; omitted: every folder. */
+  folder?: string;
+};
+
+export async function listDocuments(teamId: string, opts: ListDocumentsOptions = {}): Promise<DocumentSummary[]> {
   const archived = !!opts.archived;
   const q = opts.query?.trim() ?? "";
   const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500);
+  const folderMode = opts.folder === undefined ? "all" : opts.folder === DOC_FOLDER_ROOT ? "root" : "id";
+  const folderId = folderMode === "id" ? opts.folder! : null;
+  if (folderId !== null && !isUuid(folderId)) return [];
+  const inFolder = (d: DocumentRecord) => folderMode === "all" || d.doc_folder_id === folderId;
   if (!hasDb()) {
     const needle = q.toLowerCase();
     return [...memory.docs.values()]
-      .filter((d) => d.team_id === teamId && d.archived === archived)
+      .filter((d) => d.team_id === teamId && d.archived === archived && inFolder(d))
       .filter((d) => !needle || d.title.toLowerCase().includes(needle) || d.content_text.toLowerCase().includes(needle))
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       .slice(0, limit)
@@ -151,11 +193,14 @@ export async function listDocuments(teamId: string, opts: { archived?: boolean; 
   await schema();
   const like = `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
   const { rows } = await sql`
-    SELECT id, team_id, title, type_key, archived, created_by, updated_by, created_at, updated_at,
+    SELECT id, team_id, title, type_key, archived, doc_folder_id, created_by, updated_by, created_at, updated_at,
            LEFT(content_text, 200) AS excerpt
       FROM document
      WHERE team_id = ${teamId} AND archived = ${archived}
        AND (${q} = '' OR title ILIKE ${like} OR content_text ILIKE ${like})
+       AND (${folderMode} = 'all'
+            OR (${folderMode} = 'root' AND doc_folder_id IS NULL)
+            OR doc_folder_id = ${folderId}::uuid)
      ORDER BY updated_at DESC
      LIMIT ${limit}`;
   return rows.map((r) => {
@@ -188,6 +233,7 @@ export async function createDocument(teamId: string, agent: string, init: Docume
     content_text: docText(content),
     notes: "",
     archived: false,
+    doc_folder_id: null,
     created_by: agent,
     updated_by: agent,
     created_at: nowIso(),
@@ -213,6 +259,8 @@ export type DocumentPatch = {
   content_json?: PMNode;
   notes?: string;
   archived?: boolean;
+  /** Move to a document folder (null: the top level). The caller checks the folder belongs to the team. */
+  doc_folder_id?: string | null;
 };
 
 export type UpdateResult =
@@ -236,10 +284,12 @@ export async function updateDocument(
   if (expectedUpdatedAt && new Date(expectedUpdatedAt).getTime() !== new Date(current.updated_at).getTime()) {
     return { ok: false, reason: "conflict", doc: current };
   }
-  // Archiving or restoring isn't an edit: leave updated_at alone, so an editor
-  // open on the document (whose next save sends that updated_at as its base)
-  // doesn't see its own archive as someone else's change.
-  const archiveOnly = patch.archived !== undefined && Object.entries(patch).every(([k, v]) => k === "archived" || v === undefined);
+  // Archiving, restoring or moving to a folder isn't an edit: leave updated_at
+  // alone, so an editor open on the document (whose next save sends that
+  // updated_at as its base) doesn't see its own archive or move as someone
+  // else's change.
+  const defined = Object.entries(patch).filter(([, v]) => v !== undefined);
+  const organizeOnly = defined.length > 0 && defined.every(([k]) => ORGANIZE_KEYS.has(k));
   const next: DocumentRecord = {
     ...current,
     ...(patch.title !== undefined ? { title: patch.title.slice(0, 300) } : {}),
@@ -247,10 +297,13 @@ export async function updateDocument(
     ...(patch.content_json !== undefined ? { content_json: patch.content_json, content_text: docText(patch.content_json) } : {}),
     ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
     ...(patch.archived !== undefined ? { archived: patch.archived } : {}),
-    ...(archiveOnly ? {} : { updated_by: agent, updated_at: nowIso() }),
+    ...(patch.doc_folder_id !== undefined ? { doc_folder_id: patch.doc_folder_id } : {}),
+    ...(organizeOnly ? {} : { updated_by: agent, updated_at: nowIso() }),
   };
+  const moved = next.doc_folder_id !== current.doc_folder_id ? [current.doc_folder_id, next.doc_folder_id] : [];
   if (!hasDb()) {
     memory.docs.set(id, next);
+    await touchDocFolders(teamId, moved);
     return { ok: true, doc: next };
   }
   // The WHERE clause repeats the version check so two concurrent saves can't
@@ -261,9 +314,9 @@ export async function updateDocument(
       title = ${next.title}, type_key = ${next.type_key},
       type_source = CASE WHEN ${patch.type_key !== undefined} THEN 'user' ELSE type_source END,
       content_json = ${JSON.stringify(next.content_json)}::jsonb, content_text = ${next.content_text},
-      notes = ${next.notes}, archived = ${next.archived},
-      updated_by = CASE WHEN ${archiveOnly} THEN updated_by ELSE ${agent} END,
-      updated_at = CASE WHEN ${archiveOnly} THEN updated_at ELSE now() END
+      notes = ${next.notes}, archived = ${next.archived}, doc_folder_id = ${next.doc_folder_id}::uuid,
+      updated_by = CASE WHEN ${organizeOnly} THEN updated_by ELSE ${agent} END,
+      updated_at = CASE WHEN ${organizeOnly} THEN updated_at ELSE now() END
     WHERE id = ${id} AND team_id = ${teamId}
       AND date_trunc('milliseconds', updated_at) = ${current.updated_at}::timestamptz
     RETURNING *`;
@@ -271,7 +324,91 @@ export async function updateDocument(
     const latest = await getDocument(teamId, id);
     return latest ? { ok: false, reason: "conflict", doc: latest } : { ok: false, reason: "not_found" };
   }
+  await touchDocFolders(teamId, moved);
   return { ok: true, doc: rowToRecord(rows[0]) };
+}
+
+const ORGANIZE_KEYS = new Set(["archived", "doc_folder_id"]);
+
+/**
+ * Bump the updated_at of document folders that documents moved into or out of
+ * (the date the panel shows). Nulls, duplicates and other teams' folders are ignored.
+ */
+export async function touchDocFolders(teamId: string, folderIds: Array<string | null>): Promise<void> {
+  const ids = [...new Set(folderIds.filter((f): f is string => !!f && isUuid(f)))];
+  if (ids.length === 0) return;
+  if (!hasDb()) {
+    for (const id of ids) {
+      const f = docFolderMemory.get(id);
+      if (f && f.team_id === teamId) f.updated_at = nowIso();
+    }
+    return;
+  }
+  await schema();
+  await sql.query(`UPDATE document_folder SET updated_at = now() WHERE team_id = $1 AND id = ANY($2::uuid[])`, [teamId, ids]);
+}
+
+export type BulkResult = { done: string[]; missing: string[] };
+
+/**
+ * Archive, restore, delete or move many documents at once. Ids not in the
+ * team come back in `missing` and are left alone. Like single-document
+ * archives and moves, none of these bump a document's updated_at. The caller
+ * checks that a move's target folder belongs to the team.
+ */
+export async function bulkDocuments(teamId: string, agent: string, body: BulkDocumentsBody): Promise<BulkResult> {
+  void agent; // Organizing isn't an edit, so updated_by stays; kept for symmetry with updateDocument.
+  // Postgres returns ids in lower case; compare in lower case so `done` matches.
+  const requested = [...new Set(body.ids.map((id) => id.toLowerCase()))];
+  const ids = requested.filter(isUuid);
+  const target = body.action === "move" ? (body.doc_folder_id?.toLowerCase() ?? null) : null;
+  const found = new Set<string>();
+  const touched: Array<string | null> = [];
+  if (!hasDb()) {
+    for (const id of ids) {
+      const d = memory.docs.get(id);
+      if (!d || d.team_id !== teamId) continue;
+      found.add(id);
+      if (body.action === "delete") memory.docs.delete(id);
+      else if (body.action === "move") {
+        if (d.doc_folder_id !== target) touched.push(d.doc_folder_id, target);
+        memory.docs.set(id, { ...d, doc_folder_id: target });
+      } else memory.docs.set(id, { ...d, archived: body.action === "archive" });
+    }
+  } else if (ids.length > 0) {
+    await schema();
+    let rows: Array<Record<string, unknown>>;
+    if (body.action === "delete") {
+      ({ rows } = await sql.query(`DELETE FROM document WHERE team_id = $1 AND id = ANY($2::uuid[]) RETURNING id`, [teamId, ids]));
+    } else if (body.action === "move") {
+      // The CTE reads each row's folder before the update, so the folders the
+      // documents left can be touched too.
+      ({ rows } = await sql.query(
+        `WITH prev AS (
+           SELECT id, doc_folder_id FROM document WHERE team_id = $1 AND id = ANY($2::uuid[]) FOR UPDATE)
+         UPDATE document d SET doc_folder_id = $3::uuid
+           FROM prev WHERE d.id = prev.id
+         RETURNING d.id, prev.doc_folder_id AS prev_folder_id`,
+        [teamId, ids, target],
+      ));
+      for (const r of rows) {
+        const prevFolder = r.prev_folder_id == null ? null : String(r.prev_folder_id);
+        if (prevFolder !== target) touched.push(prevFolder, target);
+      }
+    } else {
+      ({ rows } = await sql.query(`UPDATE document SET archived = $3 WHERE team_id = $1 AND id = ANY($2::uuid[]) RETURNING id`, [
+        teamId,
+        ids,
+        body.action === "archive",
+      ]));
+    }
+    for (const r of rows) found.add(String(r.id));
+  }
+  await touchDocFolders(teamId, touched);
+  return {
+    done: ids.filter((id) => found.has(id)),
+    missing: requested.filter((id) => !found.has(id)),
+  };
 }
 
 export async function deleteDocument(teamId: string, id: string): Promise<boolean> {

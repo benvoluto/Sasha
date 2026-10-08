@@ -110,12 +110,17 @@ export function TypePicker({
 }) {
   const current = findType(types, value);
   const groups = groupByFamily(types);
+  const label = current?.title ?? (value ? "Custom type" : "Choose type");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className="flex items-center gap-1 rounded-md px-2 py-1 text-[17px] hover:bg-[var(--doc-accent-soft)]">
-          <span className={current || value ? "" : "text-[var(--doc-muted)]"}>{current?.title ?? (value ? "Custom type" : "Choose type")}</span>
-          <CaretUpDown className="h-4 w-4 opacity-70" />
+        <button
+          type="button"
+          aria-label={`Document type: ${label}`}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[17px] font-medium text-[var(--action)] hover:bg-[var(--action-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] data-[state=open]:bg-[var(--action-soft)]"
+        >
+          <span className={current || value ? "" : "opacity-70"}>{label}</span>
+          <CaretUpDown className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-[60vh] min-w-64 overflow-y-auto" onCloseAutoFocus={(e) => e.preventDefault()}>
@@ -377,7 +382,7 @@ export function StartFromTypeStrip({ types, onChoose, onBrowse }: { types: Docum
   const [error, setError] = useState<string | null>(null);
   if (types.length === 0) return null;
   return (
-    <div className="mx-auto mt-10 max-w-[44rem] border-t border-[var(--doc-line)] pt-5" aria-label="Start from a type" role="group">
+    <div className="mt-10 max-w-[48rem] border-t border-[var(--doc-line)] pt-5" aria-label="Start from a type" role="group">
       <p className="mb-2.5 text-sm text-[var(--doc-muted)]">Start from a type</p>
       <div className="flex flex-wrap gap-2">
         {popularTypes(types).map((t) => (

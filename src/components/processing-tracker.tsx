@@ -90,7 +90,7 @@ export function ProcessingTracker() {
     files.length > 0 ? `${files.length} file${files.length === 1 ? "" : "s"}: ${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}` : "";
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[min(92vw,22rem)] flex-col gap-2" aria-live="polite">
+    <div className="pointer-events-none fixed bottom-[calc(var(--fab-clearance,0px)+1rem)] right-4 z-[60] flex w-[min(92vw,22rem)] flex-col gap-2" aria-live="polite">
       {jobs.map((job) => {
         const slow = now - job.startedAt > JOB_SLOW_AFTER_MS;
         return (

@@ -158,6 +158,18 @@ export {
   Tag,
   UserCheck,
 
+  // app chrome (rail, documents panel, floating buttons): layout pass
+  Lasso as SelectIcon,
+  FilePlus as NewDocIcon,
+  FolderSimple as DocFolderIcon,
+  FolderSimplePlus as NewDocFolderIcon,
+  ArrowSquareRight as MoveToFolderIcon,
+  CheckSquare,
+  Square,
+  TreeView as OutlineTreeIcon,
+  BookOpenText as SourcesBookIcon,
+  ArrowBendUpRight as ShareArrowIcon,
+
   // primitives used by the shadcn ui/ components
   Circle as CircleIcon,
 } from "@phosphor-icons/react";

@@ -3,7 +3,8 @@
 // The Sources panel on the editing screen: what the document is written from.
 // Lists the linked sources with their reading status and summary, and adds more
 // by upload, link, note or from the team's library. Adding to a new document
-// saves it first, since sources link to a saved document.
+// saves it first, since sources link to a saved document. On the editing
+// screen it is the body of the Sources dialog (sources-modal.tsx, `bare`).
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -33,12 +34,15 @@ export function SourcesPanel({
   documentTitle,
   ensureSaved,
   onClose,
+  bare = false,
 }: {
   documentId: string | null;
   documentTitle: string;
   /** Saves pending changes (creating the document if needed) and returns its id. */
   ensureSaved: () => Promise<string | null>;
   onClose: () => void;
+  /** Inside a dialog that has its own title and close button: no panel header, and it fills the dialog. */
+  bare?: boolean;
 }) {
   const [sources, setSources] = useState<LinkedSource[] | null>(documentId ? null : []);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +84,9 @@ export function SourcesPanel({
     await load(await ensureSaved());
   }, [ensureSaved, load]);
 
+  // In the dialog the dialog itself is the landmark; a nested <aside> would be noise.
+  const Wrapper = bare ? "div" : "aside";
+
   const unlink = async (s: LinkedSource) => {
     if (!documentId) return;
     setUnlinking(s.id);
@@ -95,9 +102,9 @@ export function SourcesPanel({
   };
 
   return (
-    <aside aria-label="Sources" className="flex h-full flex-col">
-      <PanelHeader title="Sources" onClose={onClose} />
-      <div className="flex items-center justify-between gap-2 px-5 pb-3">
+    <Wrapper aria-label={bare ? undefined : "Sources"} className="flex h-full min-h-0 flex-col">
+      {!bare && <PanelHeader title="Sources" onClose={onClose} />}
+      <div className={`flex items-center justify-between gap-2 pb-3 ${bare ? "px-6" : "px-5"}`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white">
@@ -116,7 +123,7 @@ export function SourcesPanel({
         </Link>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-5 pb-6">
+      <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto pb-6 ${bare ? "px-6" : "px-5"}`}>
         {mode && (
           <section aria-label={mode === "upload" ? "Upload files" : mode === "url" ? "Add a link" : "Add a note"} className="space-y-2 rounded-xl border border-[var(--doc-line)] p-3">
             {mode === "upload" && (
@@ -198,6 +205,6 @@ export function SourcesPanel({
       </div>
 
       <SourcePicker open={pickerOpen} onOpenChange={setPickerOpen} documentId={ensureSaved} linkedIds={(sources ?? []).map((s) => s.id)} onLinked={() => void added()} />
-    </aside>
+    </Wrapper>
   );
 }

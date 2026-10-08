@@ -1,6 +1,7 @@
 "use client";
 
-// The formatting toolbar across the top of the document card.
+// The formatting toolbar in the sticky row under the header: blue icons in
+// groups (history | text style | marks | table | alignment and lists | more).
 
 import type { Editor } from "@tiptap/react";
 import type { ComponentType, ReactNode } from "react";
@@ -39,6 +40,9 @@ import {
 
 type IconType = ComponentType<{ className?: string }>;
 
+const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]";
+const ICON_BUTTON = `grid h-10 w-10 place-items-center rounded-lg text-[var(--action)] hover:bg-[var(--action-soft)] data-[state=open]:bg-[var(--action-soft)] ${FOCUS_RING}`;
+
 function ToolButton({ icon: Icon, label, onClick, active, disabled }: { icon: IconType; label: string; onClick: () => void; active?: boolean; disabled?: boolean }) {
   return (
     <button
@@ -49,8 +53,8 @@ function ToolButton({ icon: Icon, label, onClick, active, disabled }: { icon: Ic
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={`grid h-9 w-9 place-items-center rounded-lg text-[var(--doc-accent)] transition-colors hover:bg-[var(--doc-accent-soft)] disabled:cursor-not-allowed disabled:opacity-35 ${
-        active ? "bg-[var(--doc-accent-soft)]" : ""
+      className={`grid h-10 w-10 place-items-center rounded-lg text-[var(--action)] transition-colors hover:bg-[var(--action-soft)] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent motion-reduce:transition-none ${FOCUS_RING} ${
+        active ? "bg-[var(--action-soft)]" : ""
       }`}
     >
       <Icon className="h-5 w-5" />
@@ -58,7 +62,7 @@ function ToolButton({ icon: Icon, label, onClick, active, disabled }: { icon: Ic
   );
 }
 
-const Group = ({ children }: { children: ReactNode }) => <div className="flex items-center gap-0.5">{children}</div>;
+const Group = ({ children }: { children: ReactNode }) => <div className="flex shrink-0 items-center gap-0.5">{children}</div>;
 
 const BLOCKS = [
   { label: "Paragraph", is: (e: Editor) => e.isActive("paragraph"), run: (e: Editor) => e.chain().focus().setParagraph().run() },
@@ -79,7 +83,7 @@ function BlockPicker({ editor }: { editor: Editor }) {
           title={`Text style: ${current}`}
           aria-label={`Text style: ${current}`}
           onMouseDown={(e) => e.preventDefault()}
-          className="flex h-9 items-center gap-1 rounded-lg border border-[var(--doc-line)] bg-[var(--doc-surface)] px-2 text-[var(--doc-ink)] shadow-sm hover:bg-[var(--doc-accent-soft)]"
+          className={`flex h-10 shrink-0 items-center gap-1 rounded-xl border border-[var(--divider)] bg-[var(--editor-bg)] px-2 text-[var(--ink)] shadow-sm hover:bg-[var(--action-soft)] data-[state=open]:bg-[var(--action-soft)] ${FOCUS_RING}`}
         >
           <TextT className="h-5 w-5" />
           <CaretUpDown className="h-4 w-4 opacity-70" />
@@ -113,7 +117,7 @@ function AlignMenu({ editor }: { editor: Editor }) {
           title="Alignment"
           aria-label="Alignment"
           onMouseDown={(e) => e.preventDefault()}
-          className="grid h-9 w-9 place-items-center rounded-lg text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
+          className={ICON_BUTTON}
         >
           <Icon className="h-5 w-5" />
         </button>
@@ -139,7 +143,7 @@ function MoreMenu({ editor, onLink }: { editor: Editor; onLink: () => void }) {
           title="More"
           aria-label="More formatting"
           onMouseDown={(e) => e.preventDefault()}
-          className="grid h-9 w-9 place-items-center rounded-lg text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]"
+          className={ICON_BUTTON}
         >
           <MoreHorizontalIcon className="h-5 w-5" />
         </button>
@@ -176,7 +180,7 @@ export function EditorToolbar({ editor, onLink }: { editor: Editor; onLink: () =
   const c = () => editor.chain().focus();
   const inTable = editor.isActive("table");
   return (
-    <div role="toolbar" aria-label="Formatting" className="flex w-max items-center gap-x-4 gap-y-1 md:w-auto md:flex-wrap md:justify-center">
+    <div role="toolbar" aria-label="Formatting" className="flex w-max items-center gap-x-4 sm:gap-x-6">
       <Group>
         <ToolButton icon={Undo2} label="Undo" onClick={() => c().undo().run()} disabled={!editor.can().undo()} />
         <ToolButton icon={Redo2} label="Redo" onClick={() => c().redo().run()} disabled={!editor.can().redo()} />

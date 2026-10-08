@@ -161,6 +161,22 @@ CREATE TABLE IF NOT EXISTS document_version (
 );
 CREATE INDEX IF NOT EXISTS document_version_doc_idx ON document_version (document_id, id DESC);
 
+-- Document folders: one level, team-owned, shown in the documents panel
+-- (src/lib/documents/store.ts DOCUMENT_SCHEMA owns these; folder-store.ts reads
+-- and writes them). Not the sources-library `folder` table below:
+-- document.folder_id is that link, document.doc_folder_id is this one.
+CREATE TABLE IF NOT EXISTS document_folder (
+  id                 UUID PRIMARY KEY,
+  team_id            TEXT NOT NULL,
+  name               TEXT NOT NULL,
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS document_folder_team_name_uidx ON document_folder (team_id, lower(name));
+ALTER TABLE document ADD COLUMN IF NOT EXISTS doc_folder_id UUID REFERENCES document_folder(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS document_team_doc_folder_idx ON document (team_id, doc_folder_id, archived, updated_at DESC);
+
 -- The sources library (src/lib/sources/store.ts owns these; keep in step with SOURCE_SCHEMA).
 -- Folders nest; a document's own folder has document_id set (one per document).
 CREATE TABLE IF NOT EXISTS folder (

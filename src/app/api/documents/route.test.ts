@@ -4,10 +4,11 @@ const mocks = vi.hoisted(() => ({ getType: vi.fn() }));
 vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => ({ teamId: "org:a", agent: "ann" }) }));
 vi.mock("@/catalog", () => ({ getType: mocks.getType }));
 
-import { getDocument, resetMemoryStore } from "@/lib/documents/store";
+import { createDocFolder } from "@/lib/documents/folder-store";
+import { createDocument, getDocument, resetMemoryStore, updateDocument } from "@/lib/documents/store";
 import { listSections } from "@/lib/documents/sections";
 import { testType } from "@/lib/sections/test-fixtures";
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 const post = (body: unknown) => POST(new Request("http://x/api/documents", { method: "POST", body: JSON.stringify(body) }));
 const def = testType();
@@ -54,5 +55,37 @@ describe("POST /api/documents", () => {
     expect(document).toMatchObject({ type_key: "anything", content_text: "Hi" });
     expect(mocks.getType).not.toHaveBeenCalled();
     expect((await post({})).status).toBe(201);
+  });
+});
+
+describe("GET /api/documents?folder=", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    resetMemoryStore();
+  });
+
+  const list = async (qs: string) => GET(new Request(`http://x/api/documents${qs}`));
+  const ids = async (qs: string) => ((await (await list(qs)).json()).documents as Array<{ id: string }>).map((d) => d.id).sort();
+
+  it("lists the top level, one folder, or every folder", async () => {
+    const f = await createDocFolder("org:a", "ann", "Grants");
+    if (!f.ok) throw new Error("folder");
+    const top = await createDocument("org:a", "ann");
+    const inside = await createDocument("org:a", "ann");
+    await updateDocument("org:a", inside.id, "ann", { doc_folder_id: f.folder.id });
+
+    expect(await ids("?folder=root")).toEqual([top.id]);
+    expect(await ids(`?folder=${f.folder.id}`)).toEqual([inside.id]);
+    expect(await ids(`?folder=${f.folder.id.toUpperCase()}`)).toEqual([inside.id]);
+    expect(await ids("")).toEqual([top.id, inside.id].sort());
+    const rows = (await (await list("?folder=" + f.folder.id)).json()).documents;
+    expect(rows[0].doc_folder_id).toBe(f.folder.id);
+  });
+
+  it("400s an invalid folder", async () => {
+    const res = await list("?folder=nope");
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Invalid folder." });
+    expect((await list("?folder=")).status).toBe(400);
   });
 });

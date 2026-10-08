@@ -2,20 +2,32 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getType } from "@/catalog";
 import { outlineDoc } from "@/catalog/outline";
+import { DocumentListFolderParam } from "@/lib/documents/folders-contract";
 import { createDocument, listDocuments, type DocumentInit } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/documents?q=&archived=1 — the team's documents, newest first. */
+/**
+ * GET /api/documents?q=&archived=1&folder=root|<uuid> — the team's documents,
+ * newest first. `folder` omitted lists every folder (search, the archived view).
+ */
 export async function GET(req: Request) {
   const caller = await requireTeam(PERMISSIONS.documentRead);
   if (caller instanceof NextResponse) return caller;
   const url = new URL(req.url);
+  const folderParam = url.searchParams.get("folder");
+  let folder: string | undefined;
+  if (folderParam !== null) {
+    const parsed = DocumentListFolderParam.safeParse(folderParam);
+    if (!parsed.success) return NextResponse.json({ error: "Invalid folder." }, { status: 400 });
+    folder = parsed.data.toLowerCase();
+  }
   const documents = await listDocuments(caller.teamId, {
     query: url.searchParams.get("q") ?? "",
     archived: url.searchParams.get("archived") === "1",
+    folder,
   });
   return NextResponse.json({ documents });
 }
