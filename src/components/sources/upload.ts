@@ -5,9 +5,10 @@
 // it stored) so it doesn't sit at "Uploading" forever.
 
 import { upload } from "@vercel/blob/client";
+import type { BlobAccess } from "@/lib/blob-access";
 import type { SourceSummary } from "@/lib/sources/store";
 
-type Presigned = { sourceId: string; fileName: string; fields: { blobPath: string; contentType: string } };
+type Presigned = { sourceId: string; fileName: string; fields: { blobPath: string; contentType: string; access?: BlobAccess } };
 
 export type UploadResult = { sources: SourceSummary[]; failed: Array<{ name: string; error: string }> };
 
@@ -59,7 +60,8 @@ export async function uploadSourceFiles(
       const file = files[i];
       try {
         const blob = await upload(u.fields.blobPath, file, {
-          access: "public",
+          // The store's access level, from presign (a private store refuses public uploads).
+          access: u.fields.access ?? "private",
           handleUploadUrl: "/api/upload/direct",
           clientPayload: JSON.stringify({ sourceId: u.sourceId }),
           contentType: u.fields.contentType,

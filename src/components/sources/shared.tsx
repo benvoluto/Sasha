@@ -147,7 +147,7 @@ export function mergeFresh<T extends SourceSummary>(list: T[], fresh: SourceSumm
 }
 
 const field = "w-full rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)]";
-const primary = "inline-flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40";
+const primary = "inline-flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-40";
 const quiet = "rounded-md px-2 py-1.5 text-sm text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)]";
 
 type Placement = { documentId?: string | null; folderId?: string | null };
@@ -162,14 +162,17 @@ export function AddUrlForm({
   resolve,
   onAdded,
   onCancel,
+  initialUrl = "",
 }: {
   idPrefix: string;
   /** Where the source goes; may save the document first. */
   resolve: () => Promise<Placement | null>;
   onAdded: (s: SourceSummary) => void;
   onCancel?: () => void;
+  /** Prefills the address (a suggestion's link). */
+  initialUrl?: string;
 }) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialUrl);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = async (e: React.FormEvent) => {

@@ -99,13 +99,7 @@ CREATE TABLE IF NOT EXISTS agent_determination_run (
 );
 CREATE INDEX IF NOT EXISTS agent_determination_run_group_idx ON agent_determination_run (group_id, created_at DESC);
 
--- The team's dismissed and added suggested sources/data per document.
-CREATE TABLE IF NOT EXISTS case_suggestion_edits (
-  group_id          TEXT PRIMARY KEY,
-  edits             JSONB NOT NULL,
-  updated_by        TEXT NOT NULL,
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- case_suggestion_edits was retired in Phase 4 (see the suggestion table below); older databases may still have it, nothing reads it.
 
 -- App-wide settings, e.g. the default workflow ({"id": ...} under 'default_workflow').
 CREATE TABLE IF NOT EXISTS app_setting (
@@ -176,6 +170,9 @@ CREATE TABLE IF NOT EXISTS document_folder (
 CREATE UNIQUE INDEX IF NOT EXISTS document_folder_team_name_uidx ON document_folder (team_id, lower(name));
 ALTER TABLE document ADD COLUMN IF NOT EXISTS doc_folder_id UUID REFERENCES document_folder(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS document_team_doc_folder_idx ON document (team_id, doc_folder_id, archived, updated_at DESC);
+-- Classifier memory (src/lib/classifier/contract.ts ClassifierState): last result,
+-- "Not now" counts per type, drift baselines. Written without bumping updated_at.
+ALTER TABLE document ADD COLUMN IF NOT EXISTS classifier_state JSONB;
 
 -- The sources library (src/lib/sources/store.ts owns these; keep in step with SOURCE_SCHEMA).
 -- Folders nest; a document's own folder has document_id set (one per document).
@@ -258,4 +255,33 @@ CREATE TABLE IF NOT EXISTS document_type (
   created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (team_id, key)
+);
+
+-- Suggested sources, data and web resources per document (src/lib/suggestions/schema.ts
+-- owns these; keep in step with SUGGESTION_SCHEMA). Replaces case_suggestion_edits.
+CREATE TABLE IF NOT EXISTS suggestion (
+  id                 UUID PRIMARY KEY,
+  team_id            TEXT NOT NULL,
+  document_id        UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,
+  kind               TEXT NOT NULL,             -- source | data | web
+  label              TEXT NOT NULL,
+  reason             TEXT NOT NULL DEFAULT '',
+  spec_ref           TEXT,                      -- the type section key it serves
+  url                TEXT,
+  origin             TEXT NOT NULL,             -- type | notes | coverage | user
+  state              TEXT NOT NULL DEFAULT 'open',  -- open | added | dismissed
+  dedupe_key         TEXT NOT NULL,             -- suggestionDedupeKey(kind, label)
+  source_id          UUID,                      -- the linked source that satisfied it
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS suggestion_doc_dedupe_uidx ON suggestion (document_id, dedupe_key);
+CREATE INDEX IF NOT EXISTS suggestion_team_doc_idx ON suggestion (team_id, document_id, state);
+CREATE TABLE IF NOT EXISTS suggestion_run (
+  document_id        UUID PRIMARY KEY REFERENCES document(id) ON DELETE CASCADE,
+  team_id            TEXT NOT NULL,
+  inputs_hash        TEXT NOT NULL,
+  generated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  error              TEXT
 );

@@ -15,6 +15,7 @@ import { ensureSchema } from "@/lib/ontology/ensure-schema";
 import { docText, EMPTY_DOC, type PMNode } from "./sections";
 import { processMemory } from "@/lib/process-memory";
 import { DOC_FOLDER_ROOT, type BulkDocumentsBody } from "./folders-contract";
+import { parseClassifierState, type ClassifierState, type TypeSource } from "@/lib/classifier/contract";
 
 export const DOCUMENT_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS document (
@@ -66,6 +67,10 @@ export const DOCUMENT_SCHEMA = [
   `CREATE UNIQUE INDEX IF NOT EXISTS document_folder_team_name_uidx ON document_folder (team_id, lower(name))`,
   `ALTER TABLE document ADD COLUMN IF NOT EXISTS doc_folder_id UUID REFERENCES document_folder(id) ON DELETE SET NULL`,
   `CREATE INDEX IF NOT EXISTS document_team_doc_folder_idx ON document (team_id, doc_folder_id, archived, updated_at DESC)`,
+  // Phase 4 classifier memory (src/lib/classifier/contract.ts ClassifierState):
+  // the last result, dismissal counts per type, the word count at the last run.
+  // Written without bumping updated_at (src/lib/classifier/store.ts).
+  `ALTER TABLE document ADD COLUMN IF NOT EXISTS classifier_state JSONB`,
 ];
 
 const hasDb = () => !!process.env.POSTGRES_URL;
@@ -76,6 +81,13 @@ export type DocumentRecord = {
   team_id: string;
   title: string;
   type_key: string | null;
+  /** Who set type_key: 'user' (picker, gallery), 'classifier' (applied from the chip), 'restructure'; null when untyped. */
+  type_source: TypeSource | null;
+  /** The classifier's confidence in its top candidate at the last run (0–1), or null. */
+  type_confidence: number | null;
+  last_classified_at: string | null;
+  /** Classifier memory (last result, dismissals). Never sent in a PATCH; written by src/lib/classifier/store.ts. */
+  classifier_state: ClassifierState;
   content_json: PMNode;
   content_text: string;
   notes: string;
@@ -88,7 +100,7 @@ export type DocumentRecord = {
   updated_at: string;
 };
 
-export type DocumentSummary = Omit<DocumentRecord, "content_json" | "content_text" | "notes"> & { excerpt: string };
+export type DocumentSummary = Omit<DocumentRecord, "content_json" | "content_text" | "notes" | "classifier_state"> & { excerpt: string };
 
 export type VersionRecord = { id: number; document_id: string; title: string; reason: string; created_by: string; created_at: string };
 
@@ -100,6 +112,10 @@ function rowToRecord(r: Record<string, unknown>): DocumentRecord {
     team_id: String(r.team_id),
     title: String(r.title ?? ""),
     type_key: (r.type_key as string | null) ?? null,
+    type_source: (r.type_source as TypeSource | null) ?? null,
+    type_confidence: r.type_confidence == null ? null : Number(r.type_confidence),
+    last_classified_at: r.last_classified_at == null ? null : iso(r.last_classified_at),
+    classifier_state: parseClassifierState(r.classifier_state),
     content_json: (r.content_json as PMNode) ?? EMPTY_DOC,
     content_text: String(r.content_text ?? ""),
     notes: String(r.notes ?? ""),
@@ -113,9 +129,10 @@ function rowToRecord(r: Record<string, unknown>): DocumentRecord {
 }
 
 function summarize(d: DocumentRecord): DocumentSummary {
-  const { content_json: _c, content_text, notes: _n, ...rest } = d;
+  const { content_json: _c, content_text, notes: _n, classifier_state: _s, ...rest } = d;
   void _c;
   void _n;
+  void _s;
   return { ...rest, excerpt: content_text.slice(0, 200) };
 }
 
@@ -193,7 +210,7 @@ export async function listDocuments(teamId: string, opts: ListDocumentsOptions =
   await schema();
   const like = `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
   const { rows } = await sql`
-    SELECT id, team_id, title, type_key, archived, doc_folder_id, created_by, updated_by, created_at, updated_at,
+    SELECT id, team_id, title, type_key, type_source, type_confidence, last_classified_at, archived, doc_folder_id, created_by, updated_by, created_at, updated_at,
            LEFT(content_text, 200) AS excerpt
       FROM document
      WHERE team_id = ${teamId} AND archived = ${archived}
@@ -229,6 +246,10 @@ export async function createDocument(teamId: string, agent: string, init: Docume
     team_id: teamId,
     title: (init.title ?? "").slice(0, 300),
     type_key: init.type_key ?? null,
+    type_source: init.type_key ? "user" : null,
+    type_confidence: null,
+    last_classified_at: null,
+    classifier_state: parseClassifierState(null),
     content_json: content,
     content_text: docText(content),
     notes: "",
@@ -256,6 +277,8 @@ export async function createDocument(teamId: string, agent: string, init: Docume
 export type DocumentPatch = {
   title?: string;
   type_key?: string | null;
+  /** With type_key: who chose it (default 'user'). Ignored without type_key. */
+  type_source?: Extract<TypeSource, "user" | "classifier">;
   content_json?: PMNode;
   notes?: string;
   archived?: boolean;
@@ -288,12 +311,12 @@ export async function updateDocument(
   // alone, so an editor open on the document (whose next save sends that
   // updated_at as its base) doesn't see its own archive or move as someone
   // else's change.
-  const defined = Object.entries(patch).filter(([, v]) => v !== undefined);
+  const defined = Object.entries(patch).filter(([k, v]) => v !== undefined && k !== "type_source");
   const organizeOnly = defined.length > 0 && defined.every(([k]) => ORGANIZE_KEYS.has(k));
   const next: DocumentRecord = {
     ...current,
     ...(patch.title !== undefined ? { title: patch.title.slice(0, 300) } : {}),
-    ...(patch.type_key !== undefined ? { type_key: patch.type_key } : {}),
+    ...(patch.type_key !== undefined ? { type_key: patch.type_key, type_source: patch.type_key ? (patch.type_source ?? "user") : null } : {}),
     ...(patch.content_json !== undefined ? { content_json: patch.content_json, content_text: docText(patch.content_json) } : {}),
     ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
     ...(patch.archived !== undefined ? { archived: patch.archived } : {}),
@@ -312,7 +335,7 @@ export async function updateDocument(
   const { rows } = await sql`
     UPDATE document SET
       title = ${next.title}, type_key = ${next.type_key},
-      type_source = CASE WHEN ${patch.type_key !== undefined} THEN 'user' ELSE type_source END,
+      type_source = CASE WHEN ${patch.type_key !== undefined} THEN ${next.type_source} ELSE type_source END,
       content_json = ${JSON.stringify(next.content_json)}::jsonb, content_text = ${next.content_text},
       notes = ${next.notes}, archived = ${next.archived}, doc_folder_id = ${next.doc_folder_id}::uuid,
       updated_by = CASE WHEN ${organizeOnly} THEN updated_by ELSE ${agent} END,

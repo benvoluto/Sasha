@@ -9,19 +9,32 @@
 // stay pending until the person edits again or resolves the problem.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { TypeSource } from "@/lib/classifier/contract";
 import type { PMNode } from "@/lib/documents/sections";
 
 export type DocState = {
   id: string | null;
   title: string;
   type_key: string | null;
+  /** Who set type_key (the classifier trigger needs it); sent only alongside type_key. */
+  type_source: TypeSource | null;
   content_json: PMNode | null;
+  /** The document scratchpad (Notes tab). Saved in the same queue as the body, so the two never conflict with each other. */
+  notes: string;
   updated_at: string | null;
 };
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error" | "conflict";
 
-type Patch = Partial<Pick<DocState, "title" | "type_key" | "content_json">>;
+type Patch = Partial<Pick<DocState, "title" | "type_key" | "content_json" | "notes">> & {
+  /** With type_key: "classifier" when applied from the classifier chip (the server defaults to "user"). */
+  type_source?: "user" | "classifier";
+};
+
+/** A loaded or conflicting document row as the client keeps it. */
+function stateOf(d: { id: string; title: string; type_key: string | null; type_source?: TypeSource | null; content_json: PMNode | null; notes?: string; updated_at: string }): DocState {
+  return { id: d.id, title: d.title, type_key: d.type_key, type_source: d.type_source ?? null, content_json: d.content_json, notes: d.notes ?? "", updated_at: d.updated_at };
+}
 
 const SAVE_DELAY_MS = 1200;
 const MAX_RETRY_DELAY_MS = 30_000;
@@ -61,7 +74,7 @@ type FlushOptions = {
 };
 
 export function useDocument(initialId: string | null) {
-  const [doc, setDoc] = useState<DocState>({ id: initialId, title: "", type_key: null, content_json: null, updated_at: null });
+  const [doc, setDoc] = useState<DocState>({ id: initialId, title: "", type_key: null, type_source: null, content_json: null, notes: "", updated_at: null });
   const [loading, setLoading] = useState(!!initialId);
   const [notFound, setNotFound] = useState(false);
   const [status, setStatus] = useState<SaveStatus>("idle");
@@ -93,7 +106,7 @@ export function useDocument(initialId: string | null) {
         }
         if (!res.ok) throw new Error(`Couldn't open this document (${res.status}).`);
         const { document: d } = await res.json();
-        if (!cancelled) setDoc({ id: d.id, title: d.title, type_key: d.type_key, content_json: d.content_json, updated_at: d.updated_at });
+        if (!cancelled) setDoc(stateOf(d));
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Couldn't open this document.");
       } finally {
@@ -140,6 +153,7 @@ export function useDocument(initialId: string | null) {
         const body = current.id
           ? JSON.stringify({ ...patch, base_updated_at: current.updated_at, force: !!opts.force })
           : JSON.stringify({ title: current.title, type_key: current.type_key, content_json: current.content_json ?? undefined });
+        // POST /api/documents takes no notes: notes typed before the first save go out in the PATCH that follows (re-queued below).
         const res = await fetch(current.id ? `/api/documents/${encodeURIComponent(current.id)}` : "/api/documents", {
           method: current.id ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -154,13 +168,14 @@ export function useDocument(initialId: string | null) {
           // Keep the unsaved changes so "Keep mine" can resend them.
           pending.current = { ...patch, ...pending.current };
           const d = out.document;
-          setConflict({ id: d.id, title: d.title, type_key: d.type_key, content_json: d.content_json, updated_at: d.updated_at });
+          setConflict(stateOf(d));
           setStatus("conflict");
           return;
         }
         if (!res.ok) throw new Error(out.error ?? saveErrorMessage(res.status));
         const d = out.document;
         const created = !current.id;
+        if (created && patch.notes !== undefined && pending.current.notes === undefined) pending.current = { ...pending.current, notes: patch.notes };
         setDoc((prev) => ({ ...prev, id: d.id, updated_at: d.updated_at }));
         docRef.current = { ...docRef.current, id: d.id, updated_at: d.updated_at };
         if (created && mounted.current && window.location.pathname + window.location.search === here) {
@@ -204,8 +219,11 @@ export function useDocument(initialId: string | null) {
   /** Record a change and save it shortly. */
   const change = useCallback(
     (patch: Patch) => {
-      setDoc((prev) => ({ ...prev, ...patch }));
-      docRef.current = { ...docRef.current, ...patch };
+      const { type_source, ...fields } = patch;
+      // type_source is local state only when it travels with a type_key change.
+      const local: Partial<DocState> = { ...fields, ...(patch.type_key !== undefined ? { type_source: patch.type_key ? (type_source ?? "user") : null } : {}) };
+      setDoc((prev) => ({ ...prev, ...local }));
+      docRef.current = { ...docRef.current, ...local };
       pending.current = { ...pending.current, ...patch };
       if (retrying.current) return; // the scheduled retry sends this too
       if (docRef.current.id || hasContent(docRef.current)) schedule();
@@ -227,7 +245,14 @@ export function useDocument(initialId: string | null) {
         return;
       }
       docRef.current = { ...docRef.current, updated_at: other.updated_at };
-      pending.current = { title: docRef.current.title, type_key: docRef.current.type_key, content_json: docRef.current.content_json ?? undefined, ...pending.current };
+      pending.current = {
+        title: docRef.current.title,
+        type_key: docRef.current.type_key,
+        type_source: docRef.current.type_source === "classifier" ? "classifier" : "user",
+        content_json: docRef.current.content_json ?? undefined,
+        notes: docRef.current.notes,
+        ...pending.current,
+      };
       await flush({ force: true });
     },
     [conflict, flush],
@@ -270,6 +295,7 @@ export function useDocument(initialId: string | null) {
 function hasContent(d: DocState): boolean {
   if (d.title.trim()) return true;
   if (d.type_key) return true;
+  if (d.notes.trim()) return true;
   const text = JSON.stringify(d.content_json?.content ?? []);
   return /"text":"[^"]*\S/.test(text) || /"type":"(table|image|horizontalRule)"/.test(text);
 }

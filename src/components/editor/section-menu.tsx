@@ -159,7 +159,7 @@ export function SectionMenu({
               <button type="button" onClick={() => setCustom(null)} className="rounded-md px-2.5 py-1 text-sm text-[var(--doc-muted)] hover:text-[var(--doc-ink)]">
                 Cancel
               </button>
-              <button type="submit" disabled={!instruction.trim()} className="rounded-md bg-[var(--doc-accent)] px-3 py-1 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="submit" disabled={!instruction.trim()} className="rounded-md bg-[var(--doc-accent)] px-3 py-1 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-50">
                 Rewrite
               </button>
             </div>

@@ -145,7 +145,8 @@ describe("ingestSource", () => {
     });
     await ingestSource(T, s.id, "ann");
     expect(mocks.put.mock.calls[0][0]).toMatch(new RegExp(`^sources/[0-9a-f]{16}/${s.id}/r\\.pdf$`));
-    expect(mocks.put.mock.calls[0][2]).toMatchObject({ access: "public", addRandomSuffix: true });
+    // A private store (the default, BLOB_ACCESS unset) refuses public writes.
+    expect(mocks.put.mock.calls[0][2]).toMatchObject({ access: "private", addRandomSuffix: true });
     expect(await getSource(T, s.id)).toMatchObject({
       extraction_status: "ready",
       blob_url: "https://abc.public.blob.vercel-storage.com/sources/h/id/r-xyz.pdf",

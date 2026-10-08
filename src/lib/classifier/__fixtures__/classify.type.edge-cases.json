@@ -1,0 +1,9 @@
+{
+  "candidates": [
+    { "key": "proposal", "confidence": 0.86, "why": "It asks the council to fund a river-bank restoration and lists a budget and timeline." },
+    { "key": "business-plan", "confidence": 0.31, "why": "It mentions revenue from guided walks." },
+    { "key": "grant-letter", "confidence": 0.4, "why": "Not a listed key: dropped by normalization." },
+    { "key": "proposal", "confidence": 0.5, "why": "Duplicate key with lower confidence." }
+  ],
+  "freeform": false
+}

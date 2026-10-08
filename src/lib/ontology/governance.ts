@@ -34,10 +34,26 @@ export const postgresAuditSink: AuditSink = {
   },
 };
 
+/**
+ * The token usage or error of an LLM call's result, in one line, so a local
+ * run without a database can still see what each model call cost. Null for
+ * any other result.
+ */
+export function usageLine(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as Record<string, unknown>;
+  if (typeof r.input_tokens === "number" && typeof r.output_tokens === "number") {
+    const cached = Number(r.cache_read_input_tokens) || 0;
+    return `${typeof r.model === "string" ? r.model : "model"} in=${r.input_tokens} out=${r.output_tokens}${cached ? ` cached=${cached}` : ""}`;
+  }
+  return typeof r.error === "string" ? `error: ${r.error.slice(0, 200)}` : null;
+}
+
 /** Console sink for local runs without a database. */
 export const consoleAuditSink: AuditSink = {
   async write(e) {
-    console.log(`[audit] ${e.allowed ? "ALLOW" : "DENY "} ${e.agent} · ${e.action}${e.note ? " · " + e.note : ""}`);
+    const usage = usageLine(e.result);
+    console.log(`[audit] ${e.allowed ? "ALLOW" : "DENY "} ${e.agent} · ${e.action}${e.note ? " · " + e.note : ""}${usage ? " · " + usage : ""}`);
   },
 };
 

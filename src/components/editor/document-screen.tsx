@@ -4,8 +4,9 @@
 // (rail and documents panel, src/components/shell). A header with the title,
 // type and sharing; a sticky formatting toolbar; the document on a plain white
 // page; a right column with the living outline over the tools or section notes
-// (right-column.tsx); floating Outline / Tools / Sources buttons, Sources being
-// a dialog. Each heading has a gutter button that opens the section's actions
+// (right-column.tsx); floating Outline / Tools / Sources buttons. Sources and
+// the Notes control beside the title open the document modal (Notes / Sources /
+// Suggestions). Each heading has a gutter button that opens the section's actions
 // (draft, rewrite, notes).
 
 import { OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
@@ -14,13 +15,19 @@ import { useSetAtom } from "jotai";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { Check, Copy, Loader2, ShareArrowIcon } from "@/components/icons";
+import { Check, Copy, Loader2, NoteIcon, ShareArrowIcon } from "@/components/icons";
+import { useDevAuthBypass } from "@/components/dev-auth-context";
 import { activeDocumentAtom } from "@/components/shell/active-document";
+import type { LinkedSource } from "@/components/sources/shared";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { outlineDoc, sectionNodes } from "@/catalog/outline";
+import { outlineDoc } from "@/catalog/outline";
 import type { DocumentTypeSummary } from "@/catalog/schema";
 import type { PMNode } from "@/lib/documents/sections";
 import type { SaveOutlineAsTypeResponse, SectionListResponse } from "@/lib/sections/contract";
+import { applyOutlineMerge } from "./apply-outline";
+import { ClassifierChip } from "./classifier-chip";
+import { DocumentModal } from "./document-modal";
+import type { DocumentModalTab } from "./document-modal-model";
 import { EditorToolbar } from "./editor-toolbar";
 import { documentExtensions, newSectionId } from "./extensions";
 import { FloatingActions } from "./floating-actions";
@@ -43,15 +50,33 @@ import {
   type RightColumnState,
 } from "./right-column-model";
 import { ToolsPanel } from "./side-panels";
-import { SourcesModal } from "./sources-modal";
 import { sectionBodyRange } from "./tracked-range";
 import { createDocumentOfType, findType, SaveOutlineDialog, StartFromTypeStrip, TypeGallery, TypePicker, useDocumentTypes } from "./type-picker";
+import { useClassifier } from "./use-classifier";
 import { useDocument, type SaveStatus } from "./use-document";
 import { useOutlineStatus } from "./use-outline-status";
 import { busyAnnouncement, useSectionGeneration } from "./use-section-generation";
+import { linkedSourcesKey, useSuggestionsRefresh } from "./use-suggestions-refresh";
+
+/** Who can see the document, and the team switcher. Uses Clerk's organization hooks, so it is never mounted under the dev auth bypass. */
+function TeamSharing() {
+  const { organization } = useOrganization();
+  return (
+    <>
+      <p className="text-sm">
+        {organization
+          ? `Everyone in ${organization.name} can open and edit this document.`
+          : "Only you can see this document. Create or join a team to share it with others."}
+      </p>
+      <OrganizationSwitcher hidePersonal={false} afterSelectOrganizationUrl="/" afterCreateOrganizationUrl="/" />
+    </>
+  );
+}
 
 function SharePopover({ documentId }: { documentId: string | null }) {
-  const { organization } = useOrganization();
+  // Under the dev auth bypass there is no Clerk user, and the organization
+  // hooks would open Clerk's "Organizations feature required" modal.
+  const bypass = useDevAuthBypass();
   const [copied, setCopied] = useState(false);
   const url = documentId && typeof window !== "undefined" ? `${window.location.origin}/d/${documentId}` : "";
   const copy = async () => {
@@ -76,16 +101,11 @@ function SharePopover({ documentId }: { documentId: string | null }) {
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] space-y-3 rounded-xl">
-        <p className="text-sm">
-          {organization
-            ? `Everyone in ${organization.name} can open and edit this document.`
-            : "Only you can see this document. Create or join a team to share it with others."}
-        </p>
-        <OrganizationSwitcher hidePersonal={false} afterSelectOrganizationUrl="/" afterCreateOrganizationUrl="/" />
+        {bypass ? <p className="text-sm">Local development: signed in as the developer user, so teams are unavailable.</p> : <TeamSharing />}
         {documentId ? (
           <div className="flex items-center gap-2">
             <input readOnly value={url} aria-label="Document link" onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 rounded-md border border-[var(--doc-line)] bg-transparent px-2 py-1.5 text-xs" />
-            <button type="button" onClick={copy} className="flex items-center gap-1 rounded-md bg-[var(--doc-accent)] px-2.5 py-1.5 text-xs font-semibold text-white">
+            <button type="button" onClick={copy} className="flex items-center gap-1 rounded-md bg-[var(--doc-accent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--doc-on-accent)]">
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copied" : "Copy link"}
             </button>
           </div>
@@ -126,7 +146,7 @@ export function DocumentScreen({ documentId }: { documentId: string | null }) {
         <div className="mx-auto max-w-md py-24 text-center">
           <h1 className="text-2xl font-semibold">Document not found</h1>
           <p className="mt-2 text-[var(--doc-muted)]">It may have been deleted, or it belongs to a team you are not signed in to.</p>
-          <Link href="/" className="mt-6 inline-block rounded-full bg-[var(--doc-accent)] px-5 py-2 font-semibold text-white">
+          <Link href="/" className="mt-6 inline-block rounded-full bg-[var(--doc-accent)] px-5 py-2 font-semibold text-[var(--doc-on-accent)]">
             Start a new document
           </Link>
         </div>
@@ -253,8 +273,15 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const currentType = findType(types, doc.type_key);
   // The right column: the outline on top, Tools or Section notes below (right-column-model.ts).
   const [column, setColumn] = useState<RightColumnState>(CLOSED_COLUMN);
-  const [sourcesOpen, setSourcesOpen] = useState(false);
+  // The document modal (Notes / Sources / Suggestions), and the control that opened it.
+  const [modalTab, setModalTab] = useState<DocumentModalTab | null>(null);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
+  const notesButtonRef = useRef<HTMLButtonElement>(null);
+  const [modalOpener, setModalOpener] = useState<"sources" | "notes">("sources");
+  const openModal = (tab: DocumentModalTab, from: "sources" | "notes") => {
+    setModalOpener(from);
+    setModalTab(tab);
+  };
   const outlineButtonRef = useRef<HTMLButtonElement>(null);
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -327,8 +354,9 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const sectionNotes = useSectionNotes(doc.id);
   const caretSection = useCaretSectionId(editor);
 
-  const chooseType = async (t: DocumentTypeSummary | null) => {
-    change({ type_key: t?.key ?? null });
+  /** Set the type; with text already there, merge its outline in (apply-outline.ts). `source` is "classifier" from the chip. */
+  const chooseType = async (t: DocumentTypeSummary | null, source: "user" | "classifier" = "user") => {
+    change({ type_key: t?.key ?? null, type_source: source });
     if (!editor) return;
     if (!t) {
       editor.commands.focus();
@@ -343,21 +371,32 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       return;
     }
     await snapshot(`Before applying the ${t.title} outline`);
-    const have = new Set<string>();
-    editor.state.doc.forEach((node) => {
-      if (node.type.name === "heading" && node.attrs.specKey) have.add(String(node.attrs.specKey));
-    });
-    const missing = t.sections.filter((s) => !have.has(s.key));
-    if (missing.length) {
-      const add = missing.flatMap((s) => sectionNodes(s, newSectionId));
-      editor.chain().focus("end").insertContentAt(editor.state.doc.content.size, add).run();
-    }
+    const merged = applyOutlineMerge(editor, t, newSectionId);
+    const where = merged.inOrder ? "in outline order" : "at the end";
     notify(
-      missing.length
-        ? undoNotice(`Added ${missing.length} section${missing.length === 1 ? "" : "s"} from the ${t.title} outline at the end.`)
+      merged.added || merged.tagged
+        ? undoNotice(
+            merged.added
+              ? `Added ${merged.added} section${merged.added === 1 ? "" : "s"} from the ${t.title} outline ${where}.`
+              : `Matched your headings to the ${t.title} outline.`,
+          )
         : { text: `Your document already has every ${t.title} section.` },
     );
   };
+
+  const classifier = useClassifier({
+    editor,
+    documentId: doc.id,
+    typeKey: doc.type_key,
+    typeSource: doc.type_source,
+    notes: doc.notes,
+    types,
+    saveStatus: status,
+  });
+  // The linked sources as last reported by the Sources tab (null until it has loaded them).
+  const [sourcesKey, setSourcesKey] = useState<string | null>(null);
+  const onSourcesChange = useCallback((list: LinkedSource[]) => setSourcesKey(linkedSourcesKey(list)), []);
+  useSuggestionsRefresh({ documentId: doc.id, typeKey: doc.type_key, notes: doc.notes, sources: sourcesKey });
 
   /** A new document of the type, opened in place of this one. Resolves to an error message, or null. */
   const startNewOfType = async (t: DocumentTypeSummary): Promise<string | null> => {
@@ -472,7 +511,29 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
             style={{ fieldSizing: "content" } as React.CSSProperties}
             className="min-w-[10ch] max-w-full rounded-md bg-transparent text-[28px] font-medium tracking-tight text-[var(--ink)] outline-none placeholder:text-[var(--doc-muted)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)] sm:text-[32px]"
           />
-          <TypePicker types={types} value={doc.type_key} onChange={chooseType} onBrowse={() => setGallery("set")} onSaveOutline={() => setSaveTypeOpen(true)} />
+          <TypePicker types={types} value={doc.type_key} onChange={(t) => chooseType(t)} onBrowse={() => setGallery("set")} onSaveOutline={() => setSaveTypeOpen(true)} />
+          <button
+            ref={notesButtonRef}
+            type="button"
+            onClick={() => openModal("notes", "notes")}
+            aria-haspopup="dialog"
+            aria-expanded={modalTab === "notes"}
+            aria-label="Notes"
+            title={doc.notes.trim() ? "Notes" : "Add notes"}
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-full text-[15px] font-medium text-[var(--go)] hover:bg-[var(--go-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] aria-expanded:bg-[var(--go-soft)] sm:h-9 sm:w-auto sm:px-3.5"
+          >
+            <NoteIcon className="h-5 w-5 shrink-0 sm:h-[18px] sm:w-[18px]" />
+            <span className="hidden sm:inline">Notes</span>
+            {doc.notes.trim() && <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--go)] sm:static sm:h-1.5 sm:w-1.5" />}
+          </button>
+          <ClassifierChip
+            suggestion={classifier.suggestion}
+            onApply={(key) => {
+              const t = findType(types, key);
+              if (t) void chooseType(t, "classifier");
+            }}
+            onDismiss={(key) => void classifier.dismiss(key)}
+          />
           <StatusText status={status} error={error} isNew={!doc.id} />
         </div>
         <SharePopover documentId={doc.id} />
@@ -559,18 +620,24 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         toolsRef={toolsButtonRef}
         outlineOpen={column.outline}
         toolsOpen={column.lower === "tools"}
-        sourcesOpen={sourcesOpen}
+        sourcesOpen={modalTab !== null && modalOpener === "sources"}
         onOutline={() => setColumn(toggleOutline)}
         onTools={() => setColumn(toggleTools)}
-        onSources={() => setSourcesOpen(true)}
+        onSources={() => openModal("sources", "sources")}
       />
-      <SourcesModal
-        open={sourcesOpen}
-        onOpenChange={setSourcesOpen}
+      <DocumentModal
+        tab={modalTab}
+        onTabChange={setModalTab}
         documentId={doc.id || null}
         documentTitle={doc.title}
+        typeKey={doc.type_key}
+        notes={doc.notes}
+        onNotesChange={(notes) => change({ notes })}
+        saveStatus={status}
+        saveError={error}
         ensureSaved={ensureSaved}
-        returnFocusRef={sourcesButtonRef}
+        returnFocusRef={modalOpener === "notes" ? notesButtonRef : sourcesButtonRef}
+        onSourcesChange={onSourcesChange}
       />
 
       <span role="status" aria-live="polite" className="sr-only">

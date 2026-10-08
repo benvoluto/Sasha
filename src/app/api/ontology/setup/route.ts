@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
-import { SUGGESTION_EDITS_SCHEMA } from "@/lib/ontology/suggestion-edits";
 import { WORKFLOW_SCHEMA } from "@/lib/workflow/store";
 import { DOCUMENT_SCHEMA } from "@/lib/documents/store";
 import { SOURCE_SCHEMA } from "@/lib/sources/store";
 import { CATALOG_SCHEMA } from "@/catalog/store";
+import { SUGGESTION_SCHEMA } from "@/lib/suggestions/schema";
 
 export const runtime = "nodejs";
 
@@ -32,8 +32,7 @@ const STATEMENTS = [
      reviewed_by TEXT, updated_by TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`,
   `CREATE UNIQUE INDEX IF NOT EXISTS report_section_uidx ON report_section (report_id, section_key)`,
   `CREATE INDEX IF NOT EXISTS report_section_group_idx ON report_section (group_id)`,
-  // The team's dismissed and added suggestions per document (also applied on first use).
-  ...SUGGESTION_EDITS_SCHEMA,
+  // (case_suggestion_edits was retired in Phase 4; older databases may still have it, nothing reads it.)
   // Named workflows, their versions, runs, and app settings (also applied on first use).
   ...WORKFLOW_SCHEMA,
   ...DOCUMENT_SCHEMA,
@@ -41,6 +40,8 @@ const STATEMENTS = [
   ...SOURCE_SCHEMA,
   // Team overrides and team-made document types (src/catalog/store.ts).
   ...CATALOG_SCHEMA,
+  // Suggested sources, data and web resources per document (src/lib/suggestions/schema.ts).
+  ...SUGGESTION_SCHEMA,
   `ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
   // Run columns the engine writes; added here for databases created before them.
   `ALTER TABLE agent_determination_run ADD COLUMN IF NOT EXISTS outputs JSONB`,
@@ -51,7 +52,6 @@ const EXPECTED_TABLES = [
   "audit_log",
   "report",
   "report_section",
-  "case_suggestion_edits",
   "app_setting",
   "workflow",
   "determination_workflow",
@@ -65,6 +65,8 @@ const EXPECTED_TABLES = [
   "document_source",
   "source_passage",
   "document_type",
+  "suggestion",
+  "suggestion_run",
 ];
 
 /**
@@ -96,6 +98,7 @@ async function inspectSchema() {
     "agent_determination_run.outputs": !!columns.agent_determination_run?.includes("outputs"),
     "document_section.updated_at": !!columns.document_section?.includes("updated_at"),
     "document.doc_folder_id": !!columns.document?.includes("doc_folder_id"),
+    "document.classifier_state": !!columns.document?.includes("classifier_state"),
   };
   return {
     ok: missingTables.length === 0 && Object.values(migrations).every(Boolean),

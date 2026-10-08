@@ -4,11 +4,16 @@
 // Lists the linked sources with their reading status and summary, and adds more
 // by upload, link, note or from the team's library. Adding to a new document
 // saves it first, since sources link to a saved document. On the editing
-// screen it is the body of the Sources dialog (sources-modal.tsx, `bare`).
+// screen it is the body of the document modal's Sources tab (`bare`).
+//
+// Opened from "Add" on a suggestion it carries a prefill: a banner says what
+// is being added for, the link form opens with the suggestion's link (or the
+// library picker is offered, searching its label), and the first source linked
+// while the prefill is active marks the suggestion added.
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, LibraryIcon, Loader2, Plus, Unlink } from "@/components/icons";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ExternalLink, LibraryIcon, Loader2, Plus, Search, Unlink, X } from "@/components/icons";
 import { FileDropzone } from "@/components/file-dropzone";
 import {
   AddNoteForm,
@@ -25,6 +30,7 @@ import {
 } from "@/components/sources/shared";
 import { SourcePicker } from "@/components/sources/source-picker";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import type { SourcePrefill, SuggestionResponse } from "@/lib/suggestions/contract";
 import { PanelHeader } from "./side-panels";
 
 type Mode = "upload" | "url" | "note" | null;
@@ -35,6 +41,9 @@ export function SourcesPanel({
   ensureSaved,
   onClose,
   bare = false,
+  prefill = null,
+  onPrefillDone,
+  onSourcesChange,
 }: {
   documentId: string | null;
   documentTitle: string;
@@ -43,6 +52,16 @@ export function SourcesPanel({
   onClose: () => void;
   /** Inside a dialog that has its own title and close button: no panel header, and it fills the dialog. */
   bare?: boolean;
+  /**
+   * Opened from "Add" on a suggestion (phase4-spec.md §4.7, suggestions track):
+   * show what is being added for, prefill the link form or library search, and
+   * mark the suggestion added when a source gets linked.
+   */
+  prefill?: SourcePrefill | null;
+  /** The prefill was used (a source was linked for it) or dismissed. */
+  onPrefillDone?: () => void;
+  /** The linked sources once loaded, and again whenever they change (so suggestions can refresh). */
+  onSourcesChange?: (sources: LinkedSource[]) => void;
 }) {
   const [sources, setSources] = useState<LinkedSource[] | null>(documentId ? null : []);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +69,41 @@ export function SourcesPanel({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [unlinking, setUnlinking] = useState<string | null>(null);
+  const [prefillError, setPrefillError] = useState<string | null>(null);
+
+  // A prefill with a link opens the link form on it.
+  const prefillId = prefill?.suggestionId ?? null;
+  const prefillUrl = prefill?.url ?? null;
+  useEffect(() => {
+    setPrefillError(null);
+    if (prefillId && prefillUrl) setMode("url");
+  }, [prefillId, prefillUrl]);
+
+  // The first source linked while the prefill is active marks the suggestion
+  // added. A failure is shown here and never undoes the source.
+  const prefillRef = useRef(prefill);
+  prefillRef.current = prefill;
+  const markPrefill = useCallback(
+    async (sourceId: string | undefined) => {
+      const p = prefillRef.current;
+      if (!p || !sourceId) return;
+      const docId = await ensureSaved();
+      if (!docId) return;
+      try {
+        await api<SuggestionResponse>(`/api/documents/${encodeURIComponent(docId)}/suggestions/${encodeURIComponent(p.suggestionId)}`, {
+          method: "PATCH",
+          json: { action: "add", source_id: sourceId },
+        });
+        if (prefillRef.current?.suggestionId === p.suggestionId) {
+          setPrefillError(null);
+          onPrefillDone?.();
+        }
+      } catch (e) {
+        setPrefillError(errorText(e, `The source was added, but "${p.label}" couldn't be marked done.`));
+      }
+    },
+    [ensureSaved, onPrefillDone],
+  );
 
   const load = useCallback(async (id: string | null) => {
     if (!id) {
@@ -71,6 +125,11 @@ export function SourcesPanel({
   }, [documentId, load]);
 
   usePollSources(sources ?? [], (fresh) => setSources((list) => (list ? mergeFresh(list, fresh) : list)));
+
+  // Report the list only when it reflects the server (not the empty stand-in after a failed load).
+  useEffect(() => {
+    if (sources && !error) onSourcesChange?.(sources);
+  }, [sources, error, onSourcesChange]);
 
   const resolve = useCallback(async () => {
     const id = await ensureSaved();
@@ -107,7 +166,7 @@ export function SourcesPanel({
       <div className={`flex items-center justify-between gap-2 pb-3 ${bare ? "px-6" : "px-5"}`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white">
+            <button type="button" className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)]">
               <Plus className="h-4 w-4" /> Add
             </button>
           </DropdownMenuTrigger>
@@ -124,18 +183,78 @@ export function SourcesPanel({
       </div>
 
       <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto pb-6 ${bare ? "px-6" : "px-5"}`}>
+        {prefill && (
+          <div role="status" className="flex flex-wrap items-center gap-2 rounded-xl bg-[var(--go-soft)] px-3 py-2 text-sm text-[var(--go)]">
+            <span className="min-w-0 flex-1 break-words">
+              Adding for: <span className="font-semibold">{prefill.label}</span>
+            </span>
+            {!prefill.url && (
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="flex min-h-9 items-center gap-1 rounded-full px-2.5 text-xs font-semibold hover:bg-[var(--go-soft-strong)]"
+              >
+                <Search className="h-3.5 w-3.5" aria-hidden /> Find in library
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onPrefillDone?.()}
+              aria-label="Stop adding for this suggestion"
+              title="Stop adding for this suggestion"
+              className="grid h-9 w-9 place-items-center rounded-full hover:bg-[var(--go-soft-strong)]"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+            {prefillError && (
+              <p role="alert" className="basis-full text-xs text-red-600 dark:text-red-400">
+                {prefillError}
+              </p>
+            )}
+          </div>
+        )}
         {mode && (
           <section aria-label={mode === "upload" ? "Upload files" : mode === "url" ? "Add a link" : "Add a note"} className="space-y-2 rounded-xl border border-[var(--doc-line)] p-3">
             {mode === "upload" && (
               <>
-                <FileDropzone compact resolveDocumentId={ensureSaved} label={documentTitle.trim() || "this document"} onUploaded={(_, complete) => void added(complete)} />
+                <FileDropzone
+                  compact
+                  resolveDocumentId={ensureSaved}
+                  label={documentTitle.trim() || "this document"}
+                  onUploaded={(uploaded, complete) => {
+                    void markPrefill(uploaded[0]?.id);
+                    void added(complete);
+                  }}
+                />
                 <button type="button" onClick={() => setMode(null)} className="text-xs text-[var(--doc-muted)] hover:underline">
                   Done
                 </button>
               </>
             )}
-            {mode === "url" && <AddUrlForm idPrefix="panel" resolve={resolve} onAdded={() => void added()} onCancel={() => setMode(null)} />}
-            {mode === "note" && <AddNoteForm idPrefix="panel" resolve={resolve} onAdded={() => void added()} onCancel={() => setMode(null)} />}
+            {mode === "url" && (
+              <AddUrlForm
+                key={prefillId ?? "plain"}
+                idPrefix="panel"
+                resolve={resolve}
+                initialUrl={prefillUrl ?? ""}
+                onAdded={(s) => {
+                  void markPrefill(s.id);
+                  void added();
+                }}
+                onCancel={() => setMode(null)}
+              />
+            )}
+            {mode === "note" && (
+              <AddNoteForm
+                idPrefix="panel"
+                resolve={resolve}
+                onAdded={(s) => {
+                  void markPrefill(s.id);
+                  void added();
+                }}
+                onCancel={() => setMode(null)}
+              />
+            )}
           </section>
         )}
 
@@ -204,7 +323,17 @@ export function SourcesPanel({
         {sources && sources.length > 0 && <p className="text-xs text-[var(--doc-muted)]">Removing a source from the document keeps it in the library.</p>}
       </div>
 
-      <SourcePicker open={pickerOpen} onOpenChange={setPickerOpen} documentId={ensureSaved} linkedIds={(sources ?? []).map((s) => s.id)} onLinked={() => void added()} />
+      <SourcePicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        documentId={ensureSaved}
+        linkedIds={(sources ?? []).map((s) => s.id)}
+        initialQuery={prefill && !prefill.url ? prefill.label : ""}
+        onLinked={(ids) => {
+          void markPrefill(ids[0]);
+          void added();
+        }}
+      />
     </Wrapper>
   );
 }

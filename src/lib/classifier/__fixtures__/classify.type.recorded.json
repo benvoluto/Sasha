@@ -1,0 +1,28 @@
+{
+  "recorded_at": "2026-10-08T17:43:01.833Z",
+  "model": "claude-haiku-5-5",
+  "keys": [
+    "business-plan",
+    "design-doc-rfc",
+    "diataxis-how-to",
+    "diataxis-tutorial",
+    "fie",
+    "general-report",
+    "nih-specific-aims-research-strategy",
+    "policy-decision-memo",
+    "product-requirements",
+    "proposal",
+    "research-report-imrad",
+    "standard-operating-procedure"
+  ],
+  "data": {
+    "candidates": [
+      {
+        "key": "proposal",
+        "confidence": 0.93,
+        "why": "The draft says 'We propose that the Parks Committee approve' a project and asks for funding, with objectives, approach, timeline, budget and success criteria as the cue sections."
+      }
+    ],
+    "freeform": false
+  }
+}

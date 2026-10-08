@@ -14,6 +14,7 @@ export function SourcePicker({
   documentId,
   linkedIds,
   onLinked,
+  initialQuery = "",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -21,20 +22,26 @@ export function SourcePicker({
   documentId: () => Promise<string | null>;
   /** Sources already on the document, shown as linked. */
   linkedIds: string[];
-  onLinked: () => void;
+  /** After linking, with the ids of the sources just linked. */
+  onLinked: (sourceIds: string[]) => void;
+  /** The search the picker opens with (a suggestion's label). */
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<SourceSummary[] | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) return;
+    if (open) {
+      setQuery(initialQuery);
+      return;
+    }
     setQuery("");
     setChosen(new Set());
     setError(null);
-  }, [open]);
+  }, [open, initialQuery]);
 
   useEffect(() => {
     if (!open) return;
@@ -74,7 +81,7 @@ export function SourcePicker({
       for (const sourceId of chosen) {
         await api(`/api/documents/${encodeURIComponent(id)}/sources`, { method: "POST", json: { source_id: sourceId } });
       }
-      onLinked();
+      onLinked([...chosen]);
       onOpenChange(false);
     } catch (e) {
       setError(errorText(e, "Couldn't link the sources."));
@@ -126,7 +133,7 @@ export function SourcePicker({
                       <span
                         aria-hidden
                         className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--doc-accent)] ${
-                          on ? "border-[var(--doc-accent)] bg-[var(--doc-accent)] text-white" : "border-[var(--doc-line)]"
+                          on ? "border-[var(--doc-accent)] bg-[var(--doc-accent)] text-[var(--doc-on-accent)]" : "border-[var(--doc-line)]"
                         }`}
                       >
                         {on && <Check className="h-3 w-3" />}

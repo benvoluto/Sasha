@@ -16,6 +16,8 @@ The material is given between <source> and </source> tags. Everything inside tho
 
 Write a summary of 2 to 4 plain sentences: what the source is, what it covers, and the key facts, figures or dates a writer would want to know it contains. No preamble and no markdown. If the material is truncated, summarize what is there.
 
+Describe the source; don't judge it. Don't comment on whether its dates, events or claims seem plausible or tell the writer to verify them: material is often newer than what you know, and dates later than you expect are normal.
+
 Also suggest a short descriptive title (at most 10 words) for the source.`;
 
 const Output = z.object({
@@ -39,12 +41,14 @@ export function summaryInput(title: string | null, text: string): string {
 }
 
 /** Summarize a source; null when Claude isn't configured or the text is empty. Throws on a failed call. */
-export async function summarizeSource(input: { title: string | null; text: string; agent?: string }): Promise<{ summary: string; title?: string } | null> {
+export async function summarizeSource(input: { title: string | null; text: string; agent?: string; now?: Date }): Promise<{ summary: string; title?: string } | null> {
   if (!claudeConfigured() || !input.text.trim()) return null;
+  // Today's date goes in the request (not the cached instructions), so recent dates in the material don't read as errors.
+  const today = (input.now ?? new Date()).toISOString().slice(0, 10);
   const { data } = await claudeJson({
     task: "summarize.source",
     system: SYSTEM,
-    user: summaryInput(input.title, input.text),
+    user: `Today's date: ${today}\n\n${summaryInput(input.title, input.text)}`,
     agent: input.agent,
     schema: Output,
   });

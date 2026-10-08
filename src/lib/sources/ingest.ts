@@ -24,6 +24,7 @@ import { MAX_PASSAGE_TEXT_CHARS, pagedPassages } from "./pages";
 import { getSource, replacePassages, setExtraction, setSourceFile, setSourceStatus, setSummary, setTitleIfMissing, type SourceRecord } from "./store";
 import { summarizeSource } from "./summarize";
 import { fetchUrlSource, UrlSourceError } from "./url-extract";
+import { blobAccess } from "@/lib/blob-access";
 
 // Ingest runs in after() on routes with maxDuration 300, sharing that budget
 // with the request. If the platform stops the function, no catch runs and the
@@ -55,7 +56,7 @@ async function extract(teamId: string, source: SourceRecord, deadline: number): 
     const page = await fetchUrlSource(source.url, {
       onPdf: async (bytes, finalUrl) => {
         const name = decodeURIComponent(finalUrl.pathname.split("/").filter(Boolean).pop() || "document.pdf");
-        const blob = await put(sourceBlobPath(teamId, source.id, name), bytes, { access: "public", addRandomSuffix: true, contentType: "application/pdf" });
+        const blob = await put(sourceBlobPath(teamId, source.id, name), bytes, { access: blobAccess(), addRandomSuffix: true, contentType: "application/pdf" });
         const stored = await setSourceFile(teamId, source.id, { blob_url: blob.url, blob_pathname: blob.pathname, bytes: bytes.length, mime: "application/pdf", filename: name });
         if (!stored) {
           // Deleted while the link was being fetched: don't leave a public copy behind.

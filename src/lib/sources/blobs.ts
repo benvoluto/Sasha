@@ -1,5 +1,5 @@
-// A source's files in Blob, as a set. Blobs are public (their URLs only can't
-// be guessed), so deleting a source must remove every file it ever stored, not
+// A source's files in Blob, as a set. On a public store a blob is readable by
+// anyone with its URL (the URLs only can't be guessed), so deleting a source must remove every file it ever stored, not
 // just the one its row points at: an earlier copy from a retried PDF link, or a
 // file whose upload finished in Blob but was never reported to the app. Every
 // file a source stores lives under its prefix, so the prefix is the set.

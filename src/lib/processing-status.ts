@@ -12,6 +12,7 @@
 
 import { put } from "@vercel/blob";
 import { documentSections, emptyExtractionMessage, hasReadableText } from "./extracted-text";
+import { blobAccess } from "@/lib/blob-access";
 
 export class ProcessingTimeoutError extends Error {
   constructor(label: string, ms: number) {
@@ -80,7 +81,7 @@ export async function writeProcessingError(groupId: string, metadata: object, me
           processedAt: new Date().toISOString(),
         },
       }),
-      { access: "public", contentType: "application/json", allowOverwrite: true },
+      { access: blobAccess(), contentType: "application/json", allowOverwrite: true },
     );
   } catch (e) {
     console.error(`[Processing] Failed to write error status for ${groupId}:`, e);

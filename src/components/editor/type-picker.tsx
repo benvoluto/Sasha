@@ -354,7 +354,7 @@ export function SaveOutlineDialog({
             <button type="button" disabled={saving} onClick={() => onOpenChange(false)} className="rounded-md px-3 py-1.5 text-sm text-[var(--doc-muted)] hover:text-[var(--doc-ink)]">
               Cancel
             </button>
-            <button type="submit" disabled={saving || !title.trim()} className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+            <button type="submit" disabled={saving || !title.trim()} className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-50">
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save type
             </button>
           </div>

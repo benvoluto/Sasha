@@ -8,9 +8,10 @@
 
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Loader2, MicrophoneIcon, SparkleIcon, X } from "@/components/icons";
+import { Loader2, SparkleIcon } from "@/components/icons";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { notesActionMode, type SectionResponse } from "@/lib/sections/contract";
+import { DictationField, dictationEnded, dictationError, joinDictation } from "./dictation-field";
 import { PanelHeader } from "./side-panels";
 import { sectionBodyRange, sectionHeadingIndexAt, type SectionBody } from "./tracked-range";
 import type { GenerationRequest } from "./use-section-generation";
@@ -58,13 +59,6 @@ function useSection(editor: Editor, sectionId: string | null): SectionBody | nul
   return section;
 }
 
-function dictationError(code: string): string {
-  if (code === "not-allowed" || code === "service-not-allowed") return "Microphone blocked. Allow it in your browser's site settings to dictate.";
-  if (code === "audio-capture") return "No microphone was found.";
-  if (code === "network") return "Dictation needs an internet connection in this browser.";
-  return `Dictation stopped (${code}).`;
-}
-
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 type PendingNotes = { sectionId: string; notes: string; specKey: string | null };
@@ -72,27 +66,12 @@ type PendingNotes = { sectionId: string; notes: string; specKey: string | null }
 /** Where a dictation started: its section, and the notes it is added to. */
 export type DictationStart = { sectionId: string; specKey: string | null; base: string };
 
-/** The dictated text after the notes that were there. */
-export function joinDictation(base: string, said: string): string {
-  const sep = base && said ? (base.endsWith("\n") ? "" : " ") : "";
-  return base + sep + said;
-}
-
 /**
  * The save a finished dictation makes. It always goes to the section the
  * dictation started in, even if the caret (and so the panel) has since moved.
  */
 export function dictationSave(started: DictationStart, said: string): PendingNotes {
   return { sectionId: started.sectionId, specKey: started.specKey, notes: joinDictation(started.base, said) };
-}
-
-/**
- * True when recognition went from listening to stopped while a dictation was
- * still open, i.e. it ended without Finish or Cancel (both close the dictation
- * before stopping). Before the first listening=true (start pending) it isn't.
- */
-export function dictationEnded(wasListening: boolean, listening: boolean, dictating: boolean): boolean {
-  return wasListening && !listening && dictating;
 }
 
 export function SectionNotesPanel({
@@ -317,64 +296,25 @@ export function SectionNotesPanel({
           <p className="truncate text-base font-semibold" title={section.heading}>
             {section.heading || "Untitled section"}
           </p>
-          <div
-            className={`rounded-lg border bg-transparent transition-colors ${listening ? "border-[var(--doc-accent)]" : "border-[var(--doc-line)] focus-within:border-[var(--doc-accent)]"}`}
-          >
-            <label htmlFor="section-notes" className="sr-only">
-              Notes for {section.heading || "this section"}
-            </label>
-            <textarea
-              id="section-notes"
-              value={notes}
-              readOnly={listening || loading}
-              onChange={(e) => {
-                setNotes(e.target.value);
-                queue(e.target.value);
-              }}
-              rows={10}
-              placeholder={listening ? "Listening…" : loading ? "Loading…" : "Facts, points to make, rough wording… Claude drafts the section from these."}
-              className="block w-full resize-y rounded-lg bg-transparent px-3 py-2.5 text-sm leading-relaxed outline-none"
-            />
-            <div className="flex items-center justify-between gap-2 border-t border-[var(--doc-line)] px-2 py-1.5">
-              <span role="status" aria-live="polite" className={`min-w-0 text-xs ${saveState === "error" ? "text-red-600 dark:text-red-400" : "text-[var(--doc-muted)]"}`}>
-                {status}
-              </span>
-              {listening ? (
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <MicrophoneIcon className="h-5 w-5 shrink-0 animate-pulse text-[var(--doc-accent)]" weight="fill" aria-label="Recording" />
-                  <button
-                    type="button"
-                    onClick={finishDictation}
-                    aria-label="Finish dictation"
-                    className="flex items-center gap-1 rounded-full bg-[var(--doc-accent)] px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--doc-ink)]"
-                  >
-                    <Check className="h-3.5 w-3.5" /> Finish
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelDictation}
-                    aria-label="Cancel dictation"
-                    className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                supported && (
-                  <button
-                    type="button"
-                    aria-label="Dictate notes"
-                    title="Dictate"
-                    disabled={loading}
-                    onClick={startDictation}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-accent)] disabled:opacity-40"
-                  >
-                    <MicrophoneIcon className="h-5 w-5" />
-                  </button>
-                )
-              )}
-            </div>
-          </div>
+          <DictationField
+            id="section-notes"
+            label={`Notes for ${section.heading || "this section"}`}
+            value={notes}
+            onChange={(text) => {
+              setNotes(text);
+              queue(text);
+            }}
+            readOnly={loading}
+            placeholder={listening ? "Listening…" : loading ? "Loading…" : "Facts, points to make, rough wording… Claude drafts the section from these."}
+            listening={listening}
+            supported={supported}
+            micDisabled={loading}
+            onStart={startDictation}
+            onFinish={finishDictation}
+            onCancel={cancelDictation}
+            status={status}
+            statusError={saveState === "error"}
+          />
           {micError && <p className="text-sm text-red-600 dark:text-red-400">{dictationError(micError)}</p>}
           {loadError && <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>}
           {mode && (
@@ -382,7 +322,7 @@ export function SectionNotesPanel({
               type="button"
               disabled={isBusy || listening}
               onClick={() => void runFromNotes()}
-              className="flex items-center justify-center gap-1.5 self-start rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 self-start rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-50"
             >
               {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <SparkleIcon className="h-4 w-4" />}
               {isBusy ? "Claude is writing…" : mode === "draft_from_notes" ? "Draft from notes" : "Rewrite from notes"}

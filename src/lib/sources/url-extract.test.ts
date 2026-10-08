@@ -181,6 +181,25 @@ describe("extractReadable", () => {
     expect(page.text).toMatch(/bank\.\n+Work will begin/);
   });
 
+  // A live read of a Wikipedia article kept every "[edit]" link, footnote marker and the whole reference list.
+  it("drops wiki edit links, footnote markers and reference lists", () => {
+    const para = "The Border Collie is a British breed of herding dog of medium size, descended from landrace sheepdogs once found all over the British Isles.";
+    const html = `<html><head><title>Border Collie</title></head><body><article>
+<h2>History<span class="mw-editsection">[<a href="/edit">edit</a>]</span></h2>
+<p>${para}<sup class="reference"><a href="#cite-1">[1]</a></sup> ${para}</p>
+<p>${para} It is used for working livestock and in dog sports.<sup class="reference">[2]</sup></p>
+<div class="mw-references-wrap"><ol class="references"><li><span class="mw-cite-backlink">↑</span> REFERENCE-ONE. Retrieved 6 June 2026.</li></ol></div>
+<div class="navbox">NAVBOX-LINKS</div>
+</article></body></html>`;
+    const page = extractReadable(html, "https://en.wikipedia.org/wiki/Border_Collie");
+    expect(page.text).toContain("British breed of herding dog");
+    expect(page.text).toContain("History");
+    expect(page.text).not.toContain("[edit]");
+    expect(page.text).not.toMatch(/\[\d\]/);
+    expect(page.text).not.toContain("REFERENCE-ONE");
+    expect(page.text).not.toContain("NAVBOX-LINKS");
+  });
+
   it("falls back to the main content for a page Readability can't use", () => {
     const html = `<html><head><title>Tiny</title></head><body><nav>MENU</nav><main><p>Short note.</p></main><script>BAD()</script></body></html>`;
     const page = extractReadable(html, "https://example.org/");

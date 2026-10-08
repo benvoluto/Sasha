@@ -1,0 +1,92 @@
+{
+  "recorded_at": "2026-10-08T17:43:02.186Z",
+  "model": "claude-haiku-5-5",
+  "type_key": "proposal",
+  "items": [
+    "Total cost",
+    "Duration",
+    "Evidence of the problem or opportunity",
+    "Baseline figures",
+    "Targets",
+    "Milestone dates",
+    "Quotes or cost estimates",
+    "Cost figures"
+  ],
+  "source_ids": [
+    "6a924018-d85b-4e7e-bb8c-a529b10b6e64",
+    "0a37c3f7-28e0-43d0-94c5-2f2f546391bf"
+  ],
+  "section_keys": [
+    "summary",
+    "reason",
+    "objectives",
+    "approach",
+    "timeline",
+    "budget",
+    "evaluation"
+  ],
+  "data": {
+    "coverage": [
+      {
+        "item": 1,
+        "status": "missing",
+        "source_id": null
+      },
+      {
+        "item": 2,
+        "status": "missing",
+        "source_id": null
+      },
+      {
+        "item": 3,
+        "status": "partial",
+        "source_id": "0a37c3f7-28e0-43d0-94c5-2f2f546391bf"
+      },
+      {
+        "item": 4,
+        "status": "partial",
+        "source_id": "0a37c3f7-28e0-43d0-94c5-2f2f546391bf"
+      },
+      {
+        "item": 5,
+        "status": "missing",
+        "source_id": null
+      },
+      {
+        "item": 6,
+        "status": "missing",
+        "source_id": null
+      },
+      {
+        "item": 7,
+        "status": "covered",
+        "source_id": "6a924018-d85b-4e7e-bb8c-a529b10b6e64"
+      },
+      {
+        "item": 8,
+        "status": "partial",
+        "source_id": "6a924018-d85b-4e7e-bb8c-a529b10b6e64"
+      }
+    ],
+    "proposals": [
+      {
+        "kind": "data",
+        "label": "Last year's audited financials",
+        "reason": "The Hartley Foundation requires last year's audited financials with every application, as stated in the notes.",
+        "spec_ref": null
+      },
+      {
+        "kind": "source",
+        "label": "Parish council formal backing resolution",
+        "reason": "The foundation wants evidence that the parish council has formally backed the project, per the notes.",
+        "spec_ref": "reason"
+      },
+      {
+        "kind": "data",
+        "label": "Weekly path user count estimate",
+        "reason": "The notes ask for an estimate of how many people use the path each week, which the survey only gives for spring.",
+        "spec_ref": "reason"
+      }
+    ]
+  }
+}

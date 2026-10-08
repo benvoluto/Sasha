@@ -11,9 +11,9 @@
 // section, so consulting either never means leaving what you were reading.
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, XCircle, Archive, Loader2, CloudUpload, Boxes, ListChecks, Workflow } from "@/components/icons";
+import { CheckCircle2, XCircle, Archive, Loader2, CloudUpload, Boxes, Workflow } from "@/components/icons";
 import { AddDocsButton } from "@/components/add-docs-button";
 import { useSetAtom } from "jotai";
 import { archiveUploadGroupAtom, type UploadGroup } from "@/lib/atoms";
@@ -23,14 +23,11 @@ import { ReportEditor } from "@/components/report-editor";
 import { SummaryNote } from "@/components/summary-note";
 import { ModeSwitch, type CaseMode } from "@/components/case-shell";
 import { SectionCard, SectionPanel, type SectionKey } from "@/components/case-sections";
-import { SuggestionList, saveSuggestionEdit, useCatalog, visibleSuggestions } from "@/components/suggestion-list";
-import { applyAction, editsOf, emptyEdits, type SuggestionAction, type SuggestionEdits, type SuggestionKind } from "@/lib/case-suggestions";
 
 const RAIL_ACTION = "flex items-center gap-2.5 text-[15px] font-medium text-fuchsia-600 hover:text-fuchsia-700 dark:text-fuchsia-400 disabled:opacity-50";
 
-// Suggested sources and data come from document types in a later phase; for
-// now only the items people add by hand show up.
-const NO_SUGGESTIONS: string[] = [];
+// The legacy Suggestions section was retired in Phase 4: suggestions now live
+// on documents (src/lib/suggestions, the document modal's Suggestions tab).
 
 export function CaseDetailView({ groupId, variant = "page" }: { groupId: string; variant?: "page" | "modal" }) {
   const searchParams = useSearchParams();
@@ -43,28 +40,20 @@ export function CaseDetailView({ groupId, variant = "page" }: { groupId: string;
   const [mode, setMode] = useState<CaseMode>(() => (searchParams.get("mode") === "report" || searchParams.get("tab") === "report" ? "report" : "case"));
   const [section, setSection] = useState<SectionKey | null>(() => {
     const s = searchParams.get("section") ?? searchParams.get("tab");
-    return s === "documents" || s === "suggestions" ? s : null;
+    return s === "documents" ? s : null;
   });
   const [loading, setLoading] = useState(true);
   // Distinct from `loading`: a post-mutation refresh keeps the section rendered.
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const catalog = useCatalog();
-  // The team's dismissed and added suggestions. Changed here first, then saved in order.
-  const [edits, setEdits] = useState<SuggestionEdits>(emptyEdits);
-  const saving = useRef<Promise<unknown>>(Promise.resolve());
 
   // `quiet` refreshes in place after a mutation without blanking the body.
   const load = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
     else setLoading(true);
     try {
-      const [groupRes, editsRes] = await Promise.all([
-        fetch(`/api/upload-groups/${groupId}`, { cache: "no-store" }),
-        fetch(`/api/cases/${groupId}/suggestions`, { cache: "no-store" }),
-      ]);
-      if (editsRes.ok) setEdits(editsOf(await editsRes.json()));
+      const groupRes = await fetch(`/api/upload-groups/${groupId}`, { cache: "no-store" });
       const groupData = await groupRes.json().catch(() => ({}));
       setGroup((groupData.group as UploadGroup | undefined) ?? null);
     } finally {
@@ -145,21 +134,6 @@ export function CaseDetailView({ groupId, variant = "page" }: { groupId: string;
     acc[f.name] = (acc[f.name] ?? 0) + 1;
     return acc;
   }, {});
-  const shownSources = visibleSuggestions(NO_SUGGESTIONS, edits, "sources");
-  const shownData = visibleSuggestions(NO_SUGGESTIONS, edits, "data");
-  const onSuggestion = (kind: SuggestionKind) => async (action: SuggestionAction, name: string) => {
-    setEdits((e) => applyAction(e, kind, action, name));
-    // One save at a time, in the order they were made, so a quick second edit can't race the first.
-    const save = saving.current.then(() => saveSuggestionEdit(groupId, kind, action, name));
-    saving.current = save.catch(() => undefined);
-    try {
-      setEdits(await save);
-    } catch (e) {
-      setMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
-      setEdits((x) => applyAction(x, kind, action === "dismiss" ? "restore" : action === "restore" ? "dismiss" : action === "add" ? "remove" : "add", name));
-    }
-  };
-
   // The generated summary is stale while the files are being (re)read.
   const summarizing = isProcessing || (!!busy && busy !== "archive");
 
@@ -220,39 +194,11 @@ export function CaseDetailView({ groupId, variant = "page" }: { groupId: string;
     </div>
   );
 
-  const suggestionsBody = (
-    <div className="grid gap-6 md:grid-cols-2">
-      <div className="flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-wide text-zinc-400">Sources to find</p>
-        <SuggestionList
-          kind="sources"
-          suggested={NO_SUGGESTIONS}
-          edits={edits}
-          onAction={onSuggestion("sources")}
-          options={catalog.sources}
-          empty="No sources suggested yet."
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-wide text-zinc-400">Data to gather</p>
-        <SuggestionList
-          kind="data"
-          suggested={NO_SUGGESTIONS}
-          edits={edits}
-          onAction={onSuggestion("data")}
-          options={catalog.data}
-          empty="No data suggested yet."
-        />
-      </div>
-    </div>
-  );
-
   const SECTIONS = {
     documents: { tone: "documents" as const, title: "Sources", Icon: Boxes, badge: String(files.length), body: documentsBody },
-    suggestions: { tone: "suggestions" as const, title: "Suggestions", Icon: ListChecks, badge: String(shownSources.length + shownData.length), body: suggestionsBody },
   };
 
-  const open = section ? SECTIONS[section] : null;
+  const open = section === "documents" ? SECTIONS.documents : null;
 
   return (
     <div className={rootClass}>
@@ -333,14 +279,6 @@ export function CaseDetailView({ groupId, variant = "page" }: { groupId: string;
                   {files.length} uploaded{isProcessing ? " (reading)" : ""}
                 </p>
                 {files.length > 0 ? <p className="truncate">{files.slice(0, 4).map((f) => f.name).join(", ")}</p> : <p className="text-zinc-500">No files yet</p>}
-              </SectionCard>
-
-              <SectionCard tone="suggestions" badge={SECTIONS.suggestions.badge} title="Suggestions" Icon={ListChecks} onOpen={() => setSection("suggestions")}>
-                {shownSources.length + shownData.length > 0 ? (
-                  <p className="line-clamp-2">{[...shownSources, ...shownData].join(", ")}</p>
-                ) : (
-                  <p className="text-zinc-500">Sources and data to gather for this document</p>
-                )}
               </SectionCard>
             </div>
           )}

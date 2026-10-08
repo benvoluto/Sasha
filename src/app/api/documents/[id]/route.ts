@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDocFolder } from "@/lib/documents/folder-store";
 import { DocFolderIdField } from "@/lib/documents/folders-contract";
+import { MAX_DOCUMENT_NOTES } from "@/lib/documents/notes-contract";
 import { deleteDocument, getDocument, updateDocument, type DocumentPatch } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
@@ -23,7 +24,9 @@ const PatchBody = z.object({
   title: z.string().max(300).optional(),
   type_key: z.string().max(100).nullable().optional(),
   content_json: z.object({ type: z.literal("doc") }).passthrough().optional(),
-  notes: z.string().max(200_000).optional(),
+  notes: z.string().max(MAX_DOCUMENT_NOTES).optional(),
+  /** With type_key: who chose it. "classifier" when applied from the classifier chip; defaults to "user". */
+  type_source: z.enum(["user", "classifier"]).optional(),
   archived: z.boolean().optional(),
   /** Move to a document folder of the team, or null for the top level. Not an edit (updated_at stays). */
   doc_folder_id: DocFolderIdField.optional(),

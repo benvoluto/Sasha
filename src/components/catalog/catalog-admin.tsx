@@ -29,7 +29,7 @@ import { TypeDetail } from "./type-detail";
 import { NewTypeEditor, TypeEditor } from "./type-editor";
 
 const quiet = "inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] disabled:opacity-40";
-const primary = "inline-flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40";
+const primary = "inline-flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-40";
 
 type Panel = { kind: "view"; key: string } | { kind: "new" } | null;
 type Confirm = { kind: "revert" | "delete"; key: string; title: string } | null;

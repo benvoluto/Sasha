@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { blobAccess } from "@/lib/blob-access";
 import { requireTeam } from "@/lib/documents/team";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { sourceBlobPath } from "@/lib/sources/blob-paths";
@@ -23,9 +24,10 @@ const Body = z.object({
 /**
  * POST /api/upload/presign — step one of an upload. Creates a source row per
  * file (status "uploading") and returns where each file goes. The client then
- * calls `upload(fields.blobPath, file, { access: "public", handleUploadUrl:
+ * calls `upload(fields.blobPath, file, { access: fields.access, handleUploadUrl:
  * "/api/upload/direct", clientPayload: JSON.stringify({ sourceId }), contentType:
- * fields.contentType })` and finishes with /api/upload/complete.
+ * fields.contentType })` and finishes with /api/upload/complete. `access` is the
+ * store's (blob-access.ts): a private store refuses a public upload.
  */
 export async function POST(req: Request) {
   const caller = await requireTeam(PERMISSIONS.sourceWrite);
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
       sourceId,
       fileName: f.name,
       uploadUrl: "/api/upload/direct",
-      fields: { sourceId, blobPath, contentType: f.mime, fileName: f.name, fileSize: String(f.size) },
+      fields: { sourceId, blobPath, access: blobAccess(), contentType: f.mime, fileName: f.name, fileSize: String(f.size) },
     });
   }
   return NextResponse.json({ uploads, folder_id: target.folderId });

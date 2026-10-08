@@ -315,6 +315,29 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+/**
+ * Page furniture Readability keeps because it sits inside the article: wiki
+ * "[edit]" links, footnote markers ("[12]"), reference lists and navigation
+ * boxes. A Wikipedia article read without this removal was a third reference
+ * list, which crowded passages and made the summary call the text garbled.
+ */
+const NOISE_SELECTOR = [
+  ".mw-editsection",
+  "sup.reference",
+  "sup.noprint",
+  ".mw-references-wrap",
+  "ol.references",
+  ".reflist",
+  ".refbegin",
+  ".navbox",
+  ".navbox-styles",
+  ".mw-cite-backlink",
+].join(", ");
+
+function removeNoise(document: { querySelectorAll(sel: string): Iterable<{ remove(): void }> }): void {
+  for (const el of document.querySelectorAll(NOISE_SELECTOR)) el.remove();
+}
+
 /** The readable article of a page: its title and text, without navigation, scripts or boilerplate. */
 export function extractReadable(html: string, url: string): { title: string | null; text: string } {
   const { document } = parseHTML(html);
@@ -324,6 +347,7 @@ export function extractReadable(html: string, url: string): { title: string | nu
   try {
     // Readability mutates the document it reads; give it its own copy.
     const { document: copy } = parseHTML(html);
+    removeNoise(copy);
     article = new Readability(copy as unknown as Document, { charThreshold: 200 }).parse();
   } catch (error) {
     console.warn(`[UrlExtract] Readability failed for ${url}:`, error);
@@ -331,6 +355,7 @@ export function extractReadable(html: string, url: string): { title: string | nu
   const fromArticle = article?.content ? htmlToText(article.content) : "";
   if (fromArticle) return { title: article?.title?.trim() || fallbackTitle, text: fromArticle };
   // No article found: fall back to the main content area with the chrome removed.
+  removeNoise(document);
   for (const el of document.querySelectorAll("script, style, noscript, template, nav, header, footer, aside, form, iframe, svg")) el.remove();
   const main = document.querySelector("article") ?? document.querySelector("main") ?? document.body;
   return { title: fallbackTitle, text: main ? htmlToText(main.innerHTML) : "" };

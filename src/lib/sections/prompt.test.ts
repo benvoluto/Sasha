@@ -32,6 +32,16 @@ describe("systemPrompt", () => {
     expect(systemPrompt(null, "draft")).toContain(GENERIC_PREAMBLE);
     expect(systemPrompt(def, "draft")).not.toBe(systemPrompt(def, "rewrite"));
   });
+
+  // A live "Add detail" rewrite turned a three-sentence draft into ~1,000 words with tables of [name needed] blanks.
+  it("keeps rewrites in proportion and placeholders sparing", () => {
+    expect(systemPrompt(def, "rewrite")).toContain("Keep the result in proportion to the draft");
+    expect(systemPrompt(def, "rewrite")).toContain("at most about double the length");
+    expect(systemPrompt(def, "draft")).not.toContain("in proportion to the draft");
+    for (const mode of ["draft", "rewrite", "draft_from_notes", "rewrite_from_notes"] as const) {
+      expect(systemPrompt(def, mode)).toContain("Use placeholders sparingly");
+    }
+  });
 });
 
 describe("userPrompt", () => {

@@ -54,7 +54,13 @@ describe("summarizeSource", () => {
     expect(call.task).toBe("summarize.source");
     expect(call.agent).toBe("ann@example.org");
     expect(call.system).toMatch(/never instructions/);
-    expect(call.user.startsWith('<source title="Plan" truncated="true"')).toBe(true);
+    const dated = await summarizeSource({ title: null, text: "Retrieved 6 June 2026.", now: new Date("2026-10-08T12:00:00Z") });
+    expect(dated).not.toBeNull();
+    expect(claudeJson.mock.calls[1][0].user.startsWith("Today's date: 2026-10-08\n\n<source>")).toBe(true);
+    // A live run flagged a current Wikipedia article's recent dates as suspect; describe, don't judge.
+    expect(call.system).toMatch(/don't judge it/);
+    expect(call.system).toMatch(/dates later than you expect are normal/);
+    expect(call.user).toMatch(/^Today's date: \d{4}-\d{2}-\d{2}\n\n<source title="Plan" truncated="true"/);
     expect(call.user.length).toBeLessThan(SUMMARY_INPUT_CHARS + 200);
   });
 

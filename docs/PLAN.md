@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phases 0–3 are built. See §12 for progress notes.
+Status (October 2026): Phases 0–4 and the editor layout are built. See §12 for progress notes.
 
 ---
 
@@ -603,9 +603,8 @@ switcher (the legacy `/archived` page is gone); workflow model calls are audited
 - UI: a Sources panel in the editor (upload, paste link, note, pick from library), the `/library` page
   (folder tree, search, kind filter, detail drawer, link to documents), and a tracker that follows
   sources while they are read.
-- Blob stays public (`@vercel/blob` 1.x); files are served only through the team-checked `/file` route
-  and paths cannot be guessed. Moving to a private store is a later option (2.x makes privacy a
-  property of the store, which needs a new store and a move of the legacy blobs).
+- Files are served only through the team-checked `/file` route and paths cannot be guessed. (Phase 4
+  moved to `@vercel/blob` 2.x and private access; see below.)
 
 **Phase 3 (done).**
 - Catalog: zod `DocumentTypeDefinition` (`src/catalog/schema.ts`), universal rubric, 12 file types in
@@ -630,10 +629,53 @@ switcher (the legacy `/archived` page is gone); workflow model calls are audited
 - No real model call was exercised in the smoke test (no API key locally); the routes return 503 when
   Claude is not configured.
 
+**Editor layout (done, between Phases 3 and 4).** Built from the user's two mockups: a narrow left
+rail (documents, library, document types, account, the Sasha mascot); a docs panel that slides in from
+the left with the open document marked Active and outlined, Select for bulk archive/delete/move, and
+new **document folders** (`document_folder`, `document.doc_folder_id`, `/api/document-folders`,
+`/api/documents/bulk`), separate from Phase 2 source folders; floating Outline, Tools and Sources
+buttons at the bottom right, with Outline and Tools stacked in the editor's right column. Cabin for
+the interface, Hanken Grotesk for the document.
+
+**Phase 4 (done).**
+- Live checks against the real services (Blob, Gemini, Haiku, Opus). The project's Blob store is
+  private, so `@vercel/blob` moved to 2.x and every write goes through `src/lib/blob-access.ts`
+  (private by default; `BLOB_ACCESS=public` for a public store). Fixes from those runs: wiki noise
+  stripped from URL sources, summaries describe rather than judge and know today's date, rewrites stay
+  in proportion with few placeholders, and the console audit line shows model and tokens.
+- Dev bypass no longer opens Clerk's "Organizations feature required" popup (`dev-auth-context.tsx`).
+- **Document modal** (`document-modal.tsx`) replaces the Sources modal, with Notes, Sources and
+  Suggestions tabs. The Sources button opens it on Sources; a Notes control beside the title opens it
+  on Notes. Document notes autosave with the document (same conflict check, capped length) and support
+  dictation through a shared `DictationField`.
+- **Classifier** (`src/lib/classifier/`, `/api/documents/[id]/classify` + `/dismiss`): Haiku with the
+  team's catalog as a cached system prompt; runs after 150+ words and a pause, or after enough drift
+  on a typed document; a 2-minute server gate; a chip "Looks like a **Type**: apply outline?" with
+  Apply / Not now / other suggestions. Three dismissals of a type stop it being offered. Apply merges
+  the outline in without changing prose (tags matching headings, inserts missing sections, one undo).
+  Classifier writes never touch `updated_at`, so they cannot cause save conflicts. Team-written type
+  text is escaped and treated as data in the prompt.
+- **Suggestions** (`src/lib/suggestions/`, `/api/documents/[id]/suggestions/**`): the type's sources
+  and data needs, plus notes-driven items from Haiku, judged against linked sources (covered, partial,
+  missing). Items can be added (optionally linked to a source), dismissed and restored; dismissed items
+  stay dismissed across runs, and the model sees its earlier items so labels stay stable. Regenerates
+  in the background 15 s after the type, notes or linked sources change, and when the tab opens stale;
+  a failed run is retried. The legacy case-suggestions code is removed.
+- Recorded model replies (`__fixtures__/*.recorded.json`) back offline contract tests; re-record with
+  `SASHA_LIVE_TESTS=1 SASHA_RECORD_FIXTURES=1`.
+- Smoke-tested in Chrome with real Haiku: the chip appeared after typing a business plan, Apply added
+  9 headings with prose byte-identical, and the Suggestions tab listed items from the type and notes.
+
 **Known debt carried forward.**
+- Deployments with a public Blob store must set `BLOB_ACCESS=public`.
+- The PATCH document route treats an invalid JSON body as an empty patch (returns 200 and bumps
+  `updated_at`).
+- Suggestions only learn of source changes while the Sources tab is open; near-duplicate catalog
+  labels are not merged; some business-plan item labels are lowercase.
+- A failed linked-PDF source says "Try uploading the file again".
 - The workflow engine, report service, assistant and canvas still read legacy upload groups
-  (`fetchGroupMetadata`). These routes are not team-scoped. Phase 3 (report service), Phase 4
-  (assistant, suggestions) and Phase 6 (engine) move them to sources; then delete `upload-groups`,
+  (`fetchGroupMetadata`). These routes are not team-scoped. The assistant and Phase 6 (engine)
+  still need moving to sources; then delete `upload-groups`,
   `cases`, `@modal/(.)cases` and the case components.
 - Workflows, runs and `app_setting` have no `team_id` (Phase 6).
 - Section status `edited`/`reviewed` is never set; the outline-status cache and rate gate are per

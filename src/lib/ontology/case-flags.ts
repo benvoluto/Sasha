@@ -7,6 +7,7 @@
 
 import { list, put } from "@vercel/blob";
 import { fetchGroupMetadata } from "./group-metadata";
+import { blobAccess } from "@/lib/blob-access";
 
 export type ArchiveRecord = { at: string; by?: string };
 
@@ -38,7 +39,7 @@ async function patchMetadata(groupId: string, patch: Record<string, unknown>): P
   const { blobs } = await list({ prefix: `upload-groups/${groupId}/` });
   const found = blobs.find((b) => b.pathname.endsWith("/metadata.json"));
   const pathname = found?.pathname ?? `upload-groups/${groupId}/metadata.json`;
-  await put(pathname, JSON.stringify(merged), { access: "public", contentType: "application/json", allowOverwrite: true });
+  await put(pathname, JSON.stringify(merged), { access: blobAccess(), contentType: "application/json", allowOverwrite: true });
   return true;
 }
 

@@ -1,0 +1,33 @@
+{
+  "coverage": [
+    { "item": 1, "status": "covered", "source_id": "11111111-1111-4111-8111-111111111111" },
+    { "item": 2, "status": "missing", "source_id": null },
+    { "item": 3, "status": "missing", "source_id": null },
+    { "item": 4, "status": "covered", "source_id": "99999999-9999-4999-8999-999999999999" },
+    { "item": 5, "status": "missing", "source_id": null },
+    { "item": 6, "status": "missing", "source_id": null },
+    { "item": 7, "status": "covered", "source_id": "11111111-1111-4111-8111-111111111111" },
+    { "item": 8, "status": "partial", "source_id": "22222222-2222-4222-8222-222222222222" },
+    { "item": 42, "status": "covered", "source_id": "11111111-1111-4111-8111-111111111111" }
+  ],
+  "proposals": [
+    {
+      "kind": "data",
+      "label": "Last year's audited financials",
+      "reason": "The notes say the foundation asks for audited accounts with every application.",
+      "spec_ref": "budget"
+    },
+    {
+      "kind": "source",
+      "label": "Letter of support from the county council",
+      "reason": "The notes mention the council's backing for the river bank work.",
+      "spec_ref": "partnerships"
+    },
+    {
+      "kind": "data",
+      "label": "Cost figures.",
+      "reason": "The notes ask for a costed plan.",
+      "spec_ref": "budget"
+    }
+  ]
+}

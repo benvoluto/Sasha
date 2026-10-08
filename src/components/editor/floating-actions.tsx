@@ -1,10 +1,11 @@
 "use client";
 
 // The floating buttons at the bottom right of the editing screen: Outline and
-// Tools toggle the panels in the right column, Sources opens the sources
-// dialog. Below sm they shrink to icon-only squares. While mounted the bar
-// publishes its height as --fab-clearance on <html>, so the notices and the
-// processing tracker (also bottom-anchored) sit above it instead of under it.
+// Tools toggle the panels in the right column, Sources opens the document
+// modal on its Sources tab. Below sm they shrink to icon-only squares. While
+// mounted the bar publishes its height as --fab-clearance on <html>, so the
+// notices and the processing tracker (also bottom-anchored) sit above it
+// instead of under it.
 
 import { forwardRef, useEffect, type ComponentType, type Ref } from "react";
 import { OutlineTreeIcon, SourcesBookIcon, SparkleIcon } from "@/components/icons";

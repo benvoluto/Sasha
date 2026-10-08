@@ -11,7 +11,7 @@ import { parseDefinition, type DocumentTypeDefinition, type DocumentTypeInput } 
 import { cleanDefinition } from "./catalog-api";
 
 const field = "w-full rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)]";
-const primary = "inline-flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40";
+const primary = "inline-flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-40";
 const quiet = "rounded-md px-2 py-1.5 text-sm text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)]";
 const labelCls = "block text-xs font-medium text-[var(--doc-muted)]";
 

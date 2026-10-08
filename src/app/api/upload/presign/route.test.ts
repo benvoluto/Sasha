@@ -33,6 +33,20 @@ describe("POST /api/upload/presign", () => {
     expect(uploads[1].fields.contentType).toBe("text/markdown");
   });
 
+  // The live store is private and refused the client's hard-coded public upload; the client now uploads with this.
+  it("tells the client the store's access level", async () => {
+    const before = process.env.BLOB_ACCESS;
+    try {
+      delete process.env.BLOB_ACCESS;
+      expect((await (await presign({ files: [file()] })).json()).uploads[0].fields.access).toBe("private");
+      process.env.BLOB_ACCESS = "public";
+      expect((await (await presign({ files: [file()] })).json()).uploads[0].fields.access).toBe("public");
+    } finally {
+      if (before === undefined) delete process.env.BLOB_ACCESS;
+      else process.env.BLOB_ACCESS = before;
+    }
+  });
+
   it("files into a document's folder and links the sources to it", async () => {
     const doc = await createDocument("org:a", "ann");
     const { uploads, folder_id } = await (await presign({ files: [file()], document_id: doc.id })).json();

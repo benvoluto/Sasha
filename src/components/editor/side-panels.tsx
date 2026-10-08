@@ -150,7 +150,7 @@ export function ToolsPanel({
             <button
               type="submit"
               disabled={!selection || !instruction.trim() || !!busy}
-              className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-40"
             >
               {busy === "Custom" && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Rewrite
             </button>

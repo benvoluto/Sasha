@@ -11,6 +11,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { ProcessingTracker } from "@/components/processing-tracker";
 import { AppShell } from "@/components/shell/app-shell";
+import { devAuthBypass } from "@/lib/dev-auth";
 
 export const metadata: Metadata = {
   title: "Sasha",
@@ -31,7 +32,8 @@ export default function RootLayout({
           className={`antialiased`}
           suppressHydrationWarning
         >
-          <Providers>
+          {/* Always false in production builds (devAuthBypass checks NODE_ENV). */}
+          <Providers devAuthBypass={devAuthBypass()}>
             {/* The rail and documents panel on the writing pages (a no-op elsewhere). */}
             <AppShell>{children}</AppShell>
             {modal}

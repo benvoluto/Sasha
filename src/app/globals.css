@@ -410,6 +410,7 @@
   --doc-accent: #1f5fbf;
   --doc-accent-line: #9db6dc;
   --doc-accent-soft: #e8eff9;
+  --doc-on-accent: #ffffff;
   --doc-filled: #2457c5;
   --doc-highlight: #fff1a8;
 }
@@ -423,6 +424,7 @@
   --doc-accent: #7eaaf2;
   --doc-accent-line: #3d5a86;
   --doc-accent-soft: #1b2738;
+  --doc-on-accent: #151c25;
   --doc-filled: #8fb6ff;
   --doc-highlight: #5b4a10;
 }

@@ -7,6 +7,7 @@ import { fetchGroupMetadata } from "@/lib/ontology/group-metadata";
 import { withTimeout, friendlyProcessingError, writeProcessingError } from "@/lib/processing-status";
 import { getUserIdentifier } from "@/lib/auth";
 import type { GroupMetadata } from "@/lib/sources/split";
+import { blobAccess } from "@/lib/blob-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (ext !== "pdf" && ext !== "docx") continue;
     const buffer = Buffer.from(await file.arrayBuffer());
     const blob = await put(`upload-groups/${groupId}/files/add-${stamp}-${i}-${file.name}`, buffer, {
-      access: "public",
+      access: blobAccess(),
       contentType: file.type || (ext === "pdf" ? "application/pdf" : "application/octet-stream"),
       allowOverwrite: true,
     });
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     geminiProcessing: { ...(existing.geminiProcessing ?? {}), status: "processing" as const },
   };
   const metadataPath = `upload-groups/${groupId}/metadata.json`;
-  await put(metadataPath, JSON.stringify(baseMetadata), { access: "public", contentType: "application/json", allowOverwrite: true });
+  await put(metadataPath, JSON.stringify(baseMetadata), { access: blobAccess(), contentType: "application/json", allowOverwrite: true });
 
   // Re-extract the new files and fold them into the group's text.
   after(async () => {
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           fileCount: files.length,
         },
       };
-      await put(metadataPath, JSON.stringify(updated), { access: "public", contentType: "application/json", allowOverwrite: true });
+      await put(metadataPath, JSON.stringify(updated), { access: blobAccess(), contentType: "application/json", allowOverwrite: true });
     } catch (error) {
       console.error(`[AddDocuments] processing failed for ${groupId}:`, error);
       await writeProcessingError(groupId, baseMetadata, friendlyProcessingError(error));
@@ -137,7 +138,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     files: remaining,
     geminiProcessing: { ...(existing.geminiProcessing ?? {}), status: "processing" as const },
   };
-  await put(metadataPath, JSON.stringify(baseMetadata), { access: "public", contentType: "application/json", allowOverwrite: true });
+  await put(metadataPath, JSON.stringify(baseMetadata), { access: blobAccess(), contentType: "application/json", allowOverwrite: true });
 
   // Best-effort: the group record is the source of truth, so a failed blob delete
   // must not fail the request.
@@ -153,7 +154,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         await put(
           metadataPath,
           JSON.stringify({ ...baseMetadata, geminiProcessing: { status: "completed" as const, extractedContent: "", processedAt: new Date().toISOString(), fileCount: 0 } }),
-          { access: "public", contentType: "application/json", allowOverwrite: true },
+          { access: blobAccess(), contentType: "application/json", allowOverwrite: true },
         );
         return;
       }
@@ -172,7 +173,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
           fileCount: remaining.length,
         },
       };
-      await put(metadataPath, JSON.stringify(updated), { access: "public", contentType: "application/json", allowOverwrite: true });
+      await put(metadataPath, JSON.stringify(updated), { access: blobAccess(), contentType: "application/json", allowOverwrite: true });
     } catch (error) {
       console.error(`[DeleteDocument] reprocessing failed for ${groupId}:`, error);
       await writeProcessingError(groupId, baseMetadata, friendlyProcessingError(error));
