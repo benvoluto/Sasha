@@ -97,7 +97,7 @@ describe("catalog-a workflows", () => {
     const w = workflowOf(workflow);
     expect(w.kind).toBe("type");
     expect(w.appliesTo).toEqual([key]);
-    expect(w.provenance).toEqual({ source: "docs/workflows-by-document-type.md", checked: "2026-10-08" });
+    expect(w.provenance).toEqual({ source: "docs/workflows-by-document-type.md", checked: key === "resume-cv" ? "2026-10-09" : "2026-10-08" });
     // And the bundle (npm run catalog:build) offers it to documents of the type.
     expect(workflowsForType(key).filter((x) => x.kind === "type").map((x) => x.key)).toEqual([workflow]);
   });

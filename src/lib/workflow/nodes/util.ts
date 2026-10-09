@@ -67,6 +67,60 @@ export function fromOutcomeTable(t: OutcomeTable): TableView {
   return { id: `step:${t.key}`, name: t.title, sourceId: "", sourceTitle: "An earlier step of this run", columns: t.columns.map((c) => ({ key: c.key, label: c.label, type: "text", unit: null })), rowCount: rows.length, rows };
 }
 
+/** Which sources narrowSources keeps: by keyword, less any whose id is in `excludeIds` (the source a gate bound as the posting). */
+export type NarrowOpts = { match: string[]; exclude: string[]; excludeIds?: ReadonlySet<string> };
+
+/**
+ * Pure: the sources whose `title role` names a `match` keyword (every source when `match` is
+ * empty), less any that name an `exclude` keyword or whose id is in `excludeIds`, with only their
+ * passages. Keywords match at word starts (containsKeyword, as the gate binds inputs), so an
+ * exclude phrase such as "job posting" never drops a master titled "Work history (all jobs)".
+ * Exclusion wins over a match: a posting titled "Resume writer: job description" must never
+ * become master evidence. The resume steps use it to keep the master history and leave the job
+ * posting out. Null stays null.
+ */
+export function narrowSources(s: SourcesSnapshot | null, opts: NarrowOpts): SourcesSnapshot | null {
+  if (!s) return null;
+  const label = (x: SourceView) => `${x.title} ${x.role ?? ""}`;
+  const sources = s.sources.filter(
+    (x) => !opts.excludeIds?.has(x.id) && (!opts.match.length || opts.match.some((k) => containsKeyword(label(x), k))) && !opts.exclude.some((k) => containsKeyword(label(x), k)),
+  );
+  const kept = new Set(sources.map((x) => x.id));
+  return { sources, passages: s.passages.filter((p) => kept.has(p.sourceId)) };
+}
+
+/** Pure: why narrowSources left nothing although sources are linked ("" when it kept some, or none were linked). */
+export function narrowedAway(s: SourcesSnapshot | null, opts: NarrowOpts): string {
+  if (!s?.sources.length || narrowSources(s, opts)!.sources.length) return "";
+  const titles = s.sources.map((x) => `“${clip(x.title, 80)}”`).join(", ");
+  const want = opts.match.length ? `; this step reads only sources whose title or role names ${opts.match.join(", ")}` : "";
+  const skip = opts.exclude.length ? `${want ? " and" : ";"} it leaves out those naming ${opts.exclude.join(", ")}` : "";
+  const bound = opts.excludeIds?.size ? `${want || skip ? " and" : ";"} it leaves out the source the gate found as the job posting` : "";
+  return `None of the linked sources (${titles}) is one this step checks against${want}${skip}${bound}.`;
+}
+
+/**
+ * Pure: the ids of the sources a gate report (step.gate's `report`) bound under one of `keys`
+ * (the resume's "job"), so a step can leave the posting out of master evidence whatever it is
+ * titled ("Acme careers: Resume Specialist" names "resume"). A source the gate also bound under
+ * another input is kept when that input has no source of its own: a master titled "Jane Doe CV -
+ * careers 2015-2025" is bound as both, and is then the only master there is. Empty without keys
+ * or a report.
+ */
+export function gateBoundSources(report: unknown, keys: string[]): Set<string> {
+  const items = keys.length ? flat<{ items?: unknown }>(report).flatMap((r) => (isObj(r) && Array.isArray(r.items) ? r.items : [])) : [];
+  const ids = (it: unknown) =>
+    new Set(isObj(it) && Array.isArray(it.evidence) ? it.evidence.flatMap((e) => (isObj(e) && e.kind === "source" && typeof e.ref === "string" ? [e.ref] : [])) : []);
+  const keyOf = (it: unknown) => (isObj(it) && typeof it.key === "string" ? it.key : "");
+  const out = new Set(items.filter((it) => keys.includes(keyOf(it))).flatMap((it) => [...ids(it)]));
+  for (const it of items) {
+    if (keys.includes(keyOf(it))) continue;
+    const own = ids(it);
+    if (own.size && [...own].every((id) => out.has(id))) for (const id of own) out.delete(id);
+  }
+  return out;
+}
+
 export function asNotes(v: unknown): NotesView | null {
   const n = flat(v)[0];
   return isObj(n) && typeof n.scratchpad === "string" ? (n as NotesView) : null;

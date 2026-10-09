@@ -127,6 +127,9 @@ export const TASK_FIXTURES: Record<string, unknown> = {
     personalDetails: [],
   },
   "rubric.check": { scores: [] },
+  // No lines, the same as the schema's minimal value: tailor proposes nothing, so the
+  // resume run's doc.write does not wait for an apply and an e2e run never stalls on a change.
+  "workflow.tailor": { lines: [] },
   "draft.section": "This section was drafted by the end-to-end test stub. It is plain prose with no citations, so the editor can insert it as is.",
 };
 

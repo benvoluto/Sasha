@@ -14,7 +14,10 @@
 // missing inputs, scores, computed results, requirement sets with "Verify
 // before relying"), findings by severity with the passages they rest on,
 // disagreements side by side with no averaging, the outcome's tables, and the
-// changes the run proposes, which the editor applies as one undo step.
+// changes the run proposes, which the editor applies as one undo step. A
+// change of resume lines (the Tailor step) is chosen line by line
+// (line-change-card.tsx); while the run waits on it, applying lets the run go
+// on to score the resume as the author left it.
 //
 // Pure logic lives in workflows-pane-model.ts.
 
@@ -22,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, CircleDashedIcon, CircleMinus, ExternalLink, Loader2, Play, RefreshCw, XCircle } from "@/components/icons";
 import { api, errorText } from "@/components/sources/shared";
 import { CheckpointPanel, DroppedWarning, type CheckpointSubmit } from "@/components/workflow/checkpoint-panel";
+import { LineChangeCard } from "@/components/workflow/line-change-card";
 import {
   OUTCOME_BLOCKED,
   outcomeLabel,
@@ -53,13 +57,19 @@ import {
   findingsRespondable,
   formatWhen,
   groupAvailable,
+  lineChange,
+  lineDiscard,
+  lineRecord,
+  lineResultSummary,
   missingInputs,
   needsForm,
   pendingChanges,
   pollDelay,
+  requirementLabel,
   runPlan,
   runStatusText,
   scoreText,
+  selectedOps,
   shouldAutoContinue,
   signatureState,
   signatureText,
@@ -70,7 +80,9 @@ import {
   stepsDoneText,
   waitingCheckpoints,
   webHref,
+  type AppliedLines,
   type CheckpointDraft,
+  type LineRecordPlan,
   type StartForm,
   type StatusTone,
   type StepItemRow,
@@ -108,6 +120,8 @@ export type WorkflowsPaneProps = {
   onApplyChange?: (change: ProposedChange) => Promise<AppliedChange>;
   /** A change was applied and recorded: back to the document. */
   onChangeApplied?: () => void;
+  /** Saves now and resolves to whether the stored document holds every edit (retrying a line change whose save didn't land). */
+  onSaveDocument?: () => Promise<boolean>;
   /** A finding's location: scroll the editor to the section. */
   onJumpToSection?: (sectionId: string) => void;
   /** "Open in Sources" (with the source to focus) and the missing inputs' "Go to Sources". */
@@ -121,6 +135,13 @@ export type WorkflowsPaneProps = {
   onViewChange?: (view: WorkflowsView) => void;
   checkpointDrafts?: Record<string, CheckpointDraft>;
   onCheckpointDraft?: (key: string, draft: CheckpointDraft | null) => void;
+  /**
+   * Line changes applied in the editor whose result isn't recorded yet (by run
+   * and change, draftKey): kept by the parent too, so coming back after a failed
+   * record offers "Record result" again rather than applying the lines twice.
+   */
+  appliedLines?: Record<string, AppliedLines>;
+  onAppliedLines?: (key: string, entry: AppliedLines | null) => void;
 };
 
 export type WorkflowsView = { kind: "list" } | { kind: "run"; runId: string; readOnly: boolean };
@@ -454,10 +475,13 @@ function RunView({
   onBack,
   onApplyChange,
   onChangeApplied,
+  onSaveDocument,
   onJumpToSection,
   onOpenSources,
   checkpointDrafts,
   onCheckpointDraft,
+  appliedLines: parentApplied,
+  onAppliedLines,
 }: WorkflowsPaneProps & { runId: string; readOnly: boolean; onBack: () => void }) {
   const [run, setRun] = useState<WorkflowRunView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -466,7 +490,29 @@ function RunView({
   const [continuing, setContinuing] = useState(false);
   // After a 429 on an automatic continue: no automatic continue before this time (epoch ms).
   const [autoHoldUntil, setAutoHoldUntil] = useState(0);
+  // After a change was recorded and the pane stays open: "Applied 4 lines; scoring the tailored resume…" while the waiting
+  // run goes on (ongoing), or a final word ("Kept none of the lines…"). A new object each time, so focus moves here again
+  // even when the text repeats.
+  const [lineStatus, setLineStatus] = useState<{ text: string; ongoing: boolean } | null>(null);
+  // Recording the change unmounts its card (and the button that had focus): focus moves here instead of falling to <body>.
+  const lineStatusRef = useRef<HTMLParagraphElement>(null);
+  // Line changes applied in the editor whose result isn't recorded yet, by draftKey(run, change): a retry records them,
+  // never applies them again. Held by the parent when it passes them (this view unmounts with its tab).
+  const [ownApplied, setOwnApplied] = useState<Record<string, AppliedLines>>({});
+  const appliedLines = onAppliedLines ? (parentApplied ?? {}) : ownApplied;
+  const setApplied = (key: string, entry: AppliedLines | null) => {
+    if (onAppliedLines) return onAppliedLines(key, entry);
+    setOwnApplied((prev) => {
+      const { [key]: _gone, ...rest } = prev;
+      void _gone;
+      return entry ? { ...rest, [key]: entry } : rest;
+    });
+  };
   const { types } = useDocumentTypes();
+
+  useEffect(() => {
+    if (lineStatus) lineStatusRef.current?.focus();
+  }, [lineStatus]);
 
   const fetchRun = useCallback(async () => {
     try {
@@ -685,27 +731,90 @@ function RunView({
         <CheckpointPanel key={id} run={run} nodeId={id} canDecide={false} sections={targetSections} onSubmit={async () => null} />
       ))}
 
-      {changes.map((c) => (
-        <ChangeCard
-          key={c.id}
-          change={c}
-          headingFor={headingFor}
-          canApply={interactive && !!onApplyChange}
-          onApply={async () => {
-            if (!onApplyChange) return "Open the document to apply this change.";
-            const out = await onApplyChange(c);
-            if (out.result === null) return out.detail;
-            const err = await post<ChangeResultRequest>("changes", { changeId: c.id, result: out.result, detail: out.detail.slice(0, 1000) }, "The change was made, but couldn't be recorded.");
-            if (err) return err;
-            if (out.result === "applied") onChangeApplied?.();
-            return null;
-          }}
-          onDiscard={() => post<ChangeResultRequest>("changes", { changeId: c.id, result: "discarded" }, "Couldn't discard the change.")}
-        />
-      ))}
+      {changes.map((c) => {
+        const lines = lineChange(c);
+        if (!lines) {
+          return (
+            <ChangeCard
+              key={c.id}
+              change={c}
+              headingFor={headingFor}
+              canApply={interactive && !!onApplyChange}
+              onApply={async () => {
+                if (!onApplyChange) return "Open the document to apply this change.";
+                const out = await onApplyChange(c);
+                if (out.result === null) return out.detail;
+                const err = await post<ChangeResultRequest>("changes", { changeId: c.id, result: out.result, detail: out.detail.slice(0, 1000) }, "The change was made, but couldn't be recorded.");
+                if (err) return err;
+                if (out.result === "applied") onChangeApplied?.();
+                // Not applied (skipped): the pane stays open and the card unmounts, so say why where focus goes.
+                else setLineStatus({ text: out.detail || "The change was recorded as skipped.", ongoing: false });
+                return null;
+              }}
+              onDiscard={async () => {
+                const err = await post<ChangeResultRequest>("changes", { changeId: c.id, result: "discarded" }, "Couldn't discard the change.");
+                // The card (and its focused button) unmounts: focus moves to the status line.
+                if (!err) setLineStatus({ text: "Discarded the change.", ongoing: false });
+                return err;
+              }}
+            />
+          );
+        }
+        // The run waits on this change (doc.write's waitForResult): recording it resumes the run, so the modal stays open.
+        const waitingWrite = run.steps[c.id]?.status === "waiting";
+        const pendingRecord = appliedLines[draftKey(run.id, c.id)] ?? null;
+        const remember = (entry: AppliedLines | null) => setApplied(draftKey(run.id, c.id), entry);
+        const record = async (plan: LineRecordPlan, fallback: string) => {
+          if (!plan.post) return plan.error;
+          const err = await post<ChangeResultRequest>("changes", plan.post, fallback);
+          if (err) return err;
+          remember(null);
+          if (plan.status) setLineStatus({ text: plan.status, ongoing: plan.ongoing });
+          if (plan.close) onChangeApplied?.();
+          return null;
+        };
+        return (
+          <LineChangeCard
+            key={c.id}
+            change={c}
+            lines={lines}
+            waiting={waitingWrite}
+            canApply={interactive && !!onApplyChange}
+            applied={pendingRecord?.selected ?? null}
+            requirementLabel={(key) => requirementLabel(run, key)}
+            onApply={async (selected) => {
+              if (!onApplyChange) return "Open the document to apply this change.";
+              let entry = pendingRecord;
+              if (entry?.out.unsaved && onSaveDocument && (await onSaveDocument())) {
+                entry = { ...entry, out: { ...entry.out, unsaved: false } };
+                remember(entry);
+              }
+              if (!entry && selected.size) {
+                const out = await onApplyChange({ ...c, ops: selectedOps(c, selected) });
+                if (out.result === null) return out.detail;
+                // Applied (whatever happens to the POST): kept so a retry records it instead of applying the lines again.
+                entry = { selected, out };
+                remember(entry);
+              }
+              return record(lineRecord(c, entry?.selected ?? selected, entry?.out ?? null, waitingWrite), "The lines were changed, but couldn't be recorded. Try again to record them.");
+            }}
+            onDiscard={() => record(lineDiscard(c, waitingWrite), "Couldn't record that.")}
+          />
+        );
+      })}
+      {/* Always in the DOM (empty until a change is recorded with the pane open) so its text is announced when it appears. */}
+      <p ref={lineStatusRef} role="status" tabIndex={-1} className="flex items-center gap-2 text-sm text-[var(--doc-muted)] outline-none empty:my-0">
+        {/* An ongoing status also shows while paused or awaiting review (a budget pause, or a claim race): focus has already moved here, so it mustn't be blank. */}
+        {lineStatus && (!lineStatus.ongoing || run.status === "running" || run.status === "paused" || run.status === "awaiting_review") && (
+          <>
+            {lineStatus.ongoing && run.status === "running" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {lineStatus.text}
+          </>
+        )}
+      </p>
       {Object.entries(run.changes ?? {}).map(([id, r]) => (
         <p key={id} className="text-xs text-[var(--doc-muted)]">
           {run.proposed.find((p) => p.id === id)?.title ?? "Change"}: {r.result === "applied" ? "applied" : r.result === "discarded" ? "discarded" : "skipped"} by {r.by}, {formatWhen(r.at)}
+          {lineResultSummary(r) ? `. ${lineResultSummary(r)}` : ""}
           {r.detail ? `. ${r.detail}` : ""}
         </p>
       ))}

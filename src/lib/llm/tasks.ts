@@ -34,6 +34,11 @@ export const TASKS = {
   "restructure.apply": { tier: "draft", effort: "high", maxTokens: 32000 },
   /** Phase 6 workflows (src/lib/workflow/nodes, generic). Draft-all's sentence-traced section draft. */
   "draft.traced": { tier: "draft", effort: "medium", maxTokens: 16000 },
+  /**
+   * After Phase 9: the resume Tailor step (tailor.lines) proposes line rewrites from the master
+   * history. Opus: the rewrite must keep every fact while using the posting's terms.
+   */
+  "workflow.tailor": { tier: "draft", effort: "medium", maxTokens: 16000 },
   /** Public resources for coverage gaps, with the server web search tool. */
   "web.find": { tier: "mid", effort: "medium", maxTokens: 8000 },
   /** Gate: required inputs keywords could not confirm. */

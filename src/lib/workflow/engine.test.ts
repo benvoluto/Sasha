@@ -25,6 +25,13 @@ const fake = vi.hoisted(() => ({
   draftActive: 0,
   draftMaxActive: 0,
   drafted: [] as string[],
+  /** doc.write with waitForResult: how often it ran, and whether to record the author's result while the run is running. */
+  writeRuns: 0,
+  recordWhileRunning: false,
+  /** With recordWhileRunning: the title the author's applied change gives the document. */
+  retitle: "",
+  /** doc.write with waitForResult has nothing to apply (no wait); the author retitles the document by hand before it runs. */
+  nothingToWrite: "",
 }));
 const finding = (id: string, severity: Finding["severity"], kind = "gap"): Finding => ({
   id,
@@ -63,9 +70,36 @@ vi.mock("./nodes", () => ({
       if (fake.checkFails) throw new Error("the model is unavailable");
       return { results: [], findings: fake.checkFindings, table: { key: "checks", title: "Checks", columns: [{ key: "c", label: "C" }], rows: [] } };
     },
-    "doc.write": async (inputs: { ops?: unknown[] }, r: { node: { id: string } }) => ({
-      change: { id: r.node.id, title: "Change", summary: "", ops: inputs.ops ?? [], basisUpdatedAt: "", snapshotReason: "Before" },
-    }),
+    "doc.write": async (
+      inputs: { ops?: unknown[] },
+      r: { node: { id: string }; config: Record<string, unknown> },
+      ctx: { run: { id: string; team_id: string; document_id: string; changes: Record<string, unknown>; outputs: Record<string, Record<string, unknown>> }; document: () => Promise<{ updated_at: string }> },
+    ) => {
+      const change = { id: r.node.id, title: "Change", summary: "", ops: inputs.ops ?? [], basisUpdatedAt: "", snapshotReason: "Before" };
+      if (!r.config.waitForResult) return { change };
+      fake.writeRuns++;
+      const result = ctx.run.changes[r.node.id];
+      if (result) return { change: ctx.run.outputs[r.node.id]?.change ?? change, result, lines: [], table: null };
+      if (fake.nothingToWrite) {
+        // The document was read (and memoized) earlier in this invocation; the author edits it by hand meanwhile.
+        const before = await ctx.document();
+        const { updateDocument } = await import("@/lib/documents/store");
+        await updateDocument(ctx.run.team_id, ctx.run.document_id, "author", { title: fake.nothingToWrite }, before.updated_at);
+        return { result: { result: "skipped", by: "workflow_engine", at: "", detail: "Nothing to change." }, lines: [], table: null };
+      }
+      // The race: the author's result lands while the run is still running.
+      if (fake.recordWhileRunning) {
+        // As the real doc.write does: the document is read (and memoized) before the wait.
+        const before = await ctx.document();
+        if (fake.retitle) {
+          const { updateDocument } = await import("@/lib/documents/store");
+          await updateDocument(ctx.run.team_id, ctx.run.document_id, "author", { title: fake.retitle }, before.updated_at);
+        }
+        const { recordChangeResult } = await import("./store");
+        await recordChangeResult(ctx.run.team_id, ctx.run.id, r.node.id, { result: "applied", by: "author", at: "", detail: "" });
+      }
+      return { __wait: true, change };
+    },
   },
 }));
 vi.mock("./generic", () => ({
@@ -83,7 +117,7 @@ vi.mock("./generic", () => ({
 }));
 
 const { executeGraph, HANDLERS, LOOP_CONCURRENCY, nodeContext, progressItem } = await import("./engine");
-const { createRun, getRun, normalizeRun, resetWorkflowStore } = await import("./store");
+const { createRun, getRun, normalizeRun, recordChangeResult, resetWorkflowStore } = await import("./store");
 const { checkpointDecisionFor } = await import("./core-nodes");
 
 const TEAM = "org:a";
@@ -141,7 +175,7 @@ beforeEach(() => {
   resetWorkflowStore();
   callModel.mockReset();
   audit.mockClear();
-  Object.assign(fake, { gateMissing: [], checkFindings: [], checkFails: false, draftAdvanceMs: 0, draftDelayMs: 0, draftActive: 0, draftMaxActive: 0, drafted: [] });
+  Object.assign(fake, { gateMissing: [], checkFindings: [], checkFails: false, draftAdvanceMs: 0, draftDelayMs: 0, draftActive: 0, draftMaxActive: 0, drafted: [], writeRuns: 0, recordWhileRunning: false, retitle: "", nothingToWrite: "" });
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -523,5 +557,66 @@ describe("executeGraph", () => {
     await executeGraph(first);
     expect(first.status).toBe("superseded");
     expect((await getRun(TEAM, first.id))?.status).toBe("superseded");
+  });
+
+  describe("a node that waits for the author (doc.write waitForResult)", () => {
+    /** write (waits) → a fresh doc.read after write.result → outcome. */
+    const waitGraph = () =>
+      graphOf(
+        [node("write", "doc.write", { config: { ...NODE_SPEC_INDEX["doc.write"].defaults(), waitForResult: true } }), node("doc2", "doc.read"), node("outcome", "outcome.report")],
+        [edge("write", "result", "doc2", "after"), edge("doc2", "document", "outcome", "after")],
+      );
+
+    it("keeps the waiting node's outputs, awaits review, and continues once the result is recorded and the step reset", async () => {
+      const run = await runOf(waitGraph());
+      await executeGraph(run);
+      expect(run.status).toBe("awaiting_review");
+      expect(run.steps.write).toMatchObject({ status: "waiting", note: "waiting for the author to apply or discard the change" });
+      expect(run.outputs.write).toEqual({ change: expect.objectContaining({ id: "write" }), pending_items: [] });
+      expect(run.outputs.write.__wait).toBeUndefined();
+      expect(run.steps.doc2.status).toBe("pending");
+      expect((await getRun(TEAM, run.id))!.outputs.write.change).toMatchObject({ id: "write" });
+
+      // What the changes route does: record the result, set the step back to pending, run again.
+      const updated = (await recordChangeResult(TEAM, run.id, "write", { result: "applied", by: "author", at: "", detail: "" }))!;
+      updated.steps.write = { status: "pending" };
+      await executeGraph(updated);
+      expect(updated.status).toBe("complete");
+      expect(updated.steps.write.status).toBe("done");
+      expect(updated.outputs.write).toMatchObject({ change: { id: "write" }, result: { result: "applied" } });
+      expect(updated.steps.doc2.status).toBe("done");
+      expect(updated.outputs.doc2.document).toMatchObject({ title: "Flood report" });
+      expect(fake.writeRuns).toBe(2);
+    });
+
+    it("picks up a result recorded while the run was still running, instead of stranding it", async () => {
+      fake.recordWhileRunning = true;
+      const run = await runOf(waitGraph());
+      await executeGraph(run);
+      expect(run.status).toBe("complete");
+      expect(run.steps.write.status).toBe("done");
+      expect(run.steps.doc2.status).toBe("done");
+      expect(run.changes.write).toMatchObject({ result: "applied" });
+      expect((await getRun(TEAM, run.id))!.status).toBe("complete");
+      expect(fake.writeRuns).toBe(2);
+    });
+
+    it("on that race path, reads the document as the author left it, not the copy memoized before the wait", async () => {
+      fake.recordWhileRunning = true;
+      fake.retitle = "Tailored title";
+      const run = await runOf(waitGraph());
+      await executeGraph(run);
+      expect(run.status).toBe("complete");
+      expect(run.outputs.doc2.document).toMatchObject({ title: "Tailored title" });
+    });
+
+    it("with nothing to write (no wait), the fresh doc.read reads the document as stored, hand edits included", async () => {
+      fake.nothingToWrite = "Edited by hand";
+      const run = await runOf(waitGraph());
+      await executeGraph(run);
+      expect(run.status).toBe("complete");
+      expect(run.steps.write.status).toBe("done");
+      expect(run.outputs.doc2.document).toMatchObject({ title: "Edited by hand" });
+    });
   });
 });

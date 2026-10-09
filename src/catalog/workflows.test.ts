@@ -26,7 +26,8 @@ describe("built-in workflows", () => {
     expect(errors).toEqual([]);
     // Every step's own settings parse against its node type as given (defaults filled in).
     for (const n of graph.nodes) expect(NODE_SPEC_INDEX[n.type].config.safeParse(n.config).success, `${w.key}.${n.id}`).toBe(true);
-    expect(w.provenance).toEqual({ source: "docs/workflows-by-document-type.md", checked: "2026-10-08" });
+    // The resume workflow gained its Tailor step after Phase 9 (user decision 2026-10-09).
+    expect(w.provenance).toEqual({ source: "docs/workflows-by-document-type.md", checked: w.key === "type-resume-cv" ? "2026-10-09" : "2026-10-08" });
   });
 
   it("names only catalog types, and every in-catalog type resolves to its own type workflow", () => {
@@ -123,6 +124,43 @@ describe("built-in workflows", () => {
     expect(step("covb").in).toMatchObject({ items: "before.traced" });
     expect(step("cova").in).toMatchObject({ items: "after.traced" });
     for (const id of ["decide", "out"]) expect(step(id).in?.results, id).toEqual(expect.arrayContaining(["covb.results", "cova.results"]));
+  });
+
+  it("tailors the resume from the master history, waits for the author's lines, then reads the resume as left", () => {
+    const w = all.find((x) => x.key === "type-resume-cv")!;
+    const step = (id: string) => w.steps.find((s) => s.id === id)!;
+    const graph = compileWorkflow(w);
+    const config = (id: string) => graph.nodes.find((n) => n.id === id)!.config;
+    expect(w.version).toBe(2);
+    expect(step("tailor")).toMatchObject({ node: "tailor.lines", in: { document: "doc.document", sources: "src.sources", requirements: "before.traced" } });
+    expect(config("tailor").excludeSources).toEqual(expect.arrayContaining(["job description", "job posting", "posting"]));
+    // Bare "job" or "careers" would drop a master titled "Master resume (all jobs)" (narrowSources matches word starts).
+    for (const id of ["before", "tailor", "truth"]) expect(config(id).excludeSources, id).not.toEqual(expect.arrayContaining(["job"]));
+    expect(step("write")).toMatchObject({ node: "doc.write", in: { ops: "tailor.op" } });
+    expect(config("write")).toMatchObject({ target: "editor", waitForResult: true });
+    expect(step("doc2")).toMatchObject({ node: "doc.read", in: { after: "write.result" } });
+    // Every step that reads the resume after tailoring reads it fresh.
+    for (const id of ["after", "facts", "len", "fmt"]) expect(step(id).in?.document, id).toBe("doc2.document");
+    // The posting is left out of the master-history traces in code, not only by the question.
+    for (const id of ["before", "truth"]) expect(config(id).excludeSources, id).toEqual(expect.arrayContaining(["job posting", "posting", "vacancy"]));
+    // ...and they read only the master history, as tailor does (not a reference letter or portfolio page).
+    for (const id of ["before", "truth"]) expect(config(id).matchSources, id).toEqual(config("tailor").masterMatch);
+    expect(config("truth").statuses).toEqual(expect.arrayContaining([expect.objectContaining({ key: "overstated", severity: "blocking" })]));
+    expect(step("cp").in?.items).toEqual(["out.outcome", "write.lines"]);
+    // The lines changed come from the author's accepted lines, counted in code (not the tailor step's proposed count).
+    expect(step("chg")).toMatchObject({ node: "step.compute", in: { items: "write.lines", after: ["gate.pass", "write.result"] } });
+    for (const id of ["decide", "out"]) expect(step(id).in?.results, id).toEqual(expect.arrayContaining(["chg.results"]));
+    // The source the gate bound as the job is left out of every master-history step by id, whatever it is titled.
+    for (const id of ["before", "tailor", "truth"]) {
+      expect(step(id).in, id).toMatchObject({ gate: "gate.report" });
+      expect(config(id).excludeBound, id).toEqual(["job"]);
+    }
+    for (const id of ["decide", "out"]) expect(step(id).in?.findings, id).toEqual(expect.arrayContaining(["tailor.findings", "truth.findings"]));
+    expect(step("out").in?.tables).toEqual(expect.arrayContaining(["tailor.table", "write.table"]));
+    // Gaps are listed by the priority the posting gives (a live run called a required gap preferred).
+    expect(String(config("decide").guidance)).toMatch(/required and preferred apart/);
+    // The departure note and the "tailoring not assessed" entry are gone.
+    expect([...w.notes, ...w.notAssessed].join(" ")).not.toMatch(/departure|tailoring itself/i);
   });
 
   it("exempts an IEP need with a stated reason for no goal from the untraced flag", () => {

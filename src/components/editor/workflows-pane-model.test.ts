@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CheckpointConfig } from "@/lib/workflow/node-specs/core";
-import type { AvailableWorkflow, EvidenceLink, Finding, Outcome, ProposedChange, RestructurePlan, WorkflowRunView } from "@/lib/workflow/contract";
+import type { AvailableWorkflow, EvidenceLink, Finding, Outcome, ProposedChange, ReplaceLine, RestructurePlan, WorkflowRunView } from "@/lib/workflow/contract";
 import {
   AUTO_CONTINUE_MAX,
   POLL_MAX_MS,
@@ -39,6 +39,24 @@ import {
   canvasSelection,
   waitingCheckpoints,
   webHref,
+  applyLinesLabel,
+  changedLinesFor,
+  changedLinesWired,
+  changeHeadings,
+  lineChange,
+  LINE_REJECTED,
+  lineDiscard,
+  lineRecord,
+  lineResults,
+  lineResultSummary,
+  LINES_DISCARDED,
+  LINES_KEPT_NONE,
+  LINES_STALE,
+  LINES_STALE_WAITING,
+  LINES_UNSAVED,
+  lineSelectionText,
+  requirementLabel,
+  selectedOps,
   type CheckpointDraft,
 } from "./workflows-pane-model";
 
@@ -441,5 +459,142 @@ describe("classifier chip", () => {
 
   it("prefills the restructure workflow with the chosen type", () => {
     expect(restructurePrefill("proposal")).toEqual({ workflowKey: "restructure", targetType: "proposal" });
+  });
+});
+
+describe("line-by-line changes (resume Tailor step)", () => {
+  const rl = (id: string, over: Partial<ReplaceLine> = {}): ReplaceLine => ({
+    id,
+    action: "rewrite",
+    sectionId: "s-exp",
+    heading: "Experience",
+    original: `Was ${id}.`,
+    proposed: `Now ${id}.`,
+    reason: "",
+    requirementKeys: [],
+    evidence: [],
+    ...over,
+  });
+  const change: ProposedChange = { id: "write", title: "Tailored lines", summary: "", basisUpdatedAt: "", snapshotReason: "", ops: [{ op: "replace_lines", lines: [rl("L1"), rl("L2"), rl("L3")] }] };
+
+  it("lists a change's lines, or null for a change without replace_lines", () => {
+    expect(lineChange(change)?.map((l) => l.id)).toEqual(["L1", "L2", "L3"]);
+    expect(lineChange({ ops: [{ op: "replace_lines", lines: [] }] })).toEqual([]);
+    expect(lineChange({ ops: [] })).toBeNull();
+  });
+
+  it("keeps only the ticked lines in the ops it applies", () => {
+    const ops = selectedOps(change, new Set(["L1", "L3"]));
+    expect(ops[0].op === "replace_lines" && ops[0].lines.map((l) => l.id)).toEqual(["L1", "L3"]);
+  });
+
+  it("merges the editor's results with the unticked lines as rejected, in change order", () => {
+    const out = lineResults(change, new Set(["L1", "L3"]), [{ lineId: "L3", result: "skipped", detail: "gone" }]);
+    expect(out).toEqual([
+      { lineId: "L1", result: "skipped", detail: "Not applied" },
+      { lineId: "L2", result: "rejected", detail: LINE_REJECTED },
+      { lineId: "L3", result: "skipped", detail: "gone" },
+    ]);
+    expect(lineResults(change, new Set(), []).every((r) => r.result === "rejected")).toBe(true);
+  });
+
+  describe("lineRecord: what Apply posts, and whether the pane closes", () => {
+    const accepted = (id: string) => ({ lineId: id, result: "accepted" as const, detail: "Rewritten" });
+    const sel = new Set(["L1", "L3"]);
+
+    it("nothing ticked: discarded, every line rejected; the waiting run goes on in the pane", () => {
+      const plan = lineRecord(change, new Set(), null, true);
+      expect(plan.post).toMatchObject({ changeId: "write", result: "discarded" });
+      expect(plan.post!.lines!.every((l) => l.result === "rejected")).toBe(true);
+      expect(plan).toMatchObject({ error: null, close: false, status: LINES_KEPT_NONE });
+      // Not waiting: the pane stays open, so a final status takes the focus the unmounted card had.
+      expect(lineRecord(change, new Set(), null, false)).toMatchObject({ status: LINES_DISCARDED, ongoing: false, close: false });
+    });
+
+    it("a refused apply posts nothing and shows why", () => {
+      expect(lineRecord(change, sel, { result: null, detail: "The editor isn't ready yet.", typeKey: null }, true)).toEqual({ post: null, error: "The editor isn't ready yet.", close: false, status: null, ongoing: false });
+    });
+
+    it("an apply whose save didn't land posts nothing, so the run never scores the stored resume without the lines", () => {
+      const plan = lineRecord(change, sel, { result: "applied", detail: "Changed 2 lines.", typeKey: null, lines: [accepted("L1"), accepted("L3")], unsaved: true }, true);
+      expect(plan).toEqual({ post: null, error: LINES_UNSAVED, close: false, status: null, ongoing: false });
+    });
+
+    it("partly rejected: the editor's results with the unticked line rejected; never closes while the run waits", () => {
+      const out = { result: "applied" as const, detail: "Changed 2 lines.", typeKey: null, lines: [accepted("L1"), accepted("L3")] };
+      const waiting = lineRecord(change, sel, out, true);
+      expect(waiting.post).toEqual({
+        changeId: "write",
+        result: "applied",
+        detail: "Changed 2 lines.",
+        lines: [accepted("L1"), { lineId: "L2", result: "rejected", detail: LINE_REJECTED }, accepted("L3")],
+      });
+      expect(waiting).toMatchObject({ close: false, status: "Applied 2 lines; scoring the tailored resume…", ongoing: true });
+      expect(lineRecord(change, sel, out, false)).toMatchObject({ close: true, status: null });
+    });
+
+    it("every ticked line stale: posts skipped and doesn't close", () => {
+      const gone = { lineId: "L1", result: "skipped" as const, detail: "No longer in the document (edited since the run)" };
+      const plan = lineRecord(change, new Set(["L1"]), { result: "skipped", detail: "No lines were changed.", typeKey: null, lines: [gone] }, false);
+      expect(plan.post).toMatchObject({ result: "skipped", lines: [gone, { result: "rejected" }, { result: "rejected" }] });
+      expect(plan.close).toBe(false);
+      expect(plan).toMatchObject({ status: LINES_STALE, ongoing: false });
+      // While the run waits: never "Applied 0 lines".
+      const waiting = lineRecord(change, new Set(["L1"]), { result: "skipped", detail: "No lines were changed.", typeKey: null, lines: [gone] }, true);
+      expect(waiting).toMatchObject({ close: false, status: LINES_STALE_WAITING, ongoing: true });
+      expect(waiting.post).toMatchObject({ result: "skipped" });
+    });
+
+    it("Discard rejects every line", () => {
+      const plan = lineDiscard(change, true);
+      expect(plan.post).toMatchObject({ result: "discarded", detail: "" });
+      expect(plan.post!.lines!.map((l) => l.result)).toEqual(["rejected", "rejected", "rejected"]);
+      expect(plan.status).toBe(LINES_KEPT_NONE);
+      expect(lineDiscard(change, false)).toMatchObject({ status: LINES_DISCARDED, ongoing: false, close: false });
+    });
+  });
+
+  it("words the count and the apply button", () => {
+    expect(lineSelectionText(4, 6)).toBe("4 of 6 lines selected");
+    expect(applyLinesLabel(4)).toBe("Apply 4 lines");
+    expect(applyLinesLabel(1)).toBe("Apply 1 line");
+    expect(applyLinesLabel(0)).toBe("Keep none and continue");
+  });
+
+  it("names a requirement from the run's extracted items, else shows the key", () => {
+    const r = run({ graph: { format: "graph-v1", nodes: [node("reqs", "step.extract")], edges: [] }, outputs: { reqs: { items: [{ id: "I3", fields: { requirement: "5 years of Python", priority: "required" } }] } } });
+    expect(requirementLabel(r, "I3")).toBe("5 years of Python");
+    expect(requirementLabel(r, "I9")).toBe("I9");
+  });
+
+  it("finds a checkpoint's changed lines while it waits and once decided", () => {
+    const cl = { ...rl("L1"), kind: "changed_line", result: "accepted", detail: "" };
+    const waiting = run({ steps: { cp: { status: "waiting" } }, outputs: { cp: { pending_items: [{ value: "strong_fit" }, [cl]] } } });
+    expect(changedLinesFor(waiting, "cp").map((l) => l.id)).toEqual(["L1"]);
+    const decided = run({ steps: { cp: { status: "done" } }, outputs: { cp: { items: [{ value: "strong_fit" }, cl] } } });
+    expect(changedLinesFor(decided, "cp").map((l) => l.id)).toEqual(["L1"]);
+    expect(changedLinesFor(run(), "cp")).toEqual([]);
+  });
+
+  it("knows when a checkpoint's items come from doc.write's lines", () => {
+    const graph = (handle: string) => ({ format: "graph-v1" as const, nodes: [node("write", "doc.write"), node("cp", "core.checkpoint")], edges: [{ id: "e", source: "write", sourceHandle: handle, target: "cp", targetHandle: "items" }] });
+    expect(changedLinesWired(run({ graph: graph("lines") }), "cp")).toBe(true);
+    expect(changedLinesWired(run({ graph: graph("change") }), "cp")).toBe(false);
+  });
+
+  it("sums up a recorded change's lines", () => {
+    const lines = [
+      { lineId: "L1", result: "accepted" as const, detail: "" },
+      { lineId: "L2", result: "accepted" as const, detail: "" },
+      { lineId: "L3", result: "rejected" as const, detail: "" },
+      { lineId: "L4", result: "skipped" as const, detail: "" },
+    ];
+    expect(lineResultSummary({ lines })).toBe("2 kept, 1 rejected, 1 skipped");
+    expect(lineResultSummary({ lines: lines.slice(2, 3) })).toBe("1 rejected");
+    expect(lineResultSummary({})).toBe("");
+  });
+
+  it("lists line headings among a change's headings", () => {
+    expect(changeHeadings(change)).toEqual(["Experience"]);
   });
 });

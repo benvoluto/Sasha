@@ -6,7 +6,8 @@ vi.mock("@/lib/llm/claude", async (orig) => ({ ...(await orig<typeof import("@/l
 import { fileTypeByKey } from "@/catalog/files";
 import { getSectionMeta } from "@/lib/documents/section-store";
 import { listSuggestions } from "@/lib/suggestions/store";
-import type { DocumentChangeOp, Finding, ProposedChange } from "../contract";
+import { CHANGED_LINE_KIND, type ChangedLine, type ChangeResult, type DocumentChangeOp, type Finding, type OutcomeTable, type ProposedChange, type ReplaceLine } from "../contract";
+import { WAIT_KEY } from "../context";
 import { buildCoverage, coverageNeeds, typeCoverage } from "./coverage";
 import { docRead, snapshotDocument } from "./readers";
 import { rubricScore } from "./rubric";
@@ -14,7 +15,7 @@ import { ctxFor, heading, makeDocument, nodeOf, para, resetStores, TEAM, USAGE }
 import type { CoverageRow, DocSnapshot, RubricScore, WebResource } from "./types";
 import { EvidenceIndex } from "./util";
 import { filterResources, NOT_SET_UP, webFind, webQuery } from "./web-find";
-import { docWrite, flattenOps, suggestEmit, UNVERIFIED_PREFIX } from "./write";
+import { changedLines, changedLinesTable, docWrite, flattenOps, suggestEmit, summarizeOps, UNVERIFIED_PREFIX } from "./write";
 
 beforeEach(() => {
   resetStores();
@@ -181,7 +182,7 @@ const op = (sectionId: string): DocumentChangeOp => ({ op: "replace_section_body
 describe("doc.write", () => {
   it("flattens ops, lists of ops and {op} records", () => {
     const plan = { op: "restructure" as const, plan: { targetType: "proposal", targetTitle: "Proposal", mode: "merge" as const, basisUpdatedAt: "", blockHashes: [], rows: [], gaps: [] } };
-    expect(flattenOps([[op("a"), op("b")], { op: plan }, [{ op: op("c") }], null, { other: 1 }]).map((o) => (o.op === "restructure" ? "R" : o.sectionId))).toEqual(["a", "b", "R", "c"]);
+    expect(flattenOps([[op("a"), op("b")], { op: plan }, [{ op: op("c") }], null, { other: 1 }]).map((o) => (o.op === "replace_section_body" ? o.sectionId : "R"))).toEqual(["a", "b", "R", "c"]);
   });
 
   it("editor: proposes the change and writes nothing", async () => {
@@ -190,6 +191,89 @@ describe("doc.write", () => {
     expect(out.change).toEqual({ id: "write", title: "Drafts", summary: "Fills 1 section (1 unsourced sentence marked).", ops: [op("a")], basisUpdatedAt: doc.updated_at, snapshotReason: "Before drafts" });
     const { getDocument } = await import("@/lib/documents/store");
     expect((await getDocument(TEAM, doc.id))!.updated_at).toBe(doc.updated_at);
+  });
+
+  const line = (id: string, action: ReplaceLine["action"] = "rewrite"): ReplaceLine => ({
+    id,
+    action,
+    sectionId: "e1",
+    heading: "Experience",
+    original: `Was ${id}.`,
+    proposed: action === "trim" ? "" : `Now ${id}.`,
+    reason: "",
+    requirementKeys: [],
+    evidence: action === "rewrite" ? [{ kind: "passage", ref: "Sx.P1", sourceId: "x", label: "Master", quote: "", page: 1, stance: "for", verified: true }] : [],
+  });
+  const lines = (...ls: ReplaceLine[]): DocumentChangeOp => ({ op: "replace_lines", lines: ls });
+
+  it("replace_lines: flattened like any op (a lines-less record isn't one), and summarized by action", () => {
+    expect(flattenOps([lines(line("L1")), { op: lines(line("L2")) }, { op: "replace_lines" }]).map((o) => o.op)).toEqual(["replace_lines", "replace_lines"]);
+    expect(summarizeOps([lines(line("L1"), line("L2"), line("L3"), line("L4"), line("L5", "lead"), line("L6", "trim"))])).toBe("Proposes 6 line changes (4 rewrites, 1 moved to the top, 1 trimmed).");
+    expect(summarizeOps([op("a"), lines(line("L1"))])).toBe("Fills 1 section (1 unsourced sentence marked), and proposes 1 line change (1 rewrite).");
+    expect(summarizeOps([lines()])).toBe("No changes.");
+  });
+
+  it("changedLines: each line's own result, else the change's; the table lists every line", () => {
+    const change = { ops: [lines(line("L1"), line("L2", "trim")), op("a"), lines(line("L3", "lead"))] };
+    const result: ChangeResult = { result: "applied", by: "a", at: "", detail: "", lines: [{ lineId: "L2", result: "skipped", detail: "No longer in the document" }, { lineId: "L3", result: "rejected", detail: "" }] };
+    const all = changedLines(change, result);
+    expect(all.map((l) => [l.id, l.kind, l.result, l.detail])).toEqual([
+      ["L1", CHANGED_LINE_KIND, "accepted", ""],
+      ["L2", CHANGED_LINE_KIND, "skipped", "No longer in the document"],
+      ["L3", CHANGED_LINE_KIND, "rejected", ""],
+    ]);
+    expect(changedLines(change, { ...result, result: "discarded", lines: undefined }).map((l) => l.result)).toEqual(["rejected", "rejected", "rejected"]);
+    expect(changedLines(change, { ...result, result: "skipped", lines: [] }).map((l) => l.result)).toEqual(["skipped", "skipped", "skipped"]);
+    const table = changedLinesTable("write", all);
+    expect(table).toMatchObject({ key: "write", title: "Line results" });
+    expect(table.columns.map((c) => c.key)).toEqual(["section", "change", "was", "now", "result"]);
+    expect(table.rows.map((r) => [r.cells.change, r.cells.result, r.status])).toEqual([
+      ["Rewrite", "Accepted", "accepted"],
+      ["Trim", "Skipped: No longer in the document", "skipped"],
+      ["Move to top", "Rejected", "rejected"],
+    ]);
+    expect(table.rows[0].evidence).toHaveLength(1);
+  });
+
+  describe("waitForResult", () => {
+    const waitNode = () => nodeOf("doc.write", { title: "Tailored lines", snapshotReason: "Before tailoring", waitForResult: true }, "write");
+
+    it("waits with the proposed change, then on resume outputs the change as proposed, the result, the accepted lines and the table", async () => {
+      const { doc } = await makeDocument({ content: [heading("Experience", "e1"), para("Was L1.")] });
+      const ctx = ctxFor(doc.id);
+      const first = (await docWrite({ ops: [lines(line("L1"), line("L2"))] }, waitNode(), ctx)) as Record<string, unknown>;
+      expect(first[WAIT_KEY]).toBe(true);
+      const change = first.change as ProposedChange;
+      expect(change).toMatchObject({ id: "write", title: "Tailored lines", summary: "Proposes 2 line changes (2 rewrites).", snapshotReason: "Before tailoring" });
+
+      // The engine keeps the outputs; the author's result arrives; the step runs again (with different ops upstream, to show the stored change wins).
+      ctx.run.outputs.write = { change, pending_items: [] };
+      ctx.run.changes.write = { result: "applied", by: "a", at: "t", detail: "Changed 1 line", lines: [{ lineId: "L1", result: "accepted", detail: "" }, { lineId: "L2", result: "rejected", detail: "" }] };
+      const out = (await docWrite({ ops: [lines(line("L9"))] }, waitNode(), ctx)) as Record<string, unknown>;
+      expect(out[WAIT_KEY]).toBeUndefined();
+      expect(out.change).toEqual(change);
+      expect(out.result).toEqual(ctx.run.changes.write);
+      expect((out.lines as ChangedLine[]).map((l) => [l.id, l.result, l.kind])).toEqual([["L1", "accepted", CHANGED_LINE_KIND]]);
+      expect((out.table as OutcomeTable).rows.map((r) => r.status)).toEqual(["accepted", "rejected"]);
+    });
+
+    it("with nothing to change records skipped, shows no change and does not wait", async () => {
+      const { doc } = await makeDocument({});
+      for (const ops of [undefined, [], [lines()], null]) {
+        const out = (await docWrite({ ops }, waitNode(), ctxFor(doc.id))) as Record<string, unknown>;
+        expect(out[WAIT_KEY]).toBeUndefined();
+        expect(out.change).toBeUndefined();
+        expect(out.result).toMatchObject({ result: "skipped", by: "workflow_engine", detail: "Nothing to change." });
+        expect(out.lines).toEqual([]);
+        expect((out.table as OutcomeTable).rows).toEqual([]);
+      }
+    });
+
+    it("without waitForResult a replace_lines change is proposed as before, with no wait", async () => {
+      const { doc } = await makeDocument({});
+      const out = (await docWrite({ ops: [lines(line("L1"))] }, nodeOf("doc.write", {}, "write"), ctxFor(doc.id))) as Record<string, unknown>;
+      expect(Object.keys(out)).toEqual(["change"]);
+    });
   });
 
   it("section_notes: appends each finding to its section's notes once", async () => {

@@ -22,7 +22,7 @@ vi.mock("@vercel/postgres", () => {
 vi.mock("@/lib/ontology/ensure-schema", () => ({ ensureSchema: async () => {} }));
 vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write: async () => {} }) }));
 
-import { claimRun, createRun, runAuditTrail, createWorkflow, getDefaultWorkflowId, getRun, getWorkflow, latestRuns, recordChangeResult, saveRun, saveWorkflow, setDefaultWorkflowId, STALE_RUN_MS } from "./store";
+import { claimRun, createRun, runAuditTrail, createWorkflow, getDefaultWorkflowId, getRun, getWorkflow, latestRuns, recordChangeResult, recordChangeResultOnce, saveRun, saveWorkflow, setDefaultWorkflowId, STALE_RUN_MS } from "./store";
 
 const DOC = "6d1e4b8a-2c3f-4e5a-8b7c-9d0e1f2a3b4c";
 const auth = { agent: "ann", permissions: [] };
@@ -100,6 +100,20 @@ describe("workflow store SQL", () => {
     );
     expect(mocks.calls[0].params).toEqual(["r1", "org:a", "write", JSON.stringify({ result: "applied", by: "ann", at: "t", detail: "" })]);
     expect(run?.changes.write.result).toBe("applied");
+  });
+
+  it("records a change result only once: a second, racing request finds it recorded", async () => {
+    mocks.respond = () => ({ rows: [runRow({ changes: { write: { result: "applied" } } })] });
+    const run = await recordChangeResultOnce("org:a", "r1", "write", { result: "applied", by: "ann", at: "t", detail: "" });
+    expect(mocks.calls[0].text).toMatch(/WHERE id = \$1 AND team_id = \$2 AND NOT \(COALESCE\(changes, '\{\}'::jsonb\) \? \$3::text\) RETURNING \*$/);
+    expect(run).not.toBe("exists");
+    // No row updated: the run exists, so the change was already recorded.
+    mocks.calls.length = 0;
+    mocks.respond = (call) => ({ rows: call.text.startsWith("SELECT 1") ? [{ "?column?": 1 }] : [] });
+    expect(await recordChangeResultOnce("org:a", "r1", "write", { result: "skipped", by: "ann", at: "t", detail: "" })).toBe("exists");
+    // ...and not the team's run: null.
+    mocks.respond = () => ({ rows: [] });
+    expect(await recordChangeResultOnce("org:b", "r1", "write", { result: "skipped", by: "ann", at: "t", detail: "" })).toBeNull();
   });
 
   it("claims within the team", async () => {

@@ -5,12 +5,17 @@
 // restructure mapping's targets), the record fields the decision keeps and a
 // note. A checkpoint with named signers takes one signature from each, in
 // turn, showing who has signed. Once decided it shows who decided and when (and
-// the mapping as decided). Shared by the document modal's Workflows tab and the
-// canvas's run inspector.
+// the mapping as decided). A checkpoint fed a doc.write's changed lines (the
+// resume Tailor step, tailor-spec.md §6.3) lists the lines the author kept,
+// read-only: each was accepted or rejected one by one when it was applied.
+// Shared by the document modal's Workflows tab and the canvas's run inspector.
 
 import { useMemo, useState } from "react";
 import { Loader2 } from "@/components/icons";
+import { ACTION_LABELS, LineDiff, LineEvidence } from "@/components/workflow/line-change-card";
 import {
+  changedLinesFor,
+  changedLinesWired,
   checkpointConfig,
   checkpointProblems,
   checkpointSignatures,
@@ -24,7 +29,7 @@ import {
   runPlan,
   type CheckpointDraft,
 } from "@/components/editor/workflows-pane-model";
-import { CHECKPOINT_VERDICTS, NO_HOME_HEADING, OUTCOME_BLOCKED, type CheckpointSignature, type CheckpointVerdict, type ContinueRequest, type RestructurePlan, type WorkflowRunView } from "@/lib/workflow/contract";
+import { CHECKPOINT_VERDICTS, NO_HOME_HEADING, OUTCOME_BLOCKED, type ChangedLine, type CheckpointSignature, type CheckpointVerdict, type ContinueRequest, type RestructurePlan, type WorkflowRunView } from "@/lib/workflow/contract";
 
 export type CheckpointSubmit = NonNullable<ContinueRequest["checkpoint"]>;
 
@@ -81,6 +86,8 @@ export function CheckpointPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
+  const changedLines = changedLinesFor(run, nodeId);
+  const linesWired = changedLinesWired(run, nodeId);
 
   if (!config) return null;
   const waiting = run.steps[nodeId]?.status === "waiting";
@@ -124,6 +131,8 @@ export function CheckpointPanel({
           onTarget={(id, key) => set({ targets: { ...draft.targets, [id]: key } })}
         />
       )}
+
+      {(changedLines.length > 0 || (linesWired && (waiting || decision))) && <ChangedLines lines={changedLines} />}
 
       {!decision && signatures.length > 0 && <SignatureList signatures={signatures} pending={pending.map((p) => p.label)} />}
 
@@ -260,6 +269,28 @@ export function CheckpointPanel({
           </button>
         </form>
       )}
+    </section>
+  );
+}
+
+/** The changed lines the checkpoint signs (doc.write's `lines`), read-only: heading, the line as it was and as it reads now, and the passages behind it. */
+function ChangedLines({ lines }: { lines: ChangedLine[] }) {
+  if (!lines.length) return <p className="text-xs text-[var(--doc-muted)]">No lines were changed.</p>;
+  return (
+    <section aria-label={`Changed lines (${lines.length})`} className="space-y-1.5">
+      <p className="text-xs font-medium text-[var(--doc-muted)]">Changed lines ({lines.length})</p>
+      <ul className="space-y-1.5">
+        {lines.map((l) => (
+          <li key={l.id} className="space-y-1 rounded-lg border border-[var(--doc-line)] bg-[var(--doc-surface)] px-2.5 py-2">
+            <p className="text-xs text-[var(--doc-muted)]">
+              <span className="font-semibold text-[var(--doc-ink)]">{ACTION_LABELS[l.action] ?? l.action}</span>
+              {l.heading ? ` · ${l.heading}` : ""}
+            </p>
+            <LineDiff line={l} />
+            <LineEvidence links={l.evidence ?? []} />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

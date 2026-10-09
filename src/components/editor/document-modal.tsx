@@ -33,7 +33,7 @@ import { SourcesPanel } from "./sources-panel";
 import { SuggestionsPane } from "./suggestions-pane";
 import type { SaveStatus } from "./use-document";
 import { WorkflowsPane, type WorkflowsView } from "./workflows-pane";
-import type { CheckpointDraft, WorkflowsPrefill } from "./workflows-pane-model";
+import type { AppliedLines, CheckpointDraft, WorkflowsPrefill } from "./workflows-pane-model";
 
 export function DocumentModal({
   tab,
@@ -50,6 +50,7 @@ export function DocumentModal({
   onSourcesChange,
   onInsertTable,
   onApplyWorkflowChange,
+  onSaveDocument,
   onJumpToSection,
   workflowsPrefill = null,
   onWorkflowsPrefillDone,
@@ -77,6 +78,8 @@ export function DocumentModal({
   onInsertTable?: (snapshot: TableSnapshot) => void;
   /** The Workflows tab's "Apply to document": the editor makes the change as one undo step (apply-workflow-change.ts). */
   onApplyWorkflowChange?: (change: ProposedChange) => Promise<AppliedChange>;
+  /** Saves now and resolves to whether the stored document holds every edit (use-document's isSaved after a flush). */
+  onSaveDocument?: () => Promise<boolean>;
   /** A finding's location: close the dialog and scroll the editor to the section. */
   onJumpToSection?: (sectionId: string) => void;
   /** Opened from the classifier chip's "Restructure…": that workflow with its target type chosen. */
@@ -98,6 +101,8 @@ export function DocumentModal({
   // were. Unlike the hand-overs they outlast a close, but not the document.
   const [workflowsView, setWorkflowsView] = useState<WorkflowsView>({ kind: "list" });
   const [checkpointDrafts, setCheckpointDrafts] = useState<Record<string, CheckpointDraft>>({});
+  // Lines applied in the editor whose record failed: coming back must offer "Record result", not apply them again.
+  const [appliedLines, setAppliedLines] = useState<Record<string, AppliedLines>>({});
   // The Sources tab's linked sources, for "Learn a type from these examples".
   const [linked, setLinked] = useState<LinkedSource[]>([]);
   const [learnOpen, setLearnOpen] = useState(false);
@@ -109,6 +114,7 @@ export function DocumentModal({
     if (workflowsDoc !== null) {
       setWorkflowsView({ kind: "list" });
       setCheckpointDrafts({});
+      setAppliedLines({});
     }
   }
   // The parent can close the dialog without close() ("Insert table" does): the
@@ -266,6 +272,7 @@ export function DocumentModal({
                   prefill={workflowsPrefill}
                   onPrefillDone={onWorkflowsPrefillDone}
                   onApplyChange={onApplyWorkflowChange}
+                  onSaveDocument={onSaveDocument}
                   onChangeApplied={closeToEditor}
                   onJumpToSection={
                     onJumpToSection
@@ -287,6 +294,14 @@ export function DocumentModal({
                       const rest = { ...all };
                       delete rest[key];
                       return draft ? { ...rest, [key]: draft } : rest;
+                    })
+                  }
+                  appliedLines={appliedLines}
+                  onAppliedLines={(key, entry) =>
+                    setAppliedLines((all) => {
+                      const rest = { ...all };
+                      delete rest[key];
+                      return entry ? { ...rest, [key]: entry } : rest;
                     })
                   }
                 />

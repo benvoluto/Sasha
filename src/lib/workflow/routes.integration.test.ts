@@ -37,7 +37,8 @@ import { POST as respondToFinding } from "@/app/api/workflow-runs/runs/[runId]/f
 import { GET as getRunRoute } from "@/app/api/workflow-runs/runs/[runId]/route";
 import { listSections, type PMNode } from "@/lib/documents/sections";
 import { getDocument } from "@/lib/documents/store";
-import type { DocumentWorkflowsResponse, RunResponse, WorkflowRunView } from "./contract";
+import { CHANGED_LINE_KIND, type ChangedLine, type DocumentChangeOp, type DocumentWorkflowsResponse, type RunResponse, type WorkflowRunView } from "./contract";
+import { documentLines } from "./lines";
 import { heading, makeDocument, para, resetStores, TEAM, USAGE } from "./nodes/test-fixtures";
 import { applyRestructurePlan } from "./restructure";
 import { resetWorkflowStore } from "./store";
@@ -199,8 +200,12 @@ describe("restructure, through the routes and the checkpoint", () => {
     expect(saved.status).toBe(200);
     expect((await getDocument(TEAM, doc.id))!.type_key).toBe("proposal");
 
+    // Per-line results are only for a change with line edits.
+    await post(recordChange, run.id, { changeId: change.id, result: "applied", lines: [{ lineId: "L1", result: "accepted" }] }, 400);
     const recorded = await post<RunResponse>(recordChange, run.id, { changeId: change.id, result: "applied", detail: "Restructured" });
     expect(recorded.run.changes[change.id]).toMatchObject({ result: "applied", by: mocks.caller.agent });
+    // Recorded once: a second result is refused.
+    await post(recordChange, run.id, { changeId: change.id, result: "discarded" }, 409);
   });
 
   it("a rejection at the checkpoint proposes nothing", async () => {
@@ -214,5 +219,94 @@ describe("restructure, through the routes and the checkpoint", () => {
     expect(run.outcome).toMatchObject({ value: "rejected" });
     expect(run.steps.write.status).toBe("skipped");
     expect(run.proposed).toEqual([]);
+  });
+});
+
+describe("resume tailoring, through the routes: the run waits for the author's lines", () => {
+  const bullets = (...texts: string[]): PMNode => ({ type: "bulletList", content: texts.map((t) => ({ type: "listItem", content: [para(t)] })) });
+  const content = (first: string) => [heading("Contact", "c1", "contact"), para("Jane Doe"), heading("Experience", "e1", "experience"), bullets(first, "Organized the office party.")];
+
+  async function waiting() {
+    const { doc, sources } = await makeDocument({
+      typeKey: "resume-cv",
+      content: content("Built weekly sales dashboards."),
+      sources: [
+        { title: "Master resume", passages: ["Built weekly sales dashboards in Tableau."] },
+        { title: "Job posting: Data analyst", passages: ["Required: Tableau dashboards."] },
+      ],
+    });
+    const master = sources[0].passages[0].id;
+    const line = documentLines((await getDocument(TEAM, doc.id))!.content_json as PMNode).find((l) => l.text.startsWith("Built"))!.ref;
+    const traced: string[] = [];
+    mocks.claudeJson.mockImplementation(async ({ task, user }: Call) => {
+      switch (task) {
+        case "workflow.gate":
+          return { data: { inputs: [] }, usage: USAGE };
+        case "workflow.extract":
+          return user.includes("Required: Tableau dashboards.")
+            ? { data: { items: [{ fields: { requirement: "Tableau dashboards", priority: "required", kind: "skill" }, location: { section_id: null, quote: "Required: Tableau dashboards." }, source_passages: [] }] }, usage: USAGE }
+            : { data: { items: [] }, usage: USAGE };
+        case "workflow.trace":
+          traced.push(user);
+          if (user.includes("rewritten line")) return { data: { items: [{ id: "L1", status: "in_master", evidence: [{ id: master, quote: "in Tableau" }], linked_targets: [], rationale: "Stated." }] }, usage: USAGE };
+          if (user.includes("show this requirement directly")) return { data: { items: [{ id: "I1", status: "direct", evidence: [{ id: master, quote: "Tableau" }], linked_targets: [], rationale: "Stated." }] }, usage: USAGE };
+          return { data: { items: [] }, usage: USAGE };
+        case "workflow.tailor":
+          return { data: { lines: [{ line, action: "rewrite", text: "Built weekly Tableau sales dashboards.", reason: "Surfaces Tableau.", requirements: ["I1"], support: [{ id: master, quote: "in Tableau" }] }] }, usage: USAGE };
+        case "workflow.check":
+          return { data: { results: [] }, usage: USAGE };
+        case "workflow.decide":
+          return { data: { value: "strong_fit", rationale: "Met.", cited: [] }, usage: USAGE };
+        default:
+          throw new Error(`unexpected model call: ${task}`);
+      }
+    });
+    const run = await start(doc.id, { workflowId: builtInId("type-resume-cv") });
+    return { doc, run, traced };
+  }
+
+  it("proposes truth-checked lines, waits, and resumes on the author's per-line results to read the resume as left", async () => {
+    const { doc, run, traced } = await waiting();
+    expect(failedSteps(run)).toEqual([]);
+    expect(run.status).toBe("awaiting_review");
+    expect(run.steps.write.status).toBe("waiting");
+    expect(run.steps.doc2.status).toBe("pending");
+    expect(run.steps.cp.status).toBe("pending");
+    // The posting never reaches the before trace or the tailor's truth check.
+    expect(traced.length).toBeGreaterThanOrEqual(2);
+    for (const t of traced) expect(t).not.toContain('title="Job posting');
+    const [change] = run.proposed;
+    const op = change.ops[0] as Extract<DocumentChangeOp, { op: "replace_lines" }>;
+    expect(op.lines.map((l) => [l.id, l.original, l.proposed])).toEqual([["L1", "Built weekly sales dashboards.", "Built weekly Tableau sales dashboards."]]);
+
+    // Refused: an unknown line, and (below) a second result.
+    await post(recordChange, run.id, { changeId: change.id, result: "applied", lines: [{ lineId: "L9", result: "accepted" }] }, 400);
+
+    // The editor applies the accepted line and saves; the pane posts the per-line results.
+    const saved = await patchDocument(new Request(`http://x/api/documents/${doc.id}`, { method: "PATCH", body: JSON.stringify({ content_json: { type: "doc", content: content("Built weekly Tableau sales dashboards.") } }) }), docCtx(doc.id));
+    expect(saved.status).toBe(200);
+    const resumed = await post<RunResponse>(recordChange, run.id, { changeId: change.id, result: "applied", detail: "Changed 1 line", lines: [{ lineId: "L1", result: "accepted" }] }, 202);
+    expect(resumed.run.status).toBe("running");
+    expect(resumed.run.changes[change.id]).toMatchObject({ result: "applied", lines: [{ lineId: "L1", result: "accepted", detail: "" }] });
+    await post(recordChange, run.id, { changeId: change.id, result: "discarded" }, 409);
+    await drain();
+
+    const after = await poll(run.id);
+    expect(failedSteps(after)).toEqual([]);
+    expect(after.status).toBe("awaiting_review");
+    expect(after.steps.write.status).toBe("done");
+    expect(after.steps.doc2.status).toBe("done");
+    expect(after.steps.cp.status).toBe("waiting");
+    // The after trace read the stored resume, as the author left it.
+    expect(traced.some((t) => t.includes("Does the tailored resume show") && t.includes("Built weekly Tableau sales dashboards."))).toBe(true);
+    const listed = (after.outputs.cp.pending_items as unknown[]).filter((x): x is ChangedLine => (x as ChangedLine)?.kind === CHANGED_LINE_KIND);
+    expect(listed.map((l) => [l.id, l.result])).toEqual([["L1", "accepted"]]);
+    expect(after.outcome!.tables.map((t) => t.title)).toEqual(expect.arrayContaining(["Proposed lines", "Line results"]));
+  });
+
+  it("refuses a result for a change the run did not propose, and leaves the run waiting", async () => {
+    const { run } = await waiting();
+    await post(recordChange, run.id, { changeId: "nope", result: "applied", lines: [] }, 400);
+    expect((await poll(run.id)).steps.write.status).toBe("waiting");
   });
 });

@@ -382,8 +382,60 @@ export type RestructureDroppedHeading = {
 
 export const NO_HOME_HEADING = "Content to place";
 
+/**
+ * After Phase 9 (user decision 2026-10-09, resume Tailor step): one line the tailor.lines node
+ * proposes to change in the open document. A "line" is one textblock (a paragraph or a list
+ * item's paragraph) whose whole text, as read, is `original`.
+ * - rewrite: the text becomes `proposed`;
+ * - lead: the line (a list item) moves to the top of its list, and becomes `proposed` when that
+ *   differs from `original`; a line outside a list is never led (tailor.lines drops it, the
+ *   editor skips it), since moving it could put it under another employer's header;
+ * - trim: the line is removed (`proposed` is "", no evidence needed).
+ * Every rewrite or lead with new text carries the master-history passages behind it (verified
+ * passage links); lines that failed the truth check are never proposed.
+ */
+export const TAILOR_LINE_ACTIONS = ["rewrite", "lead", "trim"] as const;
+export type TailorLineAction = (typeof TAILOR_LINE_ACTIONS)[number];
+
+export type ReplaceLine = {
+  /** "L1"…, unique within the change; the author's per-line results name it. */
+  id: string;
+  action: TailorLineAction;
+  /** The section the line sits in (its heading's sectionId), or null for text before the first heading. */
+  sectionId: string | null;
+  heading: string;
+  /** The line's whole text as read (plain text). The editor skips the line when it no longer finds it. */
+  original: string;
+  /**
+   * Which repeat of `original` in its section the line is (0 for the first), and how many
+   * there were, in document order: a bullet repeated under two jobs is changed where the run
+   * meant it, and skipped when the count changed since. Absent on runs stored before them.
+   */
+  occurrence?: number;
+  occurrences?: number;
+  /** The new plain text ("" for trim). */
+  proposed: string;
+  /** Why, in a sentence: the requirement it surfaces or the unrelated content it trims. */
+  reason: string;
+  /** Ids of the requirement items (reqs.items, e.g. "I3") the line serves. */
+  requirementKeys: string[];
+  /** Master-history passages the new text rests on (verified passage links). */
+  evidence: EvidenceLink[];
+};
+
+/** What the author did with one proposed line. */
+export const LINE_RESULTS = ["accepted", "rejected", "skipped"] as const;
+export type LineResultKind = (typeof LINE_RESULTS)[number];
+export type LineResult = { lineId: string; result: LineResultKind; detail: string };
+
+/** The kind a changed-line record carries in a checkpoint's items (doc.write's `lines` output). */
+export const CHANGED_LINE_KIND = "changed_line";
+/** A line as the author left it: a proposed line with its result (doc.write's `lines` output, step 8's list). */
+export type ChangedLine = ReplaceLine & { kind: typeof CHANGED_LINE_KIND; result: LineResultKind; detail: string };
+
 export type DocumentChangeOp =
   | { op: "restructure"; plan: RestructurePlan }
+  | { op: "replace_lines"; lines: ReplaceLine[] }
   | {
       op: "replace_section_body";
       /** The section to fill; after a restructure, matched by specKey instead. */
@@ -408,12 +460,21 @@ export type ProposedChange = {
   snapshotReason: string;
 };
 
-export type ChangeResult = { result: "applied" | "discarded" | "skipped"; by: string; at: string; detail: string };
+/** `lines`: per-line results for a change with replace_lines ops (absent for other changes). */
+export type ChangeResult = { result: "applied" | "discarded" | "skipped"; by: string; at: string; detail: string; lines?: LineResult[] };
+
+/** At most this many lines in one change (tailor.lines' maxLines is capped below it). */
+export const MAX_CHANGE_LINES = 100;
 
 export const ChangeResultRequest = z.strictObject({
   changeId: z.string().min(1).max(64),
   result: z.enum(["applied", "discarded", "skipped"]),
   detail: z.string().max(1000).default(""),
+  /** replace_lines: what happened to each line (accepted and applied, rejected by the author, or skipped because the editor no longer found it). */
+  lines: z
+    .array(z.strictObject({ lineId: z.string().min(1).max(16), result: z.enum(LINE_RESULTS), detail: z.string().max(300).default("") }))
+    .max(MAX_CHANGE_LINES)
+    .optional(),
 });
 export type ChangeResultRequest = z.input<typeof ChangeResultRequest>;
 

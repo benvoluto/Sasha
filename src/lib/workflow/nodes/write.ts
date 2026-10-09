@@ -3,21 +3,29 @@
 // itself; with target "section_notes" it appends findings to section notes,
 // which leaves the body untouched. suggest.emit turns coverage gaps and web
 // resources into suggestions (origin "coverage"), web ones marked unverified.
+//
+// With waitForResult (After Phase 9, the resume Tailor step) doc.write waits:
+// it returns the change with WAIT_KEY set, the run awaits review while the
+// author accepts or rejects each line and applies the accepted ones, and the
+// changes route records the result and sets the step back to pending. Run
+// again, it outputs the change as proposed, the result, the accepted lines
+// and a table of every line with its result. With nothing to change it
+// records "skipped" and does not wait.
 
 import { getSectionMeta, putSectionNotes } from "@/lib/documents/section-store";
 import { listSections } from "@/lib/documents/sections";
 import { applyGenerated } from "@/lib/suggestions/store";
 import type { GeneratedItem } from "@/lib/suggestions/diff";
-import type { DocumentChangeOp, Finding, ProposedChange } from "../contract";
-import type { NodeHandler } from "../context";
+import { CHANGED_LINE_KIND, type ChangedLine, type ChangeResult, type DocumentChangeOp, type Finding, type LineResultKind, type OutcomeTable, type ProposedChange, type ReplaceLine } from "../contract";
+import { WAIT_KEY, type NodeHandler } from "../context";
 import { asGaps } from "./web-find";
-import { clip, flat } from "./util";
+import { clip, flat, outcomeTable } from "./util";
 import type { WebResource } from "./types";
 
 // --- doc.write ------------------------------------------------------------------------
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const isOp = (v: unknown): v is DocumentChangeOp => isObj(v) && (v.op === "restructure" || v.op === "replace_section_body");
+const isOp = (v: unknown): v is DocumentChangeOp => isObj(v) && (v.op === "restructure" || v.op === "replace_section_body" || (v.op === "replace_lines" && Array.isArray(v.lines)));
 
 /** Pure: the ops input as one list: ops, lists of ops (loops), and `{op}` records, in order. */
 export function flattenOps(v: unknown): DocumentChangeOp[] {
@@ -34,6 +42,16 @@ export function summarizeOps(ops: DocumentChangeOp[]): string {
     const unsourced = bodies.reduce((n, o) => n + (o.op === "replace_section_body" ? o.trace.filter((t) => t.unsourced).length : 0), 0);
     parts.push(`${restructure ? "fills" : "Fills"} ${bodies.length} section${bodies.length === 1 ? "" : "s"}${unsourced ? ` (${unsourced} unsourced sentence${unsourced === 1 ? "" : "s"} marked)` : ""}`);
   }
+  const lines = opLines(ops);
+  if (lines.length) {
+    const count = (a: ReplaceLine["action"]) => lines.filter((l) => l.action === a).length;
+    const kinds = [
+      count("rewrite") && `${count("rewrite")} rewrite${count("rewrite") === 1 ? "" : "s"}`,
+      count("lead") && `${count("lead")} moved to the top`,
+      count("trim") && `${count("trim")} trimmed`,
+    ].filter(Boolean);
+    parts.push(`${parts.length ? "proposes" : "Proposes"} ${lines.length} line change${lines.length === 1 ? "" : "s"} (${kinds.join(", ")})`);
+  }
   return parts.length ? `${parts.join(", and ")}.` : "No changes.";
 }
 
@@ -42,6 +60,54 @@ export function proposeChange(nodeId: string, config: { title: string; snapshotR
   return { id: nodeId, title: config.title, summary: summarizeOps(ops), ops, basisUpdatedAt, snapshotReason: config.snapshotReason };
 }
 
+/** Pure: every proposed line across the replace_lines ops, in order. */
+export function opLines(ops: DocumentChangeOp[]): ReplaceLine[] {
+  return ops.flatMap((o) => (o.op === "replace_lines" ? o.lines : []));
+}
+
+/** A change's overall result, for a line the author's per-line results don't name. */
+const LINE_RESULT_FOR: Record<ChangeResult["result"], LineResultKind> = { applied: "accepted", discarded: "rejected", skipped: "skipped" };
+
+/** Pure: each proposed line with what the author did with it (its own result, else the change's). */
+export function changedLines(change: Pick<ProposedChange, "ops">, result: ChangeResult | null | undefined): ChangedLine[] {
+  const own = new Map((result?.lines ?? []).map((l) => [l.lineId, l]));
+  return opLines(change.ops).map((l) => {
+    const r = own.get(l.id);
+    return { ...l, kind: CHANGED_LINE_KIND, result: r?.result ?? (result ? LINE_RESULT_FOR[result.result] : "skipped"), detail: r?.detail ?? "" };
+  });
+}
+
+/** A line change's action as the author reads it. */
+export const LINE_ACTION_LABELS: Record<ReplaceLine["action"], string> = { rewrite: "Rewrite", lead: "Move to top", trim: "Trim" };
+const RESULT_LABELS: Record<LineResultKind, string> = { accepted: "Accepted", rejected: "Rejected", skipped: "Skipped" };
+
+/**
+ * Pure: every proposed line with its result, as an outcome table. Titled "Line
+ * results", not "Changed lines": it lists rejected and skipped lines too, and
+ * the checkpoint's "Changed lines" list (the accepted ones) sits above it.
+ */
+export function changedLinesTable(nodeId: string, lines: ChangedLine[]): OutcomeTable {
+  return outcomeTable(
+    nodeId,
+    "Line results",
+    [
+      { key: "section", label: "Section" },
+      { key: "change", label: "Change" },
+      { key: "was", label: "Was" },
+      { key: "now", label: "Now" },
+      { key: "result", label: "Result" },
+    ],
+    lines.map((l) => ({
+      cells: { section: l.heading, change: LINE_ACTION_LABELS[l.action], was: l.original, now: l.proposed, result: l.detail ? `${RESULT_LABELS[l.result]}: ${l.detail}` : RESULT_LABELS[l.result] },
+      status: l.result,
+      evidence: l.evidence,
+    })),
+  );
+}
+
+/** Pure: is there anything to apply? (replace_lines ops with no lines are nothing.) */
+const hasContent = (ops: DocumentChangeOp[]) => ops.some((o) => o.op !== "replace_lines" || o.lines.length > 0);
+
 /** Pure: a finding as a notes paragraph (title, detail, what it rests on). */
 export function findingNote(f: Finding, workflow: string): string {
   const links = f.evidence.map((e) => `${e.label || e.ref}${e.page != null ? ` p.${e.page}` : ""}${e.kind === "web" ? ` (${e.ref})` : ""}${e.verified ? "" : " (unverified)"}`);
@@ -49,9 +115,27 @@ export function findingNote(f: Finding, workflow: string): string {
 }
 
 export const docWrite: NodeHandler = async (inputs, node, ctx) => {
-  const config = node.config as { target: "editor" | "section_notes"; title: string; snapshotReason: string };
+  const config = node.config as { target: "editor" | "section_notes"; title: string; snapshotReason: string; waitForResult?: boolean };
   const doc = await ctx.document();
-  if (config.target === "editor") return { change: proposeChange(node.node.id, config, flattenOps(inputs.ops), doc.updated_at) };
+  const id = node.node.id;
+  if (config.target === "editor") {
+    const ops = flattenOps(inputs.ops);
+    if (!config.waitForResult) return { change: proposeChange(id, config, ops, doc.updated_at) };
+    const result = ctx.run.changes?.[id];
+    if (result) {
+      // Resumed: the author applied or discarded the change; keep it as proposed.
+      const kept = ctx.run.outputs[id]?.change as ProposedChange | undefined;
+      const change = kept && Array.isArray(kept.ops) ? kept : proposeChange(id, config, ops, doc.updated_at);
+      const all = changedLines(change, result);
+      return { change, result, lines: all.filter((l) => l.result === "accepted"), table: changedLinesTable(id, all) };
+    }
+    if (!hasContent(ops)) {
+      // Nothing to change: no card for the author, and no wait.
+      const skipped: ChangeResult = { result: "skipped", by: "workflow_engine", at: new Date().toISOString(), detail: "Nothing to change." };
+      return { result: skipped, lines: [], table: changedLinesTable(id, []) };
+    }
+    return { [WAIT_KEY]: true, change: proposeChange(id, config, ops, doc.updated_at) };
+  }
 
   const findings = flat<Finding>(inputs.findings).filter((f) => isObj(f) && typeof f.title === "string");
   const sectionIds = new Set(listSections(doc.content_json).map((s) => s.sectionId).filter(Boolean));

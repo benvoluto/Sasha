@@ -11,6 +11,12 @@
 //   connections, which use whatever arrived. The outcome node always runs once
 //   everything upstream has settled, and reports a failure as "incomplete".
 // - A human checkpoint stops the run (awaiting review) until someone decides.
+// - So does a handler that returns WAIT_KEY with its outputs (doc.write with
+//   waitForResult: the author applies or discards the change in the editor).
+//   Its outputs are kept; the changes route records the result, sets the step
+//   back to pending and continues the run. A result recorded while the run was
+//   still running (so the route could not claim it) is picked up here once
+//   the run has been saved as awaiting review.
 // - The run pauses itself at the time budget or the invocation's deadline,
 //   including mid-loop (finished items are kept); continuing resumes it.
 // - Every model call a node makes runs inside the run's model context
@@ -20,13 +26,13 @@ import { typePolicy } from "@/catalog/workflows";
 import { getType } from "@/catalog";
 import { getDocument, type DocumentRecord } from "@/lib/documents/store";
 import { currentModelContext, withModelContext } from "@/lib/llm/context";
-import { NodeError, type NodeContext, type NodeHandler } from "./context";
+import { NodeError, WAIT_KEY, type NodeContext, type NodeHandler } from "./context";
 import { FUNCTION_LIMIT_MS, MAX_PROGRESS_ITEMS, type StepProgressItem, type WorkflowRunRecord } from "./contract";
 import { CORE_HANDLERS, nodeLabels } from "./core-nodes";
 import { GENERIC_HANDLERS } from "./generic";
 import { STEP_HANDLERS } from "./nodes";
-import { OUTPUT_NODE_TYPE } from "./registry";
-import { auditRun, saveRun } from "./store";
+import { CHECKPOINT_NODE_TYPE, OUTPUT_NODE_TYPE } from "./registry";
+import { auditRun, claimRun, getRun, saveRun } from "./store";
 import { resolveNodes, topologicalOrder, validateGraph, type ResolvedNode } from "./validate";
 
 /** Stop starting new nodes after this long; the function limit is 300 s. */
@@ -80,8 +86,11 @@ export function progressItem(item: unknown, i: number): Pick<StepProgressItem, "
   return { label: label.length > 120 ? `${label.slice(0, 119)}…` : label, ...(typeof o.sectionId === "string" && o.sectionId ? { sectionId: o.sectionId } : {}) };
 }
 
-/** The context a run's handlers share for one invocation. */
-export function nodeContext(run: WorkflowRunRecord, deadline: number): NodeContext {
+/**
+ * The context a run's handlers share for one invocation, plus `forget`, which drops one memo
+ * entry so the next read loads it again (the engine's own; handlers never see it).
+ */
+export function nodeContext(run: WorkflowRunRecord, deadline: number): NodeContext & { forget(key: string): void } {
   const memo = new Map<string, Promise<unknown>>();
   const remember = <T>(key: string, load: () => Promise<T>): Promise<T> => {
     if (!memo.has(key)) memo.set(key, load());
@@ -105,8 +114,12 @@ export function nodeContext(run: WorkflowRunRecord, deadline: number): NodeConte
     document,
     type,
     policy: () => remember("policy", async () => typePolicy((await document()).type_key, (await type())?.family)),
+    forget: (key) => void memo.delete(key),
   };
 }
+
+/** A handler's outputs with WAIT_KEY set: wait for a person, keeping the outputs. */
+const isWait = (out: unknown): out is Record<string, unknown> => !!out && typeof out === "object" && (out as Record<string, unknown>)[WAIT_KEY] === true;
 
 /** Flatten a multiple json input one more level: a looping node's list output is a list of lists. */
 const flattenJson = (values: unknown[]) => values.flatMap((v) => (Array.isArray(v) ? v : [v]));
@@ -140,7 +153,9 @@ async function runGraph(run: WorkflowRunRecord, opts: { deadline?: number }): Pr
     return;
   }
 
-  const ctx = nodeContext(run, deadline);
+  // Rebuilt when the race path resumes a waiting node (resumeAnswered): the author changed the
+  // document while it waited, so nothing read before the wait may be served from the memo.
+  let ctx = nodeContext(run, deadline);
   const labels = nodeLabels(run);
   const incoming = new Map<string, typeof graph.edges>();
   for (const e of graph.edges) incoming.set(e.target, [...(incoming.get(e.target) ?? []), e]);
@@ -151,7 +166,8 @@ async function runGraph(run: WorkflowRunRecord, opts: { deadline?: number }): Pr
   // A later start of the same workflow on the document superseded this run (saveRun reports it): stop quietly.
   const superseded = () => run.status === "superseded";
 
-  for (const id of order) run.steps[id] ??= { status: "pending" };
+  const ids: string[] = order;
+  for (const id of ids) run.steps[id] ??= { status: "pending" };
   run.status = "running";
   run.pause_reason = null;
 
@@ -244,7 +260,7 @@ async function runGraph(run: WorkflowRunRecord, opts: { deadline?: number }): Pr
           run.steps[id] = { ...run.steps[id], progress: progress() };
           return;
         }
-        if (res === "wait") {
+        if (res === "wait" || isWait(res)) {
           failure ??= new NodeError("a looping node cannot wait");
           itemState.set(i, "failed");
           run.steps[id] = { ...run.steps[id], progress: progress() };
@@ -289,9 +305,18 @@ async function runGraph(run: WorkflowRunRecord, opts: { deadline?: number }): Pr
       } else if (out === "wait") {
         run.outputs[id] = { pending_items: g.inputs.items ?? [] };
         run.steps[id] = { ...run.steps[id], status: "waiting", note: "waiting for review" };
+      } else if (isWait(out)) {
+        const { [WAIT_KEY]: _wait, ...rest } = out;
+        void _wait;
+        run.outputs[id] = { ...rest, pending_items: [] };
+        run.steps[id] = { ...run.steps[id], status: "waiting", note: "waiting for the author to apply or discard the change" };
       } else {
         run.outputs[id] = out;
         run.steps[id] = { ...run.steps[id], status: "done", finishedAt: now(), note: noteFor(r, out) };
+        // The author may have edited the document since this invocation first read it (during a
+        // long tailor step), and a doc.write that had nothing to apply doesn't wait, so the next
+        // doc.read runs in this invocation: it must read the document as stored, not the memo.
+        if (r.spec.type === "doc.write") ctx.forget("document");
       }
     } catch (e) {
       if (e instanceof NodeError && e.raw) run.raw[id] = e.raw;
@@ -300,28 +325,55 @@ async function runGraph(run: WorkflowRunRecord, opts: { deadline?: number }): Pr
     await save();
   }
 
-  while (true) {
-    if (superseded()) return;
-    const ready = order.filter((id) => run.steps[id].status === "pending" && !deferred.has(id) && (incoming.get(id) ?? []).every((e) => settled(e.source)));
-    if (!ready.length) break;
-    if (!timeLeft()) {
-      ready.forEach((id) => deferred.add(id));
-      break;
+  /** Run every node that is ready, until none is (or time runs out). */
+  async function drive(): Promise<void> {
+    while (true) {
+      if (superseded()) return;
+      const ready = ids.filter((id) => run.steps[id].status === "pending" && !deferred.has(id) && (incoming.get(id) ?? []).every((e) => settled(e.source)));
+      if (!ready.length) return;
+      if (!timeLeft()) {
+        ready.forEach((id) => deferred.add(id));
+        return;
+      }
+      await Promise.all(ready.map(step));
     }
-    await Promise.all(ready.map(step));
   }
-  if (superseded()) return;
 
-  const waiting = order.some((id) => run.steps[id].status === "waiting");
-  const output = order.find((id) => resolved.get(id)?.spec.type === OUTPUT_NODE_TYPE);
-  if (deferred.size) {
-    run.status = "paused";
-    run.pause_reason = "budget";
-  } else {
-    run.status = waiting ? "awaiting_review" : output && run.steps[output].status === "done" ? "complete" : "failed";
+  /**
+   * The race: the author recorded a waiting node's result while the run was still running, so
+   * the changes route could not claim it. Once the run is saved as awaiting review, re-read the
+   * stored results; when a waiting node (not a checkpoint) has one, claim the run (the route may
+   * claim it first, and then runs it itself), set the node back to pending and go on.
+   */
+  async function resumeAnswered(): Promise<boolean> {
+    const waiting = ids.filter((id) => run.steps[id].status === "waiting" && resolved.get(id)?.spec.type !== CHECKPOINT_NODE_TYPE);
+    if (!waiting.length) return false;
+    const stored = await getRun(run.team_id, run.id);
+    const answered = waiting.filter((id) => stored?.changes?.[id]);
+    if (!stored || !answered.length || !(await claimRun(run, ["awaiting_review"]))) return false;
+    run.changes = stored.changes;
+    for (const id of answered) run.steps[id] = { ...run.steps[id], status: "pending", note: undefined };
+    // doc2 after a doc.write must read the document as the author left it, not the record memoized before the wait.
+    ctx = nodeContext(run, deadline);
+    return true;
   }
-  await save();
-  if (superseded()) return;
+
+  while (true) {
+    await drive();
+    if (superseded()) return;
+    const waiting = order.some((id) => run.steps[id].status === "waiting");
+    const output = order.find((id) => resolved.get(id)?.spec.type === OUTPUT_NODE_TYPE);
+    if (deferred.size) {
+      run.status = "paused";
+      run.pause_reason = "budget";
+    } else {
+      run.status = waiting ? "awaiting_review" : output && run.steps[output].status === "done" ? "complete" : "failed";
+    }
+    await save();
+    if (superseded()) return;
+    if (run.status === "awaiting_review" && (await resumeAnswered())) continue;
+    break;
+  }
   const action = { paused: "workflow_run_paused", awaiting_review: "workflow_run_awaiting_review", complete: "workflow_run_complete" }[run.status as string] ?? "workflow_run_failed";
   await auditRun(run, action, { documentId: run.document_id, runId: run.id, value: run.outcome?.value ?? null });
 }

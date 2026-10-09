@@ -140,7 +140,7 @@ function StatusText({ status, error, isNew }: { status: SaveStatus; error: strin
 }
 
 export function DocumentScreen({ documentId }: { documentId: string | null }) {
-  const { doc, loading, notFound, status, error, conflict, change, flush, resolveConflict } = useDocument(documentId);
+  const { doc, loading, notFound, status, error, conflict, change, flush, isSaved, resolveConflict } = useDocument(documentId);
   const catalog = useDocumentTypes();
 
   // The app frame's documents panel shows which document is open, with its live title.
@@ -182,6 +182,7 @@ export function DocumentScreen({ documentId }: { documentId: string | null }) {
           conflict={!!conflict}
           change={change}
           flush={flush}
+          isSaved={isSaved}
           resolveConflict={resolveConflict}
         />
       )}
@@ -215,6 +216,7 @@ type WorkspaceProps = {
   conflict: boolean;
   change: ReturnType<typeof useDocument>["change"];
   flush: ReturnType<typeof useDocument>["flush"];
+  isSaved: ReturnType<typeof useDocument>["isSaved"];
   resolveConflict: ReturnType<typeof useDocument>["resolveConflict"];
 };
 
@@ -291,7 +293,7 @@ function useSectionNotes(documentId: string | null) {
   return { notes, update };
 }
 
-function Workspace({ initial, doc, catalog, status, error, conflict, change, flush, resolveConflict }: WorkspaceProps) {
+function Workspace({ initial, doc, catalog, status, error, conflict, change, flush, isSaved, resolveConflict }: WorkspaceProps) {
   const router = useRouter();
   const types = catalog.types;
   const currentType = findType(types, doc.type_key);
@@ -380,6 +382,12 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     return (await flush()) || null;
   }, [change, flush]);
 
+  /** Save now and say whether the stored document holds every edit (a workflow run is about to read it). */
+  const saveDocument = useCallback(async () => {
+    await ensureSaved();
+    return isSaved();
+  }, [ensureSaved, isSaved]);
+
   const generation = useSectionGeneration({ editor, ensureSaved, notify });
   const outlineStatus = useOutlineStatus({ documentId: doc.id, typeKey: currentType?.key ?? doc.type_key, saveStatus: status });
   const sectionNotes = useSectionNotes(doc.id);
@@ -450,17 +458,19 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       if (!ed) return { result: null, detail: "The editor isn't ready yet.", typeKey: null };
       const out = await applyWorkflowChange(ed, proposed, {
         ensureSaved,
+        isSaved,
         snapshot,
         sectionsFor: (key) => findType(types, key)?.sections ?? null,
         newId: newSectionId,
         restructure: applyRestructurePlan,
       });
       if (out.typeKey) change({ type_key: out.typeKey, type_source: "restructure" });
-      if (out.result === "applied") notify(undoNotice(`${proposed.title}: ${out.detail}`));
+      if (out.unsaved) notify({ text: `${proposed.title}: ${out.detail} The document hasn't saved yet.`, tone: "error" });
+      else if (out.result === "applied") notify(undoNotice(`${proposed.title}: ${out.detail}`));
       else notify({ text: out.detail, tone: out.result === null ? "error" : undefined });
       return out;
     },
-    [ensureSaved, snapshot, types, change, notify, undoNotice],
+    [ensureSaved, isSaved, snapshot, types, change, notify, undoNotice],
   );
 
   /** A workflow finding's location: the section's heading, in view. The dialog closes first. */
@@ -751,6 +761,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         onSourcesChange={onSourcesChange}
         onInsertTable={insertTable}
         onApplyWorkflowChange={applyChange}
+        onSaveDocument={saveDocument}
         onJumpToSection={jumpToSection}
         workflowsPrefill={workflowsPrefill}
         onWorkflowsPrefillDone={() => setWorkflowsPrefill(null)}

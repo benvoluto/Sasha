@@ -231,6 +231,59 @@ describe("step.trace", () => {
     expect(out.traced[0].status).toBe("unverified");
   });
 
+  it("against sources: leaves out the sources excludeSources names, before the prompt and the evidence check", async () => {
+    const { doc } = await makeDocument({});
+    const S: SourcesSnapshot = {
+      sources: [
+        { id: "s1", title: "Master resume", kind: "note", role: null, summary: "", status: "ready", url: null },
+        { id: "s2", title: "Analyst", kind: "note", role: "Job posting", summary: "", status: "ready", url: null },
+      ],
+      passages: [
+        { id: "S00000001.P1", sourceId: "s1", page: 1, text: "Led a team of 4 analysts." },
+        { id: "S00000002.P1", sourceId: "s2", page: 1, text: "Must lead a team of 10." },
+      ],
+    };
+    claudeJson.mockResolvedValue({ data: { items: [{ id: "I1", status: "supported", evidence: [{ id: "S00000002.P1", quote: "lead a team of 10" }], linked_targets: [], rationale: "The posting says so." }] }, usage: USAGE });
+    const out = (await stepTrace({ items: [item("I1", "Led a team of 10.")], sources: S }, traceConfig({ excludeSources: ["posting"] }), ctxFor(doc.id))) as { traced: TracedItem[] };
+    const user = claudeJson.mock.calls[0][0].user as string;
+    expect(user).toContain("Led a team of 4 analysts.");
+    expect(user).not.toContain("Must lead a team of 10.");
+    // The posting's passage was not shown, so citing it is no support.
+    expect(out.traced[0].evidence).toEqual([]);
+    expect(out.traced[0].status).not.toBe("supported");
+
+    // Every source excluded: nothing to check against, no model call.
+    claudeJson.mockClear();
+    const none = (await stepTrace({ items: [item("I1", "x")], sources: S }, traceConfig({ excludeSources: ["posting", "resume"] }), ctxFor(doc.id))) as { traced: TracedItem[] };
+    expect(claudeJson).not.toHaveBeenCalled();
+    expect(none.traced[0].status).toBe("unverified");
+  });
+
+  it("against sources: matchSources keeps only the master history; with nothing left it says which sources it left out", async () => {
+    const { doc } = await makeDocument({});
+    const S: SourcesSnapshot = {
+      sources: [
+        { id: "s1", title: "Master resume (all jobs)", kind: "note", role: null, summary: "", status: "ready", url: null },
+        { id: "s2", title: "Reference letter from my manager", kind: "note", role: null, summary: "", status: "ready", url: null },
+      ],
+      passages: [
+        { id: "S00000001.P1", sourceId: "s1", page: 1, text: "Led a team of 4 analysts." },
+        { id: "S00000002.P1", sourceId: "s2", page: 1, text: "She ran the whole data platform." },
+      ],
+    };
+    claudeJson.mockResolvedValue({ data: { items: [{ id: "I1", status: "supported", evidence: [{ id: "S00000001.P1", quote: "Led a team of 4 analysts." }], linked_targets: [], rationale: "" }] }, usage: USAGE });
+    await stepTrace({ items: [item("I1", "Led a team of 4.")], sources: S }, traceConfig({ matchSources: ["master", "resume"], excludeSources: ["job posting"] }), ctxFor(doc.id));
+    const user = claudeJson.mock.calls[0][0].user as string;
+    expect(user).toContain("Led a team of 4 analysts.");
+    expect(user).not.toContain("She ran the whole data platform.");
+
+    claudeJson.mockClear();
+    const none = (await stepTrace({ items: [item("I1", "x")], sources: { sources: [S.sources[1]], passages: [S.passages[1]] } }, traceConfig({ matchSources: ["master", "resume"] }), ctxFor(doc.id))) as { traced: TracedItem[] };
+    expect(claudeJson).not.toHaveBeenCalled();
+    expect(none.traced[0].status).toBe("unverified");
+    expect(none.traced[0].rationale).toContain("“Reference letter from my manager”");
+  });
+
   it("maps target aliases back, drops unknown ids, downgrades unsupported passes and flags untraced targets (bothWays)", async () => {
     const { doc } = await makeDocument({});
     const items = [item("I1", "Requirement A"), item("I2", "Requirement B"), item("I3", "Requirement C")];

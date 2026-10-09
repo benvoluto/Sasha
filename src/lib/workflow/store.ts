@@ -719,6 +719,30 @@ export function recordChangeResult(teamId: string, runId: string, changeId: stri
   return mergeEntry(teamId, runId, "changes", changeId, result);
 }
 
+/**
+ * Record a change's result only if none is recorded yet, atomically: "exists" when one already
+ * is (a second tab, or a retry, racing the first), null when the run is not the team's. The
+ * changes route uses it so two overlapping POSTs can't both record, the second overwriting the
+ * lines the first applied.
+ */
+export async function recordChangeResultOnce(teamId: string, runId: string, changeId: string, result: ChangeResult): Promise<WorkflowRunRecord | "exists" | null> {
+  if (!hasDb()) {
+    const r = memory.runs.get(runId);
+    if (!r || r.team_id !== teamId) return null;
+    if (r.changes?.[changeId]) return "exists";
+    return mergeEntry(teamId, runId, "changes", changeId, result);
+  }
+  await schema();
+  const { rows } = await sql.query(
+    `UPDATE workflow_run SET changes = COALESCE(changes, '{}'::jsonb) || jsonb_build_object($3::text, $4::jsonb), updated_at = now()
+      WHERE id = $1 AND team_id = $2 AND NOT (COALESCE(changes, '{}'::jsonb) ? $3::text) RETURNING *`,
+    [runId, teamId, changeId, JSON.stringify(result)],
+  );
+  if (rows[0]) return withStaleCheck(normalizeRun(rows[0]));
+  const { rows: found } = await sql.query(`SELECT 1 FROM workflow_run WHERE id = $1 AND team_id = $2`, [runId, teamId]);
+  return found.length ? "exists" : null;
+}
+
 /** Record the author's response to a finding (accept or dismiss; "open" undoes it). */
 export function recordFindingResponse(teamId: string, runId: string, findingId: string, response: FindingResponse): Promise<WorkflowRunRecord | null> {
   return mergeEntry(teamId, runId, "responses", findingId, response);

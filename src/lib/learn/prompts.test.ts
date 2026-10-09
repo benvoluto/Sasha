@@ -6,7 +6,7 @@ import { modelReply } from "./__fixtures__/learn-reply";
 describe("the allowed nodes", () => {
   it("lists the inputs, every shared step, rubric, coverage, checkpoint and outcome; nothing that writes, drafts or searches", () => {
     expect(LEARN_NODE_TYPES).toEqual(expect.arrayContaining(["doc.read", "sources.read", "data.list", "requirements.read", "step.gate", "step.extract", "step.trace", "step.review", "step.agree", "step.check", "step.compute", "step.decide", "rubric.score", "type.coverage", "checkpoint", "outcome.report"]));
-    for (const t of ["doc.write", "draft.section", "web.find", "suggest.emit", "restructure.plan", "ai.ask", "logic.if"]) expect(LEARN_NODE_TYPES).not.toContain(t);
+    for (const t of ["doc.write", "draft.section", "web.find", "suggest.emit", "restructure.plan", "ai.ask", "logic.if", "tailor.lines"]) expect(LEARN_NODE_TYPES).not.toContain(t);
     const text = nodeCatalogText();
     expect(text).toContain("### step.compute (Compute)");
     expect(text).toMatch(/inputs: document\?, items\?, data\?, requirements\?/);

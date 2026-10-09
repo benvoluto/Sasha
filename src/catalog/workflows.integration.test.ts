@@ -16,7 +16,8 @@ import type { CheckpointDecision, DocumentChangeOp, WorkflowRunRecord } from "@/
 import { compileWorkflow } from "@/lib/workflow/compile";
 import { executeGraph, HANDLERS } from "@/lib/workflow/engine";
 import { NODE_SPECS } from "@/lib/workflow/registry";
-import { createRun, getRun, proposedChanges, resetWorkflowStore, type SavedWorkflow } from "@/lib/workflow/store";
+import { createRun, getRun, proposedChanges, recordChangeResult, resetWorkflowStore, type SavedWorkflow } from "@/lib/workflow/store";
+import { documentLines } from "@/lib/workflow/lines";
 import { heading, makeDocument, para, resetStores, TEAM, AGENT } from "@/lib/workflow/nodes/test-fixtures";
 import { builtInId, builtInWorkflow } from "./workflows";
 
@@ -195,6 +196,64 @@ describe.skipIf(missingHandlers.length > 0)("built-in workflows end to end", () 
       expect(run.steps.apply.status).toBe("skipped");
       expect(run.steps.write.status).toBe("skipped");
       expect(proposedChanges(run)).toEqual([]);
+    });
+  });
+
+  describe("resume tailoring", () => {
+    const bullets = (...texts: string[]): PMNode => ({ type: "bulletList", content: texts.map((t) => ({ type: "listItem", content: [para(t)] })) });
+    async function resume(beforeStatus: string) {
+      const { doc, sources } = await makeDocument({
+        typeKey: "resume-cv",
+        content: [heading("Contact", "c1", "contact"), para("Jane Doe"), heading("Experience", "e1", "experience"), bullets("Built weekly sales dashboards.")],
+        sources: [
+          { title: "Master resume", passages: ["Built weekly sales dashboards in Tableau."] },
+          { title: "Job posting: Data analyst", passages: ["Required: Tableau dashboards."] },
+        ],
+      });
+      const master = sources[0].passages[0].id;
+      const line = documentLines(doc.content_json as PMNode).find((l) => l.text.startsWith("Built"))!.ref;
+      claudeJson.mockImplementation(async (c: { task: string; user: string }) => {
+        const reply = (data: unknown) => ({ data, usage: USAGE });
+        if (c.task === "workflow.extract" && c.user.includes("Required: Tableau"))
+          return reply({ items: [{ fields: { requirement: "Tableau dashboards", priority: "required", kind: "skill" }, location: { section_id: null, quote: "" }, source_passages: [] }] });
+        if (c.task === "workflow.trace" && c.user.includes("show this requirement directly")) return reply({ items: [{ id: "I1", status: beforeStatus, evidence: [{ id: master, quote: "" }], linked_targets: [], rationale: "" }] });
+        if (c.task === "workflow.trace" && c.user.includes("rewritten line")) return reply({ items: [{ id: "L1", status: "in_master", evidence: [{ id: master, quote: "in Tableau" }], linked_targets: [], rationale: "" }] });
+        if (c.task === "workflow.tailor") return reply({ lines: [{ line, action: "rewrite", text: "Built weekly Tableau sales dashboards.", reason: "", requirements: ["I1"], support: [{ id: master, quote: "in Tableau" }] }] });
+        if (c.task === "workflow.decide") return reply({ value: "strong_fit", rationale: "Met.", cited: [] });
+        return reply(replyFor(c.task));
+      });
+      return doc;
+    }
+
+    it("waits at the tailored lines, then on the author's result reads the resume fresh and waits for the candidate", async () => {
+      const doc = await resume("direct");
+      let run = await start("type-resume-cv", doc.id);
+      expect(Object.entries(run.steps).filter(([, s]) => s.status === "failed")).toEqual([]);
+      expect(run.status).toBe("awaiting_review");
+      expect(run.steps.write.status).toBe("waiting");
+      expect(proposedChanges(run)[0].ops[0]).toMatchObject({ op: "replace_lines", lines: [{ id: "L1", proposed: "Built weekly Tableau sales dashboards." }] });
+
+      run = (await recordChangeResult(TEAM, run.id, "write", { result: "applied", by: AGENT, at: "", detail: "", lines: [{ lineId: "L1", result: "accepted", detail: "" }] }))!;
+      run.steps.write = { status: "pending" };
+      await executeGraph(run);
+      run = (await getRun(TEAM, run.id))!;
+      expect(run.steps.doc2.status).toBe("done");
+      expect(run.steps.cp.status).toBe("waiting");
+      expect(run.outputs.cp.pending_items).toEqual([expect.objectContaining({ value: "strong_fit" }), expect.objectContaining({ id: "L1", kind: "changed_line", result: "accepted" })]);
+
+      run = await decide(run, "cp", { verdict: "approve", role: "Candidate", edits: { record: { target_role: "Data analyst, Acme" } } });
+      expect(run.status).toBe("complete");
+      expect(run.outcome).toMatchObject({ value: "strong_fit", verdict: "approve" });
+    });
+
+    it("with no requirement the master meets, proposes nothing and goes straight on to the candidate", async () => {
+      const doc = await resume("none");
+      const run = await start("type-resume-cv", doc.id);
+      expect(claudeJson.mock.calls.some(([c]) => c.task === "workflow.tailor")).toBe(false);
+      expect(run.steps.write.status).toBe("done");
+      expect(proposedChanges(run)).toEqual([]);
+      expect(run.steps.cp.status).toBe("waiting");
+      expect(run.outcome!.findings.some((f) => f.kind === "tailor_summary")).toBe(true);
     });
   });
 

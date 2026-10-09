@@ -7,7 +7,7 @@
 // the workflow definitions and the canvas.
 
 import { z } from "zod";
-import { SEVERITIES } from "../contract";
+import { MAX_CHANGE_LINES, SEVERITIES } from "../contract";
 import { ConfigKey, optionalJson, spec, type NodeSpec } from "../node-spec";
 
 const severity = z.enum(SEVERITIES).default("major");
@@ -15,6 +15,29 @@ const field = z.string().regex(/^[a-z][a-z0-9_]{0,59}$/);
 const where = z.object({ field, equals: z.string().max(80) });
 /** "<set key>#<item key>" in src/catalog/requirements/. */
 export const RequirementRef = z.string().regex(/^[a-z0-9-]+#[a-z0-9_-]+$/, "<set>#<item>");
+
+/** The resume Tailor step's node type (not "step.*": learned workflows never change text). */
+export const TAILOR_NODE_TYPE = "tailor.lines";
+
+const keyword = z.string().trim().min(1).max(80);
+
+/**
+ * tailor.lines (After Phase 9, user decision 2026-10-09). Sources are the master history:
+ * those whose title or role contains a `masterMatch` keyword (empty: every source), less those
+ * matching an `excludeSources` keyword (the job posting), which are never shown as evidence.
+ * The posting's terms reach the model through the `requirements` input (the before trace).
+ */
+export const TailorConfig = z.object({
+  instructions: z.string().max(4000),
+  masterMatch: z.array(keyword).max(20),
+  excludeSources: z.array(keyword).max(20),
+  /** With the gate's `report` wired to `gate`: leave out the sources the gate bound under these input keys (the job posting), whatever they are titled. */
+  excludeBound: z.array(ConfigKey).max(10).default([]),
+  /** Sections it may change (spec keys); empty: every section except static ones (contact). */
+  sectionKeys: z.array(z.string().max(80)).max(30),
+  maxLines: z.number().int().min(1).max(Math.min(60, MAX_CHANGE_LINES)),
+});
+export type TailorConfig = z.infer<typeof TailorConfig>;
 
 const base = { key: ConfigKey, label: z.string().trim().min(1).max(200), severity };
 
@@ -184,5 +207,29 @@ export const GENERIC_NODE_SPECS: NodeSpec[] = [
     loopable: true,
     minTimeMs: 150_000,
     maxConcurrency: 2,
+  }),
+  spec({
+    type: TAILOR_NODE_TYPE,
+    category: "Changes",
+    label: "Tailor lines",
+    description:
+      "Resume Tailor step: proposes line rewrites of the open document from the master history (lead with matching evidence, the posting's terms where the history supports them, the source's numbers, trim unrelated lines). Each new line cites the master passages behind it and is truth-checked before it is proposed; lines that fail are dropped and reported.",
+    config: TailorConfig,
+    defaults: () => ({
+      instructions: "",
+      masterMatch: [],
+      excludeSources: [],
+      excludeBound: [],
+      sectionKeys: [],
+      maxLines: 25,
+    }),
+    inputs: () => [{ name: "document", label: "document", type: "json" }, optionalJson("sources"), optionalJson("requirements", "requirements (traced)"), optionalJson("gate", "gate report")],
+    outputs: () => [
+      { name: "op", label: "change", type: "json" },
+      { name: "lines", label: "lines", type: "json", list: true },
+      { name: "findings", label: "findings", type: "json", list: true },
+      { name: "table", label: "table", type: "json" },
+    ],
+    minTimeMs: 150_000,
   }),
 ];

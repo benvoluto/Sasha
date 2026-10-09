@@ -38,7 +38,16 @@ export type NodeContext = {
   policy(): Promise<TypeWorkflowPolicy>;
 };
 
-/** A node implementation: outputs by port name, or "wait" (checkpoints only). */
+/**
+ * A handler that must wait for a person but has outputs to show meanwhile (doc.write with
+ * waitForResult: the proposed change) returns them with this key set to true. The engine
+ * stores the other keys as the node's outputs, marks the step waiting (the run awaits review),
+ * and runs the node again once it is set back to pending (the changes route does that when
+ * the author records what happened to the change).
+ */
+export const WAIT_KEY = "__wait";
+
+/** A node implementation: outputs by port name, or "wait" (checkpoints only; see WAIT_KEY for waiting with outputs). */
 export type NodeHandler = (inputs: Record<string, unknown>, node: ResolvedNode, ctx: NodeContext) => Promise<Record<string, unknown> | "wait">;
 
 /** A failure the step reports as its error; `raw` keeps a model reply that failed validation. */

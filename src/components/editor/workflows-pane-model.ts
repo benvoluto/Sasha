@@ -3,23 +3,31 @@
 // often to poll a run and when to continue a paused one, the step list with
 // loop progress, the outcome card's lines (signature, scores, computed
 // results), findings by severity with their evidence chips, the checkpoint
-// form's checks, and the restructure mapping table. Client-safe.
+// form's checks, the restructure mapping table, and a replace_lines change's
+// line-by-line choices (the resume Tailor step, tailor-spec.md §6.2). Client-safe.
 
 import { CHECKPOINT_NODE_TYPE, configFor, NODE_SPEC_INDEX } from "@/lib/workflow/registry";
 import type { CheckpointConfig } from "@/lib/workflow/node-specs/core";
 import {
+  CHANGED_LINE_KIND,
   NO_HOME_HEADING,
   SEVERITIES,
   type AvailableWorkflow,
+  type ChangedLine,
+  type ChangeResult,
+  type ChangeResultRequest,
   type CheckpointEdits,
   type CheckpointSignature,
   type CheckpointVerdict,
   type ComputeResult,
   type EvidenceLink,
+  type DocumentChangeOp,
   type Finding,
   type GateItem,
+  type LineResult,
   type Outcome,
   type ProposedChange,
+  type ReplaceLine,
   type RestructurePlan,
   type RunBrief,
   type RunStatus,
@@ -30,6 +38,7 @@ import {
   type WorkflowRunView,
 } from "@/lib/workflow/contract";
 import { retryAfterMs } from "@/lib/limits/client";
+import type { AppliedChange } from "./apply-workflow-change";
 import { droppedWarning } from "@/lib/workflow/restructure";
 
 // --- The list ---------------------------------------------------------------------
@@ -471,9 +480,145 @@ export function changeHeadings(change: ProposedChange, headingFor: (key: string)
   const out: string[] = [];
   for (const op of change.ops) {
     if (op.op === "replace_section_body") out.push(op.heading);
+    else if (op.op === "replace_lines") out.push(...op.lines.map((l) => l.heading));
     else out.push(...op.plan.rows.map((r) => r.target).filter((k): k is string => !!k).map(headingFor), ...op.plan.gaps.map(headingFor));
   }
   return [...new Set(out)];
+}
+
+// --- Line-by-line changes (resume Tailor step) ---------------------------------------------------------
+
+/** A change's proposed lines (every replace_lines op's, in order), or null when it has none: the pane then shows the all-or-nothing card. */
+export function lineChange(change: Pick<ProposedChange, "ops">): ReplaceLine[] | null {
+  const lines = change.ops.flatMap((op) => (op.op === "replace_lines" ? op.lines : []));
+  return change.ops.some((op) => op.op === "replace_lines") ? lines : null;
+}
+
+/** The change's ops with only the ticked lines, for the editor to apply (other ops unchanged). */
+export function selectedOps(change: Pick<ProposedChange, "ops">, selected: ReadonlySet<string>): DocumentChangeOp[] {
+  return change.ops.map((op) => (op.op === "replace_lines" ? { ...op, lines: op.lines.filter((l) => selected.has(l.id)) } : op));
+}
+
+export const LINE_REJECTED = "Not kept by the author";
+const LINE_NOT_APPLIED = "Not applied";
+
+/**
+ * Every line's result for the `changes` POST, in the change's order: the
+ * editor's result for each ticked line, rejected for each unticked one. A
+ * ticked line the editor didn't report counts as skipped.
+ */
+export function lineResults(change: Pick<ProposedChange, "ops">, selected: ReadonlySet<string>, applied: LineResult[]): LineResult[] {
+  const byId = new Map(applied.map((r) => [r.lineId, r]));
+  return (lineChange(change) ?? []).map((l) =>
+    !selected.has(l.id) ? { lineId: l.id, result: "rejected", detail: LINE_REJECTED } : (byId.get(l.id) ?? { lineId: l.id, result: "skipped", detail: LINE_NOT_APPLIED }),
+  );
+}
+
+/** A line change applied in the editor whose result isn't recorded yet (the POST failed, or the save after it didn't land): a retry records it, never applies it again. */
+export type AppliedLines = { selected: ReadonlySet<string>; out: AppliedChange };
+
+/** What to do once the author applied (or kept none of) a change's lines. */
+export type LineRecordPlan = {
+  /** The changes POST, or null to send nothing (then `error` says why). */
+  post: ChangeResultRequest | null;
+  error: string | null;
+  /** Back to the editor once recorded; never while the run waits on the change (it goes on in the pane). */
+  close: boolean;
+  /**
+   * The pane's status line once recorded, whenever the pane stays open (the card and its
+   * focused button unmount, so focus moves to it); null when it closes or nothing is posted.
+   */
+  status: string | null;
+  /** The status describes the waiting run going on ("scoring…"): shown only while the run is still going. */
+  ongoing: boolean;
+};
+
+export const LINES_UNSAVED = "The lines are changed in the editor, but the document hasn't saved, so the run can't score them yet. Resolve the save problem, then record the result.";
+export const LINES_KEPT_NONE = "Kept none of the lines; scoring the resume as it is…";
+export const LINES_DISCARDED = "Kept none of the lines; the change is recorded as discarded.";
+export const LINES_STALE = "No lines could be applied: each was edited since the run.";
+export const LINES_STALE_WAITING = "No lines could be applied (each was edited since the run); scoring the resume as it is…";
+
+/** Nothing kept: while the run waits it goes on with the resume as it is; otherwise the discard is the whole story. */
+const discardedStatus = (waiting: boolean) => ({ status: waiting ? LINES_KEPT_NONE : LINES_DISCARDED, ongoing: waiting });
+
+/**
+ * Pure: the record for a replace_lines change. Nothing ticked: discarded, every
+ * line rejected. A refused apply (result null) posts nothing; nor does an apply
+ * whose save didn't land, since the run would score the stored document
+ * without the lines. Otherwise the editor's result with every line's outcome.
+ */
+export function lineRecord(change: Pick<ProposedChange, "id" | "ops">, selected: ReadonlySet<string>, out: AppliedChange | null, waiting: boolean): LineRecordPlan {
+  if (!selected.size) {
+    return { post: { changeId: change.id, result: "discarded", detail: "Kept none of the proposed lines.", lines: lineResults(change, new Set(), []) }, error: null, close: false, ...discardedStatus(waiting) };
+  }
+  if (!out || out.result === null) return { post: null, error: out?.detail || "The lines weren't applied.", close: false, status: null, ongoing: false };
+  if (out.unsaved) return { post: null, error: LINES_UNSAVED, close: false, status: null, ongoing: false };
+  const kept = (out.lines ?? []).filter((l) => l.result === "accepted").length;
+  const post: ChangeResultRequest = { changeId: change.id, result: out.result, detail: out.detail.slice(0, 1000), lines: lineResults(change, selected, out.lines ?? []) };
+  // Every ticked line was stale: say so, never "Applied 0 lines".
+  if (out.result !== "applied" || !kept) return { post, error: null, close: false, status: waiting ? LINES_STALE_WAITING : LINES_STALE, ongoing: waiting };
+  return { post, error: null, close: !waiting, status: waiting ? `Applied ${kept} line${kept === 1 ? "" : "s"}; scoring the tailored resume…` : null, ongoing: waiting };
+}
+
+/** Pure: the record for Discard: every line rejected; the waiting run goes on with the resume as it is. */
+export function lineDiscard(change: Pick<ProposedChange, "id" | "ops">, waiting: boolean): LineRecordPlan {
+  return { post: { changeId: change.id, result: "discarded", detail: "", lines: lineResults(change, new Set(), []) }, error: null, close: false, ...discardedStatus(waiting) };
+}
+
+/** "4 of 6 lines selected". */
+export function lineSelectionText(selected: number, total: number): string {
+  return `${selected} of ${total} line${total === 1 ? "" : "s"} selected`;
+}
+
+/** The apply button: "Apply 4 lines", or "Keep none and continue" with nothing ticked. */
+export function applyLinesLabel(selected: number): string {
+  return selected ? `Apply ${selected} line${selected === 1 ? "" : "s"}` : "Keep none and continue";
+}
+
+/** A requirement key's text, from the run's step.extract items (by id); the key itself when it isn't found. */
+export function requirementLabel(run: Pick<WorkflowRunView, "graph" | "outputs">, key: string): string {
+  for (const n of run.graph.nodes) {
+    if (n.type !== "step.extract") continue;
+    const items = run.outputs?.[n.id]?.items;
+    if (!Array.isArray(items)) continue;
+    const hit = (items as Array<{ id?: unknown; fields?: Record<string, unknown> }>).find((it) => it && it.id === key);
+    if (!hit?.fields) continue;
+    const fields = hit.fields;
+    const text = [fields.requirement, ...Object.values(fields)].find((v): v is string => typeof v === "string" && !!v.trim());
+    if (text) return text;
+  }
+  return key;
+}
+
+const isChangedLine = (v: unknown): v is ChangedLine => !!v && typeof v === "object" && (v as { kind?: unknown }).kind === CHANGED_LINE_KIND && typeof (v as { id?: unknown }).id === "string";
+
+/** The changed lines a checkpoint lists: from its pending_items while it waits, its items output once decided (a list input may arrive nested one level). */
+export function changedLinesFor(run: Pick<WorkflowRunView, "steps" | "outputs">, nodeId: string): ChangedLine[] {
+  const out = run.outputs?.[nodeId];
+  const source = run.steps[nodeId]?.status === "waiting" ? out?.pending_items : (out?.items ?? out?.pending_items);
+  if (!Array.isArray(source)) return [];
+  return source.flatMap((v) => (Array.isArray(v) ? v : [v])).filter(isChangedLine);
+}
+
+/** Whether a checkpoint's items come from a doc.write's changed lines (so an empty list is worth saying). */
+export function changedLinesWired(run: Pick<WorkflowRunView, "graph">, nodeId: string): boolean {
+  const writes = new Set(run.graph.nodes.filter((n) => n.type === "doc.write").map((n) => n.id));
+  return run.graph.edges.some((e) => e.target === nodeId && e.targetHandle === "items" && e.sourceHandle === "lines" && writes.has(e.source));
+}
+
+/** "4 kept, 1 rejected, 1 skipped" for a recorded change with per-line results; "" otherwise. */
+export function lineResultSummary(result: Pick<ChangeResult, "lines">): string {
+  if (!result.lines?.length) return "";
+  const n = (k: LineResult["result"]) => result.lines!.filter((l) => l.result === k).length;
+  return [
+    [n("accepted"), "kept"],
+    [n("rejected"), "rejected"],
+    [n("skipped"), "skipped"],
+  ]
+    .filter(([c]) => c)
+    .map(([c, w]) => `${c} ${w}`)
+    .join(", ");
 }
 
 // --- Classifier chip ---------------------------------------------------------------------------------------

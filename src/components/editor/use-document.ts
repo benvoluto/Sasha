@@ -289,7 +289,15 @@ export function useDocument(initialId: string | null) {
     };
   }, [clearTimer, flush]);
 
-  return { doc, loading, notFound, status, error, conflict, change, flush, resolveConflict };
+  /**
+   * Whether everything is stored: the document exists, nothing is pending and no save is in
+   * flight. flush resolves to the id even when its save conflicted or failed (the changes are
+   * queued again), so a caller that must know the stored document holds its edits (a workflow
+   * run reading it straight after) checks this after flushing.
+   */
+  const isSaved = useCallback(() => !!docRef.current.id && !inFlight.current && Object.keys(pending.current).length === 0, []);
+
+  return { doc, loading, notFound, status, error, conflict, change, flush, isSaved, resolveConflict };
 }
 
 function hasContent(d: DocState): boolean {

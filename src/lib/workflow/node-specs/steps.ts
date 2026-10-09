@@ -332,6 +332,18 @@ export const STEP_NODE_SPECS: NodeSpec[] = [
       bothWays: z.boolean(),
       /** With bothWays: a target whose field of this name is filled in (a stated reason for no goal) is not flagged. */
       exemptField: z.string().max(80).default(""),
+      /**
+       * against "sources": only sources whose title or role names one of these (After Phase 9:
+       * the master history, when a resume's facts are checked against it); empty: every source.
+       */
+      matchSources: z.array(keyword).max(20).default([]),
+      /** against "sources": leave out sources whose title or role names one of these (the job posting). */
+      excludeSources: z.array(keyword).max(20).default([]),
+      /**
+       * against "sources", with the gate's `report` wired to `gate`: leave out the sources the gate
+       * bound under these input keys (the resume's "job"), whatever they are titled.
+       */
+      excludeBound: z.array(ConfigKey).max(10).default([]),
       instructions: z.string().max(4000),
     }),
     defaults: () => ({
@@ -346,9 +358,12 @@ export const STEP_NODE_SPECS: NodeSpec[] = [
       question: "Does the cited support establish the item as stated?",
       bothWays: false,
       exemptField: "",
+      matchSources: [],
+      excludeSources: [],
+      excludeBound: [],
       instructions: "",
     }),
-    inputs: () => [{ name: "items", label: "items", type: "json" }, optionalJson("sources"), optionalJson("targets"), optionalJson("data"), optionalJson("document")],
+    inputs: () => [{ name: "items", label: "items", type: "json" }, optionalJson("sources"), optionalJson("targets"), optionalJson("data"), optionalJson("document"), optionalJson("gate", "gate report")],
     outputs: () => [
       { name: "traced", label: "traced", type: "json", list: true },
       { name: "findings", label: "findings", type: "json", list: true },
@@ -498,10 +513,29 @@ export const STEP_NODE_SPECS: NodeSpec[] = [
     category: "Changes",
     label: "Write to document",
     description: "Proposes changes to the document; the open editor applies them as one undo step after a version snapshot. Section notes and statuses are written directly.",
-    config: z.object({ target: z.enum(["editor", "section_notes"]), title: z.string().max(120), snapshotReason: z.string().max(200) }),
-    defaults: () => ({ target: "editor" as const, title: "Proposed change", snapshotReason: "Before applying a workflow change" }),
+    config: z.object({
+      target: z.enum(["editor", "section_notes"]),
+      title: z.string().max(120),
+      snapshotReason: z.string().max(200),
+      /**
+       * editor (After Phase 9): the run waits (awaiting review) until the author applies or
+       * discards the change, then goes on; `result` and `lines` say what the author did, so
+       * later nodes can read the document as the author left it (a doc.read after `result`).
+       * With nothing to change it does not wait.
+       */
+      waitForResult: z.boolean().default(false),
+    }),
+    defaults: () => ({ target: "editor" as const, title: "Proposed change", snapshotReason: "Before applying a workflow change", waitForResult: false }),
     inputs: () => [optionalJson("ops", "changes", true), optionalJson("findings", "findings", true)],
-    outputs: () => [{ name: "change", label: "change", type: "json" }],
+    outputs: (c) =>
+      c.waitForResult
+        ? [
+            { name: "change", label: "change", type: "json" },
+            { name: "result", label: "result", type: "json" },
+            { name: "lines", label: "changed lines", type: "json", list: true },
+            { name: "table", label: "table", type: "json" },
+          ]
+        : [{ name: "change", label: "change", type: "json" }],
   }),
   spec({
     type: "suggest.emit",

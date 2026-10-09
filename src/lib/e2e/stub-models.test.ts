@@ -115,6 +115,17 @@ describe("task fixtures", () => {
     expect(data).toEqual({ items: [{ id: "stub" }], done: false });
   });
 
+  it("gives workflow.tailor no lines (as its minimal value would), so a resume run never waits on a change", async () => {
+    // The tailor.lines reply shape (generic/tailor.ts TailorReply), restated so this test does not depend on the handler.
+    const schema = z.object({
+      lines: z.array(z.object({ line: z.string(), action: z.enum(["rewrite", "lead", "trim"]), text: z.string(), reason: z.string(), requirements: z.array(z.string()), support: z.array(z.object({ id: z.string(), quote: z.string() })) })),
+    });
+    expect(minimalValue(z.toJSONSchema(schema) as Schema)).toEqual(TASK_FIXTURES["workflow.tailor"]);
+    const { data } = await claudeJson({ task: "workflow.tailor", system: "s", user: "u", schema });
+    expect(data).toEqual({ lines: [] });
+    expect(TASK_FIXTURES).not.toHaveProperty("workflow.trace");
+  });
+
   it("summarizes a source without renaming it", async () => {
     expect(await summarizeSource({ title: "small.csv", text: "a,b\n1,2" })).toEqual({ summary: "A short summary written by the end-to-end test stub." });
   });

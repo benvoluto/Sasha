@@ -12,11 +12,11 @@
 import { requirementItem, requirementSet } from "@/catalog/workflows";
 import { parseCell, parseDate, parseNumber } from "@/lib/data/infer";
 import { wordCount } from "@/lib/documents/sections";
-import type { ComputeResult, EvidenceLink, ExtractedItem, Finding, OutcomeTable } from "../contract";
+import { CHANGED_LINE_KIND, type ChangedLine, type ComputeResult, type EvidenceLink, type ExtractedItem, type Finding, type OutcomeTable } from "../contract";
 import type { NodeHandler } from "../context";
 import type { ComputeCheck } from "../node-specs/generic";
 import type { DocSnapshot, SectionView, TableView } from "../nodes/types";
-import { asDoc, asItems, asTables, clip, Findings, outcomeTable } from "../nodes/util";
+import { asDoc, asItems, asTables, clip, Findings, flat, outcomeTable } from "../nodes/util";
 
 export type ComputeInput = { doc: DocSnapshot | null; items: ExtractedItem[]; tables: TableView[] };
 export type ComputeOutput = { results: ComputeResult[]; findings: Finding[]; table: OutcomeTable };
@@ -516,7 +516,19 @@ export function runComputeChecks(nodeId: string, checks: ComputeCheck[], input: 
   return { results, findings: findings.list(), table };
 }
 
+/**
+ * Pure: changed lines (doc.write's `lines`, the lines the author accepted) as items a count
+ * can read: fields action and section, status the author's result. The resume's decide step
+ * gets "lines changed: N accepted" from this count, never from the tailor step's proposed count.
+ */
+export function changedLineItems(v: unknown): ExtractedItem[] {
+  return flat<ChangedLine>(v)
+    .filter((l) => typeof l === "object" && l !== null && l.kind === CHANGED_LINE_KIND && typeof l.id === "string")
+    .map((l) => ({ id: l.id, fields: { action: l.action, section: l.heading }, location: null, evidence: [], status: l.result }));
+}
+
 export const computeHandler: NodeHandler = async (inputs, node) => {
   const checks = node.config.checks as ComputeCheck[];
-  return runComputeChecks(node.node.id, checks, { doc: asDoc(inputs.document), items: asItems(inputs.items), tables: asTables(inputs.data) });
+  const items = [...asItems(inputs.items), ...changedLineItems(inputs.items)];
+  return runComputeChecks(node.node.id, checks, { doc: asDoc(inputs.document), items, tables: asTables(inputs.data) });
 };

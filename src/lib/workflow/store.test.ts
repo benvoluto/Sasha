@@ -101,6 +101,10 @@ describe("runs", () => {
     expect(await svc.recordChangeResult("org:b", r.id, "write", { result: "applied", by: "x", at, detail: "" })).toBeNull();
     const changed = await svc.recordChangeResult("org:a", r.id, "write", { result: "applied", by: "a@example.com", at, detail: "" });
     expect(changed?.changes.write).toMatchObject({ result: "applied" });
+    // Recorded once: a racing second result is refused, and the first stands.
+    expect(await svc.recordChangeResultOnce("org:a", r.id, "write", { result: "skipped", by: "b@example.com", at, detail: "" })).toBe("exists");
+    expect(await svc.recordChangeResultOnce("org:b", r.id, "other", { result: "skipped", by: "x", at, detail: "" })).toBeNull();
+    expect((await svc.getRun("org:a", r.id))!.changes.write).toMatchObject({ result: "applied", by: "a@example.com" });
     await svc.recordFindingResponse("org:a", r.id, "check:1", { state: "dismissed", by: "a@example.com", at });
     // The engine's copy has neither; saving it keeps them.
     r.status = "complete";

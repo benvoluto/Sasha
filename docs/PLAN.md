@@ -861,11 +861,8 @@ the interface, Hanken Grotesk for the document.
 - A two-capital-word learned title with no document words (e.g. "Software Design Document") is
   flagged as a name; the author can keep it at save.
 - ClawHub draft `retrieved` dates are UTC.
-- Resume/CV workflow has no Tailor step (spec step 4) and so no changed lines for the candidate to
-  approve (spec step 8): it checks a resume the candidate has tailored. The departure is stated in the
-  workflow's notes and not-assessed list. For the doc owner to decide: add a tailor node that proposes
-  line rewrites from the master history, truth-checked before the "after" score, applied through
-  `doc.write` so each line can be accepted.
+- Resume tailoring: a rewritten line loses its inline formatting (bold, italics, links); it becomes
+  plain text with citation marks.
 - Draft-all credits facts from document notes to the section's notes when the section has its own.
 - Model judgements are lenient in places (coverage, FIE input check, report support levels); code
   checks catch the arithmetic cases.
@@ -893,6 +890,52 @@ the interface, Hanken Grotesk for the document.
   docs panel rows is not built.
 - No migration runner yet; schema changes are idempotent DDL kept in step across the store
   constants, `db/schema.sql` and the setup route.
+
+### After Phase 9
+
+**2026-10-09: resume Tailor step (user decision).** The Resume/CV workflow (version 2) now tailors
+the resume (spec step 4) and the candidate approves each changed line (spec step 8).
+- `tailor.lines` (`src/lib/workflow/generic/tailor.ts`, Opus, task `workflow.tailor`): proposes
+  rewrite, lead (move to the top of its list) and trim lines from the master history only, each
+  rewrite citing the master passages it rests on. Resume lines are listed by `src/lib/workflow/lines.ts`,
+  which the editor also uses to find them at apply; the preamble (name, contact) and static sections
+  are never offered. No model call when there are no master passages, no eligible lines or no
+  requirement the master meets.
+- Checks before anything is shown: code first (only lines Sasha showed, passage ids verified against
+  the master, every number in a new line must appear in the original or the cited passages, so new
+  dates are caught too), then a model truth trace against the master (`in_master`, `overstated`,
+  `not_in_master`). Failing lines are dropped and each is listed as a minor finding; a failed trace
+  call fails the step rather than propose unchecked lines.
+- The lines arrive as one `replace_lines` change. In the Workflows pane the author accepts or rejects
+  each line; the accepted ones apply as one undo step after a snapshot. A line edited since the run
+  (no longer found by section and text) is skipped and reported.
+- `doc.write` with `waitForResult` pauses the run (`awaiting_review`) until the author applies or
+  discards. The pane posts the per-line results to the changes route, which records them (a second
+  result is refused with 409) and resumes the run; the resume is free, like continuing from a
+  checkpoint. A result posted while the run is still running is picked up by the engine before it
+  waits. With nothing to propose, the run does not wait.
+- A fresh `doc.read` after the write, so the after score, the facts extract and truth check, length
+  and format read the resume as the author left it (hand edits included), not the proposal. A
+  blocking truth finding still makes the outcome `fact_mismatch`.
+- `step.trace` `matchSources` and `excludeSources` keep the before trace and the truth check on the
+  master history in code, not only through the question text: only sources whose title or role names
+  a master keyword (the same list as tailor's `masterMatch`), less the job posting. Keywords match at
+  word starts, and the exclude list holds posting phrases only ("job description", "job posting",
+  "posting", "vacancy"…), never bare "job" or "careers", so a master titled "Master resume (all jobs)"
+  stays in. Exclusion still wins over a match (a posting titled "Resume writer: job posting" is never
+  master evidence). When narrowing leaves nothing, the step says which sources it left out.
+- Review fixes (2026-10-09): only a list item may lead and a header-like paragraph (holding a date or
+  number, or heading a list) is never trimmed, in the checks and again in the editor, so no line ends
+  up under another employer; a line may only serve a requirement the master meets; numbers are
+  compared with their scale ($2K vs $2M, 3 vs 3+, spelled-out numbers); seniority and scope count as
+  facts in the tailor prompt and its truth check; a repeated line carries which repeat it is
+  (`occurrence`), so the editor changes the one the run meant. The editor posts nothing while the save
+  after applying the lines hasn't landed, and a retry after a failed record re-posts the applied
+  result instead of applying again. The engine rebuilds its node context when the race path resumes a
+  waiting node, so the fresh `doc.read` never serves the document memoized before the wait.
+- The checkpoint (still the only one, and it signs the outcome) lists the accepted changed lines,
+  was then now with their evidence, for the candidate's approval.
+- e2e: the stub `workflow.tailor` reply has no lines, so stubbed runs never wait on a change.
 
 ---
 

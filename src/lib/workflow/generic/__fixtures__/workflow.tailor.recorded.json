@@ -1,0 +1,40 @@
+{
+  "note": "Hand-built (no live recording yet): a workflow.tailor reply in the shape TailorReply describes, over the document, master passages and requirements below. recorded.test.ts replays it through checkTailorLines.",
+  "content": [
+    { "type": "heading", "attrs": { "level": 2, "sectionId": "c1", "specKey": "contact" }, "content": [{ "type": "text", "text": "Contact" }] },
+    { "type": "paragraph", "content": [{ "type": "text", "text": "Jane Doe · Austin, TX" }] },
+    { "type": "heading", "attrs": { "level": 2, "sectionId": "e1", "specKey": "experience" }, "content": [{ "type": "text", "text": "Experience" }] },
+    { "type": "paragraph", "content": [{ "type": "text", "text": "Data Analyst, Acme Corp, 2019–2023" }] },
+    {
+      "type": "bulletList",
+      "content": [
+        { "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Built weekly sales dashboards." }] }] },
+        { "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Cleaned survey data for 1,250 households." }] }] },
+        { "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Organized the office party." }] }] }
+      ]
+    },
+    { "type": "heading", "attrs": { "level": 2, "sectionId": "k1", "specKey": "skills" }, "content": [{ "type": "text", "text": "Skills" }] },
+    { "type": "paragraph", "content": [{ "type": "text", "text": "SQL, Excel" }] }
+  ],
+  "master": {
+    "sources": [{ "id": "m1", "title": "Master resume", "kind": "note", "role": null, "summary": "", "status": "ready", "url": null }],
+    "passages": [
+      { "id": "S00000001.P1", "sourceId": "m1", "page": 1, "text": "Built weekly sales dashboards in Tableau used by 40 regional managers." },
+      { "id": "S00000001.P2", "sourceId": "m1", "page": 1, "text": "Cleaned survey data for 1250 households using SQL and Python." },
+      { "id": "S00000001.P3", "sourceId": "m1", "page": 2, "text": "Skills: SQL, Excel, Tableau, Python." }
+    ]
+  },
+  "requirements": [
+    { "id": "I1", "fields": { "requirement": "Build dashboards in Tableau", "priority": "required", "kind": "skill" }, "location": null, "evidence": [], "status": "direct" },
+    { "id": "I2", "fields": { "requirement": "Python for data cleaning", "priority": "required", "kind": "skill" }, "location": null, "evidence": [], "status": "adjacent" },
+    { "id": "I3", "fields": { "requirement": "Manage a team of analysts", "priority": "preferred", "kind": "seniority" }, "location": null, "evidence": [], "status": "none" }
+  ],
+  "data": {
+    "lines": [
+      { "line": "D3", "action": "rewrite", "text": "Built weekly Tableau sales dashboards used by 40 regional managers.", "reason": "Surfaces the required Tableau dashboards.", "requirements": ["I1"], "support": [{ "id": "S00000001.P1", "quote": "in Tableau used by 40 regional managers" }] },
+      { "line": "D4", "action": "lead", "text": "Cleaned survey data for 1,250 households using SQL and Python.", "reason": "Python data cleaning, which the role requires.", "requirements": ["I2"], "support": [{ "id": "S00000001.P2", "quote": "using SQL and Python" }] },
+      { "line": "D5", "action": "trim", "text": "", "reason": "Unrelated to the role.", "requirements": [], "support": [] },
+      { "line": "D6", "action": "rewrite", "text": "SQL, Excel, Tableau, Python", "reason": "Lists the posting's tools the master shows.", "requirements": ["I1", "I2"], "support": [{ "id": "S00000001.P3", "quote": "SQL, Excel, Tableau, Python" }] }
+    ]
+  }
+}

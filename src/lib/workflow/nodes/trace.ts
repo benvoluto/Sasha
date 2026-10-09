@@ -3,7 +3,11 @@
 // code, or no sources linked) it makes no model call and marks every item
 // unverified. bothWays also flags targets no item links to, except a target
 // whose exemptField is filled in (a need the draft gives a reason for no goal),
-// which is noted instead.
+// which is noted instead. Against sources, matchSources keeps only sources whose
+// title or role names one of its keywords (the master history, when a resume is
+// checked against it) and excludeSources leaves out those naming one of its
+// keywords (the job posting), before anything is shown; when that leaves none,
+// every item is unverified and the reason names the sources it left out.
 
 import { z } from "zod";
 import { claudeJson } from "@/lib/llm/claude";
@@ -11,7 +15,7 @@ import type { ExtractedItem, Finding, TracedItem } from "../contract";
 import type { NodeHandler } from "../context";
 import type { StatusSpec } from "../node-specs/steps";
 import { TRACE_SYSTEM, dataBlock, documentBlock, itemsBlock, sourcesBlock } from "./prompts";
-import { asDoc, asItems, asSources, asTables, callOpts, downgradeStatus, EvidenceIndex, Findings, itemName, outcomeTable, statusFor } from "./util";
+import { asDoc, asItems, asSources, asTables, callOpts, downgradeStatus, EvidenceIndex, Findings, gateBoundSources, itemName, narrowedAway, narrowSources, outcomeTable, statusFor } from "./util";
 import type { DocSnapshot, SourcesSnapshot, TableView } from "./types";
 
 export type TraceConfig = {
@@ -22,6 +26,12 @@ export type TraceConfig = {
   bothWays: boolean;
   /** A target with this field filled in is exempt from the bothWays flag; "" for none. */
   exemptField?: string;
+  /** against "sources": only sources whose title or role names one of these keywords (empty: every source). */
+  matchSources?: string[];
+  /** against "sources": leave out sources whose title or role names one of these keywords. */
+  excludeSources?: string[];
+  /** against "sources": leave out the sources the gate report (input `gate`) bound under these input keys. */
+  excludeBound?: string[];
   instructions: string;
 };
 
@@ -139,10 +149,18 @@ export function traceTable(nodeId: string, traced: TracedItem[], config: TraceCo
 
 export const stepTrace: NodeHandler = async (inputs, node, ctx) => {
   const config = node.config as TraceConfig;
-  const m: TraceMaterial = { items: asItems(inputs.items), targets: asItems(inputs.targets), sources: asSources(inputs.sources), doc: asDoc(inputs.document), tables: asTables(inputs.data) };
+  const sources = asSources(inputs.sources);
+  const narrow = { match: config.matchSources ?? [], exclude: config.excludeSources ?? [], excludeIds: gateBoundSources(inputs.gate, config.excludeBound ?? []) };
+  const m: TraceMaterial = {
+    items: asItems(inputs.items),
+    targets: asItems(inputs.targets),
+    sources: config.against === "sources" ? narrowSources(sources, narrow) : sources,
+    doc: asDoc(inputs.document),
+    tables: asTables(inputs.data),
+  };
   const id = node.node.id;
   if (!m.items.length) return { traced: [], findings: [], table: traceTable(id, [], config) };
-  const why = nothingToCheck(config, m);
+  const why = (config.against === "sources" && narrowedAway(sources, narrow)) || nothingToCheck(config, m);
   if (why) {
     const traced = unverifiedTrace(m.items, config, why);
     return { traced, findings: traceFindings(id, traced, config, m, false), table: traceTable(id, traced, config) };

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ExtractedItem } from "../contract";
 import { ComputeCheck } from "../node-specs/generic";
 import type { DocSnapshot, SectionView, TableView } from "../nodes/types";
-import { addDays, addYears, dependencyItem, numbersIn, runComputeChecks, toNumber } from "./compute";
+import { addDays, addYears, changedLineItems, dependencyItem, numbersIn, runComputeChecks, toNumber } from "./compute";
 
 const check = (c: Record<string, unknown>) => ComputeCheck.parse({ key: "k", label: "Check", ...c });
 const item = (id: string, fields: ExtractedItem["fields"]): ExtractedItem => ({ id, fields, location: null, evidence: [] });
@@ -158,6 +158,15 @@ describe("date_order and count", () => {
     expect(run({ kind: "count", status: ["direct"] }, { items }).results[0].actual).toBe("2 of 4");
     // Plain extracted items have no status, so none count.
     expect(run({ kind: "count", status: ["direct"] }, { items: [item("X", {})] }).results[0].actual).toBe("0 of 1");
+  });
+
+  it("counts doc.write's accepted lines (the resume's lines changed), never anything else as one", () => {
+    const changed = (id: string, result: string) => ({ id, kind: "changed_line", action: "rewrite", sectionId: "e1", heading: "Experience", original: "a", proposed: "b", occurrence: 0, occurrences: 1, reason: "", requirementKeys: [], evidence: [], result, detail: "" });
+    const items = changedLineItems([changed("L1", "accepted"), changed("L3", "accepted"), { id: "X", fields: {} }, null]);
+    expect(items.map((i) => [i.id, (i as { status?: string }).status, i.fields.section])).toEqual([["L1", "accepted", "Experience"], ["L3", "accepted", "Experience"]]);
+    const r = run({ kind: "count", label: "Lines changed" }, { items }).results[0];
+    expect(r).toMatchObject({ ok: null, actual: "2" });
+    expect(run({ kind: "count" }, { items: changedLineItems([]) }).results[0].actual).toBe("0");
   });
 });
 

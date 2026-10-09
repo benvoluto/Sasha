@@ -166,6 +166,21 @@ describe("useDocument notes", () => {
     expect(render(null).status).toBe("saved");
   });
 
+  it("isSaved is false after a flush whose save conflicted or failed, though flush still resolves to the id", async () => {
+    const theirs = { id: "doc-1", title: "Plan", type_key: null, content_json: null, notes: "", updated_at: T1 };
+    const calls = replies(created, { status: 409, body: { error: "changed", document: theirs } }, { status: 500, body: { error: "down" } }, saved(T2));
+    const hook = await savedHook(calls);
+    expect(hook.isSaved()).toBe(true);
+    hook.change({ notes: "applied lines" });
+    expect(hook.isSaved()).toBe(false);
+    expect(await hook.flush()).toBe("doc-1");
+    expect(hook.isSaved()).toBe(false);
+    await hook.flush();
+    expect(hook.isSaved()).toBe(false);
+    await hook.flush();
+    expect(hook.isSaved()).toBe(true);
+  });
+
   it("Load their version drops the pending notes", async () => {
     const theirs = { id: "doc-1", title: "Plan", type_key: null, content_json: null, notes: "their notes", updated_at: T1 };
     const calls = replies(created, { status: 409, body: { error: "changed", document: theirs } });
