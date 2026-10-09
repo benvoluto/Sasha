@@ -1,12 +1,13 @@
 // Team-scoped requirement sets (PLAN §6.11: "requirement sets the example
-// implies are saved as dated data, marked inferred") and the hourly cap on
-// extractions. A requirement_set row is one team's inferred set (key prefixed
+// implies are saved as dated data, marked inferred"). A requirement_set row is one team's inferred set (key prefixed
 // "team-"); the catalog's own sets ship in requirements.bundle.json and are
 // never stored here. Readers resolve catalog sets first, then these
 // (availability.ts refs(), the requirements.read step), and show them as
 // "Inferred from examples, not from the rules".
 //
-// learn_call rows count a team's extractions over the last hour.
+// The hourly cap on extractions moved to the shared limiter in Phase 9
+// (src/lib/limits, family "learn"); the learn_call table stays in the DDL for
+// older databases, but nothing writes it any more.
 //
 // Without POSTGRES_URL (local development, tests) rows live in process memory,
 // cleared by resetMemoryStore() (documents store) or resetLearnStore().
@@ -18,7 +19,7 @@ import { onMemoryStoreReset } from "@/lib/documents/store";
 import { ensureSchema } from "@/lib/ontology/ensure-schema";
 import { processMemory } from "@/lib/process-memory";
 import type { RequirementRef } from "@/lib/workflow/contract";
-import { LEARN_INFERRED_LABEL, LEARN_TEAM_HOURLY_LIMIT, TEAM_REQUIREMENT_SET_PREFIX } from "./contract";
+import { LEARN_INFERRED_LABEL, TEAM_REQUIREMENT_SET_PREFIX } from "./contract";
 
 /** Kept in step with db/schema.sql; spread into the setup route. */
 export const LEARN_SCHEMA = [
@@ -37,18 +38,15 @@ export const LEARN_SCHEMA = [
 
 const hasDb = () => !!process.env.POSTGRES_URL;
 const schema = () => ensureSchema("learn", LEARN_SCHEMA);
-const HOUR_MS = 3_600_000;
 
 const memory = processMemory("learn", () => ({
   /** team id → key → definition (stored copies). */
   sets: new Map<string, Map<string, RequirementSet>>(),
-  calls: new Map<string, number[]>(),
 }));
 
-/** Clears the in-memory sets and counters (tests). resetMemoryStore() calls this too. */
+/** Clears the in-memory sets (tests). resetMemoryStore() calls this too. */
 export function resetLearnStore() {
   memory.sets.clear();
-  memory.calls.clear();
 }
 onMemoryStoreReset(resetLearnStore);
 
@@ -140,45 +138,3 @@ export function resolveSet(key: string, teamSets: RequirementSet[]): Requirement
 /** A set's reference, labelled when inferred. */
 export const setRef = (set: RequirementSet): RequirementRef => (set.inferred ? inferredRef(set) : requirementRef(set));
 
-// --- Rate gate -------------------------------------------------------------------------
-
-export type LearnGate = { ok: true } | { ok: false; retryAfterSeconds: number };
-
-const refusal = (oldest: number | null, now: number): LearnGate => ({ ok: false, retryAfterSeconds: Math.max(1, Math.ceil(((oldest ?? now) + HOUR_MS - now) / 1000)) });
-
-/**
- * May the team run an extraction now? Counts it in the same step when it may,
- * so parallel requests can't all pass (an advisory lock holds the count and
- * the insert together on Postgres).
- */
-export async function reserveLearnCall(teamId: string, now = Date.now()): Promise<LearnGate> {
-  const since = now - HOUR_MS;
-  if (!hasDb()) {
-    const recent = (memory.calls.get(teamId) ?? []).filter((t) => t > since);
-    if (recent.length >= LEARN_TEAM_HOURLY_LIMIT) return refusal(Math.min(...recent), now);
-    memory.calls.set(teamId, [...recent, now]);
-    return { ok: true };
-  }
-  await schema();
-  const client = await sql.connect();
-  try {
-    await client.sql`BEGIN`;
-    await client.sql`SELECT pg_advisory_xact_lock(hashtext(${`learn_call:${teamId}`}))`;
-    await client.sql`DELETE FROM learn_call WHERE team_id = ${teamId} AND called_at <= ${new Date(since).toISOString()}`;
-    const { rows } = await client.sql`
-      SELECT count(*)::int AS n, min(called_at) AS oldest FROM learn_call
-      WHERE team_id = ${teamId} AND called_at > ${new Date(since).toISOString()}`;
-    if (Number(rows[0]?.n ?? 0) >= LEARN_TEAM_HOURLY_LIMIT) {
-      await client.sql`ROLLBACK`;
-      return refusal(rows[0]?.oldest ? new Date(rows[0].oldest as string).getTime() : null, now);
-    }
-    await client.sql`INSERT INTO learn_call (team_id, called_at) VALUES (${teamId}, ${new Date(now).toISOString()})`;
-    await client.sql`COMMIT`;
-    return { ok: true };
-  } catch (error) {
-    await client.sql`ROLLBACK`.catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
-}

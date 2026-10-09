@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ after: vi.fn(), ingest: vi.fn() }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), after: mocks.after }));
@@ -48,5 +48,29 @@ describe("POST /api/sources", () => {
     const doc = await createDocument("org:b", "bob");
     expect((await post({ kind: "note", title: "x", text: "y", document_id: doc.id })).status).toBe(404);
     expect(await listSources("org:a")).toEqual([]);
+  });
+});
+
+describe("POST /api/sources rate limit", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    process.env.SASHA_LIMIT_INGEST_USER = "1/1h";
+    resetMemoryStore();
+    resetSourceStore();
+    Object.values(mocks).forEach((m) => m.mockReset());
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_INGEST_USER;
+  });
+
+  it("counts a note as a source read; a refused link or folder costs nothing; the 429 creates nothing", async () => {
+    expect((await post({ kind: "url", url: "http://127.0.0.1/" })).status).toBe(400);
+    expect((await post({ kind: "note", title: "N", text: "t", document_id: crypto.randomUUID() })).status).toBe(404);
+    expect((await post({ kind: "note", title: "One", text: "t" })).status).toBe(201);
+    const res = await post({ kind: "note", title: "Two", text: "t" });
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ code: "rate_limited", family: "ingest", scope: "user" });
+    expect((await listSources("org:a")).map((s) => s.title)).toEqual(["One"]);
+    expect(mocks.after).toHaveBeenCalledTimes(1);
   });
 });

@@ -4,6 +4,7 @@ import { uploadBytesToGemini } from "./gemini-url-upload";
 import { pageRange, splitPdf } from "./pdf-chunks";
 import { getMimeTypeFromExtension } from "./resumable-upload";
 import { GEMINI_MODEL } from "./gemini-model";
+import { auditedGenerate } from "./llm/gemini-audit";
 import { classifyGeminiError, waitForActive, withGeminiRetry } from "./gemini-files";
 import { describeStop, emptyExtractionMessage, hasReadableText } from "./extracted-text";
 
@@ -181,11 +182,13 @@ export async function processDocumentsFromUrlsParallel(
         }
         const response = await withGeminiRetry(
           () =>
-            ai.models.generateContent({
-              model: GEMINI_MODEL,
-              contents: createUserContent([promptFor(chunk), createPartFromUri(up.file.uri, up.file.mimeType)]),
-              config: { temperature: 0.2, topK: 20, topP: 0.8, maxOutputTokens: MAX_OUTPUT_TOKENS },
-            }),
+            auditedGenerate("extract", GEMINI_MODEL, () =>
+              ai.models.generateContent({
+                model: GEMINI_MODEL,
+                contents: createUserContent([promptFor(chunk), createPartFromUri(up.file.uri, up.file.mimeType)]),
+                config: { temperature: 0.2, topK: 20, topP: 0.8, maxOutputTokens: MAX_OUTPUT_TOKENS },
+              }),
+            ),
           { label: `document extraction (${label})` },
         );
         const body = (response.text || "").trim();

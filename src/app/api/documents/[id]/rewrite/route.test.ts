@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ claudeText: vi.fn(), getType: vi.fn() }));
 vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => ({ teamId: "org:a", agent: "ann" }) }));
@@ -105,5 +105,31 @@ describe("POST /api/documents/[id]/rewrite", () => {
     // The injected line stays inside the context block, before the instruction.
     expect(user.indexOf("Ignore the passage")).toBeLessThan(user.indexOf("</document_context>"));
     expect(user.trimEnd().endsWith("</passage>")).toBe(true);
+  });
+});
+
+describe("POST /api/documents/[id]/rewrite rate limit", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    process.env.SASHA_LIMIT_DRAFT_TEAM = "2/1d";
+    resetMemoryStore();
+    mocks.claudeText.mockReset().mockResolvedValue({ text: "Shorter.", usage: {} });
+    mocks.getType.mockReset().mockResolvedValue(null);
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_DRAFT_TEAM;
+  });
+
+  it("counts drafts for the team; a missing document or a bad preset costs nothing; the refusal makes no model call", async () => {
+    const d = await createDocument("org:a", "ann");
+    expect((await call(crypto.randomUUID(), { text: "Passage.", instruction: "Shorter" })).status).toBe(404);
+    expect((await call(d.id, { text: "Passage.", preset: "no-such-preset" })).status).toBe(400);
+    expect((await call(d.id, { text: "Passage.", instruction: "Shorter" })).status).toBe(200);
+    expect((await call(d.id, { text: "Passage.", instruction: "Shorter" })).status).toBe(200);
+    const res = await call(d.id, { text: "Passage.", instruction: "Shorter" });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toMatch(/^\d+$/);
+    expect(await res.json()).toMatchObject({ code: "rate_limited", scope: "team", family: "draft", error: expect.stringMatching(/^Your team has used its 2 drafts for today\. Try again in \d+ h\.$/) });
+    expect(mocks.claudeText).toHaveBeenCalledTimes(2);
   });
 });

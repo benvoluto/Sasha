@@ -100,7 +100,7 @@ export function FileDropzone({ documentId, folderId, resolveDocumentId, label, o
     <div className="space-y-1.5">
       <div
         {...getRootProps({ role: "button", "aria-label": "Upload source files" })}
-        className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed text-center text-sm text-[var(--doc-muted)] outline-none transition-colors focus-visible:border-[var(--doc-accent)] ${
+        className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed text-center text-sm text-[var(--doc-muted)] outline-none transition-colors focus-visible:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)] ${
           compact ? "flex-col px-3 py-4" : "px-6 py-6"
         } ${isDragActive ? "border-[var(--doc-accent)] bg-[var(--doc-accent-soft)]" : "border-[var(--doc-line)] hover:border-[var(--doc-accent-line)]"} ${
           uploading ? "cursor-progress opacity-80" : ""

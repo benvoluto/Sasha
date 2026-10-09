@@ -5,9 +5,11 @@
 // and a burst of typing is one request; the server gates and short-circuits
 // unchanged inputs), so the Suggestions tab is current when opened. Nothing
 // runs for the values the document opened with, and failures are ignored: the
-// tab regenerates on open anyway.
+// tab regenerates on open anyway. A 429 (the light allowance) is quiet too: the
+// change stays pending and is sent again once Retry-After has passed.
 
 import { useEffect, useRef } from "react";
+import { retryAfterMs } from "@/lib/limits/client";
 
 export const SUGGESTIONS_REFRESH_DEBOUNCE_MS = 15_000;
 
@@ -52,15 +54,29 @@ export function useSuggestionsRefresh(input: {
     const next: Seen = { documentId, key, sources: sources ?? baseSources, dirty };
     seen.current = next;
     if (!dirty || !documentId) return;
-    const t = window.setTimeout(() => {
+    let cancelled = false;
+    const send = async () => {
       next.dirty = false;
-      void fetch(`/api/documents/${encodeURIComponent(documentId)}/suggestions/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-        keepalive: true,
-      }).catch(() => undefined);
-    }, SUGGESTIONS_REFRESH_DEBOUNCE_MS);
-    return () => window.clearTimeout(t);
+      try {
+        const res = await fetch(`/api/documents/${encodeURIComponent(documentId)}/suggestions/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+          keepalive: true,
+        });
+        const wait = res.status === 429 ? retryAfterMs(429, await res.json().catch(() => null), res.headers.get("Retry-After")) : null;
+        if (wait === null || cancelled) return;
+        // Still pending: a re-render that cancels this retry schedules the change again.
+        next.dirty = true;
+        t = window.setTimeout(() => void send(), Math.max(SUGGESTIONS_REFRESH_DEBOUNCE_MS, wait));
+      } catch {
+        // Background work: the tab regenerates on open anyway.
+      }
+    };
+    let t = window.setTimeout(() => void send(), SUGGESTIONS_REFRESH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
   }, [documentId, typeKey, notes, sources]);
 }

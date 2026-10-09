@@ -27,6 +27,7 @@ vi.mock("@/lib/ontology/governance", async (importOriginal) => ({
 import { resetCatalogStore } from "@/catalog/store";
 import { resetMemoryStore } from "@/lib/documents/store";
 import { ModelRefusalError } from "@/lib/llm/claude";
+import { DEFAULT_LIMITS } from "@/lib/limits/contract";
 import { LEARN_TEAM_HOURLY_LIMIT, type LearnDraft, type LearnResponse } from "@/lib/learn/contract";
 import { resetLearnStore } from "@/lib/learn/store";
 import { createSource, resetSourceStore } from "@/lib/sources/store";
@@ -97,13 +98,23 @@ describe("POST /api/document-types/learn", () => {
     expect(mocks.claudeJson).not.toHaveBeenCalled();
   });
 
-  it(`caps extractions at ${LEARN_TEAM_HOURLY_LIMIT} an hour per team (429 with Retry-After seconds)`, async () => {
+  it(`caps extractions per user and at ${LEARN_TEAM_HOURLY_LIMIT} an hour per team (429 with Retry-After)`, async () => {
     const examples = await example();
     mocks.claudeJson.mockResolvedValue({ data: modelReply(), usage: USAGE });
-    for (let i = 0; i < LEARN_TEAM_HOURLY_LIMIT; i++) expect((await post({ examples })).status).toBe(200);
-    const res = await post({ examples });
-    expect(res.status).toBe(429);
-    expect((await res.json()).retryAfterSeconds).toBeGreaterThan(0);
+    const userLimit = DEFAULT_LIMITS.learn.user[0].limit;
+    for (let i = 0; i < userLimit; i++) expect((await post({ examples })).status).toBe(200);
+    const mine = await post({ examples });
+    expect(mine.status).toBe(429);
+    expect(Number(mine.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(await mine.json()).toMatchObject({ code: "rate_limited", scope: "user", family: "learn", error: expect.stringMatching(/^You've used your 4 learning runs for this hour\. Try again in \d+ min\.$/) });
+
+    mocks.caller.current = { ...mocks.caller.current, userId: "u2" };
+    for (let i = userLimit; i < LEARN_TEAM_HOURLY_LIMIT; i++) expect((await post({ examples })).status).toBe(200);
+    const team = await post({ examples });
+    expect(team.status).toBe(429);
+    expect(await team.json()).toMatchObject({ scope: "team", error: expect.stringMatching(/^Your team has used its 6 learning runs for this hour/) });
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(LEARN_TEAM_HOURLY_LIMIT);
+    mocks.caller.current = { ...mocks.caller.current, userId: "u" };
   });
 
   it("maps a refusal to 422 and other failures to 502, audited as not allowed", async () => {

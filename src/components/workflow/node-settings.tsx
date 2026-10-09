@@ -20,12 +20,36 @@ type Props = { node: GraphNode; config: Config; set: (patch: Config) => void; di
 const field = 'nodrag nowheel w-full rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100';
 const label = 'mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500';
 
-function Field({ title, children }: { title: string; children: React.ReactNode }) {
+/**
+ * A titled control. One control: the title is its <label>. With `htmlFor`, the
+ * title labels that control only (buttons sit beside it). A list of controls
+ * (`group`): a labelled group whose controls name themselves.
+ */
+function Field({ title, children, group, htmlFor }: { title: string; children: React.ReactNode; group?: boolean; htmlFor?: string }) {
+  const id = useId();
+  if (group)
+    return (
+      <div role="group" aria-labelledby={id}>
+        <span id={id} className={label}>
+          {title}
+        </span>
+        {children}
+      </div>
+    );
+  if (htmlFor)
+    return (
+      <div>
+        <label htmlFor={htmlFor} className={label}>
+          {title}
+        </label>
+        {children}
+      </div>
+    );
   return (
-    <div>
+    <label className="block">
       <span className={label}>{title}</span>
       {children}
-    </div>
+    </label>
   );
 }
 
@@ -84,7 +108,7 @@ function ModelFields({ config, set, disabled }: Omit<Props, 'node'>) {
 function TemplateField({ title, value, onChange, variables, disabled, rows = 6 }: { title: string; value: string; onChange: (v: string) => void; variables: string[]; disabled: boolean; rows?: number }) {
   const id = useId();
   return (
-    <Field title={title}>
+    <Field title={title} htmlFor={id}>
       <textarea id={id} rows={rows} className={`${field} font-mono`} disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)} />
       {variables.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
@@ -115,12 +139,12 @@ const toName = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]+/g, '_').repla
 /** Editable list of input names (Ask AI, Combine text). */
 function InputNames({ names, set, disabled }: { names: string[]; set: (n: string[]) => void; disabled: boolean }) {
   return (
-    <Field title="Inputs">
+    <Field title="Inputs" group>
       <div className="space-y-1">
         {names.map((n, i) => (
           <div key={i} className="flex gap-1">
-            <input className={`${field} font-mono`} disabled={disabled} value={n} onChange={(e) => set(names.map((x, j) => (j === i ? toName(e.target.value) : x)))} />
-            <button type="button" className="nodrag px-1 text-zinc-500 hover:text-red-600 disabled:opacity-40" disabled={disabled || names.length <= 1} onClick={() => set(names.filter((_, j) => j !== i))} title="Remove input">
+            <input className={`${field} font-mono`} aria-label={`Input ${i + 1} name`} disabled={disabled} value={n} onChange={(e) => set(names.map((x, j) => (j === i ? toName(e.target.value) : x)))} />
+            <button type="button" className="nodrag px-1 text-zinc-500 hover:text-red-600 disabled:opacity-40" disabled={disabled || names.length <= 1} onClick={() => set(names.filter((_, j) => j !== i))} title="Remove input" aria-label={`Remove input ${n || i + 1}`}>
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -163,7 +187,7 @@ function Rows<T extends Record<string, unknown>>({
   max?: number;
 }) {
   return (
-    <Field title={title}>
+    <Field title={title} group>
       <div className="space-y-2">
         {rows.map((row, i) => (
           <div key={i} className="space-y-1 rounded-md border border-zinc-200 p-1.5 dark:border-zinc-800">
@@ -180,6 +204,7 @@ function Rows<T extends Record<string, unknown>>({
                     <input
                       key={c.key}
                       className={`${field} ${c.kind === 'name' ? 'font-mono' : ''}`}
+                      aria-label={`${c.placeholder}, row ${i + 1}`}
                       disabled={disabled}
                       placeholder={c.placeholder}
                       value={String(row[c.key] ?? '')}
@@ -187,7 +212,7 @@ function Rows<T extends Record<string, unknown>>({
                     />
                   ),
                 )}
-              <button type="button" className="nodrag px-1 text-zinc-500 hover:text-red-600 disabled:opacity-40" disabled={disabled || rows.length <= min} onClick={() => set(rows.filter((_, j) => j !== i))} title="Remove">
+              <button type="button" className="nodrag px-1 text-zinc-500 hover:text-red-600 disabled:opacity-40" disabled={disabled || rows.length <= min} onClick={() => set(rows.filter((_, j) => j !== i))} title="Remove" aria-label={`Remove row ${i + 1}`}>
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -198,6 +223,7 @@ function Rows<T extends Record<string, unknown>>({
                   key={c.key}
                   rows={2}
                   className={field}
+                  aria-label={`${c.placeholder}, row ${i + 1}`}
                   disabled={disabled}
                   placeholder={c.placeholder}
                   value={String(row[c.key] ?? '')}

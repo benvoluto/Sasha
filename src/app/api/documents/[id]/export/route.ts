@@ -3,6 +3,9 @@ import { getType } from "@/catalog";
 import { resolveReferences } from "@/lib/citations/references";
 import { getDocument } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
+import { rateLimitedResponse } from "@/lib/limits/http";
+import { releaseModelCall, reserveModelCall } from "@/lib/limits/limiter";
+import type { LimitRefusal } from "@/lib/limits/contract";
 import { exportDocx } from "@/lib/export/docx";
 import {
   EXPORT_HTML_CSP,
@@ -45,7 +48,10 @@ const FORMAT_NAME: Record<ExportFormat, string> = { md: "Markdown", docx: "Word"
  * as a file (phase7-spec.md §4.1). Citations become numbered references,
  * images are inlined only from data: URIs and the team's own source files,
  * and nothing in the document is ever executed. `html` is the print fallback,
- * served inline under a policy that forbids scripts and remote loads.
+ * served inline under a policy that forbids scripts and remote loads. A PDF
+ * that needs a new render counts one "export" call before the render slot is
+ * taken (429 when the allowance is used up); one sharing a render in progress
+ * does not, and the call is given back when no browser could render it.
  */
 export async function GET(req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.documentRead);
@@ -81,11 +87,29 @@ export async function GET(req: Request, { params }: Ctx) {
       images,
     };
   };
-  const pdf = () => {
+  const pdf = async (): Promise<Uint8Array | LimitRefusal> => {
     const key = [caller.teamId, doc.id, doc.updated_at, origin].join("\u0000");
     let running = pdfInflight.get(key);
     if (!running) {
-      const job = (async () => new Uint8Array(await renderPdf(printHtml(await buildInput()))))();
+      const gate = await reserveModelCall(caller, "export");
+      if (!gate.ok) return gate;
+      // Another request started the same render while this one reserved: share it and give the call back.
+      const shared = pdfInflight.get(key);
+      if (shared) {
+        await releaseModelCall(caller, "export");
+        return shared;
+      }
+      const job = (async () => {
+        try {
+          return new Uint8Array(await renderPdf(printHtml(await buildInput())));
+        } catch (err) {
+          // No PDF was made and no Chrome ran (no browser here, or the render queue was full): give the call back,
+          // so a host without PDF support keeps answering with the print fallback instead of a 429.
+          // Only this request reserved; the ones sharing the job did not. A timeout or oversized PDF used a render and stays charged.
+          if (err instanceof PdfUnavailableError || err instanceof PdfBusyError) await releaseModelCall(caller, "export");
+          throw err;
+        }
+      })();
       running = job;
       pdfInflight.set(key, job);
       void job.catch(() => undefined).finally(() => {
@@ -97,8 +121,11 @@ export async function GET(req: Request, { params }: Ctx) {
 
   let body: Uint8Array;
   try {
-    if (format === "pdf") body = await pdf();
-    else {
+    if (format === "pdf") {
+      const out = await pdf();
+      if (!(out instanceof Uint8Array)) return rateLimitedResponse(out, { headers: NOSNIFF });
+      body = out;
+    } else {
       const input = await buildInput();
       if (format === "md") body = new TextEncoder().encode(tiptapToMarkdown(input.doc, input));
       else if (format === "docx") body = new Uint8Array(await exportDocx(input));

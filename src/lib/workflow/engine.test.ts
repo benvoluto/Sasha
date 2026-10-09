@@ -82,7 +82,7 @@ vi.mock("./generic", () => ({
   },
 }));
 
-const { executeGraph, HANDLERS, LOOP_CONCURRENCY, progressItem } = await import("./engine");
+const { executeGraph, HANDLERS, LOOP_CONCURRENCY, nodeContext, progressItem } = await import("./engine");
 const { createRun, getRun, normalizeRun, resetWorkflowStore } = await import("./store");
 const { checkpointDecisionFor } = await import("./core-nodes");
 
@@ -169,6 +169,39 @@ describe("executeGraph", () => {
     expect(runTimeline(toRunSummary(run)).at(-1)!.title).toBe("Run finished: outcome recorded");
     expect((await getRun(TEAM, run.id))?.outcome?.value).toBe("sound");
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "workflow_run_complete", args: { documentId: run.document_id, runId: run.id }, result: { documentId: run.document_id, runId: run.id, value: "sound" } }));
+  });
+
+  it("runs every node's model call inside the run's model context, keeping the route's user", async () => {
+    const { currentModelContext, withModelContext } = await import("@/lib/llm/context");
+    const seen: unknown[] = [];
+    fakeModel();
+    const answer = callModel.getMockImplementation()!;
+    callModel.mockImplementation(async (c: never) => {
+      seen.push(currentModelContext());
+      return answer(c);
+    });
+    const run = await runOf(defaultWorkflowGraph());
+    await withModelContext({ teamId: TEAM, userId: "user_42", agent: "tester@example.com" }, () => executeGraph(run));
+    expect(seen).toEqual([{ teamId: TEAM, userId: "user_42", agent: "tester@example.com", documentId: run.document_id, runId: run.id }]);
+    expect(currentModelContext()).toBeNull();
+
+    // Another user continuing the run: the agent on the context and on each call is theirs, not the requester's.
+    seen.length = 0;
+    callModel.mockClear();
+    const continued = await runOf(defaultWorkflowGraph());
+    expect(continued.requested_by).not.toBe("other@example.com");
+    await withModelContext({ teamId: TEAM, userId: "user_99", agent: "other@example.com" }, () => executeGraph(continued));
+    expect(seen[0]).toMatchObject({ userId: "user_99", agent: "other@example.com" });
+    // Handlers pass ctx.agent to their model calls (callOpts), which the audit prefers over the context's.
+    const ctx = withModelContext({ teamId: TEAM, userId: "user_99", agent: "other@example.com" }, () => nodeContext(continued, Date.now() + 1000));
+    expect(ctx.agent).toBe("other@example.com");
+    expect(nodeContext(continued, Date.now() + 1000).agent).toBe(continued.requested_by);
+
+    // Without a route context (a continued run's background work), the requester stands in for the user.
+    seen.length = 0;
+    const second = await runOf(defaultWorkflowGraph());
+    await executeGraph(second);
+    expect(seen[0]).toMatchObject({ teamId: TEAM, userId: second.requested_by, agent: second.requested_by, runId: second.id });
   });
 
   it("fails a step whose document was deleted, and reports the outcome as incomplete", async () => {

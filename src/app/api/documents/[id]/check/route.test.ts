@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ team: { value: "org:a" }, configured: { value: true }, claudeJson: vi.fn() }));
 vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => ({ teamId: mocks.team.value, agent: "ann" }) }));
@@ -95,6 +95,8 @@ describe("POST/GET /api/documents/[id]/check", () => {
     const body = await res.json();
     expect(body.retryAfterSeconds).toBeGreaterThan(0);
     expect(body.error).toMatch(/^Checked moments ago\. Try again in \d+s\.$/);
+    expect(body).toMatchObject({ code: "rate_limited", scope: "key", family: "check", retry_after_seconds: body.retryAfterSeconds });
+    expect(res.headers.get("Retry-After")).toBe(String(body.retryAfterSeconds));
     expect(mocks.claudeJson).toHaveBeenCalledTimes(1);
   });
 
@@ -171,5 +173,31 @@ describe("POST/GET /api/documents/[id]/check", () => {
     const res = await post(doc.id, { scope: "document" });
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ error: "The check failed. Try again." });
+  });
+});
+
+describe("POST /api/documents/[id]/check rate limit", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    process.env.SASHA_LIMIT_CHECK_TEAM = "2/1h";
+    resetMemoryStore();
+    mocks.team.value = "org:a";
+    mocks.configured.value = true;
+    mocks.claudeJson.mockReset();
+    reply();
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_CHECK_TEAM;
+  });
+
+  it("counts model checks for the team; cached results are free; the refusal makes no model call", async () => {
+    const doc = await makeDoc();
+    expect((await post(doc.id, { scope: "document" })).status).toBe(200);
+    expect((await (await post(doc.id, { scope: "document" })).json()).cached).toBe(true);
+    expect((await post(doc.id, { scope: "section", sectionId: "sum" })).status).toBe(200);
+    const res = await post(doc.id, { scope: "section", sectionId: "bud" });
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ code: "rate_limited", scope: "team", family: "check", error: expect.stringMatching(/^Your team has used its 2 rubric checks for this hour\. Try again in \d+ min\.$/) });
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(2);
   });
 });

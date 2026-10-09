@@ -10,6 +10,9 @@ import { processDocumentsServerless } from './gemini-serverless';
 import { processDocumentsFromUrls } from './gemini-url-upload';
 import { GEMINI_MODEL } from './gemini-model';
 import { checkExtraction } from './extracted-text';
+import { e2eStubModels } from './e2e/mode';
+import { stubGeminiExtraction } from './e2e/stub-models';
+import { auditGemini, auditedGenerate, stubGeminiUsage } from './llm/gemini-audit';
 
 // Initialize the Gemini API client
 const apiKey = process.env.GEMINI_API_KEY;
@@ -188,6 +191,13 @@ export async function processDocumentsWithGemini(
 export async function processDocumentsWithGemini(
   files: Array<{ buffer?: Buffer; url?: string; name: string; type: string }>
 ): Promise<GeminiProcessedContent> {
+  // e2e runs (never production): a fixture instead of Gemini (src/lib/e2e).
+  if (e2eStubModels()) {
+    const stub = stubGeminiExtraction(files);
+    // Audited like a real read, so the usage dashboard shows Gemini in e2e runs.
+    await auditGemini({ kind: 'extract', model: GEMINI_MODEL, usage: stubGeminiUsage(files.map((f) => f.name).join('\n'), stub.extractedContent), latencyMs: 0 });
+    return checkExtraction(stub, files);
+  }
   // Every backend below can return a "success" whose documents are empty; this
   // turns that into an error (or partial) that names the documents.
   return checkExtraction(await extractWithGemini(files), files);
@@ -313,13 +323,13 @@ Please be thorough and capture all content, maintaining the original structure a
     const generationStart = Date.now();
 
     try {
-      const response = await ai.models.generateContent({
+      const response = await auditedGenerate('extract', GEMINI_MODEL, () => ai.models.generateContent({
         model: GEMINI_MODEL,
         contents: createUserContent([
           prompt,
           ...fileParts
         ]),
-      });
+      }));
       
       const extractedContent = response.text || '';
       const generationTime = Date.now() - generationStart;

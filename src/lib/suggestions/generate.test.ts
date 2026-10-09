@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ claudeJson: vi.fn(), getType: vi.fn(), listDocumentSources: vi.fn(), listDocumentTables: vi.fn(), configured: { value: true } }));
 vi.mock("@/lib/llm/claude", async (importOriginal) => ({
@@ -11,6 +11,7 @@ vi.mock("@/lib/sources/store", () => ({ listDocumentSources: mocks.listDocumentS
 vi.mock("@/lib/data/store", () => ({ listDocumentTables: mocks.listDocumentTables }));
 
 import { fileTypeByKey } from "@/catalog/files";
+import { ModelCallLimitedError } from "@/lib/limits/reserve";
 import { createDocument, resetMemoryStore, updateDocument } from "@/lib/documents/store";
 // Hand-written edge cases (an unknown item, an unlinked id, a duplicate); the real reply shape is pinned by recorded.test.ts.
 import fixture from "./__fixtures__/suggest.items.edge-cases.json";
@@ -291,5 +292,44 @@ describe("generateSuggestions", () => {
     const d = await typedDoc();
     expect(await generateSuggestions("org:b", d.id, { now })).toBeNull();
     expect(await getSuggestionList("org:b", d.id)).toBeNull();
+  });
+});
+
+describe("generateSuggestions and the light allowance", () => {
+  const now = () => 10_000_000;
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    process.env.SASHA_LIMIT_LIGHT_TEAM = "1/1d";
+    resetMemoryStore();
+    resetSuggestionGenerator();
+    mocks.configured.value = true;
+    mocks.getType.mockReset().mockImplementation(async (_t: string, key: string | null) => (key ? entry : null));
+    mocks.listDocumentSources.mockReset().mockResolvedValue(SOURCES);
+    mocks.listDocumentTables.mockReset().mockResolvedValue([]);
+    mocks.claudeJson.mockReset().mockResolvedValue({ data: SuggestModelOutput.parse(fixture), usage: {} });
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_LIGHT_TEAM;
+  });
+
+  it("counts a model run, not an unchanged or model-free one; a refusal throws before anything is written", async () => {
+    const subject = { userId: "u1", teamId: T };
+    const a = await createDocument(T, "ann", { type_key: "proposal" });
+    await updateDocument(T, a.id, "ann", { notes: NOTES });
+    expect((await generateSuggestions(T, a.id, { subject, now }))!.ran).toBe(true);
+    expect((await generateSuggestions(T, a.id, { subject, now }))!.ran).toBe(false);
+    // An untyped document without notes or sources asks nothing.
+    mocks.listDocumentSources.mockResolvedValue([]);
+    const empty = await createDocument(T, "ann");
+    expect(await generateSuggestions(T, empty.id, { subject, now })).toMatchObject({ suggestions: [] });
+    mocks.listDocumentSources.mockResolvedValue(SOURCES);
+
+    const b = await createDocument(T, "ann", { type_key: "proposal" });
+    await updateDocument(T, b.id, "ann", { notes: NOTES });
+    const error = await generateSuggestions(T, b.id, { subject: { userId: "u2", teamId: T }, now }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ModelCallLimitedError);
+    expect((error as ModelCallLimitedError).refusal).toMatchObject({ scope: "team", family: "light" });
+    expect(await listSuggestions(T, b.id)).toEqual([]);
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(1);
   });
 });

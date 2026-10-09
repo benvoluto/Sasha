@@ -12,8 +12,11 @@
 import { GoogleGenAI, createPartFromUri, createUserContent } from "@google/genai";
 import { z } from "zod";
 import { mapWithConcurrency } from "@/lib/gemini-parallel";
+import { e2eStubModels } from "@/lib/e2e/mode";
+import { stubGeminiTables } from "@/lib/e2e/stub-models";
 import { classifyGeminiError, waitForActive, withGeminiRetry } from "@/lib/gemini-files";
 import { GEMINI_MODEL } from "@/lib/gemini-model";
+import { auditGemini, auditedGenerate, stubGeminiUsage } from "@/lib/llm/gemini-audit";
 import { uploadBytesToGemini } from "@/lib/gemini-url-upload";
 import { pageRange, splitPdf, type PdfChunk } from "@/lib/pdf-chunks";
 import { MAX_CELL_CHARS, MAX_LABEL_CHARS, storableText, type ExtractionMethod, type PageRange, type RawGrid } from "./contract";
@@ -188,7 +191,7 @@ async function presentPages(ai: Models, uri: string, mimeType: string, chunk: Pd
   try {
     const response = await withGeminiRetry(
       () =>
-        ai.models.generateContent({
+        auditedGenerate("tables", GEMINI_MODEL, () => ai.models.generateContent({
           model: GEMINI_MODEL,
           contents: createUserContent([presencePrompt(chunk.first, chunk.last), createPartFromUri(uri, mimeType)]),
           config: {
@@ -200,7 +203,7 @@ async function presentPages(ai: Models, uri: string, mimeType: string, chunk: Pd
             thinkingConfig: { thinkingBudget: 0 },
             ...(call.signal ? { abortSignal: call.signal } : {}),
           },
-        }),
+        })),
       { label: `table check (${label})`, ...(Number.isFinite(call.deadline) ? { deadline: call.deadline } : {}) },
     );
     const finish = response.candidates?.[0]?.finishReason;
@@ -239,7 +242,7 @@ async function readChunk(ai: Models, chunk: PdfChunk, file: { name: string; mime
 
     const response = await withGeminiRetry(
       () =>
-        ai.models.generateContent({
+        auditedGenerate("tables", GEMINI_MODEL, () => ai.models.generateContent({
           model: GEMINI_MODEL,
           contents: createUserContent([extractionPrompt(pages, chunk.first, chunk.last), createPartFromUri(up.file.uri, up.file.mimeType)]),
           config: {
@@ -249,7 +252,7 @@ async function readChunk(ai: Models, chunk: PdfChunk, file: { name: string; mime
             responseJsonSchema: replyJsonSchema(GeminiTablesReply),
             ...(call.signal ? { abortSignal: call.signal } : {}),
           },
-        }),
+        })),
       { label: `table extraction (${label})`, ...(Number.isFinite(deadline) ? { deadline } : {}) },
     );
     const finish = response.promptFeedback?.blockReason ?? response.candidates?.[0]?.finishReason;
@@ -288,6 +291,13 @@ async function readChunk(ai: Models, chunk: PdfChunk, file: { name: string; mime
  * that failed. Never throws.
  */
 export async function readGeminiTables(bytes: Buffer, file: { name: string; mime: string }, opts: ReadOptions = {}): Promise<GeminiTablesResult> {
+  // e2e runs (never production): a fixture instead of Gemini (src/lib/e2e).
+  if (e2eStubModels()) {
+    const stub = stubGeminiTables(file);
+    // Audited like a real read, so the usage dashboard shows Gemini in e2e runs.
+    await auditGemini({ kind: "tables", model: GEMINI_MODEL, usage: stubGeminiUsage(file.name, JSON.stringify(stub.grids)), latencyMs: 0 });
+    return stub;
+  }
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { ok: false, reason: NOT_CONFIGURED };
   const deadline = opts.deadline ?? Number.POSITIVE_INFINITY;

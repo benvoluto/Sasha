@@ -4,9 +4,12 @@
 // (Haiku reads the saved document). Asked for when the document opens with a
 // type, right after the save that records a new type, and otherwise 4 s after a
 // successful save, at most once every 30 s. A result for a type the document no
-// longer has is dropped.
+// longer has is dropped. A 429 (the light allowance, or another instance
+// checked moments ago) is background noise: no error, and one more try once
+// Retry-After has passed.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { retryAfterMs } from "@/lib/limits/client";
 import type { OutlineStatusResponse } from "@/lib/sections/contract";
 import type { SaveStatus } from "./use-document";
 
@@ -50,6 +53,13 @@ export function useOutlineStatus({ documentId, typeKey, saveStatus }: { document
         body: JSON.stringify(force ? { force: true } : {}),
       });
       const out = await res.json().catch(() => ({}));
+      const wait = retryAfterMs(res.status, out, res.headers.get("Retry-After"));
+      if (wait !== null) {
+        if (docRef.current !== id || typeRef.current !== key) return;
+        clear();
+        timer.current = window.setTimeout(() => void refresh(force), Math.max(AFTER_SAVE_MS, wait));
+        return;
+      }
       if (!res.ok) throw new Error(typeof out.error === "string" ? out.error : `Couldn't check the outline (${res.status}).`);
       const result = out as OutlineStatusResponse;
       // The type may have changed while this ran; keep only a result for the current one.

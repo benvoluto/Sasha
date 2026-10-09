@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS audit_log (
   group_id TEXT               -- the upload-group this action concerned, when applicable
 );
 CREATE INDEX IF NOT EXISTS audit_log_group_idx ON audit_log (group_id);
+-- Phase 9: who and what each model call was for, so usage can be summed per
+-- team, user, task, model and day (src/lib/ontology/audit-schema.ts).
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS team_id TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS document_id TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS run_id TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS task TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS model TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS latency_ms INTEGER;
+CREATE INDEX IF NOT EXISTS audit_log_team_ts_idx ON audit_log (team_id, ts);
 
 -- report and report_section (the organizer's per-upload-group report) were
 -- retired in Phase 6; older databases may still have them, nothing reads them.
@@ -414,3 +424,13 @@ CREATE TABLE IF NOT EXISTS learn_call (
   called_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS learn_call_team_idx ON learn_call (team_id, called_at);
+
+-- Phase 9 rate limits (src/lib/limits/schema.ts owns this; keep in step with
+-- MODEL_CALL_SCHEMA). One row per counted model call per bucket, e.g.
+-- 'user:<userId>:draft:3600000' or 'team:<teamId>:check:3600000'.
+CREATE TABLE IF NOT EXISTS model_call (
+  id                 BIGSERIAL PRIMARY KEY,
+  bucket             TEXT NOT NULL,
+  called_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS model_call_bucket_idx ON model_call (bucket, called_at);

@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Plus, RefreshCw, X } from "@/components/icons";
-import { api, errorText, sourceTitle, styles, type LinkedSource } from "@/components/sources/shared";
+import { api, ApiError, errorText, sourceTitle, styles, type LinkedSource } from "@/components/sources/shared";
 import type { DocumentDataResponse } from "@/lib/data/contract";
 import type {
   DataPrefill,
@@ -27,6 +27,7 @@ import type {
   SuggestionResponse,
 } from "@/lib/suggestions/contract";
 import { MAX_SUGGESTION_LABEL } from "@/lib/suggestions/contract";
+import { retryAfterMs } from "@/lib/limits/client";
 import { applyAction, dismissedItems, doneItems, doneText, groupOpen, loadAfterSave, reasonView, showEmptyHint, upsertRow } from "./suggestions-model";
 import { findType, useDocumentTypes } from "./type-picker";
 
@@ -98,7 +99,12 @@ export function SuggestionsPane({
           retry.current = window.setTimeout(() => void generate(id, false), reply.retry_after_ms + 500);
         }
       } catch (e) {
-        if (alive.current) setLastError(errorText(e, "Couldn't update the suggestions."));
+        if (!alive.current) return;
+        // An automatic refresh over the rate limit waits quietly and tries
+        // again when the window opens; a click on Refresh shows the sentence.
+        const wait = !force && e instanceof ApiError ? retryAfterMs(e.status, e.body, e.retryAfter) : null;
+        if (wait !== null) retry.current = window.setTimeout(() => void generate(id, false), wait + 500);
+        else setLastError(errorText(e, "Couldn't update the suggestions."));
       } finally {
         if (alive.current) setGenerating(false);
       }

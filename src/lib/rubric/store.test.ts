@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetMemoryStore } from "@/lib/documents/store";
+import { DEFAULT_LIMITS } from "@/lib/limits/contract";
 import { CHECK_MIN_INTERVAL_MS, CHECK_TEAM_HOURLY_LIMIT, type RubricCheckResponse } from "./contract";
-import { checkScopeKey, getStoredCheck, intervalGate, recentModelChecks, reserveModelCheck, recordModelCheck, saveCheck } from "./store";
+import { checkScopeKey, getStoredCheck, intervalGate, saveCheck } from "./store";
 
 const A = "org:a";
 const B = "org:b";
@@ -36,22 +37,7 @@ describe("rubric check store", () => {
     expect(intervalGate(last, "h1", Date.parse(last.createdAt) + CHECK_MIN_INTERVAL_MS)).toEqual({ ok: true });
   });
 
-  it("the hourly limit counts the team's model checks over a rolling hour", async () => {
-    const t0 = Date.parse("2026-10-08T10:00:00.000Z");
-    for (let i = 0; i < CHECK_TEAM_HOURLY_LIMIT; i++) await recordModelCheck(A, t0 + i * 1000);
-    await recordModelCheck(B, t0);
-    expect(await recentModelChecks(A, t0 + 60_000)).toEqual({ count: CHECK_TEAM_HOURLY_LIMIT, oldest: t0 });
-    const blocked = await reserveModelCheck(A, null, "h", t0 + 60_000);
-    expect(blocked).toEqual({ ok: false, reason: "hourly", retryAfterSeconds: 3600 - 60 });
-    expect(await reserveModelCheck(B, null, "h", t0 + 60_000)).toEqual({ ok: true });
-    // An hour after the first call it has dropped out of the window.
-    expect(await reserveModelCheck(A, null, "h", t0 + 3_600_000)).toEqual({ ok: true });
-  });
-
-  it("reserves and counts in one step, so a burst of parallel checks stops at the limit", async () => {
-    const results = await Promise.all(Array.from({ length: 200 }, (_, i) => reserveModelCheck(A, null, `h${i}`)));
-    expect(results.filter((r) => r.ok)).toHaveLength(CHECK_TEAM_HOURLY_LIMIT);
-    expect(results.filter((r) => !r.ok && r.reason === "hourly")).toHaveLength(200 - CHECK_TEAM_HOURLY_LIMIT);
-    expect((await recentModelChecks(A)).count).toBe(CHECK_TEAM_HOURLY_LIMIT);
+  it("the team's hourly cap is the limiter's default team window for checks", () => {
+    expect(DEFAULT_LIMITS.check.team).toEqual([{ limit: CHECK_TEAM_HOURLY_LIMIT, windowMs: 3_600_000 }]);
   });
 });

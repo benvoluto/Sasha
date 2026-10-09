@@ -40,7 +40,7 @@ import {
 
 type IconType = ComponentType<{ className?: string }>;
 
-const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]";
+const FOCUS_RING = "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]";
 const ICON_BUTTON = `grid h-10 w-10 place-items-center rounded-lg text-[var(--action)] hover:bg-[var(--action-soft)] data-[state=open]:bg-[var(--action-soft)] ${FOCUS_RING}`;
 
 function ToolButton({ icon: Icon, label, onClick, active, disabled }: { icon: IconType; label: string; onClick: () => void; active?: boolean; disabled?: boolean }) {

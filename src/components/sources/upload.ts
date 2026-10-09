@@ -2,10 +2,14 @@
 // file, each file goes straight to Blob through /api/upload/direct, and
 // complete starts reading them. A file that fails to upload, or whose upload
 // can't be completed, has its source row removed (which also deletes anything
-// it stored) so it doesn't sit at "Uploading" forever.
+// it stored) so it doesn't sit at "Uploading" forever. The exception is a 429
+// from complete (the source-read allowance ran out between presign's check and
+// complete): those files are already stored, so they stay, and "Read again"
+// (/api/sources/[id]/retry) reads them once the wait is over.
 
 import { upload } from "@vercel/blob/client";
 import type { BlobAccess } from "@/lib/blob-access";
+import { isRateLimitedBody } from "@/lib/limits/contract";
 import type { SourceSummary } from "@/lib/sources/store";
 
 type Presigned = { sourceId: string; fileName: string; fields: { blobPath: string; contentType: string; access?: BlobAccess } };
@@ -28,11 +32,24 @@ function discard(sourceId: string) {
   void fetch(`/api/sources/${encodeURIComponent(sourceId)}`, { method: "DELETE" }).catch(() => {});
 }
 
+/** A refused request; `rateLimited` when it was the limiter's 429. */
+class UploadRequestError extends Error {
+  constructor(
+    message: string,
+    readonly rateLimited: boolean,
+  ) {
+    super(message);
+  }
+}
+
 async function json<T>(res: Response, fallback: string): Promise<T> {
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? fallback);
+  if (!res.ok) throw new UploadRequestError(body.error ?? fallback, res.status === 429 && isRateLimitedBody(body));
   return body as T;
 }
+
+/** Said after the limiter's sentence when files were kept for later. */
+export const KEPT_FOR_LATER = "The files are saved: use Read again on each one once the wait is over.";
 
 export async function uploadSourceFiles(
   files: File[],
@@ -88,6 +105,8 @@ export async function uploadSourceFiles(
     });
     result = await json(complete, "The upload couldn't be finished.");
   } catch (e) {
+    // Refused for the allowance: the files are stored, so keep them to read later.
+    if (e instanceof UploadRequestError && e.rateLimited) throw new Error(`${e.message} ${KEPT_FOR_LATER}`);
     // None of these will be completed now; don't leave them stuck at "Uploading".
     done.forEach((d) => discard(d.sourceId));
     throw e;

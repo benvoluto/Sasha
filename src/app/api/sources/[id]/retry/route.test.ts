@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ list: vi.fn(), after: vi.fn(), ingest: vi.fn() }));
 vi.mock("@vercel/blob", () => ({ list: mocks.list, del: vi.fn() }));
@@ -79,5 +79,34 @@ describe("POST /api/sources/[id]/retry", () => {
   it("is 404 for another team's source", async () => {
     const s = await createSource("org:b", "bob", { kind: "note", title: "n", extracted_text: "t" });
     expect((await POST(req(), ctx(s.id))).status).toBe(404);
+  });
+});
+
+describe("POST /api/sources/[id]/retry rate limit", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    process.env.SASHA_LIMIT_INGEST_USER = "1/1h";
+    resetMemoryStore();
+    resetSourceStore();
+    Object.values(mocks).forEach((m) => m.mockReset());
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_INGEST_USER;
+  });
+
+  it("a 409 gives the read back; the 429 leaves the source as it was", async () => {
+    const busy = await createSource(T, "ann", { kind: "note", title: "busy", extracted_text: "t" });
+    await setSourceStatus(T, busy.id, "summarizing");
+    expect((await POST(req(), ctx(busy.id))).status).toBe(409);
+    const failed = await createSource(T, "ann", { kind: "note", title: "n", extracted_text: "t" });
+    await setSourceStatus(T, failed.id, "error");
+    expect((await POST(req(), ctx(failed.id))).status).toBe(200);
+    await setSourceStatus(T, failed.id, "error");
+    const res = await POST(req(), ctx(failed.id));
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ code: "rate_limited", family: "ingest" });
+    expect((await getSource(T, failed.id))?.extraction_status).toBe("error");
+    expect(mocks.after).toHaveBeenCalledTimes(1);
   });
 });

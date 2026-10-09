@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as z from "zod/v4";
 
-const { create, stream, write } = vi.hoisted(() => ({ create: vi.fn(), stream: vi.fn(), write: vi.fn(async () => {}) }));
+const { create, stream, write } = vi.hoisted(() => ({ create: vi.fn(), stream: vi.fn(), write: vi.fn<(e: Record<string, unknown>) => Promise<void>>(async () => {}) }));
 vi.mock("@anthropic-ai/sdk", () => ({
   default: class {
     beta = { messages: { create, stream } };
@@ -9,6 +9,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 }));
 vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write }) }));
 
+import { withModelContext } from "./context";
 import { CLAUDE_STREAM_DEADLINE_MS, claudeJson, claudeSearch, claudeText, MAX_SEARCH_CONTINUATIONS, ModelDeadlineError, ModelRefusalError, ModelTruncatedError } from "./claude";
 
 const message = (text: string, stop_reason = "end_turn", extra: Record<string, unknown> = {}) => ({
@@ -149,5 +150,63 @@ describe("claudeSearch", () => {
     create.mockResolvedValue({ ...turn([], "refusal"), stop_details: { category: "cyber" } });
     await expect(claudeSearch({ task: "web.find", system: "S", user: "u", schema: resources, tools })).rejects.toBeInstanceOf(ModelRefusalError);
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ allowed: false }));
+  });
+});
+
+describe("audit rows", () => {
+  beforeEach(() => {
+    create.mockReset();
+    stream.mockReset();
+    write.mockClear();
+  });
+
+  it("fill team, user, document, run and agent from the model context, with task, model and latency", async () => {
+    create.mockResolvedValue(message('{"summary":"ok"}'));
+    await withModelContext({ teamId: "org:a", userId: "u1", agent: "ann@x.org", documentId: "d1", runId: "r1" }, () => json());
+    expect(write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: "ann@x.org",
+        action: "llm:summarize.source",
+        teamId: "org:a",
+        userId: "u1",
+        documentId: "d1",
+        runId: "r1",
+        task: "summarize.source",
+        model: "claude-haiku-5-5",
+        latencyMs: expect.any(Number),
+        allowed: true,
+        result: expect.objectContaining({ input_tokens: 10, output_tokens: 5 }),
+      }),
+    );
+  });
+
+  it("prefer the input's own fields over the context, and fall back to system without either", async () => {
+    create.mockResolvedValue(message('{"summary":"ok"}'));
+    await withModelContext({ teamId: "org:a", userId: "u1", agent: "ann" }, () => json({ agent: "bo", teamId: "org:b", userId: "u2", documentId: "d9", runId: "r9" }));
+    expect(write.mock.calls[0][0]).toMatchObject({ agent: "bo", teamId: "org:b", userId: "u2", documentId: "d9", runId: "r9" });
+    await json();
+    expect(write.mock.calls[1][0]).toMatchObject({ agent: "system", teamId: null, userId: null, documentId: null, runId: null });
+  });
+
+  it("record the resolved model and the billed usage of a refused or cut-off reply", async () => {
+    create.mockResolvedValue({ ...message('{"summary":"ha', "max_tokens"), model: "claude-sonnet-5-5" });
+    await expect(json()).rejects.toBeInstanceOf(ModelTruncatedError);
+    expect(write.mock.calls[0][0]).toMatchObject({ allowed: false, model: "claude-sonnet-5-5", result: { model: "claude-sonnet-5-5", input_tokens: 10, output_tokens: 5, error: expect.any(String) } });
+  });
+
+  it("record the task's model when the request fails before any reply", async () => {
+    create.mockRejectedValue(new Error("overloaded"));
+    await expect(claudeText({ task: "rubric.check", system: "S", user: "u" })).rejects.toThrow("overloaded");
+    const row = write.mock.calls[0][0];
+    expect(row.model).toMatch(/^claude-/);
+    expect(row.result).toEqual({ model: row.model, error: "overloaded" });
+  });
+
+  it("keep claudeSearch's usage from earlier turns when a later turn fails", async () => {
+    const turn = (stop_reason: string) => ({ model: "claude-sonnet-5-5", content: [{ type: "text", text: "x" }], stop_reason, usage: { input_tokens: 7, output_tokens: 3, server_tool_use: { web_search_requests: 1 } } });
+    create.mockResolvedValueOnce(turn("pause_turn")).mockRejectedValueOnce(new Error("dropped"));
+    const schema = z.object({ a: z.string() });
+    await expect(claudeSearch({ task: "web.find", system: "S", user: "u", schema, tools: [] })).rejects.toThrow("dropped");
+    expect(write.mock.calls[0][0].result).toMatchObject({ input_tokens: 7, web_search_requests: 1, error: "dropped" });
   });
 });

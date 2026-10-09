@@ -42,6 +42,7 @@ import {
 import type { AppliedChange } from "./apply-workflow-change";
 import { findType, useDocumentTypes } from "./type-picker";
 import {
+  autoContinueWait,
   briefText,
   changeHeadings,
   changeWarnings,
@@ -85,7 +86,7 @@ const autoContinued = new Map<string, number>();
 const pill = "flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium sm:min-h-9";
 const quietPill = `${pill} text-[var(--go)] hover:bg-[var(--go-soft)]`;
 const chip = "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold";
-const field = "w-full rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)]";
+const field = "w-full rounded-md border border-[var(--doc-field-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]";
 
 const TONE: Record<StatusTone, string> = {
   busy: "bg-[var(--doc-accent-soft)] text-[var(--doc-accent)]",
@@ -304,7 +305,7 @@ function WorkflowRow({
   const formId = `wf-form-${w.id.replace(/\W/g, "-")}`;
   // Opened from the chip: bring the form into view.
   useEffect(() => {
-    if (formOpen) rowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (formOpen) rowRef.current?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [formOpen]);
   const latest = w.latestRun;
   return (
@@ -463,6 +464,8 @@ function RunView({
   // Failed polls in a row: each one re-arms the poll (backing off), so a dropped request doesn't stop it.
   const [failures, setFailures] = useState(0);
   const [continuing, setContinuing] = useState(false);
+  // After a 429 on an automatic continue: no automatic continue before this time (epoch ms).
+  const [autoHoldUntil, setAutoHoldUntil] = useState(0);
   const { types } = useDocumentTypes();
 
   const fetchRun = useCallback(async () => {
@@ -494,6 +497,30 @@ function RunView({
     [runId, fetchRun],
   );
 
+  /** An automatic continue of a budget pause. A 429 waits out Retry-After and doesn't use up a try. */
+  const autoContinue = useCallback(
+    async (id: string) => {
+      autoContinued.set(id, (autoContinued.get(id) ?? 0) + 1);
+      try {
+        const { run: next } = await api<RunResponse>(`${runUrl(id)}/continue`, { method: "POST", json: {} });
+        setRun(next);
+        setError(null);
+      } catch (e) {
+        const wait = autoContinueWait(e);
+        if (wait !== null) {
+          autoContinued.set(id, Math.max(0, (autoContinued.get(id) ?? 1) - 1));
+          setError(errorText(e, "Couldn't continue the run."));
+          setAutoHoldUntil(Date.now() + wait);
+          return;
+        }
+        // Often someone else (another viewer, the canvas) continued it first: pick up where it is now.
+        await fetchRun();
+        setError(errorText(e, "Couldn't continue the run."));
+      }
+    },
+    [fetchRun],
+  );
+
   useEffect(() => {
     void fetchRun();
   }, [fetchRun]);
@@ -501,19 +528,23 @@ function RunView({
   // Poll while it runs or waits; continue a budget pause on its own. Re-armed
   // on every fresh copy of the run (its updated_at can stay the same while
   // steps run) and after every failed poll. A failed continue refetches the run
-  // (continueRun), which re-arms this.
+  // (autoContinue), which re-arms this; a 429 holds off until Retry-After.
   useEffect(() => {
     if (!run) return;
     if (!readOnly && shouldAutoContinue(run, autoContinued.get(run.id) ?? 0)) {
-      autoContinued.set(run.id, (autoContinued.get(run.id) ?? 0) + 1);
-      void continueRun().then((err) => err && setError(err));
+      const hold = autoHoldUntil - Date.now();
+      if (hold > 0) {
+        const t = window.setTimeout(() => setAutoHoldUntil(0), hold);
+        return () => window.clearTimeout(t);
+      }
+      void autoContinue(run.id);
       return;
     }
     const delay = pollDelay(run.status, failures);
     if (delay === null) return;
     const t = window.setTimeout(() => void fetchRun(), delay);
     return () => window.clearTimeout(t);
-  }, [run, failures, readOnly, fetchRun, continueRun]);
+  }, [run, failures, readOnly, autoHoldUntil, fetchRun, autoContinue]);
 
   const post = async <T,>(path: string, json: T, fallback: string): Promise<string | null> => {
     try {

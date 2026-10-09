@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { blobAccess } from "@/lib/blob-access";
 import { requireTeam } from "@/lib/documents/team";
+import { checkModelCallLimit } from "@/lib/limits/http";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { sourceBlobPath } from "@/lib/sources/blob-paths";
 import { createSource, linkSource, targetFolder } from "@/lib/sources/store";
@@ -28,6 +29,9 @@ const Body = z.object({
  * "/api/upload/direct", clientPayload: JSON.stringify({ sourceId }), contentType:
  * fields.contentType })` and finishes with /api/upload/complete. `access` is the
  * store's (blob-access.ts): a private store refuses a public upload.
+ * Complete counts one "ingest" call per file; presign checks (without
+ * counting) that the allowance has room for them all and answers 429 when it
+ * hasn't, so nobody uploads files only to have them refused.
  */
 export async function POST(req: Request) {
   const caller = await requireTeam(PERMISSIONS.sourceWrite);
@@ -45,6 +49,9 @@ export async function POST(req: Request) {
     if (!mime) return NextResponse.json({ error: `${f.name} isn't a supported file type (PDF, Word, image, text, Markdown, CSV or Excel).` }, { status: 400 });
     typed.push({ name: f.name, size: f.size, mime });
   }
+
+  const limited = await checkModelCallLimit(caller, "ingest", { cost: typed.length });
+  if (limited) return limited;
 
   const target = await targetFolder(caller.teamId, caller.agent, { folderId: folder_id, documentId: document_id });
   if (!target.ok) {

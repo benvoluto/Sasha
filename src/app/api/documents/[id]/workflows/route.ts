@@ -2,6 +2,8 @@ import { after, NextResponse } from "next/server";
 import { getType } from "@/catalog";
 import { getDocument, isUuid } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
+import { limitModelCall } from "@/lib/limits/http";
+import { contextFor, enterModelContext } from "@/lib/llm/context";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { availableWorkflows, planRun, startPlannedRun } from "@/lib/workflow/availability";
 import { StartRunRequest, type DocumentWorkflowsResponse, type RunResponse } from "@/lib/workflow/contract";
@@ -33,18 +35,22 @@ export async function GET(_req: Request, { params }: Ctx) {
  * POST /api/documents/[id]/workflows — start a run. Body: StartRunRequest.
  * 202 with the run; it continues in the background (poll GET
  * /api/workflow-runs/runs/[runId]). 409 when the type's policy turns the
- * workflow off and the notice was not acknowledged.
+ * workflow off and the notice was not acknowledged. Counts one "workflow"
+ * call (429 when the allowance is used up).
  */
 export async function POST(req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.workflowRun);
   if (caller instanceof NextResponse) return caller;
   const { id } = await params;
+  enterModelContext(contextFor(caller, { documentId: isUuid(id) ? id : null }));
   const doc = isUuid(id) ? await getDocument(caller.teamId, id) : null;
   if (!doc) return notFound();
   const parsed = StartRunRequest.safeParse(await req.json().catch(() => undefined));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
   const plan = await planRun(caller.teamId, doc, parsed.data);
   if (!plan.ok) return NextResponse.json({ error: plan.error, ...(plan.acknowledge ? { acknowledge: plan.acknowledge } : {}) }, { status: plan.status });
+  const limited = await limitModelCall(caller, "workflow");
+  if (limited) return limited;
   const run = await startPlannedRun(caller.teamId, doc, plan, caller);
   after(() => executeGraph(run));
   return NextResponse.json({ run: runView(run) } satisfies RunResponse, { status: 202 });

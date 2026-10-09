@@ -76,14 +76,14 @@ function Library({ onAdd, onClose }: { onAdd: (type: string) => void; onClose: (
   return (
     <div className="absolute left-3 top-14 z-20 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Add a node</h3>
-        <button className="text-xs text-zinc-500 hover:underline" onClick={onClose}>
+        <h2 className="text-sm font-semibold">Add a node</h2>
+        <button className="text-xs text-zinc-500 dark:text-zinc-400 hover:underline" onClick={onClose}>
           Close
         </button>
       </div>
       {CATEGORIES.map((cat) => (
         <div key={cat} className="mb-3">
-          <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             <span className={`h-2 w-2 rounded-full ${CATEGORY_STYLE[cat].chip}`} />
             {cat}
           </div>
@@ -91,7 +91,7 @@ function Library({ onAdd, onClose }: { onAdd: (type: string) => void; onClose: (
             {NODE_SPECS.filter((s) => s.category === cat).map((s) => (
               <button key={s.type} className="w-full rounded-md px-2 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={() => onAdd(s.type)}>
                 <div className="text-sm font-medium">{s.label}</div>
-                <div className="line-clamp-2 text-xs text-zinc-500">{s.description}</div>
+                <div className="line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">{s.description}</div>
               </button>
             ))}
           </div>
@@ -437,7 +437,7 @@ function Editor({
             </button>
           )}
           <button
-            className={`ml-auto flex items-center gap-1 text-sm ${errorsCount ? 'text-red-600 dark:text-red-400' : 'text-zinc-500'}`}
+            className={`ml-auto flex items-center gap-1 text-sm ${errorsCount ? 'text-red-600 dark:text-red-400' : 'text-zinc-600 dark:text-zinc-400'}`}
             onClick={() => setShowIssues((v) => !v)}
           >
             <AlertTriangle className="h-4 w-4" /> {errorsCount} problem{errorsCount === 1 ? '' : 's'}
@@ -503,7 +503,7 @@ function Editor({
             </aside>
           )}
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">
           Drag from an output (bottom of a node) to an input (top) to connect; the small “after” handle on a node&apos;s top-left only orders it after another step. Select a node or connection and press Delete to remove it.
         </p>
       </div>

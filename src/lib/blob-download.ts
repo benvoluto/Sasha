@@ -1,4 +1,6 @@
 import { blobAuthHeaders } from './blob-host';
+import { e2eStubBlob } from './e2e/mode';
+import { getE2eBlob } from './e2e/blob-store';
 
 /**
  * Download blob content. The store token is attached only when the URL is on
@@ -6,6 +8,11 @@ import { blobAuthHeaders } from './blob-host';
  */
 export async function downloadBlobContent(blobUrl: string): Promise<Buffer> {
   console.log('[BlobDownload] Downloading blob from URL:', blobUrl);
+  // e2e runs (never production): uploads live in process memory (src/lib/e2e).
+  if (e2eStubBlob()) {
+    const stored = getE2eBlob(blobUrl);
+    if (stored) return Buffer.from(stored.bytes);
+  }
   
   try {
     const response = await fetch(blobUrl, { headers: blobAuthHeaders(blobUrl) });

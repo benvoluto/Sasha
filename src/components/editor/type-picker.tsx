@@ -7,7 +7,7 @@
 // enabled types: catalog files, team edits and team-made types).
 
 import { useAuth } from "@clerk/nextjs";
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { Check, CaretUpDown, Loader2, Search, TypesIcon } from "@/components/icons";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -92,6 +92,34 @@ export async function createDocumentOfType(typeKey: string): Promise<string> {
   return String(body.document.id);
 }
 
+/**
+ * A DialogContent onCloseAutoFocus that puts focus back on the control that
+ * opened the dialog when it is still on the page (the Outline panel's "Choose
+ * a type"), else on `ref` (a dialog opened from a menu item, which is gone by
+ * then). Radix alone would focus its DialogTrigger, and these dialogs have
+ * none. `opener` reads the element focused at open (useReturnFocus records it).
+ */
+export function returnFocusTo(ref?: RefObject<HTMLElement | null>, opener?: () => Element | null) {
+  return (e: Event) => {
+    const from = opener?.();
+    const el = from?.isConnected && from.nodeName !== "BODY" ? (from as HTMLElement) : ref?.current;
+    if (!el?.isConnected) return;
+    e.preventDefault();
+    el.focus();
+  };
+}
+
+/** DialogContent focus props: record the opener on open, then returnFocusTo(ref) on close. */
+export function useReturnFocus(ref?: RefObject<HTMLElement | null>) {
+  const opener = useRef<Element | null>(null);
+  return {
+    onOpenAutoFocus: () => {
+      opener.current = document.activeElement;
+    },
+    onCloseAutoFocus: returnFocusTo(ref, () => opener.current),
+  };
+}
+
 // --- Header picker -------------------------------------------------------------
 
 export function TypePicker({
@@ -100,6 +128,7 @@ export function TypePicker({
   onChange,
   onBrowse,
   onSaveOutline,
+  triggerRef,
 }: {
   types: DocumentTypeSummary[];
   value: string | null;
@@ -107,7 +136,11 @@ export function TypePicker({
   onBrowse: () => void;
   /** Omitted when the document has no headings to save. */
   onSaveOutline?: () => void;
+  /** The picker button, so the dialogs it opens can hand focus back to it (TypeGallery / SaveOutlineDialog returnFocusRef). */
+  triggerRef?: RefObject<HTMLButtonElement | null>;
 }) {
+  // A dialog opening from the menu takes focus itself; the menu must not pull it back to the button.
+  const dialogNext = useRef(false);
   const current = findType(types, value);
   const groups = groupByFamily(types);
   const label = current?.title ?? (value ? "Custom type" : "Choose type");
@@ -115,15 +148,27 @@ export function TypePicker({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          ref={triggerRef}
           type="button"
           aria-label={`Document type: ${label}`}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[17px] font-medium text-[var(--action)] hover:bg-[var(--action-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] data-[state=open]:bg-[var(--action-soft)]"
+          className="flex min-h-11 items-center gap-1 rounded-md px-2 py-1 text-[17px] font-medium text-[var(--action)] sm:min-h-8 hover:bg-[var(--action-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] data-[state=open]:bg-[var(--action-soft)]"
         >
-          <span className={current || value ? "" : "opacity-70"}>{label}</span>
+          {/* Placeholder in the muted ink rather than faded action blue, which fell under 4.5:1 in both schemes. */}
+          <span className={current || value ? "" : "text-[var(--doc-muted)]"}>{label}</span>
           <CaretUpDown className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-[60vh] min-w-64 overflow-y-auto" onCloseAutoFocus={(e) => e.preventDefault()}>
+      <DropdownMenuContent
+        align="start"
+        className="max-h-[60vh] min-w-64 overflow-y-auto"
+        onCloseAutoFocus={(e) => {
+          // Back to the button, unless a dialog is opening or the choice already
+          // moved focus (choosing a type can put the caret in the document).
+          const active = document.activeElement;
+          if (dialogNext.current || (active && active !== document.body && !active.closest('[role="menu"]'))) e.preventDefault();
+          dialogNext.current = false;
+        }}
+      >
         {groups.map((g, i) => (
           <div key={g.family}>
             {i > 0 && <DropdownMenuSeparator />}
@@ -140,10 +185,21 @@ export function TypePicker({
           <Check className={`h-4 w-4 ${value ? "opacity-0" : "opacity-100"}`} /> No type (freeform)
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onBrowse}>
+        <DropdownMenuItem
+          onSelect={() => {
+            dialogNext.current = true;
+            onBrowse();
+          }}
+        >
           <Search className="h-4 w-4" /> Browse all types…
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={!onSaveOutline} onSelect={() => onSaveOutline?.()}>
+        <DropdownMenuItem
+          disabled={!onSaveOutline}
+          onSelect={() => {
+            dialogNext.current = true;
+            onSaveOutline?.();
+          }}
+        >
           <TypesIcon className="h-4 w-4" /> Save outline as type…
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -163,6 +219,7 @@ export function TypeGallery({
   title = "Document types",
   description = "Each type gives the document an outline and tells Claude how to write each section.",
   onChoose,
+  returnFocusRef,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -174,11 +231,14 @@ export function TypeGallery({
   description?: string;
   /** Resolves to an error message to show, or nothing when done (the caller closes the dialog). */
   onChoose: (t: DocumentTypeSummary) => Promise<string | void> | string | void;
+  /** Where focus goes on close when the opener is gone, e.g. a menu item (TypePicker's triggerRef). A button still on the page gets focus back itself. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const [query, setQuery] = useState("");
   const [family, setFamily] = useState<Family | "all">("all");
   const [working, setWorking] = useState<string | null>(null);
   const [chooseError, setChooseError] = useState<string | null>(null);
+  const focusProps = useReturnFocus(returnFocusRef);
 
   useEffect(() => {
     if (!open) return;
@@ -212,7 +272,9 @@ export function TypeGallery({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(44rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden rounded-2xl bg-[var(--doc-surface)] p-0 text-[var(--doc-ink)] sm:max-w-3xl">
+      <DialogContent
+        {...focusProps}
+        className="flex max-h-[min(44rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden rounded-2xl bg-[var(--doc-surface)] p-0 text-[var(--doc-ink)] sm:max-w-3xl">
         <DialogHeader className="space-y-1 border-b border-[var(--doc-line)] px-6 pb-4 pt-6 text-left">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="text-[var(--doc-muted)]">{description}</DialogDescription>
@@ -220,7 +282,7 @@ export function TypeGallery({
             <label htmlFor="type-search" className="sr-only">
               Search types
             </label>
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--doc-line)] px-2.5 py-1.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--doc-field-line)] px-2.5 py-1.5 focus-within:border-[var(--doc-accent)] focus-within:ring-2 focus-within:ring-[var(--doc-accent)]">
               <Search className="h-4 w-4 shrink-0 text-[var(--doc-muted)]" />
               <input id="type-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search types and sections" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
             </div>
@@ -231,7 +293,7 @@ export function TypeGallery({
               id="type-family"
               value={family}
               onChange={(e) => setFamily(e.target.value as Family | "all")}
-              className="rounded-lg border border-[var(--doc-line)] bg-transparent px-2 py-1.5 text-sm"
+              className="rounded-lg border border-[var(--doc-field-line)] bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]"
             >
               <option value="all">All families</option>
               {families.map((f) => (
@@ -295,15 +357,19 @@ export function SaveOutlineDialog({
   onOpenChange,
   defaultTitle,
   onSave,
+  returnFocusRef,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultTitle: string;
   /** Resolves to an error message, or null when saved. */
   onSave: (title: string) => Promise<string | null>;
+  /** Where focus goes on close (it opens from the type picker's menu). */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const [title, setTitle] = useState(defaultTitle);
   const [saving, setSaving] = useState(false);
+  const focusProps = useReturnFocus(returnFocusRef);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -315,7 +381,7 @@ export function SaveOutlineDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !saving && onOpenChange(o)}>
-      <DialogContent className="rounded-2xl bg-[var(--doc-surface)] text-[var(--doc-ink)]">
+      <DialogContent {...focusProps} className="rounded-2xl bg-[var(--doc-surface)] text-[var(--doc-ink)]">
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -346,7 +412,7 @@ export function SaveOutlineDialog({
               maxLength={120}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Quarterly board update"
-              className="w-full rounded-lg border border-[var(--doc-line)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--doc-accent)]"
+              className="w-full rounded-lg border border-[var(--doc-field-line)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]"
             />
           </div>
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}

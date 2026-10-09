@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DocumentTypeSummary } from "@/catalog/schema";
-import { findType, groupByFamily, popularTypes } from "./type-picker";
+import { findType, groupByFamily, popularTypes, returnFocusTo } from "./type-picker";
 import { rewriteItems } from "./section-menu";
 import { nextRefreshDelay } from "./use-outline-status";
 
@@ -57,5 +57,43 @@ describe("outline status refresh timing", () => {
     expect(nextRefreshDelay(100_000, null)).toBe(4000);
     expect(nextRefreshDelay(100_000, 50_000)).toBe(4000);
     expect(nextRefreshDelay(100_000, 90_000)).toBe(20_000);
+  });
+});
+
+describe("returnFocusTo", () => {
+  const event = () => ({ preventDefault: vi.fn() }) as unknown as Event & { preventDefault: ReturnType<typeof vi.fn> };
+  it("focuses the element on the page instead of Radix's default", () => {
+    const el = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
+    const e = event();
+    returnFocusTo({ current: el })(e);
+    expect(e.preventDefault).toHaveBeenCalled();
+    expect(el.focus).toHaveBeenCalled();
+  });
+  it("leaves Radix's default for a missing or removed element", () => {
+    const gone = { isConnected: false, focus: vi.fn() } as unknown as HTMLElement;
+    for (const ref of [undefined, { current: null }, { current: gone }]) {
+      const e = event();
+      returnFocusTo(ref)(e);
+      expect(e.preventDefault).not.toHaveBeenCalled();
+    }
+    expect(gone.focus).not.toHaveBeenCalled();
+  });
+  it("focuses the control that opened the dialog when it is still on the page", () => {
+    const el = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
+    const outlineButton = { isConnected: true, nodeName: "BUTTON", focus: vi.fn() } as unknown as HTMLElement;
+    const e = event();
+    returnFocusTo({ current: el }, () => outlineButton)(e);
+    expect(e.preventDefault).toHaveBeenCalled();
+    expect(outlineButton.focus).toHaveBeenCalled();
+    expect(el.focus).not.toHaveBeenCalled();
+  });
+  it("takes over when the opener was removed (a menu item) or was the page itself", () => {
+    for (const from of [{ isConnected: false, nodeName: "DIV" }, { isConnected: true, nodeName: "BODY" }, null]) {
+      const el = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
+      const e = event();
+      returnFocusTo({ current: el }, () => from as unknown as Element | null)(e);
+      expect(e.preventDefault).toHaveBeenCalled();
+      expect(el.focus).toHaveBeenCalled();
+    }
   });
 });

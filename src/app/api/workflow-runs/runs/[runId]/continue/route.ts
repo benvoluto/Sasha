@@ -1,5 +1,8 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { requireTeam } from "@/lib/documents/team";
+import { limitModelCall } from "@/lib/limits/http";
+import { releaseModelCall } from "@/lib/limits/limiter";
+import { contextFor, enterModelContext } from "@/lib/llm/context";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { ContinueRequest, type RunResponse } from "@/lib/workflow/contract";
 import { checkpointDecisionFor } from "@/lib/workflow/core-nodes";
@@ -18,14 +21,19 @@ export const maxDuration = 300;
  * - paused at the time budget: no body;
  * - failed: no body; the failed steps (and what depends on them) run again,
  *   a looping step only for its unfinished items.
- * 202 with the run; it continues in the background.
+ * 202 with the run; it continues in the background. The run's start paid
+ * for its graph, so going on from a checkpoint or a pause is free: a long run
+ * pauses at the time budget many times, and charging each continue spent the
+ * hourly allowance mid-run. Retrying a failed run does the failed work again,
+ * so it counts one "workflow" call (429 when the allowance is used up; a
+ * refused retry gives it back).
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ runId: string }> }) {
   const caller = await requireTeam(PERMISSIONS.workflowRun);
   if (caller instanceof NextResponse) return caller;
   const run = await getRun(caller.teamId, (await params).runId);
   if (!run) return NextResponse.json({ error: "Run not found." }, { status: 404 });
-
+  enterModelContext(contextFor(caller, { documentId: run.document_id, runId: run.id }));
   const text = await request.text().catch(() => "");
   let json: unknown = {};
   if (text.trim()) {
@@ -43,7 +51,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!cp) return NextResponse.json({ error: "Name the waiting checkpoint to continue." }, { status: 400 });
     let checked = await checkpointDecisionFor(run, cp, caller.agent);
     if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
-    if (!(await claimRun(run, ["awaiting_review"]))) return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    if (!(await claimRun(run, ["awaiting_review"]))) {
+      return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    }
     if (checked.signatures.length) {
       // Another signer may have signed since the run was read: check again against what is stored now.
       const latest = await getRun(caller.teamId, run.id);
@@ -71,10 +81,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const signer = checked.signatures.at(-1)?.signer;
     await auditRun(run, "workflow_checkpoint_decided", { documentId: run.document_id, runId: run.id, nodeId: cp.nodeId, verdict, role, excluded, edits, ...(signer ? { signer } : {}) }, cp.note || undefined, caller.agent);
   } else if (run.status === "paused") {
-    if (!(await claimRun(run, ["paused"]))) return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    if (!(await claimRun(run, ["paused"]))) {
+      return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    }
   } else if (run.status === "failed") {
     // A run that stopped responding reads as failed but is stored as running.
-    if (!(await claimRun(run, ["failed", "running"]))) return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    const limited = await limitModelCall(caller, "workflow");
+    if (limited) return limited;
+    if (!(await claimRun(run, ["failed", "running"]))) {
+      await releaseModelCall(caller, "workflow");
+      return NextResponse.json({ error: "The run has already been continued." }, { status: 409 });
+    }
     resetFailedSteps(run);
     await saveRun(run);
     await auditRun(run, "workflow_run_retried", { documentId: run.document_id, runId: run.id }, undefined, caller.agent);

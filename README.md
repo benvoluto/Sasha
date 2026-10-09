@@ -10,7 +10,7 @@ Sasha started as a pruned copy of `benvoluto/proto-v2-organizer`. See
 
 ## Status
 
-Phases 0–8 are built: the blank-document editor with autosave, versions and
+Phases 0–9 are built: the blank-document editor with autosave, versions and
 Claude model routing; the team-scoped source library (folders, uploads, URL
 and note sources, extraction, summaries and passages); and the document-type
 catalog with outlines, the living outline and per-section drafting tools; the
@@ -21,8 +21,9 @@ from CSV, XLSX and PDF sources, a Data tab and Insert table; and Phase 6:
 workflows (source coverage, restructure, draft all, and a workflow per document
 type); and Phase 7: verified citations, the rubric check and Markdown, Word and
 PDF export; and Phase 8: 26 document types with workflows and dated requirement
-sets, learning a type and workflow from examples, and a ClawHub draft importer.
-Next is Phase 9, hardening (rate limits, cost dashboard, Playwright, accessibility).
+sets, learning a type and workflow from examples, and a ClawHub draft importer;
+and Phase 9: per-user rate limits on model routes, a usage and cost page,
+Playwright smoke tests and accessibility checks. All planned phases are built.
 Per-type workflow specs are in
 `docs/workflows-by-document-type.md`. See
 `docs/PLAN.md` §12.
@@ -53,4 +54,5 @@ Set `POSTGRES_URL` and run `POST /api/ontology/setup` (or
 npm run lint
 npm run typecheck
 npm test
+npm run test:e2e   # Playwright + axe; stub models, no keys needed
 ```

@@ -9,6 +9,8 @@ import { DATA_SCHEMA } from "@/lib/data/schema";
 import { RUBRIC_CHECK_SCHEMA } from "@/lib/rubric/store";
 import { WORKFLOW_BINDING_SCHEMA } from "@/lib/workflow/store";
 import { LEARN_SCHEMA } from "@/lib/learn/store";
+import { MODEL_CALL_SCHEMA } from "@/lib/limits/schema";
+import { AUDIT_LOG_SCHEMA } from "@/lib/ontology/audit-schema";
 
 export const runtime = "nodejs";
 
@@ -22,6 +24,8 @@ const STATEMENTS = [
      agent TEXT NOT NULL, action TEXT NOT NULL, args JSONB NOT NULL, result JSONB NOT NULL,
      allowed BOOLEAN NOT NULL, note TEXT NOT NULL DEFAULT '', group_id TEXT)`,
   `CREATE INDEX IF NOT EXISTS audit_log_group_idx ON audit_log (group_id)`,
+  // Phase 9: team, user, document, run, task, model and latency per model call (src/lib/ontology/audit-schema.ts).
+  ...AUDIT_LOG_SCHEMA,
   // (report and report_section, the organizer's per-upload-group report, were retired in Phase 6; older databases may still have them, nothing reads them.)
   // (case_suggestion_edits was retired in Phase 4; older databases may still have it, nothing reads it.)
   // Named workflows, their versions, runs, and team settings (also applied on
@@ -43,6 +47,8 @@ const STATEMENTS = [
   ...RUBRIC_CHECK_SCHEMA,
   // Teams' inferred requirement sets and the learn rate gate (src/lib/learn/store.ts).
   ...LEARN_SCHEMA,
+  // The shared rate limiter's counters (Phase 9, src/lib/limits/schema.ts).
+  ...MODEL_CALL_SCHEMA,
   `ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
 ];
 
@@ -71,6 +77,7 @@ const EXPECTED_TABLES = [
   "rubric_check_call",
   "requirement_set",
   "learn_call",
+  "model_call",
 ];
 
 /**

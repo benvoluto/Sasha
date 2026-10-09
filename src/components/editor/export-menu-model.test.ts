@@ -33,5 +33,9 @@ describe("export menu model", () => {
     expect(exportErrorMessage(404, "md", null)).toMatch(/wasn't found/);
     expect(exportErrorMessage(500, "pdf", { error: "The PDF export failed." })).toBe("The PDF export failed.");
     expect(exportErrorMessage(502, "md", { error: 42 })).toBe("The Markdown export failed. Try again.");
+    // A rate limit shows the server's sentence as is.
+    const limited = "You've used your 20 PDF exports for the last 10 minutes. Try again in 9 min.";
+    expect(exportErrorMessage(429, "pdf", { error: limited })).toBe(limited);
+    expect(exportErrorMessage(429, "pdf", null)).toBe("Too many PDF exports right now. Try again in a moment.");
   });
 });

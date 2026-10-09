@@ -8,7 +8,7 @@
 // small popover in the same place.
 
 import type { Editor } from "@tiptap/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PencilLine, SectionNotesIcon, SparkleIcon } from "@/components/icons";
 import {
   DropdownMenu,
@@ -52,6 +52,19 @@ function Anchor({ rect }: { rect: DOMRect }) {
   return <span aria-hidden="true" style={{ position: "fixed", left: rect.left, top: rect.top, width: rect.width, height: rect.height, pointerEvents: "none" }} />;
 }
 
+/**
+ * Back to the section's gutter button (the visible one: the margin copy from
+ * sm up, the inline copy on phones) after Esc or a choice that left focus
+ * nowhere. A choice that moved focus (Section notes, the custom instruction)
+ * keeps it.
+ */
+function focusGutter(sectionId: string | null) {
+  const active = document.activeElement;
+  if (!sectionId || (active && active !== document.body && !active.closest('[role="menu"]'))) return;
+  const buttons = document.querySelectorAll<HTMLElement>(`.section-gutter[data-section-id="${CSS.escape(sectionId)}"]`);
+  Array.from(buttons).find((b) => b.getClientRects().length > 0)?.focus({ preventScroll: true });
+}
+
 export function SectionMenu({
   editor,
   target,
@@ -77,6 +90,11 @@ export function SectionMenu({
   useEffect(() => {
     if (custom) setInstruction("");
   }, [custom]);
+  // The section the menu was last opened for: focus goes back to its gutter button on close.
+  const lastSection = useRef<string | null>(null);
+  useEffect(() => {
+    if (target) lastSection.current = target.sectionId;
+  }, [target]);
 
   const section = target ? sectionBodyRange(editor.state.doc, target.sectionId) : null;
   const spec = section?.specKey ? type?.sections.find((s) => s.key === section.specKey) : undefined;
@@ -90,7 +108,10 @@ export function SectionMenu({
       <DropdownMenu open={!!target && !!section} onOpenChange={(o) => !o && onClose()} modal={false}>
         <DropdownMenuTrigger asChild>{target ? <Anchor rect={target.anchor} /> : <span hidden />}</DropdownMenuTrigger>
         {target && section && (
-          <DropdownMenuContent align="start" className="min-w-60" onCloseAutoFocus={(e) => e.preventDefault()}>
+          <DropdownMenuContent align="start" className="min-w-60" onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            focusGutter(lastSection.current);
+          }}>
             <DropdownMenuLabel className="max-w-72 truncate text-xs font-semibold text-[var(--doc-muted)]">{section.heading || "Untitled section"}</DropdownMenuLabel>
             {isBusy ? (
               <DropdownMenuItem disabled>Claude is writing this section…</DropdownMenuItem>
@@ -161,7 +182,7 @@ export function SectionMenu({
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) e.currentTarget.form?.requestSubmit();
               }}
               placeholder="e.g. “make this more formal and cut it to one paragraph”"
-              className="w-full resize-y rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-2 text-sm outline-none focus:border-[var(--doc-accent)]"
+              className="w-full resize-y rounded-md border border-[var(--doc-field-line)] bg-transparent px-2.5 py-2 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]"
             />
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setCustom(null)} className="rounded-md px-2.5 py-1 text-sm text-[var(--doc-muted)] hover:text-[var(--doc-ink)]">

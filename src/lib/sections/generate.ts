@@ -45,7 +45,12 @@ export type GenerateFailure =
   | { ok: false; code: "static"; status: 409; error: string }
   | { ok: false; code: "not_configured"; status: 503; error: string }
   | { ok: false; code: "notes_required"; status: 400; error: string }
-  | { ok: false; code: "wording_changed"; status: 422; error: string };
+  | { ok: false; code: "wording_changed"; status: 422; error: string }
+  // The document went away while the model ran: same 404, but the call was made.
+  | { ok: false; code: "gone"; status: 404; error: string };
+
+/** Failures that happen before the model call, so the route gives the draft allowance back. Anything else stays charged. */
+export const REFUSED_BEFORE_MODEL: ReadonlySet<GenerateFailure["code"]> = new Set(["not_configured", "not_found", "static", "notes_required"]);
 
 export type GenerateResult = { ok: true; response: SectionGenerateResponse } | GenerateFailure;
 
@@ -146,7 +151,7 @@ export async function generateSection({ teamId, agent, documentId, sectionId, re
   if (isCiteSources(req) && wordingChanged(req.body, markdown)) return { ok: false, code: "wording_changed", status: 422, error: WORDING_CHANGED_ERROR };
 
   const section = await markSectionGenerated(teamId, documentId, sectionId, spec?.key ?? req.specKey ?? null);
-  if (!section) return { ok: false, code: "not_found", status: 404, error: "Document not found." };
+  if (!section) return { ok: false, code: "gone", status: 404, error: "Document not found." };
   return { ok: true, response: { markdown, ...(spec?.renderer === "static" ? { lineBreaks: true } : {}), task, sourcesUsed: grounding.sources.length, section, citations: report } };
 }
 

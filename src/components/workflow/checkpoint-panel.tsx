@@ -31,7 +31,7 @@ export type CheckpointSubmit = NonNullable<ContinueRequest["checkpoint"]>;
 const VERDICT_LABELS: Record<CheckpointVerdict, string> = { approve: "Approve", edit: "Edit", reject: "Reject" };
 const SUBMIT_LABELS: Record<CheckpointVerdict, string> = { approve: "Approve", edit: "Save edits and approve", reject: "Reject" };
 
-const field = "w-full rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)]";
+const field = "w-full rounded-md border border-[var(--doc-field-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]";
 const small = "block text-xs font-medium text-[var(--doc-muted)]";
 
 export function CheckpointPanel({

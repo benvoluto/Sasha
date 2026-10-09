@@ -9,10 +9,15 @@
 // shared across processes; a failed run counts too), concurrent calls for a
 // document share the run in progress, and an input identical to the last
 // successful run's (hash in process memory) returns without asking the model.
+// Only a run that will ask the model counts one call of the caller's "light"
+// allowance (src/lib/limits); a refusal throws ModelCallLimitedError, records
+// nothing on the document, and the route answers 429.
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getDocument, onMemoryStoreReset, type DocumentRecord } from "@/lib/documents/store";
+import type { LimitSubject } from "@/lib/limits/contract";
+import { limitSubject, reserveOrThrow } from "@/lib/limits/reserve";
 import { claudeConfigured, claudeJson } from "@/lib/llm/claude";
 import { processMemory } from "@/lib/process-memory";
 import {
@@ -64,6 +69,8 @@ export type ClassifyOptions = {
   /** Skip the 2-minute gate. Server-internal only (tests, live tests); never taken from a request body. */
   force?: boolean;
   agent?: string;
+  /** Whose "light" allowance a model run counts against; defaults to the request's model context. */
+  subject?: LimitSubject | null;
   now?: () => number;
 };
 
@@ -125,6 +132,7 @@ async function run(teamId: string, doc: DocumentRecord, words: number, opts: Cla
   const user = classifyUser({ title: doc.title, notes: doc.notes, text: doc.content_text });
   const hash = inputHash(system, user);
   if (lastInput.get(doc.id) === hash) return skip("unchanged", doc);
+  await reserveOrThrow(limitSubject(opts.subject), "light", { now: now() });
 
   const at = new Date(now()).toISOString();
   try {

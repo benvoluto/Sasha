@@ -1,6 +1,8 @@
 import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireTeam } from "@/lib/documents/team";
+import { limitModelCall } from "@/lib/limits/http";
+import { contextFor, enterModelContext } from "@/lib/llm/context";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { ingestSource } from "@/lib/sources/ingest";
 import { createSource, getSource, linkSource, listSources, targetFolder, toSummary, type SourceKind } from "@/lib/sources/store";
@@ -44,13 +46,18 @@ const PostBody = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("note"), title: z.string().trim().min(1).max(300), text: z.string().min(1).max(500_000), ...Placement }),
 ]);
 
-/** POST /api/sources — add a link or a note. Files go through /api/upload/presign instead. */
+/**
+ * POST /api/sources — add a link or a note. Files go through /api/upload/presign instead.
+ * Counts one "ingest" call (a note is summarized too); 429 when the allowance is used up.
+ */
 export async function POST(req: Request) {
   const caller = await requireTeam(PERMISSIONS.sourceWrite);
   if (caller instanceof NextResponse) return caller;
+  enterModelContext(contextFor(caller));
   const parsed = PostBody.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Add a web address, or a note with a title and text." }, { status: 400 });
   const body = parsed.data;
+  if (body.document_id) enterModelContext(contextFor(caller, { documentId: body.document_id }));
 
   let url: string | null = null;
   if (body.kind === "url") {
@@ -66,6 +73,8 @@ export async function POST(req: Request) {
   if (!target.ok) {
     return NextResponse.json({ error: target.reason === "document_not_found" ? "Document not found." : "Folder not found." }, { status: 404 });
   }
+  const limited = await limitModelCall(caller, "ingest");
+  if (limited) return limited;
   const created = await createSource(caller.teamId, caller.agent, {
     kind: body.kind,
     folder_id: target.folderId,

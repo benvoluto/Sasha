@@ -505,6 +505,17 @@ function CitationPopover({ n, run, reference, anchor, onEnter, onLeave, onEscape
           e.preventDefault();
           e.stopPropagation();
           onEscape();
+          return;
+        }
+        // Tab past either end closes it and goes back to the citation, rather
+        // than off the end of the page (the popover is portalled to <body>).
+        if (e.key === "Tab") {
+          const buttons = Array.from(e.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)"));
+          const edge = e.shiftKey ? buttons[0] : buttons[buttons.length - 1];
+          if (!buttons.length || document.activeElement === edge) {
+            e.preventDefault();
+            onEscape();
+          }
         }
       }}
     >

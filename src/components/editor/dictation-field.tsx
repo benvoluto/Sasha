@@ -107,7 +107,7 @@ export function DictationField({
   return (
     <div
       className={`flex flex-col rounded-lg border bg-transparent transition-colors ${fill ? "min-h-0 flex-1" : ""} ${
-        listening ? "border-[var(--doc-accent)]" : "border-[var(--doc-line)] focus-within:border-[var(--doc-accent)]"
+        listening ? "border-[var(--doc-accent)]" : "border-[var(--doc-field-line)] focus-within:border-[var(--doc-accent)] focus-within:ring-2 focus-within:ring-[var(--doc-accent)]"
       }`}
     >
       <label htmlFor={id} className="sr-only">

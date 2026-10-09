@@ -6,10 +6,11 @@ vi.mock("@anthropic-ai/sdk", () => ({
     beta = { messages: { create } };
   },
 }));
-const { write } = vi.hoisted(() => ({ write: vi.fn(async () => {}) }));
+const { write } = vi.hoisted(() => ({ write: vi.fn<(e: Record<string, unknown>) => Promise<void>>(async () => {}) }));
 vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write }) }));
 
 import { callModel } from "./call";
+import { withModelContext } from "./context";
 import { ModelChoice } from "./model-choice";
 
 const reply = (text: string, stop_reason = "end_turn") => ({
@@ -28,7 +29,7 @@ describe("callModel (anthropic)", () => {
   it("asks for JSON in the system prompt and sends no temperature", async () => {
     create.mockResolvedValue(reply('{"a":1}'));
     const out = await callModel({ provider: "anthropic", model: "claude-sonnet-5-5", temperature: 0.7, system: "Extract.", user: "text" });
-    expect(out).toEqual({ text: '{"a":1}', truncated: false, model: "claude-sonnet-5-5", usage: { input_tokens: 12, output_tokens: 3 } });
+    expect(out).toEqual({ text: '{"a":1}', truncated: false, model: "claude-sonnet-5-5", usage: { input_tokens: 12, output_tokens: 3, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } });
     const params = create.mock.calls[0][0];
     expect(params).not.toHaveProperty("temperature");
     expect(params.output_config).toEqual({ effort: "medium" });
@@ -79,5 +80,41 @@ describe("ModelChoice", () => {
   it("reads a saved gemini provider as anthropic", () => {
     expect(ModelChoice.parse({ provider: "gemini", model: "m", temperature: 0 }).provider).toBe("anthropic");
     expect(() => ModelChoice.parse({ provider: "openai", model: "m", temperature: 0 })).toThrow();
+  });
+});
+
+describe("callModel audit fields", () => {
+  beforeEach(() => {
+    create.mockReset();
+    write.mockClear();
+  });
+
+  it("records task workflow.node, the model, latency, cache tokens and the run's context", async () => {
+    create.mockResolvedValue({ ...reply("ok"), usage: { input_tokens: 12, output_tokens: 3, cache_read_input_tokens: 900, cache_creation_input_tokens: 40 } });
+    const out = await withModelContext({ teamId: "org:a", userId: "u1", agent: "ann", documentId: "d1", runId: "r1" }, () =>
+      callModel({ provider: "anthropic", model: "claude-sonnet-5-5", temperature: 0, system: "S", user: "u", label: "Extract" }),
+    );
+    expect(out.usage).toEqual({ input_tokens: 12, output_tokens: 3, cache_read_input_tokens: 900, cache_creation_input_tokens: 40 });
+    expect(write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: "ann",
+        action: "llm:workflow",
+        args: expect.objectContaining({ node: "Extract" }),
+        task: "workflow.node",
+        model: "claude-sonnet-5-5",
+        teamId: "org:a",
+        userId: "u1",
+        documentId: "d1",
+        runId: "r1",
+        latencyMs: expect.any(Number),
+        result: expect.objectContaining({ cache_read_input_tokens: 900, cache_creation_input_tokens: 40 }),
+      }),
+    );
+  });
+
+  it("records the requested model on a failed call", async () => {
+    create.mockRejectedValue(new Error("overloaded"));
+    await expect(callModel({ provider: "anthropic", model: "gemini-2.5-pro", temperature: 0, system: "S", user: "u" })).rejects.toThrow();
+    expect(write.mock.calls[0][0]).toMatchObject({ allowed: false, task: "workflow.node", model: expect.stringMatching(/^claude-/), agent: "system", teamId: null });
   });
 });

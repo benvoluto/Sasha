@@ -31,6 +31,7 @@ import {
   runStatusText,
   scoreText,
   shouldAutoContinue,
+  autoContinueWait,
   signatureText,
   startBlocker,
   startRequest,
@@ -163,6 +164,15 @@ describe("polling and continuing", () => {
     expect(shouldAutoContinue(paused, AUTO_CONTINUE_MAX)).toBe(false);
     expect(shouldAutoContinue({ status: "paused", pause_reason: "manual" }, 0)).toBe(false);
     expect(shouldAutoContinue({ status: "running", pause_reason: null }, 0)).toBe(false);
+  });
+
+  it("holds off for the 429's wait before continuing again, and only for a 429", () => {
+    const body = { error: "You've used your 10 workflow runs for this hour. Try again in 5 min.", code: "rate_limited", scope: "user", family: "workflow", retry_after_seconds: 300 };
+    expect(autoContinueWait({ status: 429, body, retryAfter: "300" })).toBe(300_000);
+    expect(autoContinueWait({ status: 429, body: {}, retryAfter: "12" })).toBe(12_000);
+    expect(autoContinueWait({ status: 409, body: { error: "The run has already been continued." }, retryAfter: null })).toBeNull();
+    expect(autoContinueWait(new Error("network"))).toBeNull();
+    expect(autoContinueWait(null)).toBeNull();
   });
 });
 

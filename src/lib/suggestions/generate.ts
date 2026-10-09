@@ -18,12 +18,18 @@
 // A failed model call records its error, adds any type items still missing
 // (uncovered) and otherwise leaves the list as it was; the list stays stale
 // so the next open of the tab retries.
+//
+// A run that will call the model counts one call of the caller's "light"
+// allowance (src/lib/limits); a refusal throws ModelCallLimitedError before
+// anything is written, and the route answers 429.
 
 import { getType } from "@/catalog";
 import { sortedSections, type DocumentTypeDefinition } from "@/catalog/schema";
 import { tableLocation, type LinkedDataTable } from "@/lib/data/contract";
 import { listDocumentTables } from "@/lib/data/store";
 import { getDocument, type DocumentRecord } from "@/lib/documents/store";
+import type { LimitSubject } from "@/lib/limits/contract";
+import { limitSubject, reserveOrThrow } from "@/lib/limits/reserve";
 import { claudeConfigured, claudeJson } from "@/lib/llm/claude";
 import { processMemory } from "@/lib/process-memory";
 import { listDocumentSources, type LinkedSource } from "@/lib/sources/store";
@@ -140,7 +146,13 @@ export function judgeReply(
   return { typeItems, proposals: mergeProposals(items, proposals).slice(0, MAX_NOTES_PROPOSALS) };
 }
 
-export type GenerateOptions = { force?: boolean; agent?: string; now?: () => number };
+export type GenerateOptions = {
+  force?: boolean;
+  agent?: string;
+  /** Whose "light" allowance a model run counts against; defaults to the request's model context. */
+  subject?: LimitSubject | null;
+  now?: () => number;
+};
 
 /** `items`, with each one that already has an open row taking that row's reason, spec_ref and url, so writing them changes nothing it doesn't add. */
 function keepExisting(items: GeneratedItem[], existing: SuggestionRecord[]): GeneratedItem[] {
@@ -165,6 +177,7 @@ async function run(teamId: string, inputs: Inputs, opts: GenerateOptions): Promi
   let typeItems: GeneratedItem[] = needed.map(({ dedupe_key: _k, ...rest }) => (void _k, rest));
   let notesItems: GeneratedItem[] = [];
   if (useModel) {
+    await reserveOrThrow(limitSubject(opts.subject), "light", { now: now() });
     const sections = def ? sortedSections(def.sections).map((s) => ({ key: s.key, heading: s.heading })) : [];
     try {
       const { data } = await claudeJson({

@@ -9,12 +9,20 @@
 // a plain request) streams: the timeout then covers only the wait for the
 // reply to start, so a long reply that is still arriving is not cut off and
 // replayed, and an overall deadline bounds the whole call instead.
+//
+// Audit rows carry the team, user, document and run from the input or, when the
+// input leaves them out, from the current model context (context.ts), plus the
+// task, the resolved model and the call's latency, so src/lib/usage can sum
+// them. A failed call still records its model and any usage already billed.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { BetaContentBlock, BetaMessage, BetaMessageParam, BetaToolUnion, MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type * as z from "zod/v4";
+import { e2eStubModels } from "@/lib/e2e/mode";
+import { stubClaudeMessage } from "@/lib/e2e/stub-models";
 import { defaultAuditSink } from "@/lib/ontology/governance";
+import { currentModelContext } from "./context";
 import { resolveTask, supportsServerFallback, type Task } from "./tasks";
 
 let client: Anthropic | null = null;
@@ -47,9 +55,13 @@ export type ClaudeInput = {
   system: string;
   /** The request: document text, selection, notes. */
   user: string;
-  /** Who asked, for the audit log. */
+  /** Who asked, for the audit log. Defaults to the model context's agent, then "system". */
   agent?: string;
   documentId?: string;
+  /** For the audit log; each defaults to the current model context (context.ts). */
+  teamId?: string;
+  userId?: string;
+  runId?: string;
   /** Per-request timeout; defaults to CLAUDE_REQUEST_TIMEOUT_MS. For a streamed call it covers the wait for the reply to start. */
   timeoutMs?: number;
   /** Streamed calls only: the limit on the whole call; defaults to CLAUDE_STREAM_DEADLINE_MS. */
@@ -107,6 +119,12 @@ export class ModelDeadlineError extends Error {
 
 /** Send one request, streaming when the reply may be long (see the file header). */
 async function send(input: ClaudeInput, params: Params, stream: boolean): Promise<BetaMessage> {
+  // e2e runs (never production): a fixture instead of the API (src/lib/e2e).
+  if (e2eStubModels()) {
+    const format = params.output_config.format as { schema?: Record<string, unknown> } | undefined;
+    const tools = (params as { tools?: unknown[] }).tools;
+    return stubClaudeMessage({ task: input.task, model: params.model, system: input.system, user: input.user, jsonSchema: format?.schema ?? null, webSearch: !!tools?.length }) as unknown as BetaMessage;
+  }
   const opts = { timeout: input.timeoutMs ?? CLAUDE_REQUEST_TIMEOUT_MS, maxRetries: 1 };
   const body = params as MessageCreateParamsNonStreaming;
   if (!stream) return anthropic().beta.messages.create(body, opts);
@@ -159,14 +177,34 @@ function addUsage(a: ClaudeUsage, b: ClaudeUsage): ClaudeUsage {
   };
 }
 
-async function audit(input: ClaudeInput, usage: ClaudeUsage | null, error?: unknown) {
+/** When the call started and the model it asked for, so the audit row has both even when the call fails. */
+type CallMeta = { model: string; startedAt: number };
+
+const callMeta = (model: string): CallMeta => ({ model, startedAt: Date.now() });
+
+/**
+ * One audit row for a call. `usage` is what the call was billed for; on a
+ * failure it is whatever arrived before the error (a refused or cut-off reply,
+ * or claudeSearch's earlier turns), or null.
+ */
+async function audit(input: ClaudeInput, meta: CallMeta, usage: ClaudeUsage | null, error?: unknown) {
+  const ctx = currentModelContext();
+  const documentId = input.documentId ?? ctx?.documentId ?? null;
+  const model = usage?.model ?? meta.model;
   try {
     await defaultAuditSink().write({
-      agent: input.agent ?? "system",
+      agent: input.agent ?? ctx?.agent ?? "system",
       action: `llm:${input.task}`,
-      args: { task: input.task, documentId: input.documentId ?? null },
-      result: usage ?? { error: error instanceof Error ? error.message : String(error) },
+      args: { task: input.task, documentId },
+      result: error ? { ...(usage ?? {}), model, error: error instanceof Error ? error.message : String(error) } : usage,
       allowed: !error,
+      teamId: input.teamId ?? ctx?.teamId ?? null,
+      userId: input.userId ?? ctx?.userId ?? null,
+      documentId,
+      runId: input.runId ?? ctx?.runId ?? null,
+      task: input.task,
+      model,
+      latencyMs: Date.now() - meta.startedAt,
     });
   } catch (e) {
     console.error("[llm] audit write failed:", e);
@@ -175,19 +213,21 @@ async function audit(input: ClaudeInput, usage: ClaudeUsage | null, error?: unkn
 
 /** A plain-text reply (prose tasks). */
 export async function claudeText(input: ClaudeInput): Promise<{ text: string; usage: ClaudeUsage }> {
-  const { params, stream } = requestBase(input);
+  const { model, params, stream } = requestBase(input);
+  const meta = callMeta(model);
+  let usage: ClaudeUsage | null = null;
   try {
     const message = await send(input, params, stream);
+    usage = usageOf(message);
     checkStop(message);
     const text = message.content
       .map((b) => (b.type === "text" ? b.text : ""))
       .join("")
       .trim();
-    const usage = usageOf(message);
-    await audit(input, usage);
+    await audit(input, meta, usage);
     return { text, usage };
   } catch (error) {
-    await audit(input, null, error);
+    await audit(input, meta, usage, error);
     throw error;
   }
 }
@@ -200,7 +240,9 @@ export async function claudeText(input: ClaudeInput): Promise<{ text: string; us
 export async function claudeJson<S extends z.ZodType>(
   input: ClaudeInput & { schema: S },
 ): Promise<{ data: z.infer<S>; usage: ClaudeUsage }> {
-  const { params, stream } = requestBase(input);
+  const { model, params, stream } = requestBase(input);
+  const meta = callMeta(model);
+  let usage: ClaudeUsage | null = null;
   // Send only the schema: the SDK's own parse step (messages.parse, or the
   // stream's final message) would throw on a truncated reply before we could
   // look at the stop reason.
@@ -211,6 +253,7 @@ export async function claudeJson<S extends z.ZodType>(
       betas: [...params.betas, STRUCTURED_BETA],
       output_config: { ...params.output_config, format },
     }, stream);
+    usage = usageOf(message);
     checkStop(message);
     const text = message.content.map((b) => (b.type === "text" ? b.text : "")).join("");
     let data: z.infer<S>;
@@ -219,11 +262,10 @@ export async function claudeJson<S extends z.ZodType>(
     } catch {
       throw new Error("The model's reply did not match the expected format.");
     }
-    const usage = usageOf(message);
-    await audit(input, usage);
+    await audit(input, meta, usage);
     return { data, usage };
   } catch (error) {
-    await audit(input, null, error);
+    await audit(input, meta, usage, error);
     throw error;
   }
 }
@@ -269,7 +311,8 @@ export function searchedUrlsOf(content: BetaContentBlock[]): string[] {
 export async function claudeSearch<S extends z.ZodType>(
   input: ClaudeInput & { schema: S; tools: BetaToolUnion[] },
 ): Promise<{ data: z.infer<S>; searchedUrls: string[]; usage: ClaudeUsage }> {
-  const { params, stream } = requestBase(input);
+  const { model, params, stream } = requestBase(input);
+  const meta = callMeta(model);
   const messages: BetaMessageParam[] = [{ role: "user", content: input.user }];
   const searchedUrls = new Set<string>();
   let usage: ClaudeUsage | null = null;
@@ -277,19 +320,19 @@ export async function claudeSearch<S extends z.ZodType>(
   try {
     for (let turn = 0; ; turn++) {
       const message = await send(input, { ...params, messages, tools: input.tools } as Params, stream);
-      checkStop(message);
       usage = usage ? addUsage(usage, usageOf(message)) : usageOf(message);
+      checkStop(message);
       for (const u of searchedUrlsOf(message.content)) searchedUrls.add(u);
       text = message.content.map((b) => (b.type === "text" ? b.text : "")).join("");
       if (message.stop_reason !== "pause_turn" || turn >= MAX_SEARCH_CONTINUATIONS) break;
       messages.push({ role: "assistant", content: message.content });
     }
   } catch (error) {
-    await audit(input, null, error);
+    await audit(input, meta, usage, error);
     throw error;
   }
   const searched = usage!;
-  await audit(input, searched);
+  await audit(input, meta, searched);
   const parsed = input.schema.safeParse(jsonFromText(text));
   if (parsed.success) return { data: parsed.data as z.infer<S>, searchedUrls: [...searchedUrls], usage: searched };
   // The repair is a call of its own (and audits itself).
@@ -300,5 +343,5 @@ export async function claudeSearch<S extends z.ZodType>(
 }
 
 export function claudeConfigured(): boolean {
-  return !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+  return e2eStubModels() || !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 }

@@ -27,7 +27,7 @@ import {
 import type { DocumentFolder, DocumentListItem } from "@/lib/documents/folders-contract";
 import { documentCountLabel, formatPanelDate } from "./docs-panel-model";
 
-export const FOCUS_RING = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--panel-head)]";
+export const FOCUS_RING = "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--panel-head)]";
 
 /** Title · (type) · badge · date. Narrow panels hide the type column. */
 const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_auto_4.75rem] items-center gap-x-2 @[24rem]/panel:grid-cols-[minmax(0,1fr)_5rem_3.5rem_4.75rem] @[34rem]/panel:grid-cols-[minmax(0,1fr)_6.5rem_4.5rem_5.5rem] @[34rem]/panel:gap-x-3";

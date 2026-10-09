@@ -8,7 +8,6 @@
 // ?table= opens one of its tables (a table snapshot's citation link), and
 // ?passage= shows and highlights one of its passages (a citation's "Open source").
 
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -30,6 +29,7 @@ import {
   X,
 } from "@/components/icons";
 import { canHaveTables } from "@/components/editor/data-pane-model";
+import { AccountButton } from "@/components/shell/account-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AddNoteForm,
@@ -206,11 +206,11 @@ export function SourceLibrary() {
           </nav>
         </div>
         <div className="grid h-11 w-11 place-items-center">
-          <UserButton />
+          <AccountButton />
         </div>
       </header>
 
-      <main className="mx-2 mb-10 grid min-h-[75vh] overflow-hidden rounded-2xl bg-[var(--doc-surface)] shadow-[0_1px_3px_rgba(16,24,40,0.06),0_8px_24px_rgba(16,24,40,0.05)] sm:mx-10 md:grid-cols-[15rem_1fr] xl:grid-cols-[16rem_1fr_auto]">
+      <main id="main-content" tabIndex={-1} className="mx-2 mb-10 grid outline-none min-h-[75vh] overflow-hidden rounded-2xl bg-[var(--doc-surface)] shadow-[0_1px_3px_rgba(16,24,40,0.06),0_8px_24px_rgba(16,24,40,0.05)] sm:mx-10 md:grid-cols-[15rem_1fr] xl:grid-cols-[16rem_1fr_auto]">
         <FolderTree
           folders={folders}
           tree={tree}
@@ -790,7 +790,8 @@ function SourceDrawer({
 
   const href = source ? sourceHref(source) : null;
   const status = source?.extraction_status;
-  const canRetry = status === "error" || status === "partial" || status === "ready";
+  // "uploading" too: a file stored but refused at complete (429) is read from here once the wait is over.
+  const canRetry = status === "error" || status === "partial" || status === "ready" || status === "uploading";
 
   return (
     <aside

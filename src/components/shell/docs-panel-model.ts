@@ -18,6 +18,12 @@ export function isWritingPath(pathname: string | null | undefined): boolean {
   return ["/library", "/catalog"].some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/** The pages inside the app frame: the writing pages, the workflow canvas and the usage dashboard (both linked from the rail). */
+export function inAppFrame(pathname: string | null | undefined): boolean {
+  if (isWritingPath(pathname)) return true;
+  return ["/workflows", "/usage"].some((p) => pathname === p || !!pathname?.startsWith(`${p}/`));
+}
+
 /** A row's date, as the mockup shows it: M/D/YYYY. Blank for a missing or unreadable timestamp. */
 export function formatPanelDate(iso: string | null | undefined): string {
   if (!iso) return "";

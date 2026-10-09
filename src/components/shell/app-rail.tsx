@@ -2,7 +2,7 @@
 
 // The narrow cream rail down the left of the writing pages: the Documents
 // toggle (opens the documents/folders panel), links to the source library, the
-// document-type catalog and the workflow canvas, the account menu, and Sasha
+// document-type catalog, the workflow canvas and the usage dashboard, the account menu, and Sasha
 // herself at the bottom.
 // It sits above the panel (z-50) so the mascot can overlap the panel's and the
 // editor's edge, as in the mockup.
@@ -10,8 +10,9 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import type { ComponentType, ReactNode, RefObject } from "react";
-import { DocsIcon, LibraryIcon, TypesIcon, Workflow } from "@/components/icons";
+import { DocsIcon, LibraryIcon, TypesIcon, UsageIcon, Workflow } from "@/components/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AccountButton } from "./account-button";
 
 const RAIL_BUTTON =
   "grid h-11 w-11 place-items-center rounded-xl text-[var(--panel-head)] hover:bg-[var(--panel-hover)] aria-[current=page]:bg-[var(--panel-hover)] aria-expanded:bg-[var(--panel-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--panel-head)]";
@@ -49,13 +50,15 @@ export function AppRail({ pathname, panelOpen, onTogglePanel, toggleRef }: { pat
       <RailLink href="/library" label="Library" icon={LibraryIcon} pathname={pathname} />
       <RailLink href="/catalog" label="Document types" icon={TypesIcon} pathname={pathname} />
       <RailLink href="/workflows" label="Workflows" icon={Workflow} pathname={pathname} />
+      <RailLink href="/usage" label="Usage" icon={UsageIcon} pathname={pathname} />
 
       <div className="mt-auto mb-24 grid h-11 w-11 place-items-center [@media(max-height:520px)]:mb-4">
-        <UserButton>
+        <AccountButton>
           <UserButton.MenuItems>
             <UserButton.Link label="Document types" labelIcon={<TypesIcon className="h-4 w-4" />} href="/catalog" />
+            <UserButton.Link label="Usage" labelIcon={<UsageIcon className="h-4 w-4" />} href="/usage" />
           </UserButton.MenuItems>
-        </UserButton>
+        </AccountButton>
       </div>
 
       {/* Decorative: Sasha the dog, allowed to spill past the rail's edge. */}

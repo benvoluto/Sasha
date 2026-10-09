@@ -48,3 +48,11 @@ next-env.d.ts
 
 # Phase 8: evaluation harness downloads and reports (fetched at run time, never committed)
 /.cache/
+
+# Phase 9: Playwright output and browsers (never committed)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/e2e/.auth/
+/.next-e2e/

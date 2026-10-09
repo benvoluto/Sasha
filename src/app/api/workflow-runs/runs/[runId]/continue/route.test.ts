@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   caller: { teamId: "org:a", agent: "sup@example.com", userId: "u1", orgId: "a", permissions: [] as string[] },
@@ -159,5 +159,58 @@ describe("POST /api/workflow-runs/runs/[runId]/continue", () => {
     const polled = await GET(new Request("http://x") as never, ctx(run.id));
     expect(polled.status).toBe(200);
     expect(((await polled.json()) as RunResponse).run.id).toBe(run.id);
+  });
+});
+
+describe("POST /api/workflow-runs/runs/[runId]/continue rate limit", () => {
+  beforeEach(() => {
+    process.env.SASHA_LIMIT_WORKFLOW_USER = "1/1h";
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_WORKFLOW_USER;
+  });
+
+  // A long run pauses at the time budget every 200 s; charging each continue spent the hourly allowance mid-run.
+  it("checkpoint decisions and pauses cost nothing, however often a run pauses", async () => {
+    const signers = [{ key: "owner", label: "Process owner" }, { key: "quality", label: "Quality approver" }];
+    const signing = await awaiting("outcome", { signers });
+    expect((await cont(signing.id, { checkpoint: { nodeId: "cp", verdict: "approve", signer: "owner", edits: { record: { signed_name: "S" } } } })).status).toBe(202);
+    mocks.caller.agent = "qa@example.com";
+    expect((await cont(signing.id, { checkpoint: { nodeId: "cp", verdict: "approve", signer: "quality", edits: { record: { signed_name: "Q" } } } })).status).toBe(202);
+
+    // Starting another run of the workflow supersedes the earlier ones, so one run pauses many times.
+    const paused = await awaiting();
+    for (let i = 0; i < 5; i++) {
+      const again = (await getRun("org:a", paused.id))!;
+      again.status = "paused";
+      again.pause_reason = i % 2 ? "manual" : "budget";
+      await saveRun(again);
+      expect((await cont(paused.id)).status).toBe(202);
+    }
+    expect(mocks.after).toHaveBeenCalledTimes(6);
+  });
+
+  it("counts a retry of a failed run; a refused retry costs nothing; the 429 leaves the run failed", async () => {
+    const failedRun = async () => {
+      const r = await awaiting();
+      r.status = "failed";
+      r.steps = { outcome: { status: "failed", error: "boom" }, cp: { status: "skipped" } };
+      await saveRun(r);
+      return r;
+    };
+    const done = await awaiting();
+    done.status = "complete";
+    await saveRun(done);
+    expect((await cont(done.id)).status).toBe(409);
+
+    const first = await failedRun();
+    expect((await cont(first.id)).status).toBe(202);
+    const second = await failedRun();
+    const res = await cont(second.id);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toMatch(/^\d+$/);
+    expect(await res.json()).toMatchObject({ code: "rate_limited", scope: "user", family: "workflow" });
+    expect((await getRun("org:a", second.id))?.status).toBe("failed");
+    expect(mocks.after).toHaveBeenCalledTimes(1);
   });
 });

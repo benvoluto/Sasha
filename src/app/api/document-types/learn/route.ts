@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { issueLines } from "@/catalog/api";
 import { requireTeam } from "@/lib/documents/team";
+import { limitModelCall } from "@/lib/limits/http";
 import { claudeConfigured, ModelDeadlineError, ModelRefusalError, ModelTruncatedError } from "@/lib/llm/claude";
-import { LearnRequest, LEARN_TEAM_HOURLY_LIMIT, type LearnErrorResponse, type LearnResponse } from "@/lib/learn/contract";
+import { contextFor, enterModelContext } from "@/lib/llm/context";
+import { LearnRequest, type LearnErrorResponse, type LearnResponse } from "@/lib/learn/contract";
 import { LearnInputError, readExamples, uniqueRefs } from "@/lib/learn/examples";
 import { extractFromExamples, LearnModelError } from "@/lib/learn/extract";
-import { reserveLearnCall } from "@/lib/learn/store";
 import { defaultAuditSink } from "@/lib/ontology/governance";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 
@@ -20,11 +21,13 @@ const fail = (error: string, status: number, extra: Omit<LearnErrorResponse, "er
  * POST /api/document-types/learn — learn a draft document type and review
  * workflow from 1–5 examples (PLAN §6.11). Nothing is saved: the author
  * reviews the draft and saves it through ./save. The examples are checked
- * before the team's hourly allowance is spent on them.
+ * before the caller's "learn" allowance (user and team windows; the team's 6
+ * an hour is the Phase 8 cap) is spent on them.
  */
 export async function POST(req: Request) {
   const caller = await requireTeam(PERMISSIONS.documentWrite);
   if (caller instanceof NextResponse) return caller;
+  enterModelContext(contextFor(caller));
   if (!claudeConfigured()) return fail("Claude is not configured.", 503);
   const parsed = LearnRequest.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -32,6 +35,7 @@ export async function POST(req: Request) {
     return fail(`Invalid request: ${issues[0]}`, 400, { issues });
   }
   const body = parsed.data;
+  if (body.documentId) enterModelContext(contextFor(caller, { documentId: body.documentId }));
   const started = Date.now();
 
   let examples;
@@ -42,10 +46,8 @@ export async function POST(req: Request) {
     throw error;
   }
 
-  const gate = await reserveLearnCall(caller.teamId);
-  if (!gate.ok) {
-    return fail(`Your team has learned ${LEARN_TEAM_HOURLY_LIMIT} types in the last hour. Try again in ${Math.ceil(gate.retryAfterSeconds / 60)} minutes.`, 429, { retryAfterSeconds: gate.retryAfterSeconds });
-  }
+  const limited = await limitModelCall(caller, "learn");
+  if (limited) return limited;
 
   const audit = (result: Record<string, unknown>, allowed = true) =>
     defaultAuditSink()

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ claudeJson: vi.fn(), permission: { last: "" } }));
 vi.mock("@/lib/documents/team", () => ({
@@ -83,5 +83,29 @@ describe("/api/documents/[id]/classify", () => {
     const other = await createDocument("org:b", "bob");
     expect((await get(other.id)).status).toBe(404);
     expect((await get("nope")).status).toBe(404);
+  });
+});
+
+describe("POST /api/documents/[id]/classify rate limit", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    process.env.SASHA_LIMIT_LIGHT_USER = "1/10m";
+    resetMemoryStore();
+    resetClassifierMemory();
+    mocks.claudeJson.mockReset().mockResolvedValue({ data: { candidates: [{ key: "proposal", confidence: 0.8, why: "asks" }], freeform: false }, usage: {} });
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_LIGHT_USER;
+  });
+
+  it("answers the light allowance's refusal with a RateLimitedBody and Retry-After", async () => {
+    const a = await createDocument("org:a", "ann", { content_json: longDoc() });
+    const b = await createDocument("org:a", "ann", { content_json: longDoc() });
+    expect((await post(a.id, { trigger: "content" })).status).toBe(200);
+    const res = await post(b.id, { trigger: "content" });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toMatch(/^\d+$/);
+    expect(await res.json()).toMatchObject({ code: "rate_limited", scope: "user", family: "light", error: expect.stringMatching(/^You've used your 1 background check for the last 10 minutes/) });
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(1);
   });
 });

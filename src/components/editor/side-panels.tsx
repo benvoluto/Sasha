@@ -21,7 +21,7 @@ export function PanelHeader({ title, onClose }: { title: string; onClose: () => 
   return (
     <div className="flex items-center justify-between px-5 pb-2 pt-5">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--doc-muted)]">{title}</h2>
-      <button type="button" onClick={onClose} aria-label={`Close ${title.toLowerCase()}`} className="grid h-8 w-8 place-items-center rounded-md text-[var(--doc-muted)] hover:bg-[var(--action-soft)] hover:text-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]">
+      <button type="button" onClick={onClose} aria-label={`Close ${title.toLowerCase()}`} className="grid min-h-11 min-w-11 place-items-center rounded-md text-[var(--doc-muted)] sm:min-h-8 sm:min-w-8 hover:bg-[var(--action-soft)] hover:text-[var(--action)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)]">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -162,7 +162,7 @@ export function ToolsPanel({
               onChange={(e) => setInstruction(e.target.value)}
               rows={3}
               placeholder="Or describe the change, e.g. “make this more formal”"
-              className="w-full resize-y rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-2 text-sm outline-none focus:border-[var(--doc-accent)]"
+              className="w-full resize-y rounded-md border border-[var(--doc-field-line)] bg-transparent px-2.5 py-2 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]"
             />
             <button
               type="submit"

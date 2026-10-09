@@ -1,14 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   caller: { teamId: "org:a", agent: "ann@example.com", userId: "u1", orgId: "a", permissions: [] as string[] },
   after: vi.fn(),
   audit: vi.fn(async () => {}),
+  executeGraph: vi.fn(),
 }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), after: mocks.after }));
 vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => mocks.caller }));
 vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write: mocks.audit }) }));
-vi.mock("@/lib/workflow/engine", () => ({ executeGraph: vi.fn() }));
+vi.mock("@/lib/workflow/engine", () => ({ executeGraph: mocks.executeGraph }));
 // A small catalog of built-ins, so these tests don't depend on the shipped definitions.
 vi.mock("@/catalog/workflows", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/catalog/workflows")>();
@@ -175,5 +176,34 @@ describe("POST /api/documents/[id]/workflows", () => {
     expect((await post(doc.id, { nope: true })).status).toBe(400);
     mocks.caller.teamId = "org:b";
     expect((await post(doc.id, { workflowId: "builtin:draft-all" })).status).toBe(404);
+  });
+});
+
+describe("POST /api/documents/[id]/workflows rate limit", () => {
+  beforeEach(() => {
+    process.env.SASHA_LIMIT_WORKFLOW_USER = "2/1h";
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_WORKFLOW_USER;
+  });
+
+  it("counts starts only; a refused plan costs nothing; the 429 starts no run", async () => {
+    const doc = await createDocument("org:a", "ann", { type_key: "nih-specific-aims-research-strategy" });
+    expect((await post(doc.id, { workflowId: "builtin:draft-all" })).status).toBe(409);
+    expect((await post(doc.id, { workflowId: "builtin:type-nih" })).status).toBe(202);
+    expect((await post(doc.id, { workflowId: "builtin:type-nih" })).status).toBe(202);
+    const res = await post(doc.id, { workflowId: "builtin:type-nih" });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toMatch(/^\d+$/);
+    expect(await res.json()).toEqual({
+      error: expect.stringMatching(/^You've used your 2 workflow runs for this hour\. Try again in \d+ min\.$/),
+      code: "rate_limited",
+      scope: "user",
+      family: "workflow",
+      retry_after_seconds: expect.any(Number),
+    });
+    expect(mocks.after).toHaveBeenCalledTimes(2);
+    const runs = ((await (await get(doc.id)).json()) as DocumentWorkflowsResponse).runs;
+    expect(runs).toHaveLength(2);
   });
 });

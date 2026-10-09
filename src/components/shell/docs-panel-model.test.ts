@@ -6,6 +6,7 @@ import {
   documentCountLabel,
   escapeAction,
   formatPanelDate,
+  inAppFrame,
   isFlatList,
   isWritingPath,
   listQuery,
@@ -24,6 +25,15 @@ describe("isWritingPath", () => {
   });
   it("steps aside elsewhere", () => {
     for (const p of ["/cases/1", "/workflows", "/sign-in", "/libraryx", "/d", "", null, undefined]) expect(isWritingPath(p)).toBe(false);
+  });
+});
+
+describe("inAppFrame", () => {
+  it("frames the writing pages, the workflow canvas and usage", () => {
+    for (const p of ["/", "/d/abc", "/library", "/catalog", "/workflows", "/workflows/x", "/usage", "/usage/x"]) expect(inAppFrame(p)).toBe(true);
+  });
+  it("steps aside elsewhere", () => {
+    for (const p of ["/sign-in", "/sign-up/x", "/usagex", "/workflowsx", "", null, undefined]) expect(inAppFrame(p)).toBe(false);
   });
 });
 

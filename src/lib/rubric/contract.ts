@@ -113,7 +113,7 @@ export type RubricCheckError = { error: string; retryAfterSeconds?: number };
 export const MAX_CHECK_CHARS = 120_000;
 /** One check per scope per document per this long, unless the inputs changed. */
 export const CHECK_MIN_INTERVAL_MS = 20_000;
-/** Model checks per team per rolling hour. */
+/** Model checks per team per rolling hour: the limiter's default team window for "check" (src/lib/limits/contract.ts). */
 export const CHECK_TEAM_HOURLY_LIMIT = 40;
 /** Criteria per check (type rubric max 20 + universal 5). */
 export const MAX_CHECK_CRITERIA = 25;

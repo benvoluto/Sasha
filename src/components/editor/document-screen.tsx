@@ -115,7 +115,7 @@ function SharePopover({ documentId }: { documentId: string | null }) {
         {bypass ? <p className="text-sm">Local development: signed in as the developer user, so teams are unavailable.</p> : <TeamSharing />}
         {documentId ? (
           <div className="flex items-center gap-2">
-            <input readOnly value={url} aria-label="Document link" onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 rounded-md border border-[var(--doc-line)] bg-transparent px-2 py-1.5 text-xs" />
+            <input readOnly value={url} aria-label="Document link" onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 rounded-md border border-[var(--doc-field-line)] bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]" />
             <button type="button" onClick={copy} className="flex items-center gap-1 rounded-md bg-[var(--doc-accent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--doc-on-accent)]">
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copied" : "Copy link"}
             </button>
@@ -132,7 +132,7 @@ function StatusText({ status, error, isNew }: { status: SaveStatus; error: strin
   const text =
     status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status === "error" ? (error ?? "Not saved") : status === "conflict" ? "Not saved" : isNew ? "Not saved yet" : "";
   return (
-    <span role="status" aria-live="polite" className={`text-xs ${status === "error" || status === "conflict" ? "text-red-600 dark:text-red-400" : "text-[var(--doc-muted)]"}`}>
+    <span role="status" aria-live="polite" className={`text-xs ${status === "error" || status === "conflict" ? "text-[var(--alert-danger-ink)]" : "text-[var(--doc-muted)]"}`}>
       {status === "saving" && <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />}
       {text}
     </span>
@@ -189,8 +189,21 @@ export function DocumentScreen({ documentId }: { documentId: string | null }) {
   );
 }
 
+/**
+ * The page's one <main>: the skip link's target (layout.tsx), so it takes
+ * focus but draws no outline. It sits inside a plain <div> on purpose: the App
+ * Router calls focus() on a segment's first DOM node when it applies a router
+ * update (a refresh, say), and a focusable <main> there took focus out of the
+ * editor about a second after a new document opened. A <div> ignores it.
+ */
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="doc-screen doc-editor min-h-dvh">{children}</div>;
+  return (
+    <div className="doc-screen doc-editor min-h-dvh">
+      <main id="main-content" tabIndex={-1} className="min-h-dvh outline-none">
+        {children}
+      </main>
+    </div>
+  );
 }
 
 type WorkspaceProps = {
@@ -290,6 +303,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const [workflowsPrefill, setWorkflowsPrefill] = useState<WorkflowsPrefill | null>(null);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
   const notesButtonRef = useRef<HTMLButtonElement>(null);
+  const typeButtonRef = useRef<HTMLButtonElement>(null);
   const [modalOpener, setModalOpener] = useState<"sources" | "notes">("sources");
   const openModal = (tab: DocumentModalTab, from: "sources" | "notes") => {
     setModalOpener(from);
@@ -338,7 +352,9 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     content: initial ?? undefined,
     immediatelyRender: false,
     autofocus: initial ? false : "end",
-    editorProps: { attributes: { class: "doc-prose", "aria-label": "Document" } },
+    // A contenteditable div has no implicit role, and aria-label is prohibited on
+    // a role-less div (axe aria-prohibited-attr), so name it as a multi-line textbox.
+    editorProps: { attributes: { class: "doc-prose", role: "textbox", "aria-multiline": "true", "aria-label": "Document" } },
     onUpdate: ({ editor: e }) => change({ content_json: e.getJSON() as PMNode }),
   });
   editorRef.current = editor;
@@ -581,6 +597,8 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     <>
       <header className="flex items-start justify-between gap-3 px-5 pb-4 pt-6 sm:px-12 sm:pt-8">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">
+          {/* The page heading for screen readers; the title field shows it visually. */}
+          <h1 className="sr-only">{doc.title.trim() || "Untitled document"}</h1>
           <label htmlFor="doc-title" className="sr-only">
             Document title
           </label>
@@ -590,15 +608,15 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
             onChange={(e) => change({ title: e.target.value })}
             placeholder="Untitled document"
             style={{ fieldSizing: "content" } as React.CSSProperties}
-            className="min-w-[10ch] max-w-full rounded-md bg-transparent text-[28px] font-medium tracking-tight text-[var(--ink)] outline-none placeholder:text-[var(--doc-muted)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)] sm:text-[32px]"
+            className="min-w-[10ch] max-w-full rounded-md bg-transparent text-[28px] font-medium tracking-tight text-[var(--ink)] outline-none placeholder:text-[var(--doc-muted)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)] sm:text-[32px]"
           />
-          <TypePicker types={types} value={doc.type_key} onChange={(t) => chooseType(t)} onBrowse={() => setGallery("set")} onSaveOutline={() => setSaveTypeOpen(true)} />
+          <TypePicker types={types} value={doc.type_key} onChange={(t) => chooseType(t)} onBrowse={() => setGallery("set")} onSaveOutline={() => setSaveTypeOpen(true)} triggerRef={typeButtonRef} />
           <button
             ref={notesButtonRef}
             type="button"
             onClick={() => openModal("notes", "notes")}
             aria-haspopup="dialog"
-            aria-expanded={modalTab === "notes"}
+            aria-expanded={modalTab !== null && modalOpener === "notes"}
             aria-label="Notes"
             title={doc.notes.trim() ? "Notes" : "Add notes"}
             className="relative flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-full text-[15px] font-medium text-[var(--go)] hover:bg-[var(--go-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] aria-expanded:bg-[var(--go-soft)] sm:h-9 sm:w-auto sm:px-3.5"
@@ -628,12 +646,12 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       </header>
 
       {conflict && (
-        <div role="alert" className="mx-5 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:mx-12 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+        <div role="alert" className="mx-5 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--alert-warn-line)] bg-[var(--alert-warn-bg)] px-4 py-3 text-sm text-[var(--alert-warn-ink)] sm:mx-12">
           <span className="flex-1">Someone else saved this document while you were editing. Your latest changes are not saved.</span>
-          <button type="button" onClick={() => void resolveConflict("theirs").then(() => window.location.reload())} className="rounded-md border border-current px-3 py-1 font-medium">
+          <button type="button" onClick={() => void resolveConflict("theirs").then(() => window.location.reload())} className="min-h-11 rounded-md border border-current px-3 py-1 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--alert-warn-ink)] sm:min-h-8">
             Load their version
           </button>
-          <button type="button" onClick={() => void resolveConflict("mine")} className="rounded-md bg-amber-900 px-3 py-1 font-medium text-white dark:bg-amber-200 dark:text-amber-950">
+          <button type="button" onClick={() => void resolveConflict("mine")} className="min-h-11 rounded-md bg-[var(--alert-warn-ink)] px-3 py-1 font-medium text-[var(--alert-warn-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--alert-warn-ink)] sm:min-h-8">
             Keep mine
           </button>
         </div>
@@ -668,7 +686,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
                   editor.commands.focus();
                 }
               }}
-              className="min-w-0 flex-1 rounded-md border border-[var(--divider)] bg-transparent px-2 py-1 outline-none focus:border-[var(--action)]"
+              className="min-w-0 flex-1 rounded-md border border-[var(--doc-field-line)] bg-transparent px-2 py-1 outline-none focus:border-[var(--action)] focus-visible:ring-2 focus-visible:ring-[var(--action)]"
             />
             <button type="submit" className="rounded-md bg-[var(--action)] px-3 py-1 font-semibold text-white dark:text-[var(--editor-bg)]">
               Apply
@@ -684,13 +702,13 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           container query: a query container can become the containing block of
           the fixed drawer/sheet in some engines. */}
       <div ref={rowRef} className="flex min-h-[70vh]">
-        <main className="min-w-0 flex-1 px-5 pb-32 pt-6 sm:px-12">
+        <div className="min-w-0 flex-1 px-5 pb-32 pt-6 sm:px-12">
           <div className="max-w-[64rem]">
             <EditorContent editor={editor} />
             {editor && <CitationLayer editor={editor} documentId={doc.id || null} sourcesKey={sourcesKey} savedAt={doc.updated_at} />}
           </div>
           {showStrip && <StartFromTypeStrip types={types} onChoose={startNewOfType} onBrowse={() => setGallery("new")} />}
-        </main>
+        </div>
         <RightColumn
           mode={layout.mode}
           sheetLeft={layout.left}
@@ -768,6 +786,9 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         error={catalog.error}
         current={gallery === "set" ? (currentType?.key ?? null) : null}
         title={gallery === "new" ? "New document from a type" : "Document types"}
+        // The fallback when the opener is gone (the picker's menu item, or Choose a type once a type is set).
+        // Not keyed on `gallery`: that is already null by the time the dialog hands focus back.
+        returnFocusRef={typeButtonRef}
         onChoose={async (t) => {
           if (gallery === "new") {
             const err = await startNewOfType(t);
@@ -778,7 +799,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           setGallery(null);
         }}
       />
-      <SaveOutlineDialog open={saveTypeOpen} onOpenChange={setSaveTypeOpen} defaultTitle={doc.title} onSave={saveOutlineAsType} />
+      <SaveOutlineDialog open={saveTypeOpen} onOpenChange={setSaveTypeOpen} defaultTitle={doc.title} onSave={saveOutlineAsType} returnFocusRef={typeButtonRef} />
 
       <NoticeStack notices={notices} onDismiss={dismissNotice} />
     </>

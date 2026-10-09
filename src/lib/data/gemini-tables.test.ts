@@ -19,6 +19,8 @@ vi.mock("@/lib/pdf-chunks", async (importOriginal) => ({
   splitPdf: mocks.split,
 }));
 
+import { withModelContext } from "@/lib/llm/context";
+import { readMemoryAudit, resetMemoryAudit } from "@/lib/ontology/governance";
 import { GeminiTablesReply, LOW_CONFIDENCE_NOTE, NOT_CONFIGURED, PAGES_CAPPED, parseJsonText, readGeminiTables, repairTables, TABLES_FAILED } from "./gemini-tables";
 
 const PDF = { name: "report.pdf", mime: "application/pdf" };
@@ -69,6 +71,25 @@ describe("readGeminiTables", () => {
     expect(promptOf(extract)).toContain("Extract every data table on pages 2 of this file");
     expect(extract[0].config).toMatchObject({ temperature: 0, maxOutputTokens: 65536, responseMimeType: "application/json" });
     expect(mocks.del).toHaveBeenCalledWith({ name: "files/pages 1-3" });
+  });
+
+  it("audits each generateContent call as gemini.tables with its usage and the caller's context", async () => {
+    resetMemoryAudit();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const usageMetadata = { promptTokenCount: 1000, candidatesTokenCount: 50, thoughtsTokenCount: 5, cachedContentTokenCount: 10 };
+    mocks.generate.mockImplementation(async (req) => ({ ...(isCheck([req]) ? reply({ pages: [2] }) : reply({ tables: [table()] })), usageMetadata }));
+    await withModelContext({ teamId: "org:a", userId: "u1", agent: "ann", documentId: "d1" }, () => readGeminiTables(Buffer.from("%PDF"), PDF));
+    const rows = readMemoryAudit().filter((e) => e.action === "llm:gemini.tables");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      task: "gemini.tables",
+      teamId: "org:a",
+      userId: "u1",
+      documentId: "d1",
+      allowed: true,
+      result: { input_tokens: 990, output_tokens: 55, cache_read_input_tokens: 10 },
+    });
+    vi.restoreAllMocks();
   });
 
   it("skips a chunk the check says has no tables", async () => {

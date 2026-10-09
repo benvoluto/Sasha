@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => ({ teamId: "org:a", agent: "ann" }) }));
+vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => ({ teamId: "org:a", userId: "u1", agent: "ann" }) }));
 
 import { createDocument, resetMemoryStore } from "@/lib/documents/store";
+import { reserveModelCall } from "@/lib/limits/limiter";
 import { SOURCE_BLOB_PATH_RE, sourceBlobPath } from "@/lib/sources/blob-paths";
 import { createFolder, getSource, listDocumentSources, listSources, resetSourceStore } from "@/lib/sources/store";
 import { POST } from "./route";
@@ -15,6 +16,19 @@ describe("POST /api/upload/presign", () => {
     delete process.env.POSTGRES_URL;
     resetMemoryStore();
     resetSourceStore();
+  });
+
+  // Complete charges one ingest call per file; refusing there came after every byte had been uploaded.
+  it("429s before any upload when the ingest allowance can't cover the files, counting nothing", async () => {
+    await reserveModelCall({ userId: "u1", teamId: "org:a" }, "ingest", { cost: 58 });
+    const res = await presign({ files: [file(), file(), file()] });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBeTruthy();
+    expect(await res.json()).toMatchObject({ code: "rate_limited", family: "ingest", scope: "user" });
+    expect(await listSources("org:a")).toEqual([]);
+    // The check recorded nothing: two files still fit, twice over.
+    expect((await presign({ files: [file(), file()] })).status).toBe(200);
+    expect((await presign({ files: [file(), file()] })).status).toBe(200);
   });
 
   it("creates an uploading source per file at its team-scoped path", async () => {

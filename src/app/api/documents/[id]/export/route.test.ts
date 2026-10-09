@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({ denied: false, permission: "" }));
 vi.mock("@/lib/documents/team", async () => {
@@ -19,6 +19,7 @@ vi.mock("@/lib/export/pdf", async (orig) => ({ ...(await orig<typeof import("@/l
 
 import { createDocument, resetMemoryStore, updateDocument } from "@/lib/documents/store";
 import { EXPORT_HTML_CSP, MAX_EXPORT_JSON_BYTES } from "@/lib/export/contract";
+import { resetLimiter } from "@/lib/limits/limiter";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { PdfBusyError, PdfTooLargeError, PdfUnavailableError } from "@/lib/export/pdf";
 import { GET } from "./route";
@@ -154,5 +155,53 @@ describe("GET /api/documents/[id]/export", () => {
     renderPdf.mockResolvedValueOnce(Buffer.from("%PDF-1.7 again"));
     expect(await (await call(d.id, "format=pdf")).text()).toBe("%PDF-1.7 again");
     expect(renderPdf).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("GET /api/documents/[id]/export rate limit", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    process.env.SASHA_LIMIT_EXPORT_USER = "1/10m";
+    resetMemoryStore();
+    resetLimiter();
+    renderPdf.mockReset();
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_EXPORT_USER;
+  });
+
+  it("counts PDF renders only, refusing before the render with Retry-After", async () => {
+    const d = await memo();
+    expect((await call(d.id, "format=md")).status).toBe(200);
+    expect((await call(d.id, "format=docx")).status).toBe(200);
+    renderPdf.mockResolvedValue(Buffer.from("%PDF-1.7 test"));
+    expect((await call(d.id, "format=pdf")).status).toBe(200);
+    const res = await call(d.id, "format=pdf");
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toMatch(/^\d+$/);
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(await res.json()).toMatchObject({ code: "rate_limited", scope: "user", family: "export", error: expect.stringMatching(/^You've used your 1 PDF export for the last 10 minutes\. Try again in \d+ min\.$/) });
+    expect(renderPdf).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the call back when no PDF could be made (no browser, full queue), so the print fallback keeps showing", async () => {
+    const d = await memo();
+    renderPdf.mockRejectedValueOnce(new PdfUnavailableError()).mockRejectedValueOnce(new PdfUnavailableError()).mockRejectedValueOnce(new PdfBusyError());
+    expect((await call(d.id, "format=pdf")).status).toBe(503);
+    expect((await call(d.id, "format=pdf")).status).toBe(503);
+    expect((await call(d.id, "format=pdf")).status).toBe(429);
+    renderPdf.mockResolvedValue(Buffer.from("%PDF-1.7 test"));
+    expect((await call(d.id, "format=pdf")).status).toBe(200);
+    expect(renderPdf).toHaveBeenCalledTimes(4);
+  });
+
+  it("keeps a timed-out or oversized render charged", async () => {
+    const d = await memo();
+    renderPdf.mockRejectedValueOnce(new PdfTooLargeError());
+    expect((await call(d.id, "format=pdf")).status).toBe(413);
+    const res = await call(d.id, "format=pdf");
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ code: "rate_limited" });
+    expect(renderPdf).toHaveBeenCalledTimes(1);
   });
 });

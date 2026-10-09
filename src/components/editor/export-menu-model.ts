@@ -57,5 +57,7 @@ export function exportErrorMessage(status: number, format: MenuFormat, body: Exp
   if (status === 403) return "You don't have permission to export this document.";
   if (status === 504) return `The ${label} export took too long. Try again.`;
   const server = typeof body?.error === "string" && body.error.length <= 200 ? body.error : null;
+  // A rate limit or a full render queue: the server's sentence says when to try again.
+  if (status === 429) return server ?? `Too many ${label} exports right now. Try again in a moment.`;
   return server ?? `The ${label} export failed. Try again.`;
 }

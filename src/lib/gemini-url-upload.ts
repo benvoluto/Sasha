@@ -2,6 +2,7 @@ import { GoogleGenAI, createUserContent, createPartFromUri } from "@google/genai
 import { resumableUpload, getMimeTypeFromExtension } from './resumable-upload';
 import { downloadBlobContent } from './blob-download';
 import { GEMINI_MODEL } from './gemini-model';
+import { auditedGenerate } from './llm/gemini-audit';
 
 export interface GeminiProcessedContent {
   extractedContent: string;
@@ -200,7 +201,7 @@ Please be thorough and capture all content, maintaining the original structure a
     console.log(`[GeminiUrlUpload] Starting content generation with ${uploadedFiles.length} files...`);
     const generationStart = Date.now();
 
-    const response = await ai.models.generateContent({
+    const response = await auditedGenerate('extract', GEMINI_MODEL, () => ai.models.generateContent({
       model: GEMINI_MODEL,
       contents: createUserContent([prompt, ...fileParts]),
       config: {
@@ -209,7 +210,7 @@ Please be thorough and capture all content, maintaining the original structure a
         topP: 0.8,
         maxOutputTokens: 32000,
       },
-    });
+    }));
 
     const generationTime = Date.now() - generationStart;
     console.log(`[GeminiUrlUpload] Content generation completed in ${generationTime}ms`);

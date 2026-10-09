@@ -1,5 +1,8 @@
 import { after, NextResponse } from "next/server";
 import { requireTeam } from "@/lib/documents/team";
+import { limitModelCall } from "@/lib/limits/http";
+import { releaseModelCall } from "@/lib/limits/limiter";
+import { contextFor, enterModelContext } from "@/lib/llm/context";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { findPresignedUpload } from "@/lib/sources/blobs";
 import { ingestSource } from "@/lib/sources/ingest";
@@ -33,18 +36,27 @@ async function adoptUpload(teamId: string, source: SourceRecord): Promise<boolea
 /**
  * POST /api/sources/[id]/retry — read the source again: after an error, one
  * that looks stuck, or a file whose upload finished but was never completed.
- * 409 while a read is still under way.
+ * 409 while a read is still under way. Counts one "ingest" call (429 when
+ * the allowance is used up; a 409 gives it back).
  */
 export async function POST(_req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.sourceWrite);
   if (caller instanceof NextResponse) return caller;
+  enterModelContext(contextFor(caller));
   const { teamId, agent } = caller;
   const source = await getSource(teamId, (await params).id);
   if (!source) return NextResponse.json({ error: "Source not found." }, { status: 404 });
+  // Reserved before the claim: a refusal must leave the source as it was.
+  const limited = await limitModelCall(caller, "ingest");
+  if (limited) return limited;
   if (source.extraction_status === "uploading") {
-    if (!(await adoptUpload(teamId, source))) return NextResponse.json({ error: NOT_UPLOADED }, { status: 409 });
+    if (!(await adoptUpload(teamId, source))) {
+      await releaseModelCall(caller, "ingest");
+      return NextResponse.json({ error: NOT_UPLOADED }, { status: 409 });
+    }
   } else if (!(await claimSourceStatus(teamId, source.id, "pending", TERMINAL_STATUSES))) {
     // A read already under way (and not stale) would race this one over the tables.
+    await releaseModelCall(caller, "ingest");
     return NextResponse.json({ error: STILL_READING }, { status: 409 });
   }
   after(() => ingestSource(teamId, source.id, agent));

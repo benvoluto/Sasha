@@ -29,6 +29,7 @@ import {
   type StepProgressItem,
   type WorkflowRunView,
 } from "@/lib/workflow/contract";
+import { retryAfterMs } from "@/lib/limits/client";
 import { droppedWarning } from "@/lib/workflow/restructure";
 
 // --- The list ---------------------------------------------------------------------
@@ -149,6 +150,19 @@ export function pollDelay(status: RunStatus, failures = 0): number | null {
 /** Continue on its own: a run paused at the time budget, at most AUTO_CONTINUE_MAX times. A person's pause waits for the Continue button. */
 export function shouldAutoContinue(run: Pick<WorkflowRunView, "status" | "pause_reason">, continuedSoFar: number): boolean {
   return run.status === "paused" && run.pause_reason === "budget" && continuedSoFar < AUTO_CONTINUE_MAX;
+}
+
+/**
+ * How long to hold off before the next automatic continue after `error`, or
+ * null when it wasn't the limiter's 429. A refused continue didn't continue
+ * the run, so it doesn't count toward AUTO_CONTINUE_MAX; trying again at once
+ * only spent the remaining tries on more 429s.
+ */
+export function autoContinueWait(error: unknown): number | null {
+  if (!error || typeof error !== "object") return null;
+  const e = error as { status?: unknown; body?: unknown; retryAfter?: unknown };
+  if (typeof e.status !== "number") return null;
+  return retryAfterMs(e.status, e.body, typeof e.retryAfter === "string" ? e.retryAfter : null);
 }
 
 // --- Steps --------------------------------------------------------------------------------

@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phases 0–8 and the editor layout are built. See §12 for progress notes.
+Status (October 2026): Phases 0–9 and the editor layout are built. See §12 for progress notes.
 
 ---
 
@@ -808,6 +808,48 @@ the interface, Hanken Grotesk for the document.
   evaluation case (PEP 572): the learned type scored 26% structure match vs 2.5% for the nearest
   catalog type; verdict inconclusive on one case.
 
+**Phase 9 (done).**
+- Rate limits (`src/lib/limits/`): every model route reserves calls in a task family (light, check,
+  draft, ingest, workflow, learn, export) per user and per team before the model runs, with a
+  plain-sentence 429, `Retry-After` and `retry_after_seconds`. Limits are set by
+  `SASHA_LIMIT_<FAMILY>_<USER|TEAM>` (`"30/1h,150/1d"`, `off`). Postgres `model_call` under a
+  per-bucket advisory lock across instances; process memory without `POSTGRES_URL`. Limited routes:
+  section generate, rewrite (draft); check (check, plus the 20 s per-scope gate); classify,
+  outline-status, suggestions generate (light, reserved in the lib only when the model would run);
+  sources POST, source retry, upload complete (ingest, one call per file); workflow start on both
+  run routes and a failed run's retry (workflow; checkpoint decisions and continues from a pause
+  are free, since the start paid for the graph and a long run pauses at the time budget often); learn (learn); PDF export only (export). A refused call that
+  never reaches the model gives its reservation back (409 on a claim, a shared PDF render, a
+  `generateSection` refusal). Background clients (outline status, classifier, suggestions) wait
+  quietly after a 429 and retry after `Retry-After`; clicked actions show the server's sentence.
+  Learn defaults are now 4/h per user and 6/h per team; check keeps 40/h per team. Light defaults
+  (120/10m and 3000/day per user, 15000/day per team) are sized from the background cadences
+  (`src/lib/limits/cadence.test.ts`). Section generate gives the call back only for refusals before
+  the model (a document deleted mid-call stays charged); a PDF export gives it back when no browser
+  could render (no Chrome, full queue), so the print fallback never turns into a 429.
+- Usage (`/usage`, `/api/usage`, `src/lib/usage/`): calls, tokens and estimated cost by day, task,
+  model and person for a UTC date range, with a CSV download. Every Claude and Gemini call writes
+  an audit row with team, user, document, run, task, model and latency (from the request's model
+  context, `src/lib/llm/context.ts`); the run timeline lists the run's model calls. Prices are in
+  `src/lib/llm/pricing.ts` (as of 2026-10-06).
+- Playwright and axe (`npm run test:e2e`): editor, modal, CSV and PDF upload, export and keyboard
+  specs, plus axe (WCAG 2.0/2.1 A and AA; serious and critical fail) on 13 screens in light and
+  dark. The web server runs `next dev` into `.next-e2e` with the auth bypass, stub models
+  (`SASHA_E2E_STUB_MODELS`) and an in-memory Blob store (`SASHA_E2E_STUB_BLOB`); both stubs are
+  ignored when `NODE_ENV` is production (`src/lib/e2e/mode.ts`).
+- Accessibility: skip link and one `main#main-content` per page (sign-in and sign-up included), a
+  hidden `<h1>` on the editor, the editor body named as a multi-line textbox, 3:1 field borders and
+  focus rings (Tailwind 4 needs `focus-visible:outline-solid` beside `outline-none`; four controls
+  had no visible focus before), menu items outlined when reached by keyboard, focus returned from
+  the type picker, section menu and citation popover, reduced motion honoured in CSS and scripted
+  scrolls, phone-size close buttons, contrast fixes on the type placeholder and the workflow page.
+- Smoke test with real keys (2026-10-08): classify, section draft, rubric check and draft-all each
+  appeared once on `/usage` with costs matching `pricing.ts` by hand; limits lowered by env gave 429 with
+  `Retry-After` and the server's sentence in the editor; a refused workflow start creates no run and
+  the run already going finishes. Fixes: the account menu (`AccountButton`) renders only after
+  hydration (a reload with clerk-js cached failed hydration, one e2e run in three); costs under a
+  dollar show up to four places (a $0.0125 draft read "$0.01"); the day table lists newest first.
+
 **Known debt carried forward.**
 - Learn from an example runs close to the time limit (one example took 256 s before the effort was
   lowered to medium; five long examples may pass the first call's 200 s limit). Not re-timed.
@@ -835,8 +877,23 @@ the interface, Hanken Grotesk for the document.
 - Deployments with a public Blob store must set `BLOB_ACCESS=public`.
 - Suggestions only learn of source changes while the Sources tab is open; near-duplicate catalog
   labels are not merged; some business-plan item labels are lowercase.
-- Section status `edited`/`reviewed` is never set; the outline-status cache and rate gate are per
-  server process.
+- Section status `edited`/`reviewed` is never set; the outline-status result cache and in-flight
+  sharing, and the in-flight maps for classify, suggestions and check, are per server process (the
+  outline 20 s gate itself is now a limiter bucket shared across instances). Without
+  `POSTGRES_URL` every limiter counter is per process too.
+- Rate limits: the light reservation is skipped when no request is behind the call (no subject).
+  Presign checks the ingest allowance without counting, so a burst can still pass presign and be
+  refused at `complete`; the client then deletes those rows and the user must upload again. Nothing writes the
+  `rubric_check_call` and `learn_call` tables any more (DDL kept). No 409 for starting a workflow
+  while another run on the document is running (`createRun` supersedes a run of the same workflow).
+- Usage: costs are estimates; Gemini has no price, so a total that includes it shows "At least $X".
+  Without a database the audit buffer is per process and keeps the last 5000 entries. Sums are done
+  in JS, capped at 200,000 rows per request. Rows written before Phase 9 have no team and are not
+  shown.
+- e2e: workflow runs are not exercised (the stub `callModel` answers `{}`). `@axe-core/playwright`
+  brings `playwright-core` 1.64 beside `@playwright/test`'s 1.63, so `e2e/fixtures.ts` casts the page.
+- Error text in components is still hard-coded Tailwind red (passes AA); arrow-key movement between
+  docs panel rows is not built.
 - No migration runner yet; schema changes are idempotent DDL kept in step across the store
   constants, `db/schema.sql` and the setup route.
 

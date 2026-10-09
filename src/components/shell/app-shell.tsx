@@ -3,7 +3,7 @@
 // The app frame, rendered once by the root layout around every page: the cream
 // left rail, the documents/folders panel that slides in from the left, and the
 // page beside them. It shows on the writing pages ("/", "/d/[id]", "/library",
-// "/catalog") and the workflow canvas ("/workflows"), and steps aside elsewhere
+// "/catalog"), the workflow canvas ("/workflows") and usage ("/usage"), and steps aside elsewhere
 // (sign-in), where the page renders as before. Because it lives in the layout, it survives moving
 // between documents: the panel stays open and keeps its scroll.
 //
@@ -16,7 +16,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AppRail } from "./app-rail";
 import { DocsPanel } from "./docs-panel";
-import { isWritingPath, trapNextIndex } from "./docs-panel-model";
+import { inAppFrame, trapNextIndex } from "./docs-panel-model";
 import { docsPanelOpenAtom, PUSH_QUERY, readDocsPanelPref, useIsWide, writeDocsPanelPref } from "./shell-state";
 
 const TABBABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]';
@@ -28,10 +28,8 @@ function tabbablesIn(root: HTMLElement): HTMLElement[] {
   );
 }
 
-/** The pages inside the frame: the writing pages and the workflow canvas. */
-export function inFrame(pathname: string | null | undefined): boolean {
-  return isWritingPath(pathname) || pathname === "/workflows" || !!pathname?.startsWith("/workflows/");
-}
+/** The pages inside the frame (docs-panel-model.ts inAppFrame). */
+export const inFrame = inAppFrame;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();

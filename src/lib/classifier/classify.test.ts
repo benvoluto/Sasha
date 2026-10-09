@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ claudeJson: vi.fn(), configured: { value: true } }));
 vi.mock("@/lib/llm/claude", async (importOriginal) => ({
@@ -13,6 +13,8 @@ vi.mock("@/catalog", async () => {
 });
 
 import { createDocument, getDocument, resetMemoryStore, updateDocument } from "@/lib/documents/store";
+import { ModelCallLimitedError } from "@/lib/limits/reserve";
+import { withModelContext } from "@/lib/llm/context";
 import { docOf, para } from "@/lib/sections/test-fixtures";
 import { classifyDocument, ClassifyModelOutput, normalizeResult, resetClassifierMemory } from "./classify";
 import { CLASSIFY_MIN_INTERVAL_MS } from "./contract";
@@ -201,5 +203,43 @@ describe("classifyDocument", () => {
     const d = await createDocument("org:b", "bob", { content_json: proseDoc() });
     expect(await classifyDocument(T, d.id, { trigger: "content", now })).toBeNull();
     expect(mocks.claudeJson).not.toHaveBeenCalled();
+  });
+});
+
+describe("classifyDocument and the light allowance", () => {
+  const now = () => Date.parse("2026-10-08T12:00:00Z");
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    process.env.SASHA_LIMIT_LIGHT_USER = "1/1h";
+    resetMemoryStore();
+    resetClassifierMemory();
+    mocks.claudeJson.mockReset().mockResolvedValue(reply());
+    mocks.configured.value = true;
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_LIGHT_USER;
+  });
+
+  it("counts only runs that ask the model, and a refusal throws without recording the attempt", async () => {
+    const subject = { userId: "u1", teamId: T };
+    const short = await createDocument(T, "ann", { content_json: docOf(para("Too short.")) });
+    expect((await classifyDocument(T, short.id, { trigger: "content", subject, now }))!.body).toMatchObject({ ran: false, reason: "too_short" });
+    const a = await createDocument(T, "ann", { content_json: proseDoc() });
+    expect((await classifyDocument(T, a.id, { trigger: "content", subject, now }))!.body).toMatchObject({ ran: true });
+    const b = await createDocument(T, "ann", { content_json: proseDoc() });
+    const error = await classifyDocument(T, b.id, { trigger: "content", subject, now }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ModelCallLimitedError);
+    expect((error as ModelCallLimitedError).refusal).toMatchObject({ scope: "user", family: "light" });
+    expect((await getDocument(T, b.id))!.last_classified_at).toBeNull();
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(1);
+  });
+
+  it("takes the subject from the request's model context when none is passed", async () => {
+    const a = await createDocument(T, "ann", { content_json: proseDoc() });
+    const b = await createDocument(T, "ann", { content_json: proseDoc() });
+    await withModelContext({ teamId: T, userId: "u2" }, () => classifyDocument(T, a.id, { trigger: "content", now }));
+    await expect(withModelContext({ teamId: T, userId: "u2" }, () => classifyDocument(T, b.id, { trigger: "content", now }))).rejects.toBeInstanceOf(ModelCallLimitedError);
+    // Without a subject (no request behind the call) nothing is counted.
+    expect((await classifyDocument(T, b.id, { trigger: "content", now }))!.body).toMatchObject({ ran: true });
   });
 });

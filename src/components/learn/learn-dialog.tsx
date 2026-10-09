@@ -29,7 +29,7 @@ import { LearnReview } from "./learn-review";
 
 const primary = "inline-flex min-h-11 items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-40 sm:min-h-9";
 const quiet = "inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] disabled:opacity-40 sm:min-h-9";
-const field = "w-full rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)]";
+const field = "w-full rounded-md border border-[var(--doc-field-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]";
 const READY = new Set(["ready", "partial"]);
 
 type Stage = { kind: "pick" } | { kind: "learning"; started: number } | { kind: "review"; draft: LearnDraft } | { kind: "saved"; result: SaveLearnedResponse };

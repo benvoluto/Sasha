@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ head: vi.fn(), after: vi.fn(), ingest: vi.fn() }));
 vi.mock("@vercel/blob", () => ({ head: mocks.head }));
@@ -77,5 +77,48 @@ describe("POST /api/upload/complete", () => {
     const body = await (await post([u.report])).json();
     expect(body).toMatchObject({ sources: [{ id: u.id }], failed: [] });
     expect(mocks.after).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/upload/complete rate limit", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    process.env.SASHA_LIMIT_INGEST_USER = "3/1h";
+    resetMemoryStore();
+    resetSourceStore();
+    Object.values(mocks).forEach((m) => m.mockReset());
+    mocks.head.mockResolvedValue({ size: 1234, contentType: "application/pdf" });
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_INGEST_USER;
+  });
+
+  it("counts one source read per file that starts, and refuses a batch that doesn't fit without recording any of it", async () => {
+    const a = await presigned(T, "a.pdf");
+    const b = await presigned(T, "b.pdf");
+    const bad = await presigned(T, "c.pdf");
+    // Two start (the same file reported twice is read once); the bad report costs nothing.
+    const first = await post([a.report, a.report, b.report, { ...bad.report, url: "https://evil.example/x.pdf" }]);
+    expect(first.status).toBe(200);
+    expect(mocks.after).toHaveBeenCalledTimes(1);
+    await mocks.after.mock.calls[0][0]();
+    expect(mocks.ingest.mock.calls.map((c) => c[1])).toEqual([a.id, b.id]);
+
+    const c = await presigned(T, "d.pdf");
+    const d = await presigned(T, "e.pdf");
+    const res = await post([c.report, d.report]);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toMatch(/^\d+$/);
+    expect(await res.json()).toMatchObject({ code: "rate_limited", scope: "user", family: "ingest", retry_after_seconds: expect.any(Number), error: expect.stringMatching(/^You've used your 3 source reads for this hour/) });
+    expect((await getSource(T, c.id))?.extraction_status).toBe("uploading");
+    expect((await getSource(T, d.id))?.extraction_status).toBe("uploading");
+    expect(mocks.after).toHaveBeenCalledTimes(1);
+
+    // One still fits, and a repeated report of a finished upload costs nothing.
+    const ok = await post([c.report, a.report]);
+    expect(ok.status).toBe(200);
+    expect((await getSource(T, c.id))?.extraction_status).toBe("pending");
+    expect((await post([a.report])).status).toBe(200);
   });
 });

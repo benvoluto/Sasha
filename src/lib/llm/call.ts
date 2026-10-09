@@ -2,11 +2,16 @@
 // Claude through the Anthropic API, or Vercel AI Gateway (OpenAI-compatible API)
 // for any other model. Truncation is reported rather than silently returning
 // partial JSON. Every call, successful or not, is written to the audit log with
-// its token usage, as claude.ts does for the editor's tasks.
+// its token usage, as claude.ts does for the editor's tasks: task
+// "workflow.node", the model, latency, and the team, user, document and run
+// from the current model context (the engine sets the run's, context.ts).
 
 import Anthropic from "@anthropic-ai/sdk";
+import { e2eStubModels } from "@/lib/e2e/mode";
+import { stubCallModel } from "@/lib/e2e/stub-models";
 import { defaultAuditSink } from "@/lib/ontology/governance";
 import { ModelRefusalError } from "./claude";
+import { currentModelContext } from "./context";
 import type { ModelChoice } from "./model-choice";
 import { modelForTier, supportsServerFallback } from "./tasks";
 
@@ -16,11 +21,17 @@ export type ModelCall = ModelChoice & {
   maxOutputTokens?: number;
   /** Ask for a JSON reply. Defaults to true. */
   json?: boolean;
-  /** For the audit log: which workflow node made the call, and for whom. */
+  /** For the audit log: which workflow node made the call, and for whom (defaults to the model context's agent). */
   label?: string;
   agent?: string;
 };
-export type ModelUsage = { input_tokens: number; output_tokens: number };
+export type ModelUsage = {
+  input_tokens: number;
+  output_tokens: number;
+  /** Prompt-cache reads and writes, when the provider reports them (Anthropic does). */
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
+};
 export type ModelReply = { text: string; truncated: boolean; model: string; usage: ModelUsage | null };
 
 const GATEWAY_URL = "https://ai-gateway.vercel.sh/v1/chat/completions";
@@ -63,7 +74,14 @@ async function callAnthropic(c: ModelCall, model: string): Promise<ModelReply> {
     text,
     truncated: message.stop_reason === "max_tokens",
     model: message.model,
-    usage: message.usage ? { input_tokens: message.usage.input_tokens, output_tokens: message.usage.output_tokens } : null,
+    usage: message.usage
+      ? {
+          input_tokens: message.usage.input_tokens,
+          output_tokens: message.usage.output_tokens,
+          cache_read_input_tokens: message.usage.cache_read_input_tokens ?? 0,
+          cache_creation_input_tokens: message.usage.cache_creation_input_tokens ?? 0,
+        }
+      : null,
   };
 }
 
@@ -100,16 +118,24 @@ async function callGateway(c: ModelCall): Promise<ModelReply> {
   };
 }
 
-async function audit(c: ModelCall, model: string, reply: ModelReply | null, error?: unknown) {
+async function audit(c: ModelCall, model: string, startedAt: number, reply: ModelReply | null, error?: unknown) {
+  const ctx = currentModelContext();
   try {
     await defaultAuditSink().write({
-      agent: c.agent ?? "system",
+      agent: c.agent ?? ctx?.agent ?? "system",
       action: "llm:workflow",
       args: { provider: c.provider, node: c.label ?? null, json: c.json !== false },
       result: reply
         ? { model: reply.model, ...(reply.usage ?? {}), truncated: reply.truncated }
         : { model, error: error instanceof Error ? error.message : String(error) },
       allowed: !error,
+      teamId: ctx?.teamId ?? null,
+      userId: ctx?.userId ?? null,
+      documentId: ctx?.documentId ?? null,
+      runId: ctx?.runId ?? null,
+      task: "workflow.node",
+      model: reply?.model ?? model,
+      latencyMs: Date.now() - startedAt,
     });
   } catch (e) {
     console.error("[llm] audit write failed:", e);
@@ -119,12 +145,14 @@ async function audit(c: ModelCall, model: string, reply: ModelReply | null, erro
 export async function callModel(c: ModelCall): Promise<ModelReply> {
   const gateway = c.provider === "gateway";
   const model = gateway || c.model.startsWith("claude-") ? c.model : modelForTier("mid");
+  const startedAt = Date.now();
   try {
-    const reply = gateway ? await callGateway(c) : await callAnthropic(c, model);
-    await audit(c, model, reply);
+    // e2e runs (never production): a fixture instead of either provider (src/lib/e2e).
+    const reply = e2eStubModels() ? stubCallModel({ ...c, model }) : gateway ? await callGateway(c) : await callAnthropic(c, model);
+    await audit(c, model, startedAt, reply);
     return reply;
   } catch (error) {
-    await audit(c, model, null, error);
+    await audit(c, model, startedAt, null, error);
     throw error;
   }
 }

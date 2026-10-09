@@ -23,7 +23,7 @@ export const LEARN_MAX_TOTAL_CHARS = 300_000;
 export const OVERLAP_MIN_WORDS = 12;
 /** At most this many inferred requirement sets per learned workflow. */
 export const LEARN_MAX_REQUIREMENT_SETS = 4;
-/** Extraction is costly: per-team cap. */
+/** Extraction is costly: per-team cap an hour, the limiter's default team window for "learn" (src/lib/limits/contract.ts). */
 export const LEARN_TEAM_HOURLY_LIMIT = 6;
 /** Shown with every inferred requirement set (the review, availability and the requirements.read step). */
 export const LEARN_INFERRED_LABEL = "Inferred from examples, not from the rules";

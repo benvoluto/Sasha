@@ -66,7 +66,8 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
+  /* Focus rings (ring-ring, outline-ring): 3:1 against the light surfaces. */
+  --ring: oklch(0.552 0.016 285.938);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -190,7 +191,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
 
   body {
@@ -399,6 +400,10 @@
 /* ---------------------------------------------------------------------------
    Document screen (src/components/editor). Light lavender-grey ground, white
    card, one blue accent. Dark mode follows the app's .dark class.
+     --doc-line        decorative dividers (cards, tables, rules): no contrast
+                       requirement, kept pale
+     --doc-field-line  the border that shows where a text field or select is
+                       (WCAG 1.4.11: 3:1 against the surface)
    ------------------------------------------------------------------------- */
 :root {
   --doc-bg: #e9edf5;
@@ -407,6 +412,7 @@
   --doc-ink: #0f1720;
   --doc-muted: #5d6878;
   --doc-line: #e2e7ef;
+  --doc-field-line: #7d8796;
   --doc-accent: #1f5fbf;
   --doc-accent-line: #9db6dc;
   --doc-accent-soft: #e8eff9;
@@ -418,6 +424,13 @@
   --doc-stale: #a05a00;
   --doc-stale-soft: #fff4e0;
   --doc-pop-shadow: 0 10px 30px rgba(15, 23, 32, 0.16), 0 2px 6px rgba(15, 23, 32, 0.08);
+  /* Alerts on the document screen: an amber warning band (the save conflict)
+     and red error text (a failed save). --alert-warn-ink doubles as the solid
+     button behind --alert-warn-bg text. */
+  --alert-warn-bg: #fffbeb;
+  --alert-warn-line: #fcd34d;
+  --alert-warn-ink: #78350f;
+  --alert-danger-ink: #dc2626;
 }
 .dark {
   --doc-bg: #0e131a;
@@ -426,6 +439,7 @@
   --doc-ink: #e5eaf1;
   --doc-muted: #97a3b4;
   --doc-line: #253041;
+  --doc-field-line: #66758a;
   --doc-accent: #7eaaf2;
   --doc-accent-line: #3d5a86;
   --doc-accent-soft: #1b2738;
@@ -437,6 +451,10 @@
   --doc-stale: #f0b35a;
   --doc-stale-soft: #33260f;
   --doc-pop-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --alert-warn-bg: #451a03;
+  --alert-warn-line: #b45309;
+  --alert-warn-ink: #fef3c7;
+  --alert-danger-ink: #f87171;
 }
 .doc-screen { background: var(--doc-bg); color: var(--doc-ink); }
 /* The editing screen is a plain white page (no grey ground or card). */
@@ -564,7 +582,10 @@
 .section-gutter:hover { background: var(--doc-accent-soft); color: var(--doc-accent); }
 .section-gutter:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 1px; opacity: 1; }
 .section-gutter:not(.section-gutter-inline) { display: none; }
-.section-gutter-inline { margin-left: 0.35rem; font-size: 1rem; }
+/* The phone copy is the only way into the section menu, so it gets the 44px
+   touch target (min-h-11); the negative block margin keeps the heading's line
+   height as it was with the 28px button. */
+.section-gutter-inline { margin-left: 0.35rem; font-size: 1rem; width: 2.75rem; height: 2.75rem; margin-block: -0.5rem; }
 @media (min-width: 640px) {
   .section-gutter-inline { display: none; }
   .section-gutter:not(.section-gutter-inline) {
@@ -633,14 +654,34 @@
 .citation-popover-status.is-stale { color: var(--doc-stale); background: var(--doc-stale-soft); padding: 0.25rem 0.45rem; border-radius: 6px; }
 .citation-popover-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .citation-popover-actions button {
-  min-height: 2rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 600;
+  min-height: 2.75rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 600;
   border: 1px solid var(--doc-line); color: var(--doc-ink); background: transparent;
 }
 .citation-popover-actions button:first-child { background: var(--doc-accent); border-color: var(--doc-accent); color: var(--doc-on-accent); }
 .citation-popover-actions button:hover:not(:disabled) { border-color: var(--doc-accent); }
 .citation-popover-actions button:disabled { opacity: 0.45; cursor: default; }
 .citation-popover-actions button:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 2px; }
+/* 44px on phones (min-h-11), 32px from sm up (sm:min-h-8). */
+@media (min-width: 640px) { .citation-popover-actions button { min-height: 2rem; } }
 
 /* A passage a citation opened in the library drawer (source-library.tsx). */
 .source-passage--focus { background: var(--doc-highlight); box-shadow: inset 3px 0 0 var(--doc-accent); }
 .source-passage--focus:focus { outline: 2px solid var(--doc-accent); outline-offset: 1px; }
+
+/* Reduced motion: with prefers-reduced-motion: reduce, transitions and
+   entrance/exit animations (Radix dialogs, popovers, sheets, the documents
+   panel slide) finish at once. Spinners keep turning, slowly: they say work is
+   under way, and a frozen one reads as stuck. */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+  *:not(.animate-spin, .section-gutter-spin), :not(.animate-spin, .section-gutter-spin)::before, :not(.animate-spin, .section-gutter-spin)::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
+  .animate-spin { animation-duration: 2.4s; }
+}

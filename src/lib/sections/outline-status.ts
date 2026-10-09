@@ -13,8 +13,15 @@
 // every 20 seconds per document (inside that window the last result is
 // returned, with its stale hash, so the client can tell). A run still in
 // progress counts: concurrent requests for the same document share it instead
-// of each starting their own call. The gate is per process; it is a cost
-// guard, not a quota.
+// of each starting their own call.
+//
+// The 20 s window is a limiter key bucket (`doc:<teamId>:<documentId>:outline`,
+// src/lib/limits), so it holds across instances; the result cache and the
+// in-flight sharing stay per process. An instance whose window is closed by
+// another instance's run and has no result of its own throws
+// ModelCallLimitedError (a quiet 429 the client retries). A model run also
+// counts one call of the caller's "light" allowance (the subject comes from
+// the options or the request's model context).
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -23,6 +30,9 @@ import { isScaffoldOnly } from "@/catalog/outline";
 import { sortedSections, type DocumentTypeDefinition } from "@/catalog/schema";
 import { listSections, type SectionInfo } from "@/lib/documents/sections";
 import { getDocument } from "@/lib/documents/store";
+import type { LimitSubject } from "@/lib/limits/contract";
+import { bucketsFor, reserveBuckets } from "@/lib/limits/limiter";
+import { limitSubject, ModelCallLimitedError } from "@/lib/limits/reserve";
 import { claudeConfigured, claudeJson } from "@/lib/llm/claude";
 import type { ElementStatus, OutlineSectionStatus, OutlineStatusResponse } from "./contract";
 import { delimit } from "./prompt";
@@ -164,7 +174,16 @@ export function applyModel(rows: OutlineSectionStatus[], out: z.infer<typeof Mod
   });
 }
 
-export type OutlineStatusOptions = { force?: boolean; agent?: string; now?: () => number };
+export type OutlineStatusOptions = {
+  force?: boolean;
+  agent?: string;
+  /** Whose "light" allowance a model run counts against; defaults to the request's model context. */
+  subject?: LimitSubject | null;
+  now?: () => number;
+};
+
+/** The per-document window as a limiter bucket, shared across instances. */
+export const outlineWindowBucket = (teamId: string, documentId: string) => ({ key: `doc:${teamId}:${documentId}:outline`, limit: 1, windowMs: MIN_MODEL_INTERVAL_MS, scope: "key" as const, family: "light" as const });
 
 /** The outline status for a saved document; null when the document isn't the team's. */
 export async function outlineStatus(teamId: string, documentId: string, opts: OutlineStatusOptions = {}): Promise<OutlineStatusResponse | null> {
@@ -198,7 +217,14 @@ export async function outlineStatus(teamId: string, documentId: string, opts: Ou
   if (cached && cached.response.typeKey === def.key && now() - cached.lastModelRunAt < MIN_MODEL_INTERVAL_MS) return cached.response;
 
   const ranAt = now();
+  const subject = limitSubject(opts.subject);
   const promise = (async (): Promise<OutlineStatusResponse> => {
+    // The window and the caller's allowance are one reservation: a refusal records neither.
+    const gate = await reserveBuckets([outlineWindowBucket(teamId, documentId), ...(subject ? bucketsFor(subject, "light") : [])], { now: ranAt });
+    if (!gate.ok) {
+      if (gate.scope === "key" && cached && cached.response.typeKey === def.key) return cached.response;
+      throw new ModelCallLimitedError(gate, gate.scope === "key" ? `The outline was checked moments ago. Try again in ${gate.retryAfterSeconds}s.` : undefined);
+    }
     try {
       const { data } = await claudeJson({
         task: "outline.status",
@@ -216,10 +242,8 @@ export async function outlineStatus(teamId: string, documentId: string, opts: Ou
       const failed: OutlineStatusResponse = { ...result, model: false };
       remember(documentId, { response: failed, lastModelRunAt: ranAt, failed: true });
       return failed;
-    } finally {
-      inflight.delete(documentId);
     }
-  })();
+  })().finally(() => inflight.delete(documentId));
   inflight.set(documentId, { typeKey: def.key, promise });
   return promise;
 }

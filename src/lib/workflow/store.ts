@@ -16,6 +16,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "@vercel/postgres";
 import { builtInId, builtInWorkflow, builtInWorkflows, parseBuiltInId } from "@/catalog/workflows";
 import { onMemoryStoreReset } from "@/lib/documents/store";
+import { AUDIT_LOG_SCHEMA } from "@/lib/ontology/audit-schema";
 import { ensureSchema } from "@/lib/ontology/ensure-schema";
 import { defaultAuditSink, type Auth } from "@/lib/ontology/governance";
 import { processMemory } from "@/lib/process-memory";
@@ -727,11 +728,14 @@ export type RunAuditEntry = { ts: string; agent: string; action: string; allowed
 
 /**
  * The audit log's entries for one run, oldest first. Empty without a database (they go to the console).
- * The start entry records the run's ID in its result, the rest in their args. Callers check the team first (getRun).
+ * The start entry records the run's ID in its result, the rest in their args; since Phase 9 the
+ * run_id column also holds it, for the engine's entries and the run's model calls. Callers check
+ * the team first (getRun).
  */
 export async function runAuditTrail(runId: string): Promise<RunAuditEntry[]> {
   if (!hasDb()) return [];
-  const { rows } = await sql`SELECT ts, agent, action, allowed, note, result FROM audit_log WHERE args->>'runId' = ${runId} OR result->>'runId' = ${runId} ORDER BY ts ASC LIMIT 200`;
+  await ensureSchema("audit_log", AUDIT_LOG_SCHEMA);
+  const { rows } = await sql`SELECT ts, agent, action, allowed, note, result FROM audit_log WHERE run_id = ${runId} OR args->>'runId' = ${runId} OR result->>'runId' = ${runId} ORDER BY ts ASC LIMIT 200`;
   return rows.map((r) => ({ ts: new Date(r.ts).toISOString(), agent: r.agent, action: r.action, allowed: r.allowed, note: r.note, result: r.result }));
 }
 
@@ -769,5 +773,5 @@ export async function claimRun(run: WorkflowRunRecord, from: RunStatus[]): Promi
 }
 
 export async function auditRun(run: WorkflowRunRecord, action: string, result: unknown, note?: string, agent = "workflow_engine"): Promise<void> {
-  await defaultAuditSink().write({ agent, action, args: { documentId: run.document_id, runId: run.id }, result, allowed: true, note });
+  await defaultAuditSink().write({ agent, action, args: { documentId: run.document_id, runId: run.id }, result, allowed: true, note, teamId: run.team_id, documentId: run.document_id, runId: run.id });
 }

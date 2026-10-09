@@ -1,5 +1,6 @@
 import { GoogleGenAI, createUserContent, createPartFromUri } from "@google/genai";
 import { GEMINI_MODEL } from './gemini-model';
+import { auditedGenerate } from './llm/gemini-audit';
 
 /**
  * Upload file to Gemini using direct API calls (serverless compatible)
@@ -195,7 +196,7 @@ Please be thorough and capture all content, maintaining the original structure a
     console.log(`[GeminiServerless] Starting content generation with ${uploadedFiles.length} files...`);
     const generationStart = Date.now();
 
-    const response = await ai.models.generateContent({
+    const response = await auditedGenerate('extract', GEMINI_MODEL, () => ai.models.generateContent({
       model: GEMINI_MODEL,
       contents: createUserContent([prompt, ...fileParts]),
       config: {
@@ -204,7 +205,7 @@ Please be thorough and capture all content, maintaining the original structure a
         topP: 0.8,
         maxOutputTokens: 32000,
       },
-    });
+    }));
 
     const generationTime = Date.now() - generationStart;
     console.log(`[GeminiServerless] Content generation completed in ${generationTime}ms`);

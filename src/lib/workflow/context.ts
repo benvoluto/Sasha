@@ -16,7 +16,10 @@ export type NodeContext = {
   run: WorkflowRunRecord;
   teamId: string;
   documentId: string;
-  /** Who started the run (audit and model-call attribution). */
+  /**
+   * Whose request is running the graph now (audit and model-call attribution):
+   * the user who started it, or who continued it. Falls back to the requester.
+   */
   agent: string;
   /**
    * Epoch ms by which this invocation must have stopped (function limit less a

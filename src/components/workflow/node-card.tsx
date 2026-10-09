@@ -27,10 +27,12 @@ import {
   Link2,
   ListChecks,
   Loader2,
+  Minus,
   NoteIcon,
   Package,
   Pencil,
   PencilLine,
+  Plus,
   Rows3,
   Save,
   Scales,
@@ -226,7 +228,7 @@ export function NodeCard({ id, data, selected }: NodeProps<CardNode>) {
           <div className="min-w-0 flex-1">
             <div className={`text-[10px] font-semibold uppercase tracking-wide ${tone.kicker}`}>{spec.label}</div>
             <input
-              className="nodrag w-full truncate bg-transparent text-sm font-semibold text-zinc-900 outline-none dark:text-zinc-100"
+              className="nodrag w-full truncate rounded-sm bg-transparent text-sm font-semibold text-zinc-900 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zinc-900 dark:text-zinc-100 dark:focus-visible:outline-zinc-100"
               value={node.label ?? spec.label}
               disabled={disabled}
               aria-label="Node name"
@@ -239,13 +241,16 @@ export function NodeCard({ id, data, selected }: NodeProps<CardNode>) {
               <input type="checkbox" disabled={disabled} checked={node.loop} onChange={(e) => updateNode(id, { loop: e.target.checked })} />
             </label>
           )}
+          {/* The only way back into a node's settings, so it gets a phone-sized target (min-h-11, then sm:min-h-6). */}
           <button
             type="button"
-            className="nodrag rounded px-1 text-xs text-zinc-500 hover:bg-black/5 dark:hover:bg-white/10"
+            className="nodrag grid min-h-11 min-w-11 shrink-0 place-items-center rounded text-zinc-500 hover:bg-black/5 sm:min-h-6 sm:min-w-6 dark:hover:bg-white/10"
             onClick={() => updateNode(id, { expanded: !node.expanded })}
-            title={node.expanded ? 'Collapse' : 'Show settings'}
+            title={node.expanded ? 'Hide settings' : 'Show settings'}
+            aria-label={node.expanded ? 'Hide settings' : 'Show settings'}
+            aria-expanded={!!node.expanded}
           >
-            {node.expanded ? '−' : '+'}
+            {node.expanded ? <Minus className="h-3.5 w-3.5" aria-hidden /> : <Plus className="h-3.5 w-3.5" aria-hidden />}
           </button>
         </div>
       </div>
@@ -274,7 +279,7 @@ export function NodeCard({ id, data, selected }: NodeProps<CardNode>) {
         <div className="space-y-3 border-t border-zinc-100 p-3 dark:border-zinc-800">
           <NodeSettings node={node} config={config} set={(patch) => updateNode(id, { config: { ...config, ...patch } })} disabled={disabled} />
           {!disabled && (
-            <button type="button" className="nodrag flex items-center gap-1 text-xs text-zinc-500 hover:text-red-600" onClick={() => removeNode(id)}>
+            <button type="button" className="nodrag flex min-h-11 items-center gap-1 text-xs text-zinc-500 hover:text-red-600 sm:min-h-6" onClick={() => removeNode(id)}>
               <Trash2 className="h-3.5 w-3.5" /> Delete node
             </button>
           )}

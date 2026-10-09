@@ -74,6 +74,21 @@ describe("useSuggestionsRefresh", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("waits quietly after a 429 and sends the change again once Retry-After has passed", async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ error: "x", code: "rate_limited", scope: "user", family: "light", retry_after_seconds: 40 }, { status: 429 }));
+    useRender("d1", null, "");
+    useRender("d1", "proposal", "");
+    await vi.advanceTimersByTimeAsync(SUGGESTIONS_REFRESH_DEBOUNCE_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(39_000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // A plain 200 ends it.
+    await vi.advanceTimersByTimeAsync(SUGGESTIONS_REFRESH_DEBOUNCE_MS * 4);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("treats the first known sources as a baseline, then refreshes when they change", () => {
     const none = linkedSourcesKey([]);
     const one = linkedSourcesKey([{ id: "s1", summary: null }]);

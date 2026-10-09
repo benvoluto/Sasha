@@ -3,7 +3,9 @@ import { z } from "zod";
 import { getType } from "@/catalog";
 import { getDocument } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
+import { limitModelCall } from "@/lib/limits/http";
 import { claudeConfigured, claudeText, ModelDeadlineError, ModelRefusalError, ModelTruncatedError } from "@/lib/llm/claude";
+import { contextFor, enterModelContext } from "@/lib/llm/context";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { groundingResolver, verifyMarkers, wordingChanged, WORDING_CHANGED_ERROR } from "@/lib/citations/verify";
 import type { CitationReport } from "@/lib/citations/contract";
@@ -36,19 +38,23 @@ const Body = z
   })
   .refine((b) => !!b.preset || !!b.instruction?.trim(), { message: "Choose a preset or write an instruction." });
 
-/** POST /api/documents/[id]/rewrite — rewrite a selection with a preset or a freeform instruction. */
+/** POST /api/documents/[id]/rewrite — rewrite a selection with a preset or a freeform instruction. Counts one "draft" call. */
 export async function POST(req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.documentWrite);
   if (caller instanceof NextResponse) return caller;
+  const { id } = await params;
+  enterModelContext(contextFor(caller, { documentId: id }));
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
   if (!claudeConfigured()) return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set, so rewriting is unavailable." }, { status: 503 });
-  const doc = await getDocument(caller.teamId, (await params).id);
+  const doc = await getDocument(caller.teamId, id);
   if (!doc) return NextResponse.json({ error: "Document not found." }, { status: 404 });
 
   const { text, preset, direction, instruction } = parsed.data;
   const p = preset ? REWRITE_PRESETS[preset] : undefined;
   if (preset && !p) return NextResponse.json({ error: "Unknown preset." }, { status: 400 });
+  const limited = await limitModelCall(caller, "draft");
+  if (limited) return limited;
   const how = instruction?.trim() || (direction === "less" && p?.lessInstruction ? p.lessInstruction : p!.instruction);
   const type = (await getType(caller.teamId, doc.type_key))?.definition ?? null;
   // Linked, read sources give the model passages it can cite; none gives no <sources> block at all.

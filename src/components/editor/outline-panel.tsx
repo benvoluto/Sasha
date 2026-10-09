@@ -40,7 +40,7 @@ export function goToHeading(editor: Editor, pos: number) {
     .setTextSelection(pos + 1 + (node?.content.size ?? 0))
     .run();
   const dom = editor.view.nodeDOM(pos);
-  if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
 
 const STATUS_LABEL: Record<RowStatus, string> = { done: "Done", partial: "In progress", missing: "Missing" };

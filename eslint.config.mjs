@@ -15,6 +15,11 @@ const eslintConfig = [
     ignores: [
       "node_modules/**",
       ".next/**",
+      // Phase 9: the e2e server's build output and Playwright reports.
+      ".next-e2e/**",
+      "test-results/**",
+      "playwright-report/**",
+      "blob-report/**",
       "out/**",
       "build/**",
       "next-env.d.ts",

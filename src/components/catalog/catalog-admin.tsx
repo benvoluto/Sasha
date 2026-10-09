@@ -7,11 +7,11 @@
 // member can learn a team type (and its workflow) from example documents
 // (Phase 8, "Learn from example").
 
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "@/components/icons";
 import { LearnDialog } from "@/components/learn/learn-dialog";
+import { AccountButton } from "@/components/shell/account-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -206,11 +206,11 @@ export function CatalogAdmin() {
           </nav>
         </div>
         <div className="grid h-11 w-11 place-items-center">
-          <UserButton />
+          <AccountButton />
         </div>
       </header>
 
-      <main className="mx-2 mb-10 min-h-[75vh] overflow-hidden rounded-2xl bg-[var(--doc-surface)] shadow-[0_1px_3px_rgba(16,24,40,0.06),0_8px_24px_rgba(16,24,40,0.05)] sm:mx-10">
+      <main id="main-content" tabIndex={-1} className="mx-2 mb-10 min-h-[75vh] outline-none overflow-hidden rounded-2xl bg-[var(--doc-surface)] shadow-[0_1px_3px_rgba(16,24,40,0.06),0_8px_24px_rgba(16,24,40,0.05)] sm:mx-10">
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--doc-line)] px-4 py-4 sm:px-6">
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-semibold">Document types</h1>
@@ -226,7 +226,7 @@ export function CatalogAdmin() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search types"
-              className="w-full rounded-md border border-[var(--doc-line)] bg-transparent py-1.5 pl-8 pr-2.5 text-sm outline-none focus:border-[var(--doc-accent)]"
+              className="w-full rounded-md border border-[var(--doc-field-line)] bg-transparent py-1.5 pl-8 pr-2.5 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]"
             />
           </label>
           <button type="button" className={quiet} onClick={() => setLearning(true)}>

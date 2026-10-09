@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ claudeJson: vi.fn(), getType: vi.fn(), configured: { value: true } }));
 vi.mock("@/lib/llm/claude", async (importOriginal) => ({
@@ -12,6 +12,7 @@ import { fileTypeByKey, fileTypes } from "@/catalog/files";
 import { outlineDoc } from "@/catalog/outline";
 import { listSections } from "@/lib/documents/sections";
 import { createDocument, resetMemoryStore, updateDocument } from "@/lib/documents/store";
+import { ModelCallLimitedError } from "@/lib/limits/reserve";
 import { contentHash, MIN_MODEL_INTERVAL_MS, modelInput, outlineStatus, presence, resetOutlineStatusCache } from "./outline-status";
 import { docOf, heading, para, testType } from "./test-fixtures";
 
@@ -208,5 +209,53 @@ describe("own section bodies (a parent stops at its typed sub-sections)", () => 
     expect(user).toContain("The strategy follows the three aims.");
     expect(user).not.toContain("Kidney disease");
     expect(user).toContain("Significance; Innovation; Approach; Progress Report");
+  });
+});
+
+describe("outlineStatus and the limiter", () => {
+  let clock = 1_000_000;
+  const now = () => clock;
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    resetMemoryStore();
+    resetOutlineStatusCache();
+    clock = 1_000_000;
+    mocks.claudeJson.mockReset().mockResolvedValue(modelReply);
+    mocks.getType.mockReset().mockResolvedValue(entry);
+    mocks.configured.value = true;
+  });
+  afterEach(() => {
+    delete process.env.SASHA_LIMIT_LIGHT_USER;
+  });
+
+  it("holds the 20 s window across instances: one with no result of its own gets a quiet refusal, not a model call", async () => {
+    const d = await createDocument(T, "ann", { type_key: def.key, content_json: body() });
+    await outlineStatus(T, d.id, { now });
+    // Another instance: its own cache is empty, the shared window is not.
+    resetOutlineStatusCache();
+    clock += 5000;
+    const error = await outlineStatus(T, d.id, { now }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ModelCallLimitedError);
+    expect((error as ModelCallLimitedError).refusal).toMatchObject({ scope: "key", retryAfterSeconds: 15 });
+    expect((error as ModelCallLimitedError).userMessage).toBe("The outline was checked moments ago. Try again in 15s.");
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(1);
+    clock += MIN_MODEL_INTERVAL_MS;
+    expect((await outlineStatus(T, d.id, { now }))?.model).toBe(true);
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(2);
+  });
+
+  it("counts a model run against the caller's light allowance; cached answers are free", async () => {
+    process.env.SASHA_LIMIT_LIGHT_USER = "1/1h";
+    const subject = { userId: "u1", teamId: T };
+    const a = await createDocument(T, "ann", { type_key: def.key, content_json: body() });
+    const first = await outlineStatus(T, a.id, { now, subject });
+    expect(await outlineStatus(T, a.id, { now, subject })).toBe(first);
+    const b = await createDocument(T, "ann", { type_key: def.key, content_json: body() });
+    const error = await outlineStatus(T, b.id, { now, subject }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ModelCallLimitedError);
+    expect((error as ModelCallLimitedError).refusal).toMatchObject({ scope: "user", family: "light" });
+    // The refusal recorded nothing: b's window is still open for another caller.
+    expect((await outlineStatus(T, b.id, { now, subject: { userId: "u2", teamId: T } }))?.model).toBe(true);
+    expect(mocks.claudeJson).toHaveBeenCalledTimes(2);
   });
 });

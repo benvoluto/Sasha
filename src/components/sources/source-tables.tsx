@@ -138,7 +138,7 @@ function TableItem({ table, focus, onChanged }: { table: DataTableSummary; focus
   useEffect(() => {
     if (!focus) return;
     setOpen(true);
-    ref.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    ref.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [focus]);
 
   useEffect(() => {

@@ -129,6 +129,9 @@ export {
   CircleDashed as CircleDashedIcon,
   Shapes as TypesIcon,
 
+  // usage dashboard
+  ChartBar as UsageIcon,
+
   // sources library
   Books as LibraryIcon,
   Folder,

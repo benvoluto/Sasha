@@ -7,7 +7,9 @@
 //
 // Runs wait for the autosave (the server reads the stored text), happen at
 // most every CLASSIFY_MIN_INTERVAL_MS, and are background work: network errors
-// stay silent and never become a notice.
+// stay silent and never become a notice. A 429 from the limiter (the light
+// allowance) is quiet too: the local gate holds the next try until
+// Retry-After has passed.
 //
 // Session baselines (phase4-spec.md §3.3): when the classifier view first
 // loads, the content baseline is the body as it is (or nothing, for a document
@@ -30,6 +32,8 @@ import {
   type TypeSource,
   type WordBag,
 } from "@/lib/classifier/contract";
+import { retryAfterMs } from "@/lib/limits/client";
+import { isRateLimitedBody, type RateLimitedBody } from "@/lib/limits/contract";
 import { bagDistance, resetsBaselines, shouldClassify, startsFresh, wordBag, wordCount } from "@/lib/classifier/trigger";
 import type { SaveStatus } from "./use-document";
 
@@ -127,12 +131,18 @@ export function useClassifier(input: ClassifierInput): ClassifierHandle {
       s.lastLocalRunAt = Date.now();
       try {
         const res = await fetch(classifyUrl(id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trigger }) });
-        const out = (await res.json().catch(() => null)) as (ClassifyResponse | ClassifyRateLimited) | null;
+        const out = (await res.json().catch(() => null)) as (ClassifyResponse | ClassifyRateLimited | RateLimitedBody) | null;
         if (session.current !== s) return;
         if (res.status === 429 && out && "retryAfterMs" in out) {
           // The server ran recently: line the local gate up with it.
           s.lastLocalRunAt = Date.now() - CLASSIFY_MIN_INTERVAL_MS + out.retryAfterMs;
           if (out.view) setView(out.view);
+          return;
+        }
+        if (res.status === 429 && isRateLimitedBody(out)) {
+          // The allowance is used up: wait at least Retry-After (and never less than the usual interval).
+          const wait = retryAfterMs(res.status, out, res.headers.get("Retry-After")) ?? CLASSIFY_MIN_INTERVAL_MS;
+          s.lastLocalRunAt = Date.now() - CLASSIFY_MIN_INTERVAL_MS + Math.max(CLASSIFY_MIN_INTERVAL_MS, wait);
           return;
         }
         if (!res.ok || !out || !("ran" in out) || !out.view) return;

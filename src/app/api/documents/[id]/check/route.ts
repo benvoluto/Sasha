@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { getType } from "@/catalog";
 import { getDocument, isUuid } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
+import { limitModelCall, rateLimitedResponse } from "@/lib/limits/http";
 import { claudeConfigured, ModelDeadlineError, ModelRefusalError, ModelTruncatedError } from "@/lib/llm/claude";
+import { contextFor, enterModelContext } from "@/lib/llm/context";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { processMemory } from "@/lib/process-memory";
 import { documentCitationsBlock, inputsHash, rubricCriteriaFor, scopeSnapshot, scoreRubric, sectionFingerprints } from "@/lib/rubric/check";
-import { MAX_CHECK_CHARS, RubricCheckRequest, textFingerprint, type RubricCheckError, type RubricCheckResponse } from "@/lib/rubric/contract";
-import { checkScopeKey, getStoredCheck, reserveModelCheck, saveCheck } from "@/lib/rubric/store";
+import { CHECK_MIN_INTERVAL_MS, MAX_CHECK_CHARS, RubricCheckRequest, textFingerprint, type RubricCheckError, type RubricCheckResponse } from "@/lib/rubric/contract";
+import { checkScopeKey, getStoredCheck, intervalGate, saveCheck } from "@/lib/rubric/store";
 import { SectionId } from "@/lib/sections/contract";
 import { documentBlock } from "@/lib/workflow/nodes/prompts";
 import { snapshotDocument } from "@/lib/workflow/nodes/readers";
@@ -30,13 +32,15 @@ const fail = (error: string, status: number, extra: Omit<RubricCheckError, "erro
  * POST /api/documents/[id]/check — score the STORED document, or one section
  * of it, against its type's rubric plus the universal one (the client saves
  * first). The same inputs return the last result (`cached: true`) unless
- * `force`; otherwise the per-scope interval and the team's hourly limit gate
- * the model call.
+ * `force`; otherwise the per-scope interval (same inputs, 20 s) and the
+ * caller's "check" allowance (user and team windows; the team's 40 an hour is
+ * the Phase 7 cap) gate the model call.
  */
 export async function POST(req: Request, { params }: Ctx) {
   const caller = await requireTeam(PERMISSIONS.documentWrite);
   if (caller instanceof NextResponse) return caller;
   const { id } = await params;
+  enterModelContext(contextFor(caller, { documentId: isUuid(id) ? id : null }));
   if (!isUuid(id)) return fail("Document not found.", 404);
   const parsed = RubricCheckRequest.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid request.", 400);
@@ -73,12 +77,14 @@ export async function POST(req: Request, { params }: Ctx) {
   const key = `${caller.teamId}\u0000${id}\u0000${scopeKey}\u0000${hash}`;
   let running = inflight.get(key);
   if (!running) {
-    // Counts this call too when it passes: the gate and the count are one step.
-    const gate = await reserveModelCheck(caller.teamId, last, hash);
-    if (!gate.ok) {
-      const message = gate.reason === "interval" ? `Checked moments ago. Try again in ${gate.retryAfterSeconds}s.` : `Your team has used its rubric checks for this hour. Try again in ${Math.ceil(gate.retryAfterSeconds / 60)} min.`;
-      return fail(message, 429, { retryAfterSeconds: gate.retryAfterSeconds });
+    const interval = intervalGate(last, hash);
+    if (!interval.ok) {
+      const refusal = { ok: false as const, scope: "key" as const, family: "check" as const, limit: 1, windowMs: CHECK_MIN_INTERVAL_MS, retryAfterSeconds: interval.retryAfterSeconds };
+      return rateLimitedResponse(refusal, { message: `Checked moments ago. Try again in ${interval.retryAfterSeconds}s.`, extra: { retryAfterSeconds: interval.retryAfterSeconds } });
     }
+    // Counts this call when it passes: the check and the count are one step.
+    const limited = await limitModelCall(caller, "check");
+    if (limited) return limited;
     running = (async () => {
       const { results, dropped } = await scoreRubric(d, { criteria, drafted: null, sectionIds: section ? [section.sectionId] : undefined, citations, call: { agent: caller.agent, documentId: id } });
       const response: RubricCheckResponse = {

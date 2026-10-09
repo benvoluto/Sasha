@@ -30,6 +30,8 @@ describe("applyDecision", () => {
 describe("generationError", () => {
   it("prefers the server's message", () => {
     expect(generationError(409, { error: "This section is fixed text; edit it directly." })).toBe("This section is fixed text; edit it directly.");
+    const limited = "You've used your 30 drafts for this hour. Try again in 12 min.";
+    expect(generationError(429, { error: limited, code: "rate_limited" } as { error: string })).toBe(limited);
   });
   it("explains common statuses without one", () => {
     expect(generationError(503, {})).toBe("Claude is not configured.");

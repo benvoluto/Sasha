@@ -26,8 +26,21 @@ export async function api<T>(url: string, init?: RequestInit & { json?: unknown 
     ...(json !== undefined ? { body: JSON.stringify(json), headers: { "Content-Type": "application/json" } } : {}),
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status}).`);
+  if (!res.ok) throw new ApiError(body.error ?? `Request failed (${res.status}).`, res.status, body, res.headers.get("Retry-After"));
   return body as T;
+}
+
+/** What api() throws on a non-2xx reply: the server's sentence as the message, plus the status, body and Retry-After for callers that act on them (a background 429 waits quietly). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly body: unknown,
+    readonly retryAfter: string | null,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
 }
 
 export const errorText = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
@@ -146,7 +159,7 @@ export function mergeFresh<T extends SourceSummary>(list: T[], fresh: SourceSumm
   return list.map((s) => (byId.has(s.id) ? { ...s, ...byId.get(s.id)! } : s));
 }
 
-const field = "w-full rounded-md border border-[var(--doc-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)]";
+const field = "w-full rounded-md border border-[var(--doc-field-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]";
 const primary = "inline-flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)] disabled:opacity-40";
 const quiet = "rounded-md px-2 py-1.5 text-sm text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)]";
 

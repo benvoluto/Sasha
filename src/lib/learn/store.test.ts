@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { RequirementSet } from "@/catalog/requirements-schema";
 import { resetMemoryStore } from "@/lib/documents/store";
+import { DEFAULT_LIMITS } from "@/lib/limits/contract";
 import { LEARN_INFERRED_LABEL, LEARN_TEAM_HOURLY_LIMIT } from "./contract";
-import { deleteTeamRequirementSets, inferredRef, insertTeamRequirementSets, listTeamRequirementSets, reserveLearnCall, resetLearnStore, resolveSet, setRef } from "./store";
+import { deleteTeamRequirementSets, inferredRef, insertTeamRequirementSets, listTeamRequirementSets, resetLearnStore, resolveSet, setRef } from "./store";
 
 const set = (key = "team-approvals") =>
   RequirementSet.parse({
@@ -62,13 +63,8 @@ describe("team requirement sets", () => {
   });
 });
 
-describe("reserveLearnCall", () => {
-  it(`allows ${LEARN_TEAM_HOURLY_LIMIT} extractions an hour per team`, async () => {
-    const t0 = Date.parse("2026-10-08T12:00:00Z");
-    for (let i = 0; i < LEARN_TEAM_HOURLY_LIMIT; i++) expect(await reserveLearnCall("org:a", t0 + i)).toEqual({ ok: true });
-    const refused = await reserveLearnCall("org:a", t0 + 60_000);
-    expect(refused).toEqual({ ok: false, retryAfterSeconds: 3540 });
-    expect(await reserveLearnCall("org:b", t0)).toEqual({ ok: true });
-    expect(await reserveLearnCall("org:a", t0 + 3_600_001)).toEqual({ ok: true });
+describe("the extraction cap", () => {
+  it("is the limiter's default team window for learning runs", () => {
+    expect(DEFAULT_LIMITS.learn.team).toEqual([{ limit: LEARN_TEAM_HOURLY_LIMIT, windowMs: 3_600_000 }]);
   });
 });

@@ -22,7 +22,7 @@ vi.mock("@vercel/postgres", () => {
 vi.mock("@/lib/ontology/ensure-schema", () => ({ ensureSchema: async () => {} }));
 vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write: async () => {} }) }));
 
-import { claimRun, createRun, createWorkflow, getDefaultWorkflowId, getRun, getWorkflow, latestRuns, recordChangeResult, saveRun, saveWorkflow, setDefaultWorkflowId, STALE_RUN_MS } from "./store";
+import { claimRun, createRun, runAuditTrail, createWorkflow, getDefaultWorkflowId, getRun, getWorkflow, latestRuns, recordChangeResult, saveRun, saveWorkflow, setDefaultWorkflowId, STALE_RUN_MS } from "./store";
 
 const DOC = "6d1e4b8a-2c3f-4e5a-8b7c-9d0e1f2a3b4c";
 const auth = { agent: "ann", permissions: [] };
@@ -140,5 +140,14 @@ describe("workflow store SQL", () => {
     const insert = mocks.calls.find((c) => c.text.startsWith("INSERT INTO workflow ("))!;
     expect(insert.text).toMatch(/\(id, team_id, name, based_on, applies_to, created_by\)/);
     expect(insert.params.slice(1)).toEqual(["org:a", "Learned", null, "equipment-request", "ann"]);
+  });
+});
+
+describe("runAuditTrail (SQL)", () => {
+  it("matches the run_id column as well as the run's id in args or result", async () => {
+    await runAuditTrail("r1");
+    const call = mocks.calls.find((c) => c.text.includes("FROM audit_log"))!;
+    expect(call.text).toMatch(/WHERE run_id = \$1 OR args->>'runId' = \$2 OR result->>'runId' = \$3/);
+    expect(call.params).toEqual(["r1", "r1", "r1"]);
   });
 });

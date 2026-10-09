@@ -13,10 +13,13 @@
 // - A human checkpoint stops the run (awaiting review) until someone decides.
 // - The run pauses itself at the time budget or the invocation's deadline,
 //   including mid-loop (finished items are kept); continuing resumes it.
+// - Every model call a node makes runs inside the run's model context
+//   (src/lib/llm/context.ts), so its audit row carries the run, document and team.
 
 import { typePolicy } from "@/catalog/workflows";
 import { getType } from "@/catalog";
 import { getDocument, type DocumentRecord } from "@/lib/documents/store";
+import { currentModelContext, withModelContext } from "@/lib/llm/context";
 import { NodeError, type NodeContext, type NodeHandler } from "./context";
 import { FUNCTION_LIMIT_MS, MAX_PROGRESS_ITEMS, type StepProgressItem, type WorkflowRunRecord } from "./contract";
 import { CORE_HANDLERS, nodeLabels } from "./core-nodes";
@@ -95,7 +98,8 @@ export function nodeContext(run: WorkflowRunRecord, deadline: number): NodeConte
     run,
     teamId: run.team_id,
     documentId: run.document_id,
-    agent: run.requested_by,
+    // The user executeGraph's context names, so a node's agent matches the user id its model calls record.
+    agent: currentModelContext()?.agent ?? run.requested_by,
     deadline,
     memo: remember,
     document,
@@ -112,7 +116,17 @@ const flattenJson = (values: unknown[]) => values.flatMap((v) => (Array.isArray(
  * budget (then it pauses with pause_reason "budget" and can be continued).
  * `deadline` (epoch ms) ends the budget earlier.
  */
-export async function executeGraph(run: WorkflowRunRecord, opts: { deadline?: number } = {}): Promise<void> {
+export function executeGraph(run: WorkflowRunRecord, opts: { deadline?: number } = {}): Promise<void> {
+  // The route's context (when it set one) names the user who started or continued the run;
+  // agent follows the same user, so usage rows aren't labelled with the requester's email.
+  const outer = currentModelContext();
+  return withModelContext(
+    { ...outer, teamId: run.team_id, userId: outer?.userId ?? run.requested_by, agent: outer?.agent ?? run.requested_by, documentId: run.document_id, runId: run.id },
+    () => runGraph(run, opts),
+  );
+}
+
+async function runGraph(run: WorkflowRunRecord, opts: { deadline?: number }): Promise<void> {
   const started = Date.now();
   const deadline = Math.min(opts.deadline ?? Infinity, started + FUNCTION_LIMIT_MS - DEADLINE_MARGIN_MS);
   const graph = run.graph;

@@ -476,7 +476,7 @@ export function DocsPanel({
         >
           <div className="px-4 pt-6 pb-3 sm:px-6">
             <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
-              <h2 id="docs-panel-title" ref={headingRef} tabIndex={-1} className={`${SECTION_HEAD} mr-auto rounded-md outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--panel-head)]`}>
+              <h2 id="docs-panel-title" ref={headingRef} tabIndex={-1} className={`${SECTION_HEAD} mr-auto rounded-md outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--panel-head)]`}>
                 <DocsIcon className="h-6 w-6" aria-hidden /> Documents
               </h2>
               <button
@@ -507,7 +507,7 @@ export function DocsPanel({
                   phones have no Esc, and aria-modal hides the rail's toggle
                   from screen-reader swipe navigation. */}
               {!wide && (
-                <button type="button" aria-label="Close documents" title="Close documents" onClick={() => onClose()} className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-[var(--panel-hover)] ${FOCUS_RING}`}>
+                <button type="button" aria-label="Close documents" title="Close documents" onClick={() => onClose()} className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg sm:min-h-9 sm:min-w-9 hover:bg-[var(--panel-hover)] ${FOCUS_RING}`}>
                   <X className="h-5 w-5" aria-hidden />
                 </button>
               )}
