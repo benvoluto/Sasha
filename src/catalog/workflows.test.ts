@@ -221,7 +221,7 @@ describe("requirement sets and policies", () => {
       expect(p.sensitive, key).toBe(true);
       expect(p.webDomains, key).toEqual(expect.arrayContaining(["law.cornell.edu", "ecfr.gov", "ed.gov"]));
       // Public sources only: no general search engines, social or student-information sites.
-      for (const d of p.webDomains) expect(d, `${key}: ${d}`).toMatch(/(\.gov|cornell\.edu|pbis\.org)$/);
+      for (const d of p.webDomains) expect(d, `${key}: ${d}`).toMatch(/(\.gov|cornell\.edu)$/);
     }
   });
 

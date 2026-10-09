@@ -858,9 +858,6 @@ the interface, Hanken Grotesk for the document.
   scores are not comparable across conditions.
 - Incident postmortem: time to detect, mitigate and resolve are checked by the responder reviewer,
   not computed in code (needs a `duration` compute kind).
-- The ClawHub importer refuses skills with no declared licence, which is most of them.
-- `fba-bip` may search pbis.org (not a .gov site); remove it if sources must be government only.
-- The 2026 Texas §89.1040 amendment was read from a summary, not the published text; check it.
 - A two-capital-word learned title with no document words (e.g. "Software Design Document") is
   flagged as a name; the author can keep it at save.
 - ClawHub draft `retrieved` dates are UTC.

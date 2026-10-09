@@ -13,7 +13,7 @@
   },
   "fba-bip": {
     "sensitive": true,
-    "webDomains": ["law.cornell.edu", "ecfr.gov", "ed.gov", "sites.ed.gov", "tea.texas.gov", "pbis.org"]
+    "webDomains": ["law.cornell.edu", "ecfr.gov", "ed.gov", "sites.ed.gov", "tea.texas.gov"]
   },
   "nih-specific-aims-research-strategy": {
     "draftAll": {
