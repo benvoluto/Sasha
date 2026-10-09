@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { schema } from "@tiptap/pm/schema-basic";
-import { Schema } from "@tiptap/pm/model";
+import { Fragment, Schema, Slice } from "@tiptap/pm/model";
 import { Transform } from "@tiptap/pm/transform";
-import { mapRange, sectionBodyRange, sectionHeadingIndexAt, type TextRange } from "./tracked-range";
+import { caretInSectionBody, mapRange, sectionBodyRange, sectionHeadingIndexAt, type TextRange } from "./tracked-range";
 
 // <p>Hello brave world</p>: "brave" spans 7..12.
 const doc = schema.node("doc", null, [schema.node("paragraph", null, [schema.text("Hello brave world")])]);
@@ -71,6 +71,17 @@ describe("sectionBodyRange", () => {
     const r = sectionBodyRange(d, "s_sig")!;
     expect(r).toMatchObject({ level: 3, bodyText: "Why it matters." });
     expect(d.nodeAt(r.to)?.textContent).toBe("Budget");
+  });
+
+  it("puts the caret at the end of a replaced body, not in the next heading", () => {
+    const r = sectionBodyRange(d, "s_aims")!;
+    const replaced = d.replace(r.from, r.to, new Slice(Fragment.from([p("New first."), p("New last.")]), 0, 0));
+    const pos = caretInSectionBody(replaced, "s_aims")!;
+    const at = replaced.resolve(pos);
+    expect(at.parent.textContent).toBe("New last.");
+    expect(at.parentOffset).toBe("New last.".length);
+    // An empty body has nowhere to put it.
+    expect(caretInSectionBody(s.node("doc", null, [h(2, "Only", "s_only"), h(2, "Next", "s_next")]), "s_only")).toBeNull();
   });
 
   it("runs the last section to the end of the document", () => {

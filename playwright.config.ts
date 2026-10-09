@@ -24,7 +24,7 @@ const BASE_URL = `http://localhost:${PORT}`;
 const chrome = existsSync("/Applications/Google Chrome.app") ? { channel: "chrome" } : {};
 
 /** Specs that click through flows run once, in light; the axe scan runs in both schemes. */
-const FUNCTIONAL = /(editor|modal|upload|export|keyboard)\.spec\.ts$/;
+const FUNCTIONAL = /(editor|modal|upload|export|keyboard|redesign)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "e2e",

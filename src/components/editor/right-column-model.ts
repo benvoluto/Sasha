@@ -1,7 +1,9 @@
-// The editor's right column, as pure state: the outline on top and one lower
-// panel (Tools, Section notes or the rubric Check results) below it. Outline and Tools are toggled by the
-// floating buttons; opening notes from a heading's gutter takes the lower slot
-// from Tools. Kept apart from React so the rules are tested on their own.
+// The editor's right column, as pure state: the outline card and one "lower"
+// slot (Tools, Section notes or the rubric Check results), which since redesign
+// 2 renders above the outline. The floating buttons only open Outline and
+// Tools (each button hides while its card shows); opening notes from a
+// heading's gutter takes the slot from Tools. Kept apart from React so the
+// rules are tested on their own.
 
 export type LowerPanel = "tools" | "notes" | "check";
 
@@ -20,11 +22,15 @@ export const openNotes = (s: RightColumnState): RightColumnState => ({ ...s, low
 /** The rubric Check results replace Tools or notes (or open alone); the outline stays as it is. */
 export const openCheck = (s: RightColumnState): RightColumnState => ({ ...s, lower: "check" });
 
+/** Redesign 2: a floating button only opens its panel (the button hides while the panel shows; the panel's X closes it). */
+export const openOutline = (s: RightColumnState): RightColumnState => ({ ...s, outline: true });
+export const openTools = (s: RightColumnState): RightColumnState => ({ ...s, lower: "tools" });
+
 export const closeLower = (s: RightColumnState): RightColumnState => ({ ...s, lower: null });
 
 export const closeOutline = (s: RightColumnState): RightColumnState => ({ ...s, outline: false });
 
-/** The column's two slots: the outline on top, Tools or Section notes below. */
+/** The column's two slots: Tools (or Section notes, or Check) on top, the outline below. */
 export type ColumnSlot = "outline" | "lower";
 
 /**
@@ -33,6 +39,13 @@ export type ColumnSlot = "outline" | "lower";
  * their own, so the lower slot always goes to Tools.
  */
 export const columnCloseFocus = (slot: ColumnSlot): "outline" | "tools" => (slot === "outline" ? "outline" : "tools");
+
+/**
+ * The slot wrappers (right-column.tsx), focusable (tabIndex -1) so focus can move
+ * into a panel when its floating button hides (redesign2-spec.md §4.4).
+ */
+export const TOOLS_SLOT_ID = "editor-tools-slot";
+export const OUTLINE_SLOT_ID = "editor-outline-slot";
 
 export const isColumnOpen = (s: RightColumnState): boolean => s.outline || s.lower !== null;
 
@@ -53,17 +66,40 @@ export function rightColumnMode(containerWidth: number, viewportWidth: number): 
 }
 
 /**
- * The column's classes in each mode. --toolbar-h and --column-top are measured
- * on the body row by the editing screen (--column-top is the row's top, never
- * above the sticky toolbar). The drawer starts there too, like the inline
- * column, so it never covers the header (Share) or the toolbar, which stay
- * visible and usable while it is open.
+ * The column's classes in each mode (redesign2-spec.md §4.5). The column has no
+ * background or border of its own: it lays out floating cards, bottom-aligned
+ * as in the mockup. --toolbar-h and --column-top are measured on the body row
+ * by the editing screen (--column-top is the row's top, never above the sticky
+ * toolbar). The drawer starts there too, like the inline column, so it never
+ * covers the header or the toolbar. Inline and drawer keep their bottom clear
+ * of the floating buttons (--fab-clearance, cleared when none shows); the
+ * drawer only takes pointer events on the cards, so the text between and
+ * around them stays clickable. The sheet is opaque instead: on a phone it spans
+ * the width, and text showing (and taking clicks) in the gaps between its
+ * stacked cards read as clutter.
  */
 export const RIGHT_COLUMN_MODE_CLASS: Record<RightColumnMode, string> = {
   inline:
-    "sticky top-[var(--toolbar-h,0px)] h-[calc(100dvh-var(--column-top,var(--toolbar-h,0px)))] w-[22rem] shrink-0 self-start border-l border-[var(--doc-line)] pb-24",
+    "sticky top-[var(--toolbar-h,0px)] h-[calc(100dvh-var(--column-top,var(--toolbar-h,0px)))] w-[22rem] shrink-0 self-start flex flex-col justify-end gap-4 px-4 pt-4 pb-[max(1.25rem,var(--fab-clearance,0px))]",
   drawer:
-    "fixed right-0 bottom-0 top-[var(--column-top,var(--toolbar-h,0px))] z-[18] w-[min(22rem,90vw)] border-l border-[var(--doc-line)] pb-24 shadow-xl",
+    "fixed right-0 bottom-0 top-[var(--column-top,var(--toolbar-h,0px))] z-[18] w-[min(22rem,90vw)] flex flex-col justify-end gap-3 p-3 pb-[max(0.75rem,var(--fab-clearance,0px))] pointer-events-none bg-transparent shadow-none",
   sheet:
-    "fixed right-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-[18] max-h-[65dvh] rounded-t-2xl border-t border-[var(--doc-line)] shadow-2xl",
+    "fixed right-0 bottom-[calc(var(--fab-clearance,0px)+env(safe-area-inset-bottom,0px))] z-[18] max-h-[70dvh] overflow-y-auto overscroll-contain flex flex-col gap-2 p-2 rounded-t-[24px] bg-[var(--editor-bg)] shadow-[0_-6px_20px_rgb(0_0_0/0.14)]",
 };
+
+/**
+ * The classes of a slot (the wrapper around one card). Inline and drawer: one
+ * card alone takes its natural height up to the column; with both open Tools
+ * keeps its natural height up to 60% and the outline shrinks into the rest,
+ * each scrolling inside. In the sheet the cards stack at their natural height
+ * and the sheet scrolls. Drawer and sheet cards take the pointer events their
+ * column gives up.
+ */
+export function slotClass(mode: RightColumnMode, slot: ColumnSlot, both: boolean): string {
+  const base = "flex min-h-0 flex-col rounded-[20px] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] [&>*]:min-h-0 [&>*]:flex-1";
+  const floating = mode === "inline" ? "" : " [&>*]:pointer-events-auto";
+  const lifted = mode === "drawer" ? " [&>*]:shadow-xl" : "";
+  if (mode === "sheet") return `${base} flex-none${floating}`;
+  const size = slot === "lower" && both ? " flex-none max-h-[60%]" : " flex-initial";
+  return `${base}${size}${floating}${lifted}`;
+}

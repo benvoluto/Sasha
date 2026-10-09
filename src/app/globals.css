@@ -526,6 +526,60 @@
   --divider: #263241;
 }
 
+/* ---------------------------------------------------------------------------
+   Editor redesign 2 (redesign2-spec.md §2): the floating Tools and Outline
+   cards in the right column and the empty-state helper beside the dog.
+     --tools-bg           Tools card (olive; darker than the mockup's #a3b02a so
+                          white text reaches 4.5:1)
+     --tools-ink          Tools card text, icons, the close button
+     --tools-chip         "Rewrite as…" preset chips and Tools rows
+     --tools-chip-hover   chip hover / pressed
+     --tools-field        the "Try any prompt…" textarea
+     --tools-placeholder  its placeholder text
+     --tools-focus        focus ring inside the card (3:1 against --tools-bg)
+     --outline-card-bg    Outline card (cream)
+     --outline-card-line  its edge against the white page (decorative)
+     --outline-ink        Outline title, rows, chevrons, status circles
+     --outline-current    the current section's pill outline (3:1, non-text)
+     --outline-hover      row hover background
+     --helper-ink         the helper's tan text
+     --helper-link        its orange links (upload sources, document type, tell me)
+   ------------------------------------------------------------------------- */
+:root {
+  --tools-bg: #5b6a0c;
+  --tools-ink: #ffffff;
+  --tools-chip: #46530a;
+  --tools-chip-hover: #3a4508;
+  --tools-field: #414d08;
+  --tools-placeholder: #e6ebc8;
+  --tools-focus: #ffffff;
+  --outline-card-bg: #fbf7df;
+  --outline-card-line: #ece2b4;
+  --outline-ink: #5a650c;
+  --outline-current: #7c891a;
+  --outline-hover: #f3ecc6;
+  --helper-ink: #8a6c45;
+  --helper-link: #b04a00;
+}
+.dark {
+  --tools-bg: #3a4310;
+  --tools-ink: #f4f6e6;
+  --tools-chip: #4c5718;
+  --tools-chip-hover: #57631d;
+  --tools-field: #2b320b;
+  --tools-placeholder: #cdd4a6;
+  --tools-focus: #f4f6e6;
+  --outline-card-bg: #22220f;
+  --outline-card-line: #3a3818;
+  --outline-ink: #d2da86;
+  --outline-current: #8e993b;
+  --outline-hover: #2d2c15;
+  --helper-ink: #b8a07c;
+  --helper-link: #f39a4c;
+}
+/* While the empty-state helper shows, it replaces the editor's empty placeholder. */
+.doc-helper-on .doc-prose p.is-editor-empty:first-child::before { content: none; }
+
 .doc-prose { font-family: var(--font-doc); font-size: 17px; line-height: 1.6; color: var(--ink); min-height: 50vh; }
 .doc-prose > * + * { margin-top: 0.85em; }
 .doc-prose h1 { font-size: 2rem; line-height: 1.2; font-weight: 650; letter-spacing: -0.015em; margin-top: 1.4em; text-wrap: balance; }
@@ -563,6 +617,8 @@
 .section-divider { display: flex; align-items: center; gap: 0.5rem; margin: 2rem 10% 1.5rem; user-select: none; }
 .section-divider-line { flex: 1; height: 3px; border-radius: 2px; background: var(--divider); }
 .section-divider-actions { display: flex; gap: 0.125rem; }
+/* A read-only editor ("tell me" drafting) can't add or delete sections: hide the buttons. */
+.ProseMirror[contenteditable="false"] .section-divider-actions { visibility: hidden; }
 .section-divider-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; color: var(--doc-muted); transition: background-color 120ms, color 120ms; }
 .section-divider-btn svg { width: 20px; height: 20px; }
 .section-divider-btn:hover { background: var(--action-soft); color: var(--action); }

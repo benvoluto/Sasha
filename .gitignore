@@ -55,4 +55,4 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 /e2e/.auth/
-/.next-e2e/
+/.next-e2e*/

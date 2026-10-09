@@ -5,14 +5,18 @@
 // document-type catalog, the workflow canvas and the usage dashboard, the account menu, and Sasha
 // herself at the bottom.
 // It sits above the panel (z-50) so the mascot can overlap the panel's and the
-// editor's edge, as in the mockup.
+// editor's edge, as in the mockup. While a page gives the dog something to do
+// (dogActionAtom: the editor's empty-state helper sets "Hide Sasha's tips"),
+// she is a button; otherwise she is decorative.
 
 import { UserButton } from "@clerk/nextjs";
+import { useAtomValue } from "jotai";
 import Link from "next/link";
 import type { ComponentType, ReactNode, RefObject } from "react";
 import { DocsIcon, LibraryIcon, TypesIcon, UsageIcon, Workflow } from "@/components/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AccountButton } from "./account-button";
+import { dogActionAtom } from "./dog-action";
 
 const RAIL_BUTTON =
   "grid h-11 w-11 place-items-center rounded-xl text-[var(--panel-head)] hover:bg-[var(--panel-hover)] aria-[current=page]:bg-[var(--panel-hover)] aria-expanded:bg-[var(--panel-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--panel-head)]";
@@ -39,6 +43,30 @@ function RailLink({ href, label, icon: Icon, pathname }: { href: string; label: 
   );
 }
 
+/** Sasha the dog, allowed to spill past the rail's edge: decorative, or a button while dogActionAtom is set. */
+function Dog() {
+  const action = useAtomValue(dogActionAtom);
+  if (!action) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- a small static SVG; next/image adds nothing here
+      <img src="/sasha.svg" alt="" width={64} height={80} draggable={false} className="pointer-events-none absolute bottom-0 left-1 w-14 sm:left-4 sm:w-16 select-none [@media(max-height:520px)]:hidden" />
+    );
+  }
+  return (
+    <RailTip label={action.label}>
+      <button
+        type="button"
+        aria-label={action.label}
+        onClick={action.run}
+        className="pointer-events-auto absolute bottom-0 left-1 block min-h-11 min-w-11 cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--panel-head)] sm:left-4 [@media(max-height:520px)]:hidden"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- a small static SVG; next/image adds nothing here */}
+        <img src="/sasha.svg" alt="" width={64} height={80} draggable={false} className="block w-14 select-none sm:w-16" />
+      </button>
+    </RailTip>
+  );
+}
+
 export function AppRail({ pathname, panelOpen, onTogglePanel, toggleRef }: { pathname: string; panelOpen: boolean; onTogglePanel: () => void; toggleRef: RefObject<HTMLButtonElement | null> }) {
   return (
     <nav aria-label="App" className="sticky top-0 z-50 flex h-dvh w-14 shrink-0 flex-col items-center gap-2 bg-[var(--rail-bg)] pt-5 sm:w-[72px]">
@@ -61,9 +89,7 @@ export function AppRail({ pathname, panelOpen, onTogglePanel, toggleRef }: { pat
         </AccountButton>
       </div>
 
-      {/* Decorative: Sasha the dog, allowed to spill past the rail's edge. */}
-      {/* eslint-disable-next-line @next/next/no-img-element -- a small static SVG; next/image adds nothing here */}
-      <img src="/sasha.svg" alt="" width={64} height={80} draggable={false} className="pointer-events-none absolute bottom-0 left-1 w-14 sm:left-4 sm:w-16 select-none [@media(max-height:520px)]:hidden" />
+      <Dog />
     </nav>
   );
 }

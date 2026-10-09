@@ -117,6 +117,17 @@ const DOC_TEXT: [string, string, string][] = [
   ["--alert-warn-bg", "--alert-warn-ink", "Keep mine button"],
   ["--alert-danger-ink", "--editor-bg", "save error text"],
   ["--alert-danger-ink", "--doc-surface", "error text in cards"],
+  // Redesign 2 (redesign2-spec.md §2): the Tools and Outline cards and the empty-state helper.
+  ["--tools-ink", "--tools-bg", "Tools card title, labels and close"],
+  ["--tools-ink", "--tools-chip", "Rewrite as… chips and Tools rows"],
+  ["--tools-ink", "--tools-chip-hover", "hovered chips"],
+  ["--tools-ink", "--tools-field", "Custom request text"],
+  ["--tools-placeholder", "--tools-field", "Try any prompt… placeholder"],
+  ["--outline-ink", "--outline-card-bg", "Outline card title and rows"],
+  ["--outline-ink", "--outline-hover", "hovered outline rows, Add pill"],
+  ["--tools-bg", "--tools-ink", "Custom request Rewrite button"],
+  ["--helper-ink", "--editor-bg", "empty-state helper text"],
+  ["--helper-link", "--editor-bg", "empty-state helper links"],
 ];
 
 /** Non-text (3:1): [indicator token, background token, where it shows]. */
@@ -130,6 +141,14 @@ const NON_TEXT: [string, string, string][] = [
   ["--panel-head", "--panel-bg", "documents panel focus outline"],
   ["--ring", "--background", "focus rings on shared UI controls"],
   ["--ring", "--popover", "focus rings inside popovers and menus"],
+  ["--tools-focus", "--tools-bg", "focus rings inside the Tools card"],
+  ["--tools-focus", "--tools-field", "focus ring on the Custom request field"],
+  ["--outline-current", "--outline-card-bg", "current-section pill outline"],
+  ["--outline-current", "--outline-hover", "hovered current-section pill outline"],
+  ["--tools-ink", "--tools-bg", "dashed outline of disabled Tools controls"],
+  ["--outline-ink", "--outline-hover", "Required tag and Choose a type borders on a hovered row"],
+  ["--outline-ink", "--outline-card-bg", "focus rings inside the Outline card"],
+  ["--helper-link", "--editor-bg", "helper link focus outline"],
 ];
 
 describe.each([

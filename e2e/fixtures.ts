@@ -44,7 +44,8 @@ export const saveStatus = (page: Page) => page.locator("header [role=status]:not
 type TipTapNode = { type: string; attrs?: Record<string, unknown>; text?: string; marks?: Array<{ type: string; attrs?: Record<string, unknown> }>; content?: TipTapNode[] };
 export const para = (...content: TipTapNode[]): TipTapNode => ({ type: "paragraph", content });
 export const text = (t: string, marks?: TipTapNode["marks"]): TipTapNode => ({ type: "text", text: t, ...(marks ? { marks } : {}) });
-export const heading = (t: string, level = 2): TipTapNode => ({ type: "heading", attrs: { level }, content: [text(t)] });
+/** A heading; give it a `sectionId` (s_ and 8 characters, as the editor makes them) when the test needs the caret's section before any edit (the editor only fills missing ids on a change). */
+export const heading = (t: string, level = 2, sectionId?: string): TipTapNode => ({ type: "heading", attrs: { level, ...(sectionId ? { sectionId } : {}) }, content: [text(t)] });
 
 /** A passage citation mark (src/lib/citations/contract.ts); the source need not exist for the popover to open. */
 export const citation = (sourceId = "00000000-0000-4000-8000-000000000001") => ({
@@ -78,13 +79,62 @@ export async function settle(page: Page) {
   await page.waitForTimeout(300);
 }
 
-/** Opens the document modal from the Notes control and waits for the dialog. */
-export async function openModal(page: Page): Promise<Locator> {
-  await page.getByRole("button", { name: "Notes", exact: true }).click();
+export type ModalTab = "Notes" | "Sources" | "Data" | "Suggestions" | "Workflows";
+export type HeaderControl = "Sources" | "Document Gallery" | "Share & Export";
+
+/**
+ * One of the header's three dialog buttons (redesign2-spec.md §1). Found by
+ * its text rather than its role, so it can still be read while its dialog is
+ * open (Radix hides the page from the accessibility tree meanwhile). Document
+ * Gallery's text gains ", suggestion ready" while the classifier has one.
+ */
+export const headerButton = (page: Page, name: HeaderControl) =>
+  page.locator("header button[aria-haspopup='dialog']").filter({ hasText: name === "Document Gallery" ? /^Document Gallery/ : new RegExp(`^${name}$`) });
+
+/** Opens the document modal from the header's Sources button, then shows `tab` (Sources opens on its own tab). */
+export async function openModal(page: Page, tab: ModalTab = "Notes"): Promise<Locator> {
+  await page.locator("header").getByRole("button", { name: "Sources", exact: true }).click();
   const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const tabButton = dialog.getByRole("tab", { name: tab, exact: true });
+  if (tab !== "Sources") await tabButton.click();
+  await expect(tabButton).toHaveAttribute("aria-selected", "true");
+  return dialog;
+}
+
+/** Opens the Document Gallery from the header and waits for the dialog. */
+export async function openGallery(page: Page): Promise<Locator> {
+  await page.locator("header").getByRole("button", { name: /^Document Gallery/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Document Gallery" });
   await expect(dialog).toBeVisible();
   return dialog;
 }
+
+/** Opens the Share & Export dialog from the header and waits for it. */
+export async function openShareExport(page: Page): Promise<Locator> {
+  await page.locator("header").getByRole("button", { name: "Share & Export", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Share & Export" });
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+/** A floating button at the bottom right ("Document panels"). It is gone while its card shows. */
+export const fab = (page: Page, name: "Outline" | "Tools") => page.getByRole("group", { name: "Document panels" }).getByRole("button", { name, exact: true });
+
+/** The right column's slot that holds a card (right-column-model.ts OUTLINE_SLOT_ID / TOOLS_SLOT_ID). */
+export const cardSlot = (page: Page, name: "Outline" | "Tools") => page.locator(name === "Outline" ? "#editor-outline-slot" : "#editor-tools-slot");
+
+/** Opens the Outline or Tools card from its floating button; returns the card (its <aside>). */
+export async function openCard(page: Page, name: "Outline" | "Tools"): Promise<Locator> {
+  await fab(page, name).click();
+  const card = cardSlot(page, name).getByRole("complementary", { name, exact: true });
+  await expect(card).toBeVisible();
+  await expect(fab(page, name)).toHaveCount(0);
+  return card;
+}
+
+/** The empty document's helper beside the dog (redesign2-spec.md §5). */
+export const helperOf = (page: Page) => page.getByRole("region", { name: "Getting started" });
 
 /** The element that has focus matches :focus-visible (the keyboard focus ring would show). */
 export async function expectFocusVisible(page: Page, expected?: Locator) {

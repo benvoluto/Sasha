@@ -82,6 +82,17 @@ export function sectionBodyRange(doc: PMNode, sectionId: string): SectionBody | 
 }
 
 /**
+ * Where to put the caret after a section's body was replaced while the caret
+ * was inside it: the end of the new body, so it stays in that section (mapped
+ * through the replacement it would land past it, in the next heading, and the
+ * Tools card would then act on the wrong section). Null when the body is empty.
+ */
+export function caretInSectionBody(doc: PMNode, sectionId: string): number | null {
+  const range = sectionBodyRange(doc, sectionId);
+  return range && range.to > range.from ? range.to - 1 : null;
+}
+
+/**
  * The top-level index of the heading whose section (as sectionBodyRange reads
  * it) holds the block at `index`, or -1 when no heading comes before it. A
  * sub-heading without a `specKey` (a "### Competitors" Claude wrote inside a

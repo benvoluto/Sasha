@@ -1,16 +1,15 @@
 "use client";
 
-// Choosing a document type: the header's type picker (grouped by family), the
-// gallery dialog for browsing every type, "Save outline as type…", the quiet
-// "Start from a type" strip under a new empty document, and creating a new
-// document of a type. Types come from GET /api/document-types (the team's
-// enabled types: catalog files, team edits and team-made types).
+// Choosing a document type: the gallery of every type (the editor's Document
+// Gallery, document-gallery-dialog.tsx, and the documents panel's "New from a
+// type"), "Save outline as type…", and creating a new document of a type.
+// Types come from GET /api/document-types (the team's enabled types: catalog
+// files, team edits and team-made types).
 
 import { useAuth } from "@clerk/nextjs";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
-import { Check, CaretUpDown, Loader2, Search, TypesIcon } from "@/components/icons";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { Loader2, Search } from "@/components/icons";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FAMILIES, type DocumentTypeSummary, type Family } from "@/catalog/schema";
 import { ensureTypes, getTypesState, loadTypes, REVALIDATE_MS, SERVER_STATE, subscribeTypes } from "./document-types-store";
 
@@ -95,8 +94,8 @@ export async function createDocumentOfType(typeKey: string): Promise<string> {
 /**
  * A DialogContent onCloseAutoFocus that puts focus back on the control that
  * opened the dialog when it is still on the page (the Outline panel's "Choose
- * a type"), else on `ref` (a dialog opened from a menu item, which is gone by
- * then). Radix alone would focus its DialogTrigger, and these dialogs have
+ * a type"), else on `ref` (the opener is gone by then, e.g. the empty-state
+ * helper dismissed itself). Radix alone would focus its DialogTrigger, and these dialogs have
  * none. `opener` reads the element focused at open (useReturnFocus records it).
  */
 export function returnFocusTo(ref?: RefObject<HTMLElement | null>, opener?: () => Element | null) {
@@ -120,93 +119,6 @@ export function useReturnFocus(ref?: RefObject<HTMLElement | null>) {
   };
 }
 
-// --- Header picker -------------------------------------------------------------
-
-export function TypePicker({
-  types,
-  value,
-  onChange,
-  onBrowse,
-  onSaveOutline,
-  triggerRef,
-}: {
-  types: DocumentTypeSummary[];
-  value: string | null;
-  onChange: (t: DocumentTypeSummary | null) => void;
-  onBrowse: () => void;
-  /** Omitted when the document has no headings to save. */
-  onSaveOutline?: () => void;
-  /** The picker button, so the dialogs it opens can hand focus back to it (TypeGallery / SaveOutlineDialog returnFocusRef). */
-  triggerRef?: RefObject<HTMLButtonElement | null>;
-}) {
-  // A dialog opening from the menu takes focus itself; the menu must not pull it back to the button.
-  const dialogNext = useRef(false);
-  const current = findType(types, value);
-  const groups = groupByFamily(types);
-  const label = current?.title ?? (value ? "Custom type" : "Choose type");
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          ref={triggerRef}
-          type="button"
-          aria-label={`Document type: ${label}`}
-          className="flex min-h-11 items-center gap-1 rounded-md px-2 py-1 text-[17px] font-medium text-[var(--action)] sm:min-h-8 hover:bg-[var(--action-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] data-[state=open]:bg-[var(--action-soft)]"
-        >
-          {/* Placeholder in the muted ink rather than faded action blue, which fell under 4.5:1 in both schemes. */}
-          <span className={current || value ? "" : "text-[var(--doc-muted)]"}>{label}</span>
-          <CaretUpDown className="h-4 w-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="max-h-[60vh] min-w-64 overflow-y-auto"
-        onCloseAutoFocus={(e) => {
-          // Back to the button, unless a dialog is opening or the choice already
-          // moved focus (choosing a type can put the caret in the document).
-          const active = document.activeElement;
-          if (dialogNext.current || (active && active !== document.body && !active.closest('[role="menu"]'))) e.preventDefault();
-          dialogNext.current = false;
-        }}
-      >
-        {groups.map((g, i) => (
-          <div key={g.family}>
-            {i > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-[var(--doc-muted)]">{g.label}</DropdownMenuLabel>
-            {g.types.map((t) => (
-              <DropdownMenuItem key={t.key} onSelect={() => onChange(t)}>
-                <Check className={`h-4 w-4 ${t.key === current?.key ? "opacity-100" : "opacity-0"}`} /> {t.title}
-              </DropdownMenuItem>
-            ))}
-          </div>
-        ))}
-        {groups.length > 0 && <DropdownMenuSeparator />}
-        <DropdownMenuItem onSelect={() => onChange(null)}>
-          <Check className={`h-4 w-4 ${value ? "opacity-0" : "opacity-100"}`} /> No type (freeform)
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={() => {
-            dialogNext.current = true;
-            onBrowse();
-          }}
-        >
-          <Search className="h-4 w-4" /> Browse all types…
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={!onSaveOutline}
-          onSelect={() => {
-            dialogNext.current = true;
-            onSaveOutline?.();
-          }}
-        >
-          <TypesIcon className="h-4 w-4" /> Save outline as type…
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 // --- Gallery -------------------------------------------------------------------
 
 export function TypeGallery({
@@ -220,6 +132,8 @@ export function TypeGallery({
   description = "Each type gives the document an outline and tells Claude how to write each section.",
   onChoose,
   returnFocusRef,
+  top,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -231,8 +145,12 @@ export function TypeGallery({
   description?: string;
   /** Resolves to an error message to show, or nothing when done (the caller closes the dialog). */
   onChoose: (t: DocumentTypeSummary) => Promise<string | void> | string | void;
-  /** Where focus goes on close when the opener is gone, e.g. a menu item (TypePicker's triggerRef). A button still on the page gets focus back itself. */
+  /** Where focus goes on close when the opener is gone. A control still on the page gets focus back itself. */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Shown above the search (the Document Gallery's current type and suggestion). */
+  top?: ReactNode;
+  /** Runs first on close; calling preventDefault skips the return focus (another dialog is taking over). */
+  onCloseAutoFocus?: (e: Event) => void;
 }) {
   const [query, setQuery] = useState("");
   const [family, setFamily] = useState<Family | "all">("all");
@@ -273,12 +191,21 @@ export function TypeGallery({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        {...focusProps}
+        onOpenAutoFocus={focusProps.onOpenAutoFocus}
+        onCloseAutoFocus={(e) => {
+          onCloseAutoFocus?.(e);
+          if (!e.defaultPrevented) focusProps.onCloseAutoFocus(e);
+        }}
         className="flex max-h-[min(44rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden rounded-2xl bg-[var(--doc-surface)] p-0 text-[var(--doc-ink)] sm:max-w-3xl">
         <DialogHeader className="space-y-1 border-b border-[var(--doc-line)] px-6 pb-4 pt-6 text-left">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="text-[var(--doc-muted)]">{description}</DialogDescription>
-          <div className="flex flex-wrap items-center gap-2 pt-3">
+        </DialogHeader>
+        {/* The current type, the suggestion and the search scroll with the cards: on a short screen (a phone
+            on its side) a fixed header holding them all would leave no room for the cards. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-3">
+          {top && <div className="mb-3">{top}</div>}
+          <div className="sticky top-0 z-[1] -mx-6 mb-3 flex flex-wrap items-center gap-2 bg-[var(--doc-surface)] px-6 pb-3 pt-1">
             <label htmlFor="type-search" className="sr-only">
               Search types
             </label>
@@ -303,8 +230,6 @@ export function TypeGallery({
               ))}
             </select>
           </div>
-        </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           {(error || chooseError) && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{chooseError ?? error}</p>}
           {loading && types.length === 0 && (
             <p className="flex items-center gap-2 text-sm text-[var(--doc-muted)]">
@@ -331,6 +256,7 @@ export function TypeGallery({
                       {working === t.key && <Loader2 className="h-4 w-4 animate-spin" />}
                       {t.title}
                       {t.origin === "team" && <span className="rounded-full bg-[var(--doc-accent-soft)] px-1.5 text-[11px] font-semibold text-[var(--doc-accent)]">Team</span>}
+                      {t.key === current && <span className="rounded-full bg-[var(--doc-accent)] px-1.5 text-[11px] font-semibold text-[var(--doc-on-accent)]">Current</span>}
                     </span>
                     <span className="line-clamp-2 text-xs text-[var(--doc-muted)]">{t.summary}</span>
                     <span className="line-clamp-2 text-xs text-[var(--doc-ink)] opacity-80">
@@ -364,7 +290,7 @@ export function SaveOutlineDialog({
   defaultTitle: string;
   /** Resolves to an error message, or null when saved. */
   onSave: (title: string) => Promise<string | null>;
-  /** Where focus goes on close (it opens from the type picker's menu). */
+  /** Where focus goes on close when its opener is gone (it opens from the Document Gallery, which closes first). */
   returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const [title, setTitle] = useState(defaultTitle);
@@ -427,55 +353,5 @@ export function SaveOutlineDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// --- Start from a type ---------------------------------------------------------
-
-/** Shown first in the strip when the team has them; the rest of the slots fill from the list. */
-const POPULAR = ["general-report", "proposal", "policy-decision-memo", "design-doc-rfc", "business-plan", "research-report-imrad", "product-requirements"];
-
-export function popularTypes(types: DocumentTypeSummary[], count = 6): DocumentTypeSummary[] {
-  const rank = (t: DocumentTypeSummary) => {
-    const i = POPULAR.indexOf(t.key);
-    return i < 0 ? POPULAR.length : i;
-  };
-  return [...types].sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title)).slice(0, count);
-}
-
-export function StartFromTypeStrip({ types, onChoose, onBrowse }: { types: DocumentTypeSummary[]; onChoose: (t: DocumentTypeSummary) => Promise<string | null>; onBrowse: () => void }) {
-  const [working, setWorking] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  if (types.length === 0) return null;
-  return (
-    <div className="mt-10 max-w-[48rem] border-t border-[var(--doc-line)] pt-5" aria-label="Start from a type" role="group">
-      <p className="mb-2.5 text-sm text-[var(--doc-muted)]">Start from a type</p>
-      <div className="flex flex-wrap gap-2">
-        {popularTypes(types).map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            disabled={!!working}
-            onClick={async () => {
-              setWorking(t.key);
-              setError(null);
-              const err = await onChoose(t);
-              if (err) {
-                setError(err);
-                setWorking(null);
-              }
-            }}
-            className="flex items-center gap-1.5 rounded-full border border-[var(--doc-line)] px-3 py-1.5 text-sm hover:border-[var(--doc-accent)] hover:text-[var(--doc-accent)] disabled:opacity-60"
-          >
-            {working === t.key && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {t.title}
-          </button>
-        ))}
-        <button type="button" onClick={onBrowse} disabled={!!working} className="rounded-full px-3 py-1.5 text-sm font-medium text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)] disabled:opacity-60">
-          Browse all…
-        </button>
-      </div>
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-    </div>
   );
 }

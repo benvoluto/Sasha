@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DocumentTypeSummary } from "@/catalog/schema";
-import { findType, groupByFamily, popularTypes, returnFocusTo } from "./type-picker";
+import { findType, groupByFamily, returnFocusTo } from "./type-picker";
+import { article, suggestionAnnouncement } from "./classifier-chip";
 import { rewriteItems } from "./section-menu";
 import { nextRefreshDelay } from "./use-outline-status";
 
@@ -37,9 +38,18 @@ describe("type picker helpers", () => {
     expect(findType([t("team-brief", "general", "Brief", ["brief"])], "brief")?.key).toBe("team-brief");
     expect(findType(types, null)).toBeNull();
   });
+});
 
-  it("puts popular types first", () => {
-    expect(popularTypes(types, 3).map((x) => x.key)).toEqual(["general-report", "proposal", "policy-decision-memo"]);
+describe("classifier suggestion", () => {
+  const suggestion = (title: string) => ({ key: "k", title, confidence: 0.8, why: "", alternatives: [] });
+  it("picks a or an", () => {
+    expect(article("Proposal")).toBe("a");
+    expect(article(" Incident report")).toBe("an");
+  });
+  it("announces a new suggestion and points to the Document Gallery", () => {
+    expect(suggestionAnnouncement(suggestion("Grant proposal"))).toBe("Sasha suggests a Grant proposal outline. Open the Document Gallery to apply it.");
+    expect(suggestionAnnouncement(suggestion("Executive summary"))).toMatch(/^Sasha suggests an Executive summary outline\./);
+    expect(suggestionAnnouncement(null)).toBe("");
   });
 });
 

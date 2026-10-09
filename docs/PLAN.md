@@ -937,6 +937,57 @@ the resume (spec step 4) and the candidate approves each changed line (spec step
   was then now with their evidence, for the candidate's approval.
 - e2e: the stub `workflow.tailor` reply has no lines, so stubbed runs never wait on a change.
 
+**2026-10-09: editor redesign 2 (user mockups).** The editing screen follows the user's two mockups
+(an empty document with a helper beside the dog; a document with the Tools and Outline cards open).
+The rail and the formatting toolbar are unchanged.
+- Header: the title and the save status on the left; on the right three dialog buttons, Sources,
+  Document Gallery and Share & Export (icon-only below sm, the visible text stays the name). Sources
+  opens the document modal on its Sources tab and focus returns to whatever opened it.
+- Document Gallery (`document-gallery-dialog.tsx`) replaces the type picker dropdown: the current
+  type, "No type (freeform)", "Save outline as type…", the classifier's "Suggested type" block, then
+  the search, family filter and type cards (the current one `aria-current`). It also opens from the
+  helper, the Outline card's "Choose a type" and tell me when no type fits.
+- Share & Export (`share-export-dialog.tsx`) merges the share popover and the export menu: team
+  sharing and the copyable link, then Markdown, Word and PDF buttons with a "Downloaded <file>."
+  status; the export logic moved to `use-export.ts`.
+- Cards: Tools is an olive card (`--tools-*` tokens, a darker olive than the mockup so white text
+  passes AA) with four rewrite chips (More concise, Simple language, Strength-based, Add details), a
+  custom request, Draft this section, Check document and Section notes. Outline is a pale card
+  (`--outline-*`) with status icons per row and the caret's section marked `aria-current="location"`.
+  Both have their own dark-mode tokens and sit at the bottom of the right column (a drawer or a phone
+  sheet when narrower).
+- Helper (`empty-helper.tsx`): "Start writing, upload sources, choose a document type or just tell me
+  what doc you'd like to create…", with the three as inline buttons. "Tell me" takes a prompt and
+  `POST /api/documents/[id]/start-from-prompt` picks a type (`classify.prompt`), then the editor lays
+  out the outline and drafts each non-static section through the section generate route
+  (`src/lib/tell-me`, `use-tell-me.ts`).
+- Decisions:
+  1. The Notes button is gone; Notes is the document modal's first tab.
+  2. The save status stays in `<header>` after the title, in small muted text.
+  3. The classifier chip moved into the Document Gallery as "Suggested type"; the header button shows
+     a dot and ", suggestion ready", and a polite live region announces the suggestion.
+  4. The start-from-type strip is gone (the helper replaces it), and so is the editor's "new document
+     of a type" gallery mode; the documents panel's New stays.
+  5. The floating Outline and Tools buttons only open: each hides while its card shows (no
+     `aria-pressed`), the card's X closes it and focus returns to the button. With no buttons showing,
+     `--fab-clearance` is cleared and the phone sheet drops to the bottom.
+  6. Rewrite target: the selection, else the caret's section, else the caret's block. The chips use a
+     new `toolsLabel` on the rewrite presets, so the existing labels stay.
+  7. Tell me rate limits: the type pick is "light" (one Haiku call); each section draft is "draft"
+     through the existing generate route. A 429 stops new sections and keeps the finished ones.
+  8. Tell me undo: the outline and drafts are laid out outside history, then swapped in as one history
+     step after a snapshot. Undo restores the empty document; the type and notes stay.
+- The helper hides once the first paragraph is written (text, then Enter or leaving it), when the dog
+  ("Hide Sasha's tips") is clicked, or when a type is chosen; the dismissal is kept per document in
+  localStorage (`sasha.helper.dismissed.<id>`).
+- e2e: `e2e/fixtures.ts` opens the modal from the header Sources button and adds `openGallery`,
+  `openShareExport`, `openCard` and `helperOf`; `e2e/redesign.spec.ts` covers the helper, the dog,
+  the three helper links (tell me end to end on the stubs, one undo back to empty), the Tools chips on
+  a selection and on a section, and the outline's current row. The axe run adds the gallery (typed and
+  untyped), Share & Export, both cards (inline and the phone sheet), the helper, the tell-me form and
+  its done state, in light and dark. The stubs answer `classify.prompt` with General report at 0.9 and
+  give `rewrite.selection` and `rewrite.section` their own sentences, so a spec can tell them apart.
+
 ---
 
 ## Sources

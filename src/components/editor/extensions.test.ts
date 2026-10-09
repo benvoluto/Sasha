@@ -6,7 +6,7 @@ import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { parseHTML } from "linkedom";
 import type { PMNode as PMJSON } from "@/lib/documents/sections";
 import { tableSnapshotNodes } from "@/lib/data/snapshot";
-import { documentExtensions, fixSectionIds, gutterButton, gutterDecorations } from "./extensions";
+import { documentExtensions, EMPTY_GUTTER, fixSectionIds, gutterButton, gutterDecorations, nextGutterState, placeholderText, sectionIdsOnLoad } from "./extensions";
 
 const schema = new Schema({
   nodes: {
@@ -63,6 +63,40 @@ describe("fixSectionIds", () => {
     const state = EditorState.create({ schema, doc });
     const tr = state.tr.insertText("!", 2);
     expect(fixSectionIds([tr], state.apply(tr))).toBeNull();
+  });
+});
+
+describe("sectionIdsOnLoad", () => {
+  const ids = (state: EditorState) => {
+    const out: Array<[string | null, string | null]> = [];
+    state.doc.forEach((n) => {
+      if (n.type.name === "heading") out.push([n.attrs.sectionId, n.attrs.specKey]);
+    });
+    return out;
+  };
+
+  it("gives ids to headings saved without one, outside the undo history", () => {
+    const state = EditorState.create({ schema, doc: schema.node("doc", null, [h("Aims", null, "aims"), p("body"), h("Approach", "s_b")]) });
+    const tr = sectionIdsOnLoad(state);
+    expect(tr).not.toBeNull();
+    expect(tr!.getMeta("addToHistory")).toBe(false);
+    const out = ids(state.apply(tr!));
+    expect(out[0][0]).toMatch(/^s_/);
+    expect(out[0][1]).toBe("aims");
+    expect(out[1]).toEqual(["s_b", null]);
+  });
+
+  it("lets the first of two headings with the same id keep it", () => {
+    const state = EditorState.create({ schema, doc: schema.node("doc", null, [h("A", "s_a", "a"), h("B", "s_a", "a")]) });
+    const out = ids(state.apply(sectionIdsOnLoad(state)!));
+    expect(out[0]).toEqual(["s_a", "a"]);
+    expect(out[1][0]).not.toBe("s_a");
+    expect(out[1][1]).toBeNull();
+  });
+
+  it("does nothing when every heading has its own id", () => {
+    const state = EditorState.create({ schema, doc: schema.node("doc", null, [h("A", "s_a"), h("B", "s_b")]) });
+    expect(sectionIdsOnLoad(state)).toBeNull();
   });
 });
 
@@ -245,5 +279,29 @@ describe("Citation mark", () => {
     const typed = next.doc.firstChild!.child(1);
     expect(typed.text).toBe("! Next.");
     expect(typed.marks).toEqual([]);
+  });
+});
+
+describe("placeholderText", () => {
+  it("says Start writing on an empty document, Heading on headings and Write this section elsewhere", () => {
+    expect(placeholderText("paragraph", true)).toBe("Start writing…");
+    expect(placeholderText("heading", true)).toBe("Heading");
+    expect(placeholderText("heading", false)).toBe("Heading");
+    expect(placeholderText("paragraph", false)).toBe("Write this section…");
+  });
+});
+
+describe("nextGutterState", () => {
+  it("keeps each runner's busy sections, so one finishing doesn't clear the other's markers", () => {
+    let state = nextGutterState(EMPTY_GUTTER, { owner: "tell-me", busy: new Set(["s_a", "s_b"]) });
+    state = nextGutterState(state, { owner: "generation", busy: new Set(["s_c"]) });
+    expect([...state.busy].sort()).toEqual(["s_a", "s_b", "s_c"]);
+    // The section run finishes: tell me's sections stay busy.
+    state = nextGutterState(state, { owner: "generation", busy: new Set() });
+    expect([...state.busy].sort()).toEqual(["s_a", "s_b"]);
+    state = nextGutterState(state, { owner: "tell-me", busy: new Set(["s_b"]) });
+    expect([...state.busy]).toEqual(["s_b"]);
+    state = nextGutterState(state, { owner: "tell-me", busy: new Set() });
+    expect(state.busy.size).toBe(0);
   });
 });

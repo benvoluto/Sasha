@@ -1,19 +1,16 @@
 "use client";
 
-// The classifier's quiet chip in the document header (PLAN §6.3): "Looks like
-// a <Type>: apply outline?" with Apply, Not now, and the alternatives.
-// Inline in the header's wrapping row; the top candidate's reason is its
-// tooltip. The live region is always mounted so the chip's arrival is
-// announced politely.
+// The classifier's suggestion (PLAN §6.3), shown in the Document Gallery's
+// top block (redesign2-spec.md §3.2): "Looks like a <Type>." with the reason,
+// Apply, Not now, and the alternatives. The header's Document Gallery button
+// shows a dot while a suggestion waits, and document-screen keeps the polite
+// live region that announces it (suggestionAnnouncement).
 //
 // "Restructure…" (phase6-spec.md §8.3), beside Apply and on each alternative,
 // maps the existing text onto the type's outline with the restructure
 // workflow. On a document that already has a type, Apply itself reads
 // "Restructure?" and opens that flow (applyLabel; chipApplyAction).
 
-import { Fragment } from "react";
-import { ChevronDown } from "@/components/icons";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { ChipSuggestion } from "@/lib/classifier/contract";
 
 /** "a" or "an" before a type title. */
@@ -21,92 +18,72 @@ export function article(title: string): string {
   return /^[aeiou]/i.test(title.trim()) ? "an" : "a";
 }
 
-const button =
-  "inline-flex min-h-11 items-center rounded-full px-2.5 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] sm:min-h-0 sm:py-0.5";
+/** What the screen's live region says when a suggestion arrives. */
+export function suggestionAnnouncement(suggestion: ChipSuggestion | null): string {
+  if (!suggestion) return "";
+  return `Sasha suggests ${article(suggestion.title)} ${suggestion.title} outline. Open the Document Gallery to apply it.`;
+}
 
-export function ClassifierChip({
+const button =
+  "inline-flex min-h-11 items-center rounded-lg border border-[var(--go-line)] px-3 text-sm font-medium text-[var(--go)] hover:bg-[var(--go-soft-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] sm:min-h-8";
+
+export function ClassifierSuggestion({
   suggestion,
   onApply,
   onRestructure,
   onDismiss,
   applyLabel = "Apply",
 }: {
-  suggestion: ChipSuggestion | null;
+  suggestion: ChipSuggestion;
   /** Apply the type (the top candidate or an alternative): in merge mode, or the restructure flow on a typed document. */
   onApply: (key: string) => void;
   /** "Restructure…": open the restructure workflow with this type as the target. */
   onRestructure?: (key: string) => void;
   onDismiss: (key: string) => void;
-  /** "Apply", or "Restructure?" when the document already has a type. */
+  /** "Apply outline", or "Restructure?" when the document already has a type. */
   applyLabel?: string;
 }) {
-  const announcement = suggestion ? `Looks like ${article(suggestion.title)} ${suggestion.title}. Apply its outline?` : "";
+  // Restructure is offered separately only where Apply merges (an untyped document).
+  const offerRestructure = !!onRestructure && applyLabel !== "Restructure?";
   return (
-    <>
-      <span role="status" aria-live="polite" className="sr-only">
-        {announcement}
-      </span>
-      {suggestion && (
-        <div
-          role="group"
-          aria-label="Document type suggestion"
-          title={suggestion.why || undefined}
-          className="flex max-w-full flex-wrap items-center gap-x-0.5 gap-y-1 rounded-2xl bg-[var(--go-soft)] py-0.5 pl-3 pr-1 text-sm text-[var(--go)] sm:rounded-full"
-        >
-          <span className="mr-1">
-            Looks like {article(suggestion.title)} <strong className="font-semibold">{suggestion.title}</strong>: apply outline?
-          </span>
-          <button type="button" onClick={() => onApply(suggestion.key)} className={`${button} hover:bg-[var(--go-soft-strong)]`}>
-            {applyLabel}
+    <section aria-label="Suggested type" className="space-y-2 rounded-xl bg-[var(--go-soft)] px-3.5 py-3 text-sm text-[var(--doc-ink)]">
+      <p>
+        Looks like {article(suggestion.title)} <strong className="font-semibold">{suggestion.title}</strong>.
+        {suggestion.why && <span className="text-[var(--doc-muted)]"> {suggestion.why}</span>}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => onApply(suggestion.key)} className={button}>
+          {applyLabel}
+        </button>
+        {offerRestructure && (
+          <button type="button" onClick={() => onRestructure?.(suggestion.key)} title="Map the existing text onto this type's outline" className={button}>
+            Restructure…
           </button>
-          {onRestructure && applyLabel === "Apply" && (
-            <button
-              type="button"
-              onClick={() => onRestructure(suggestion.key)}
-              title="Map the existing text onto this type's outline"
-              className={`${button} hover:bg-[var(--go-soft-strong)]`}
-            >
-              Restructure…
-            </button>
-          )}
-          <button type="button" onClick={() => onDismiss(suggestion.key)} className={`${button} hover:bg-[var(--go-soft-strong)]`}>
-            Not now
-          </button>
-          {suggestion.alternatives.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Other suggestions"
-                  title="Other suggestions"
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-[var(--go-soft-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] sm:min-h-7 sm:min-w-7"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
+        )}
+        <button type="button" onClick={() => onDismiss(suggestion.key)} className={button}>
+          Not now
+        </button>
+      </div>
+      {suggestion.alternatives.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-[var(--doc-muted)]">Other possibilities</p>
+          <ul className="flex flex-wrap gap-2">
+            {suggestion.alternatives.map((alt) => (
+              <li key={alt.key} className="flex flex-wrap gap-1">
+                <button type="button" onClick={() => onApply(alt.key)} title={alt.why || undefined} className={button}>
+                  {alt.title}
+                  {!offerRestructure && <span className="sr-only">, {applyLabel}</span>}
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-32px)]">
-                <DropdownMenuLabel>Other suggestions</DropdownMenuLabel>
-                {suggestion.alternatives.map((alt) => (
-                  <Fragment key={alt.key}>
-                    <DropdownMenuItem onSelect={() => onApply(alt.key)} className="flex min-h-11 flex-col items-start gap-0.5 sm:min-h-0">
-                      <span className="font-medium">
-                        {alt.title}
-                        {applyLabel !== "Apply" && <span className="font-normal text-[var(--doc-muted)]"> · {applyLabel}</span>}
-                      </span>
-                      {alt.why && <span className="text-xs text-[var(--doc-muted)]">{alt.why}</span>}
-                    </DropdownMenuItem>
-                    {onRestructure && applyLabel === "Apply" && (
-                      <DropdownMenuItem onSelect={() => onRestructure(alt.key)} className="min-h-11 pl-5 text-xs text-[var(--doc-muted)] sm:min-h-0">
-                        Restructure to {alt.title}…
-                      </DropdownMenuItem>
-                    )}
-                  </Fragment>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                {offerRestructure && (
+                  <button type="button" onClick={() => onRestructure?.(alt.key)} aria-label={`Restructure to ${alt.title}`} title={`Restructure to ${alt.title}`} className={button}>
+                    Restructure…
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-    </>
+    </section>
   );
 }

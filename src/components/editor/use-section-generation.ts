@@ -8,6 +8,7 @@
 // result is only applied directly when the section still reads as it did. The
 // insert is one transaction, so a single Undo takes it back.
 
+import { TextSelection } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CITATION_MARK, CITE_SOURCES_INSTRUCTION, type CitationReport } from "@/lib/citations/contract";
@@ -15,9 +16,9 @@ import type { SectionGenerateRequest, SectionGenerateResponse, SectionMode } fro
 import { sectionBlocksFromMarkdown } from "@/lib/sections/content";
 import { textWithMarkers } from "./citation-layer-model";
 import { placeCitations } from "./cite-in-place";
-import { setBusySections } from "./extensions";
+import { busySectionIds, setBusySections } from "./extensions";
 import type { Notify } from "./notice";
-import { sectionBodyRange, type SectionBody } from "./tracked-range";
+import { caretInSectionBody, sectionBodyRange, type SectionBody } from "./tracked-range";
 
 export type GenerationRequest = {
   sectionId: string;
@@ -95,11 +96,14 @@ export function useSectionGeneration({
   editor,
   ensureSaved,
   notify,
+  locked = null,
 }: {
   editor: Editor | null;
   /** Saves pending changes (creating the document if needed) and returns its id. */
   ensureSaved: () => Promise<string | null>;
   notify: Notify;
+  /** Why no run may start now (another flow, "tell me", is writing the document), or null. */
+  locked?: string | null;
 }) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
   // The ref guards against a double run before React re-renders.
@@ -125,7 +129,12 @@ export function useSectionGeneration({
         return false;
       }
       const blocks = sectionBlocksFromMarkdown(markdown, current.level, { lineBreaks, citations });
+      const { from: selFrom, to: selTo } = editor.state.selection;
+      const caretInside = selFrom >= current.from && selTo <= current.to && current.to > current.from;
       editor.chain().insertContentAt({ from: current.from, to: current.to }, blocks, { updateSelection: false }).run();
+      // A caret that was in the old body stays in the section (a selection-only step, so Undo is unchanged).
+      const caret = caretInside ? caretInSectionBody(editor.state.doc, sectionId) : null;
+      if (caret !== null) editor.view.dispatch(editor.state.tr.setSelection(TextSelection.near(editor.state.doc.resolve(caret), -1)));
       const dropped = droppedNotice(citations);
       notify({
         text: `${isRewrite(mode) ? "Rewrote" : "Drafted"} “${current.heading || "Untitled section"}”.${dropped ? ` ${dropped}` : ""}`,
@@ -180,8 +189,10 @@ export function useSectionGeneration({
         return message;
       };
       if (!editor || editor.isDestroyed) return fail("The editor isn't ready.");
+      if (locked) return fail(locked);
       const target = sectionBodyRange(editor.state.doc, req.sectionId);
-      const blocked = preflightError(target, req.mode, running.current.has(req.sectionId));
+      // Busy here or in another runner's markers (the gutter keeps every owner's set).
+      const blocked = preflightError(target, req.mode, running.current.has(req.sectionId) || busySectionIds(editor.state).has(req.sectionId));
       if (blocked || !target) return fail(blocked ?? "That section no longer exists.");
 
       mark(req.sectionId, true);
@@ -243,7 +254,7 @@ export function useSectionGeneration({
         mark(req.sectionId, false);
       }
     },
-    [editor, ensureSaved, insert, cite, mark, notify],
+    [editor, ensureSaved, insert, cite, mark, notify, locked],
   );
 
   return { run, busy };

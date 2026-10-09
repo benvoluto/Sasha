@@ -287,10 +287,10 @@ export function SectionNotesPanel({
     ) : null;
 
   return (
-    <aside aria-label="Section notes" className="flex h-full flex-col">
-      <PanelHeader title="Section notes" onClose={onClose} />
+    <aside aria-label="Section notes" className="flex h-full flex-col rounded-[20px] border border-[var(--doc-line)] bg-[var(--editor-bg)] shadow-md">
+      <PanelHeader title="Section notes" variant="plain" onClose={onClose} />
       {!sectionId || !section ? (
-        <p className="px-5 text-sm text-[var(--doc-muted)]">Put the caret in a section to see its notes. Notes belong to the section under a heading.</p>
+        <p className="px-5 pb-5 text-sm text-[var(--doc-muted)]">Put the caret in a section to see its notes. Notes belong to the section under a heading.</p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-6">
           <p className="truncate text-base font-semibold" title={section.heading}>

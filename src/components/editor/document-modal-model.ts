@@ -27,3 +27,13 @@ export function escapeAction(dictating: boolean): "cancel_dictation" | "close" {
 export function modalTitle(documentTitle: string): string {
   return documentTitle.trim() || "Untitled document";
 }
+
+/**
+ * Where focus goes when the dialog closes: the control that opened it while it
+ * is still on the page (the header's Sources button, the helper's "upload
+ * sources"), else the fallback (the helper may have dismissed itself).
+ */
+export function modalReturnTarget<T extends { isConnected: boolean; nodeName: string }>(opener: T | null | undefined, fallback: T | null | undefined): T | null {
+  for (const el of [opener, fallback]) if (el?.isConnected && el.nodeName !== "BODY") return el;
+  return null;
+}

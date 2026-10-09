@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOCUMENT_MODAL_TABS, escapeAction, isDocumentModalTab, modalTitle, TAB_LABELS } from "./document-modal-model";
+import { DOCUMENT_MODAL_TABS, escapeAction, isDocumentModalTab, modalReturnTarget, modalTitle, TAB_LABELS } from "./document-modal-model";
 
 describe("document modal tabs", () => {
   it("lists Notes, Sources, Data, Suggestions and Workflows in order, each with a label", () => {
@@ -28,5 +28,21 @@ describe("modalTitle", () => {
   it("shows the document's title, or Untitled document", () => {
     expect(modalTitle("  Grant for the library ")).toBe("Grant for the library");
     expect(modalTitle("   ")).toBe("Untitled document");
+  });
+});
+
+describe("modalReturnTarget", () => {
+  const el = (nodeName: string, isConnected = true) => ({ nodeName, isConnected });
+  it("returns focus to the control that opened the dialog", () => {
+    const opener = el("BUTTON");
+    expect(modalReturnTarget(opener, el("BUTTON"))).toBe(opener);
+  });
+  it("falls back to the Sources button when the opener is gone or was the page", () => {
+    const fallback = el("BUTTON");
+    for (const opener of [el("BUTTON", false), el("BODY"), null, undefined]) expect(modalReturnTarget(opener, fallback)).toBe(fallback);
+  });
+  it("gives up when neither is on the page", () => {
+    expect(modalReturnTarget(el("BUTTON", false), el("BUTTON", false))).toBeNull();
+    expect(modalReturnTarget(null, null)).toBeNull();
   });
 });

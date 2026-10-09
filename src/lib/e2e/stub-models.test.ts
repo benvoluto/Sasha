@@ -14,6 +14,7 @@ import { RubricModelOutput } from "@/lib/rubric/check";
 import { applyModel } from "@/lib/sections/outline-status";
 import { summarizeSource } from "@/lib/sources/summarize";
 import { SuggestModelOutput } from "@/lib/suggestions/prompt";
+import { pickPromptType, PromptTypeModelOutput } from "@/lib/tell-me/contract";
 import { minimalValue, stubCallModel, stubClaudeMessage, stubGeminiExtraction, stubGeminiTables, TASK_FIXTURES } from "./stub-models";
 
 type Schema = Parameters<typeof minimalValue>[0];
@@ -95,6 +96,7 @@ describe("task fixtures", () => {
     expect(claudeConfigured()).toBe(true);
     const cases: Array<[Task, z.ZodType]> = [
       ["classify.type", ClassifyModelOutput],
+      ["classify.prompt", PromptTypeModelOutput],
       ["suggest.items", SuggestModelOutput],
       ["rubric.check", RubricModelOutput],
       ["learn.extract", ExtractModelOutput],
@@ -145,11 +147,20 @@ describe("task fixtures", () => {
     expect((draft.workflow as { steps: unknown[] }).steps.length).toBeGreaterThan(3);
   });
 
-  it("gives text tasks prose, with a fixture for draft.section", async () => {
+  it("picks a confident general report for a tell-me prompt, so the e2e run reaches drafting", async () => {
+    const { data } = await claudeJson({ task: "classify.prompt", system: "s", user: "u", schema: PromptTypeModelOutput });
+    expect(data.title).toBe("Stub report");
+    expect(pickPromptType({ candidates: data.candidates, freeform: data.freeform })).toBe("general-report");
+  });
+
+  it("gives text tasks prose, with fixtures for draft.section and the two rewrite paths", async () => {
     const drafted = await claudeText({ task: "draft.section", system: "s", user: "u" });
     expect(drafted.text).toBe(TASK_FIXTURES["draft.section"]);
     const rewritten = await claudeText({ task: "rewrite.section", system: "s", user: "u" });
     expect(rewritten.text).toMatch(/end-to-end test stub/);
+    const selection = await claudeText({ task: "rewrite.selection", system: "s", user: "u" });
+    expect(selection.text).toBe(TASK_FIXTURES["rewrite.selection"]);
+    expect(selection.text).not.toBe(rewritten.text);
   });
 });
 

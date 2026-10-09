@@ -12,6 +12,8 @@ export type TaskSpec = { tier: Tier; effort: Effort; maxTokens: number };
 export const TASKS = {
   /** Background document-type classifier. */
   "classify.type": { tier: "fast", effort: "low", maxTokens: 2000 },
+  /** Redesign 2: the empty editor's "tell me" prompt → a document type and a title (src/lib/tell-me). */
+  "classify.prompt": { tier: "fast", effort: "low", maxTokens: 2000 },
   /** Suggested sources and data. */
   "suggest.items": { tier: "fast", effort: "low", maxTokens: 4000 },
   /** Required-element status for the living outline. */

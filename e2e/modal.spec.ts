@@ -1,14 +1,18 @@
-import { createDocument, expect, openDocument, openModal, test, uid } from "./fixtures";
+import { createDocument, expect, headerButton, openDocument, openModal, test, uid } from "./fixtures";
 
 const TABS = ["Notes", "Sources", "Data", "Suggestions", "Workflows"];
 
-test("the document modal shows each tab by click and by arrow keys; Escape returns focus to Notes", async ({ page, request }) => {
+test("the header's Sources button opens the document modal; each tab shows by click and by arrow keys; Escape returns focus to Sources", async ({ page, request }) => {
   const id = await createDocument(request, { title: uid("Modal smoke") });
   await openDocument(page, id);
-  // By attribute: while the dialog is open Radix hides the page from the accessibility tree.
-  const notes = page.locator('header button[aria-label="Notes"]');
-  const dialog = await openModal(page);
-  await expect(notes).toHaveAttribute("aria-expanded", "true");
+  // There is no Notes button any more (redesign2-spec.md §8.1): Notes is the modal's first tab.
+  await expect(page.locator("header").getByRole("button", { name: "Notes", exact: true })).toHaveCount(0);
+  await expect(page.locator("header").getByRole("button", { name: "Sources", exact: true })).toHaveAttribute("aria-haspopup", "dialog");
+  // By text: while the dialog is open Radix hides the page from the accessibility tree.
+  const sources = headerButton(page, "Sources");
+  await expect(sources).toHaveAttribute("aria-expanded", "false");
+  const dialog = await openModal(page, "Sources");
+  await expect(sources).toHaveAttribute("aria-expanded", "true");
   const tabs = dialog.getByRole("tablist");
 
   for (const name of TABS) {
@@ -33,6 +37,13 @@ test("the document modal shows each tab by click and by arrow keys; Escape retur
 
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  await expect(notes).toBeFocused();
-  await expect(notes).toHaveAttribute("aria-expanded", "false");
+  await expect(sources).toBeFocused();
+  await expect(sources).toHaveAttribute("aria-expanded", "false");
+
+  // Notes through its tab: the field is there and takes text.
+  const again = await openModal(page, "Notes");
+  await expect(again.getByRole("textbox", { name: "Notes" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(again).toBeHidden();
+  await expect(sources).toBeFocused();
 });

@@ -70,6 +70,18 @@ function hasNonText(node: PMNode): boolean {
 
 export type RowStatus = "done" | "partial" | "missing";
 
+/**
+ * What a row's icon shows (redesign2-spec.md §4.4): its status, except that a
+ * written section whose elements the server hasn't checked yet reads
+ * "unknown" rather than "partial".
+ */
+export type RowDisplayStatus = RowStatus | "unknown";
+
+export function rowDisplayStatus(row: Pick<OutlineRow, "status" | "elements">): RowDisplayStatus {
+  if (row.status === "partial" && row.elements.length > 0 && row.elements.every((e) => e.status === "unknown")) return "unknown";
+  return row.status;
+}
+
 export type OutlineRow = {
   key: string;
   /** The type's heading for the section. */

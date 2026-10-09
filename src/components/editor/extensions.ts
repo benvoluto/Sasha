@@ -50,14 +50,27 @@ function changedRanges(transactions: readonly Transaction[]): Array<[number, num
  */
 export function fixSectionIds(transactions: readonly Transaction[], state: EditorState): Transaction | null {
   if (!transactions.some((t) => t.docChanged)) return null;
+  const changed = changedRanges(transactions);
+  return assignSectionIds(state, (pos) => changed.some(([from, to]) => pos >= from && pos < to));
+}
+
+/**
+ * The same fix for a document as it was loaded: one saved without heading ids
+ * (made through the API, say) would otherwise only get them on its first edit,
+ * leaving the caret with no section until then. Nothing is new, so of two
+ * headings with the same id the first keeps it. Outside the undo history.
+ */
+export function sectionIdsOnLoad(state: EditorState): Transaction | null {
+  return assignSectionIds(state, () => false);
+}
+
+function assignSectionIds(state: EditorState, isNew: (pos: number) => boolean): Transaction | null {
   const heads: Array<{ pos: number; node: PMNode; id: string | null }> = [];
   state.doc.descendants((node, pos) => {
     if (node.type.name !== "heading") return true;
     heads.push({ pos, node, id: (node.attrs.sectionId as string | null) || null });
     return false;
   });
-  const changed = changedRanges(transactions);
-  const isNew = (pos: number) => changed.some(([from, to]) => pos >= from && pos < to);
   // Which heading keeps each id.
   const keeper = new Map<string, number>();
   for (const h of heads) {
@@ -202,6 +215,8 @@ export function sectionRange(doc: PMNode, headingPos: number): { from: number; t
 }
 
 function insertSection(view: EditorView, at: number) {
+  // A read-only editor ("tell me" drafting it) takes no changes from the divider either.
+  if (!view.editable) return;
   const { schema } = view.state;
   const level = Number(topHeadings(view.state.doc)[0]?.node.attrs.level ?? 2);
   const heading = schema.nodes.heading.create({ level, sectionId: newSectionId() }, schema.text("New section"));
@@ -213,6 +228,7 @@ function insertSection(view: EditorView, at: number) {
 }
 
 function deleteSection(view: EditorView, headingPos: number, handlers: SectionDividerHandlers) {
+  if (!view.editable) return;
   const { doc, schema } = view.state;
   const node = doc.nodeAt(headingPos);
   if (!node) return;
@@ -322,12 +338,40 @@ export type SectionGutterHandlers = {
 
 export const gutterKey = new PluginKey<GutterState>("sectionGutter");
 
-/** Sections with a generation running: their heading gets `section-busy` and the gutter a spinner. */
-type GutterState = { busy: ReadonlySet<string> };
+/**
+ * Sections with a generation running: their heading gets `section-busy` and the
+ * gutter a spinner. Each runner (the section runs, "tell me") keeps its own set
+ * under its owner name, and `busy` is their union, so one runner finishing
+ * doesn't clear the other's markers.
+ */
+export type GutterState = { owners: ReadonlyMap<string, ReadonlySet<string>>; busy: ReadonlySet<string> };
 
-/** Mark sections busy (or not). Not an edit: kept out of the history and the document. */
-export function setBusySections(view: EditorView, busy: Iterable<string>) {
-  view.dispatch(view.state.tr.setMeta(gutterKey, { busy: new Set(busy) }).setMeta("addToHistory", false));
+/** Who marks sections busy: section runs from the gutter and panels, or the "tell me" flow. */
+export type BusyOwner = "generation" | "tell-me";
+
+type GutterMeta = { owner: BusyOwner; busy: ReadonlySet<string> };
+
+export const EMPTY_GUTTER: GutterState = { owners: new Map(), busy: new Set() };
+
+/** The gutter state after one owner replaces its busy set. */
+export function nextGutterState(value: GutterState, meta: GutterMeta): GutterState {
+  const owners = new Map(value.owners);
+  if (meta.busy.size) owners.set(meta.owner, meta.busy);
+  else owners.delete(meta.owner);
+  const busy = new Set<string>();
+  for (const set of owners.values()) for (const id of set) busy.add(id);
+  return { owners, busy };
+}
+
+/** Mark this owner's sections busy (replacing its earlier set). Not an edit: kept out of the history and the document. */
+export function setBusySections(view: EditorView, busy: Iterable<string>, owner: BusyOwner = "generation") {
+  const meta: GutterMeta = { owner, busy: new Set(busy) };
+  view.dispatch(view.state.tr.setMeta(gutterKey, meta).setMeta("addToHistory", false));
+}
+
+/** Every section some runner is writing now. */
+export function busySectionIds(state: EditorState): ReadonlySet<string> {
+  return gutterKey.getState(state)?.busy ?? EMPTY_GUTTER.busy;
 }
 
 // Phosphor "DotsThreeVertical" (bold) and "CircleNotch", inlined like the divider icons.
@@ -420,8 +464,11 @@ export const SectionGutter = Extension.create<SectionGutterHandlers>({
       new Plugin<GutterState>({
         key: gutterKey,
         state: {
-          init: () => ({ busy: new Set<string>() }),
-          apply: (tr, value) => (tr.getMeta(gutterKey) as GutterState | undefined) ?? value,
+          init: () => EMPTY_GUTTER,
+          apply: (tr, value) => {
+            const meta = tr.getMeta(gutterKey) as GutterMeta | undefined;
+            return meta ? nextGutterState(value, meta) : value;
+          },
         },
         props: {
           decorations: (state) => gutterDecorations(state, gutterKey.getState(state)?.busy ?? new Set(), handlers),
@@ -432,6 +479,16 @@ export const SectionGutter = Extension.create<SectionGutterHandlers>({
 });
 
 export type DocumentHandlers = SectionDividerHandlers & SectionGutterHandlers;
+
+/**
+ * The empty-block placeholder. An empty document says "Start writing…" (the
+ * empty-state helper replaces it while it shows, via .doc-helper-on); headings
+ * say "Heading" and other empty blocks "Write this section…".
+ */
+export function placeholderText(nodeType: string, documentEmpty: boolean): string {
+  if (nodeType === "heading") return "Heading";
+  return documentEmpty ? "Start writing…" : "Write this section…";
+}
 
 export function documentExtensions(handlers: DocumentHandlers = {}): Extensions {
   return [
@@ -451,8 +508,7 @@ export function documentExtensions(handlers: DocumentHandlers = {}): Extensions 
     TableCell,
     Image.configure({ inline: false, allowBase64: true }),
     Placeholder.configure({
-      placeholder: ({ editor, node }) =>
-        node.type.name === "heading" ? "Heading" : editor.isEmpty ? "Start writing, or choose a document type above…" : "Write this section…",
+      placeholder: ({ editor, node }) => placeholderText(node.type.name, editor.isEmpty),
       showOnlyCurrent: false,
     }),
     SectionDividers.configure({ onDeleteSection: handlers.onDeleteSection }),

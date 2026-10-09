@@ -284,8 +284,8 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
   };
 
   return (
-    <aside aria-label="Check" className="flex h-full flex-col">
-      <PanelHeader title="Check" onClose={onClose} />
+    <aside aria-label="Check" className="flex h-full flex-col rounded-[20px] border border-[var(--doc-line)] bg-[var(--editor-bg)] shadow-md">
+      <PanelHeader title="Check" variant="plain" onClose={onClose} />
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-6">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">

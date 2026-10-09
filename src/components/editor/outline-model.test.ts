@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Schema } from "@tiptap/pm/model";
 import type { SectionSummary } from "@/catalog/schema";
 import type { OutlineStatusResponse } from "@/lib/sections/contract";
-import { buildOutline, missingSectionInsertPos, readHeadings, type LiveHeading } from "./outline-model";
+import { buildOutline, missingSectionInsertPos, readHeadings, rowDisplayStatus, type LiveHeading } from "./outline-model";
 
 const schema = new Schema({
   nodes: {
@@ -131,5 +131,19 @@ describe("missingSectionInsertPos", () => {
     expect(missingSectionInsertPos(sections, "aims", [head(10, 2, "s", "strategy")], end)).toBe(10);
     expect(missingSectionInsertPos(sections, "aims", [], end)).toBe(end);
     expect(missingSectionInsertPos(sections, "budget", [head(0, 2, "a", "aims")], end)).toBe(end);
+  });
+});
+
+describe("rowDisplayStatus", () => {
+  const el = (status: "done" | "partial" | "missing" | "unknown") => ({ element: status, status });
+  it("shows a written section the server hasn't checked as unknown", () => {
+    expect(rowDisplayStatus({ status: "partial", elements: [el("unknown"), el("unknown")] })).toBe("unknown");
+  });
+  it("keeps partial once any element has a verdict", () => {
+    expect(rowDisplayStatus({ status: "partial", elements: [el("unknown"), el("done")] })).toBe("partial");
+  });
+  it("passes done and missing through", () => {
+    expect(rowDisplayStatus({ status: "done", elements: [] })).toBe("done");
+    expect(rowDisplayStatus({ status: "missing", elements: [el("missing")] })).toBe("missing");
   });
 });

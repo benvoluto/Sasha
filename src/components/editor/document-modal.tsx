@@ -1,10 +1,11 @@
 "use client";
 
-// The document modal (PLAN §6.2), opened from the floating Sources button (on
-// Sources) or the Notes control beside the title (on Notes): one dialog with a
-// tab per pane. Each pane mounts only while its tab is active, so it loads
-// fresh and stops polling when hidden. Radix traps focus while it is open;
-// closing puts focus back on the control that opened it.
+// The document modal (PLAN §6.2), opened from the header's Sources button (on
+// Sources; Notes is its own tab), or from the empty-state helper's "upload
+// sources" (on Sources, upload area open; redesign2-spec.md §3.1): one dialog
+// with a tab per pane. Each pane mounts only while its tab is active, so it
+// loads fresh and stops polling when hidden. Radix traps focus while it is
+// open; closing puts focus back on the control that opened it.
 //
 // Owned by the notes-and-modal track (phase4-spec.md §2). The Suggestions pane
 // and the Sources panel's prefill belong to the suggestions track; the Data
@@ -27,7 +28,7 @@ import type { DataPrefill, SourcePrefill } from "@/lib/suggestions/contract";
 import type { ProposedChange } from "@/lib/workflow/contract";
 import type { AppliedChange } from "./apply-workflow-change";
 import { DataPane } from "./data-pane";
-import { DOCUMENT_MODAL_TABS, escapeAction, modalTitle, TAB_LABELS, type DocumentModalTab } from "./document-modal-model";
+import { DOCUMENT_MODAL_TABS, escapeAction, modalReturnTarget, modalTitle, TAB_LABELS, type DocumentModalTab } from "./document-modal-model";
 import { NotesPane, type NotesPaneHandle } from "./notes-pane";
 import { SourcesPanel } from "./sources-panel";
 import { SuggestionsPane } from "./suggestions-pane";
@@ -47,6 +48,8 @@ export function DocumentModal({
   saveError = null,
   ensureSaved,
   returnFocusRef,
+  openerRef,
+  sourcesMode = null,
   onSourcesChange,
   onInsertTable,
   onApplyWorkflowChange,
@@ -70,8 +73,12 @@ export function DocumentModal({
   saveError?: string | null;
   /** Saves pending changes (creating the document if needed) and returns its id. */
   ensureSaved: () => Promise<string | null>;
-  /** The control that opened the dialog; focus goes back to it on close. */
-  returnFocusRef?: RefObject<HTMLButtonElement | null>;
+  /** Where focus goes on close when the opener is gone (the header's Sources button). */
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  /** The control that opened the dialog, recorded at open; focus goes back to it on close while it is on the page. */
+  openerRef?: RefObject<HTMLElement | null>;
+  /** "upload": the Sources tab opens with its upload area showing and focused (the helper's "upload sources"). */
+  sourcesMode?: "upload" | null;
   /** The Sources tab's linked sources whenever they load or change. */
   onSourcesChange?: (sources: LinkedSource[]) => void;
   /** The Data tab's "Insert table": put the snapshot at the editor's cursor. */
@@ -174,10 +181,10 @@ export function DocumentModal({
             e.preventDefault();
             return;
           }
-          const button = returnFocusRef?.current;
-          if (button?.isConnected) {
+          const target = modalReturnTarget(openerRef?.current, returnFocusRef?.current);
+          if (target) {
             e.preventDefault();
-            button.focus();
+            target.focus();
           }
         }}
       >
@@ -231,6 +238,7 @@ export function DocumentModal({
                   }}
                   onShowData={() => onTabChange("data")}
                   focusSourceId={sourceFocus}
+                  initialMode={sourcesMode}
                 />
               )}
             </TabsContent>

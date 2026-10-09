@@ -176,34 +176,41 @@ function MoreMenu({ editor, onLink }: { editor: Editor; onLink: () => void }) {
   );
 }
 
-export function EditorToolbar({ editor, onLink }: { editor: Editor; onLink: () => void }) {
+/**
+ * `locked` (tell me is drafting) disables every control: the editor is
+ * read-only then, but commands such as Undo would still change the document
+ * under the drafts. A disabled fieldset disables all the buttons inside it.
+ */
+export function EditorToolbar({ editor, onLink, locked = false }: { editor: Editor; onLink: () => void; locked?: boolean }) {
   const c = () => editor.chain().focus();
   const inTable = editor.isActive("table");
   return (
-    <div role="toolbar" aria-label="Formatting" className="flex w-max items-center gap-x-4 sm:gap-x-6">
-      <Group>
-        <ToolButton icon={Undo2} label="Undo" onClick={() => c().undo().run()} disabled={!editor.can().undo()} />
-        <ToolButton icon={Redo2} label="Redo" onClick={() => c().redo().run()} disabled={!editor.can().redo()} />
-      </Group>
-      <BlockPicker editor={editor} />
-      <Group>
-        <ToolButton icon={Bold} label="Bold" active={editor.isActive("bold")} onClick={() => c().toggleBold().run()} />
-        <ToolButton icon={Italic} label="Italic" active={editor.isActive("italic")} onClick={() => c().toggleItalic().run()} />
-        <ToolButton icon={Strikethrough} label="Strikethrough" active={editor.isActive("strike")} onClick={() => c().toggleStrike().run()} />
-        <ToolButton icon={Underline} label="Underline" active={editor.isActive("underline")} onClick={() => c().toggleUnderline().run()} />
-        <ToolButton icon={Highlighter} label="Highlight" active={editor.isActive("highlight")} onClick={() => c().toggleHighlight().run()} />
-        <ToolButton icon={Code} label="Code" active={editor.isActive("code")} onClick={() => c().toggleCode().run()} />
-      </Group>
-      <Group>
-        <ToolButton icon={Table} label="Insert table" onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} disabled={inTable} />
-        <ToolButton icon={Trash2} label="Delete table" onClick={() => c().deleteTable().run()} disabled={!inTable} />
-      </Group>
-      <Group>
-        <AlignMenu editor={editor} />
-        <ToolButton icon={List} label="Bulleted list" active={editor.isActive("bulletList")} onClick={() => c().toggleBulletList().run()} />
-        <ToolButton icon={ListOrdered} label="Numbered list" active={editor.isActive("orderedList")} onClick={() => c().toggleOrderedList().run()} />
-      </Group>
-      <MoreMenu editor={editor} onLink={onLink} />
+    <div role="toolbar" aria-label="Formatting">
+      <fieldset disabled={locked} className="m-0 flex w-max min-w-0 items-center gap-x-4 border-0 p-0 sm:gap-x-6">
+        <Group>
+          <ToolButton icon={Undo2} label="Undo" onClick={() => c().undo().run()} disabled={!editor.can().undo()} />
+          <ToolButton icon={Redo2} label="Redo" onClick={() => c().redo().run()} disabled={!editor.can().redo()} />
+        </Group>
+        <BlockPicker editor={editor} />
+        <Group>
+          <ToolButton icon={Bold} label="Bold" active={editor.isActive("bold")} onClick={() => c().toggleBold().run()} />
+          <ToolButton icon={Italic} label="Italic" active={editor.isActive("italic")} onClick={() => c().toggleItalic().run()} />
+          <ToolButton icon={Strikethrough} label="Strikethrough" active={editor.isActive("strike")} onClick={() => c().toggleStrike().run()} />
+          <ToolButton icon={Underline} label="Underline" active={editor.isActive("underline")} onClick={() => c().toggleUnderline().run()} />
+          <ToolButton icon={Highlighter} label="Highlight" active={editor.isActive("highlight")} onClick={() => c().toggleHighlight().run()} />
+          <ToolButton icon={Code} label="Code" active={editor.isActive("code")} onClick={() => c().toggleCode().run()} />
+        </Group>
+        <Group>
+          <ToolButton icon={Table} label="Insert table" onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} disabled={inTable} />
+          <ToolButton icon={Trash2} label="Delete table" onClick={() => c().deleteTable().run()} disabled={!inTable} />
+        </Group>
+        <Group>
+          <AlignMenu editor={editor} />
+          <ToolButton icon={List} label="Bulleted list" active={editor.isActive("bulletList")} onClick={() => c().toggleBulletList().run()} />
+          <ToolButton icon={ListOrdered} label="Numbered list" active={editor.isActive("orderedList")} onClick={() => c().toggleOrderedList().run()} />
+        </Group>
+        <MoreMenu editor={editor} onLink={onLink} />
+      </fieldset>
     </div>
   );
 }

@@ -1,6 +1,7 @@
-// Pure helpers for the Export menu (export-menu.tsx): the request URL, the
-// download name from the response, what to say when an export fails, and
-// whether the server asked the browser to print instead.
+// Pure helpers for exporting (use-export.ts, the Share & Export dialog): the
+// request URL, the download name from the response, what to say when an export
+// fails, whether the server asked the browser to print instead, and the fetch
+// itself with its outcome.
 
 import { EXPORT_LABELS, exportFilename, type ExportFormat } from "@/lib/export/contract";
 
@@ -60,4 +61,22 @@ export function exportErrorMessage(status: number, format: MenuFormat, body: Exp
   // A rate limit or a full render queue: the server's sentence says when to try again.
   if (status === 429) return server ?? `Too many ${label} exports right now. Try again in a moment.`;
   return server ?? `The ${label} export failed. Try again.`;
+}
+
+/** What one export request came to: a file to download, a request to print instead, or an error sentence. */
+export type ExportOutcome = { kind: "file"; blob: Blob; filename: string } | { kind: "print" } | { kind: "error"; message: string };
+
+/** Fetches the saved document as `format` and says what came of it. `fetchImpl` is injectable for tests. */
+export async function fetchExport(documentId: string, format: MenuFormat, title: string, fetchImpl: typeof fetch = fetch): Promise<ExportOutcome> {
+  try {
+    const res = await fetchImpl(exportUrl(documentId, format), { cache: "no-store" });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as ExportErrorBody;
+      if (format === "pdf" && isPrintFallback(res.status, body)) return { kind: "print" };
+      return { kind: "error", message: exportErrorMessage(res.status, format, body) };
+    }
+    return { kind: "file", blob: await res.blob(), filename: filenameFromDisposition(res.headers.get("Content-Disposition"), title, format) };
+  } catch {
+    return { kind: "error", message: "The export couldn't reach the server. Check your connection and try again." };
+  }
 }

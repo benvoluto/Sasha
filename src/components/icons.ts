@@ -173,6 +173,13 @@ export {
   BookOpenText as SourcesBookIcon,
   ArrowBendUpRight as ShareArrowIcon,
 
+  // editor redesign 2 (redesign2-spec.md §3): header buttons, Tools card, empty-state helper
+  Tray as HeaderSourcesIcon,
+  PenNib as GalleryIcon,
+  ShareFat as ShareExportIcon,
+  FileArrowUp as UploadFileIcon,
+  ChatText as CustomRequestIcon,
+
   // primitives used by the shadcn ui/ components
   Circle as CircleIcon,
 } from "@phosphor-icons/react";

@@ -14,7 +14,9 @@
 // An expanded source shows how many tables were read from it ("N tables"),
 // which opens the Data tab when the panel is in the document modal. A
 // workflow finding's "Open in Sources" opens the panel with that source
-// expanded and scrolled into view (`focusSourceId`).
+// expanded and scrolled into view (`focusSourceId`). The empty-state helper's
+// "upload sources" opens it with the upload area showing and focused
+// (`initialMode`).
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -53,6 +55,7 @@ export function SourcesPanel({
   onSourcesChange,
   onShowData,
   focusSourceId = null,
+  initialMode = null,
 }: {
   documentId: string | null;
   documentTitle: string;
@@ -75,6 +78,8 @@ export function SourcesPanel({
   onShowData?: () => void;
   /** Expand this source and scroll to it once the list has loaded ("Open in Sources" from a workflow finding). */
   focusSourceId?: string | null;
+  /** Open this add form on mount, or when it changes to non-null; "upload" also focuses the drop zone. */
+  initialMode?: Mode;
 }) {
   const [sources, setSources] = useState<LinkedSource[] | null>(documentId ? null : []);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +88,15 @@ export function SourcesPanel({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [unlinking, setUnlinking] = useState<string | null>(null);
   const [prefillError, setPrefillError] = useState<string | null>(null);
+  const addForm = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!initialMode) return;
+    setMode(initialMode);
+    // After the dialog's own open focus (its effect runs after this one): the drop zone, or the form's first field.
+    const raf = requestAnimationFrame(() => addForm.current?.querySelector<HTMLElement>('[role="button"], input, textarea')?.focus());
+    return () => cancelAnimationFrame(raf);
+  }, [initialMode]);
 
   // A prefill with a link opens the link form on it.
   const prefillId = prefill?.suggestionId ?? null;
@@ -251,7 +265,7 @@ export function SourcesPanel({
           </div>
         )}
         {mode && (
-          <section aria-label={mode === "upload" ? "Upload files" : mode === "url" ? "Add a link" : "Add a note"} className="space-y-2 rounded-xl border border-[var(--doc-line)] p-3">
+          <section ref={addForm} aria-label={mode === "upload" ? "Upload files" : mode === "url" ? "Add a link" : "Add a note"} className="space-y-2 rounded-xl border border-[var(--doc-line)] p-3">
             {mode === "upload" && (
               <>
                 <FileDropzone

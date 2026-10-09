@@ -109,6 +109,8 @@ const LEARN_WORKFLOW = {
 export const TASK_FIXTURES: Record<string, unknown> = {
   // No candidates: the classifier chip stays away, so it never shifts the header under a test.
   "classify.type": { candidates: [], freeform: false },
+  // "Tell me": a confident general report, so the e2e run reaches the drafting step (redesign2-spec.md §6).
+  "classify.prompt": { candidates: [{ key: "general-report", confidence: 0.9, why: "The stub always picks a general report." }], freeform: false, title: "Stub report" },
   "outline.status": { sections: [] },
   "suggest.items": {
     coverage: [],
@@ -131,6 +133,9 @@ export const TASK_FIXTURES: Record<string, unknown> = {
   // resume run's doc.write does not wait for an apply and an e2e run never stalls on a change.
   "workflow.tailor": { lines: [] },
   "draft.section": "This section was drafted by the end-to-end test stub. It is plain prose with no citations, so the editor can insert it as is.",
+  // The Tools card's two rewrite paths (redesign2-spec.md §4.3) answer differently, so a spec can tell which one ran.
+  "rewrite.selection": "This passage was rewritten by the end-to-end test stub.",
+  "rewrite.section": "This section was rewritten by the end-to-end test stub. It replaces the whole body in one step.",
 };
 
 const TEXT_REPLY = "This paragraph was written by the end-to-end test stub. It stands in for a model reply so the flow can be checked without calling a paid API.";

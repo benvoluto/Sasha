@@ -2,25 +2,23 @@
 
 // The editing screen: the first thing a person sees, inside the app frame
 // (rail and documents panel, src/components/shell). A header with the title,
-// type and sharing; a sticky formatting toolbar; the document on a plain white
-// page; a right column with the living outline over the tools or section notes
-// (right-column.tsx); floating Outline / Tools / Sources buttons. Sources and
-// the Notes control beside the title open the document modal (Notes / Sources /
-// Data / Suggestions / Workflows). Each heading has a gutter button that opens the section's actions
-// (draft, rewrite, notes). Changes a workflow run proposes are applied here, in
-// the editor, as one undo step (apply-workflow-change.ts).
+// save status and three buttons (redesign2-spec.md §1): Sources opens the
+// document modal (Notes / Sources / Data / Suggestions / Workflows), Document
+// Gallery the type gallery with the classifier's suggestion, Share & Export the
+// sharing and download dialog. Then a sticky formatting toolbar; the document
+// on a plain white page; a right column of floating Tools and Outline cards
+// (right-column.tsx) opened from the floating buttons; the empty-state helper
+// beside Sasha. Each heading has a gutter button that opens the section's
+// actions (draft, rewrite, notes). Changes a workflow run proposes are applied
+// here, in the editor, as one undo step (apply-workflow-change.ts).
 
-import { OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useSetAtom } from "jotai";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { Check, Copy, Loader2, NoteIcon, ShareArrowIcon } from "@/components/icons";
-import { useDevAuthBypass } from "@/components/dev-auth-context";
+import { GalleryIcon, HeaderSourcesIcon, Loader2, ShareExportIcon } from "@/components/icons";
 import { activeDocumentAtom } from "@/components/shell/active-document";
 import type { LinkedSource } from "@/components/sources/shared";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { outlineDoc } from "@/catalog/outline";
 import type { DocumentTypeSummary } from "@/catalog/schema";
 import type { TableSnapshot } from "@/lib/data/contract";
@@ -33,12 +31,12 @@ import { applyOutlineMerge } from "./apply-outline";
 import { applyWorkflowChange, type AppliedChange } from "./apply-workflow-change";
 import { CheckPanel, type CheckTarget } from "./check-panel";
 import { CitationLayer } from "./citation-layer";
-import { ClassifierChip } from "./classifier-chip";
+import { suggestionAnnouncement } from "./classifier-chip";
+import { DocumentGalleryDialog } from "./document-gallery-dialog";
 import { DocumentModal } from "./document-modal";
 import type { DocumentModalTab } from "./document-modal-model";
 import { EditorToolbar } from "./editor-toolbar";
-import { ExportMenu } from "./export-menu";
-import { documentExtensions, newSectionId } from "./extensions";
+import { documentExtensions, newSectionId, sectionIdsOnLoad } from "./extensions";
 import { FloatingActions } from "./floating-actions";
 import { NoticeStack, useNotices, type Notice } from "./notice";
 import { goToHeading, OutlinePanel } from "./outline-panel";
@@ -50,81 +48,74 @@ import {
   closeLower,
   closeOutline,
   columnCloseFocus,
+  isColumnOpen,
   openCheck,
   openNotes,
+  openOutline,
+  openTools,
+  OUTLINE_SLOT_ID,
   rightColumnMode,
-  toggleOutline,
-  toggleTools,
+  TOOLS_SLOT_ID,
   type ColumnSlot,
   type RightColumnMode,
   type RightColumnState,
 } from "./right-column-model";
+import { EmptyHelper } from "./empty-helper";
 import { ToolsPanel } from "./side-panels";
 import { sectionBodyRange } from "./tracked-range";
-import { createDocumentOfType, findType, SaveOutlineDialog, StartFromTypeStrip, TypeGallery, TypePicker, useDocumentTypes } from "./type-picker";
+import { ShareExportDialog } from "./share-export-dialog";
+import { findType, SaveOutlineDialog, useDocumentTypes } from "./type-picker";
 import { useClassifier } from "./use-classifier";
 import { useDocument, type SaveStatus } from "./use-document";
 import { useOutlineStatus } from "./use-outline-status";
+import { TELL_ME_CHOOSING_LOCK, TELL_ME_LOCK, useTellMe } from "./use-tell-me";
 import { busyAnnouncement, useSectionGeneration } from "./use-section-generation";
 import { linkedSourcesKey, useSuggestionsRefresh } from "./use-suggestions-refresh";
 import { chipApplyAction, restructurePrefill, type WorkflowsPrefill } from "./workflows-pane-model";
 
-/** Who can see the document, and the team switcher. Uses Clerk's organization hooks, so it is never mounted under the dev auth bypass. */
-function TeamSharing() {
-  const { organization } = useOrganization();
+/**
+ * One of the header's three green buttons: icon and label once the header is
+ * wide enough for all three labels and a title (a container query on the
+ * header, so an open documents panel counts too), else only the 44px icon (the
+ * label stays its name).
+ */
+function HeaderButton({
+  ref,
+  label,
+  icon: Icon,
+  expanded,
+  onClick,
+  dot = false,
+}: {
+  ref: RefObject<HTMLButtonElement | null>;
+  label: string;
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  /** Its dialog is open. */
+  expanded: boolean;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  /** A suggestion is waiting (the Document Gallery's classifier suggestion). */
+  dot?: boolean;
+}) {
   return (
-    <>
-      <p className="text-sm">
-        {organization
-          ? `Everyone in ${organization.name} can open and edit this document.`
-          : "Only you can see this document. Create or join a team to share it with others."}
-      </p>
-      <OrganizationSwitcher hidePersonal={false} afterSelectOrganizationUrl="/" afterCreateOrganizationUrl="/" />
-    </>
-  );
-}
-
-function SharePopover({ documentId }: { documentId: string | null }) {
-  // Under the dev auth bypass there is no Clerk user, and the organization
-  // hooks would open Clerk's "Organizations feature required" modal.
-  const bypass = useDevAuthBypass();
-  const [copied, setCopied] = useState(false);
-  const url = documentId && typeof window !== "undefined" ? `${window.location.origin}/d/${documentId}` : "";
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* the link stays visible for manual copying */
-    }
-  };
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Share"
-          title="Share"
-          className="flex h-11 w-11 shrink-0 items-center justify-center gap-2.5 rounded-xl border border-[var(--go-line)] text-[18px] font-semibold text-[var(--go)] hover:bg-[var(--go-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] data-[state=open]:bg-[var(--go-soft)] sm:h-12 sm:w-auto sm:px-5"
-        >
-          <ShareArrowIcon className="h-6 w-6" /> <span className="hidden sm:inline">Share</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] space-y-3 rounded-xl">
-        {bypass ? <p className="text-sm">Local development: signed in as the developer user, so teams are unavailable.</p> : <TeamSharing />}
-        {documentId ? (
-          <div className="flex items-center gap-2">
-            <input readOnly value={url} aria-label="Document link" onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 rounded-md border border-[var(--doc-field-line)] bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]" />
-            <button type="button" onClick={copy} className="flex items-center gap-1 rounded-md bg-[var(--doc-accent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--doc-on-accent)]">
-              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copied" : "Copy link"}
-            </button>
-          </div>
-        ) : (
-          <p className="text-xs text-[var(--doc-muted)]">The link appears once the document has been saved.</p>
-        )}
-      </PopoverContent>
-    </Popover>
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      aria-haspopup="dialog"
+      aria-expanded={expanded}
+      // A hover name for when the header is too narrow for the labels.
+      title={label}
+      className="relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2.5 rounded-xl px-2 text-[18px] font-medium text-[var(--go)] hover:bg-[var(--go-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] aria-expanded:bg-[var(--go-soft)] sm:min-h-9 sm:px-2.5"
+    >
+      <Icon className="h-7 w-7 shrink-0" aria-hidden />
+      <span className="sr-only @min-[60rem]:not-sr-only">{label}</span>
+      {dot && (
+        <>
+          <span aria-hidden className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--go)]" />
+          <span className="sr-only">, suggestion ready</span>
+        </>
+      )}
+    </button>
   );
 }
 
@@ -294,21 +285,24 @@ function useSectionNotes(documentId: string | null) {
 }
 
 function Workspace({ initial, doc, catalog, status, error, conflict, change, flush, isSaved, resolveConflict }: WorkspaceProps) {
-  const router = useRouter();
   const types = catalog.types;
   const currentType = findType(types, doc.type_key);
   // The right column: the outline on top, Tools or Section notes below (right-column-model.ts).
   const [column, setColumn] = useState<RightColumnState>(CLOSED_COLUMN);
   // The document modal (Notes / Sources / Data / Suggestions / Workflows), and the control that opened it.
   const [modalTab, setModalTab] = useState<DocumentModalTab | null>(null);
-  // The classifier chip's "Restructure…": the Workflows tab opens on the restructure workflow with the type chosen.
+  // "upload sources" from the helper: the Sources tab opens on its upload area.
+  const [sourcesMode, setSourcesMode] = useState<"upload" | null>(null);
+  // The suggestion's "Restructure…": the Workflows tab opens on the restructure workflow with the type chosen.
   const [workflowsPrefill, setWorkflowsPrefill] = useState<WorkflowsPrefill | null>(null);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
-  const notesButtonRef = useRef<HTMLButtonElement>(null);
-  const typeButtonRef = useRef<HTMLButtonElement>(null);
-  const [modalOpener, setModalOpener] = useState<"sources" | "notes">("sources");
-  const openModal = (tab: DocumentModalTab, from: "sources" | "notes") => {
-    setModalOpener(from);
+  const galleryButtonRef = useRef<HTMLButtonElement>(null);
+  const shareButtonRef = useRef<HTMLButtonElement>(null);
+  // Focus goes back here when the modal closes, else to the Sources button (DocumentModal openerRef).
+  const modalOpenerRef = useRef<HTMLElement | null>(null);
+  const openModal = (tab: DocumentModalTab, opener: Element | null = document.activeElement, mode: "upload" | null = null) => {
+    modalOpenerRef.current = opener instanceof HTMLElement ? opener : null;
+    setSourcesMode(mode);
     setModalTab(tab);
   };
   const outlineButtonRef = useRef<HTMLButtonElement>(null);
@@ -323,9 +317,10 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const [menu, setMenu] = useState<SectionMenuTarget | null>(null);
   /** The rubric Check panel's subject (the whole document, or a section from its gutter menu). */
   const [checkTarget, setCheckTarget] = useState<CheckTarget | null>(null);
-  /** The gallery's purpose: set this document's type, or start a new document of a type. */
-  const [gallery, setGallery] = useState<"set" | "new" | null>(null);
+  /** The Document Gallery (header button, helper, outline card's "Choose a type", tell-me's onNeedType). */
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [saveTypeOpen, setSaveTypeOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const docIdRef = useRef(doc.id);
   docIdRef.current = doc.id;
   const titleRef = useRef(doc.title);
@@ -357,21 +352,14 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     // A contenteditable div has no implicit role, and aria-label is prohibited on
     // a role-less div (axe aria-prohibited-attr), so name it as a multi-line textbox.
     editorProps: { attributes: { class: "doc-prose", role: "textbox", "aria-multiline": "true", "aria-label": "Document" } },
+    onCreate: ({ editor: e }) => {
+      // Headings saved without ids get them now (and the change is saved), so the caret has a section from the start.
+      const tr = sectionIdsOnLoad(e.state);
+      if (tr) e.view.dispatch(tr);
+    },
     onUpdate: ({ editor: e }) => change({ content_json: e.getJSON() as PMNode }),
   });
   editorRef.current = editor;
-
-  // Whether the document body is empty, for the "Start from a type" strip.
-  const [isEmpty, setIsEmpty] = useState(!initial);
-  useEffect(() => {
-    if (!editor) return;
-    const read = () => setIsEmpty(editor.isEmpty);
-    read();
-    editor.on("update", read);
-    return () => {
-      editor.off("update", read);
-    };
-  }, [editor]);
 
   const ensureSaved = useCallback(async () => {
     // A blank new document has nothing pending, so flush alone wouldn't create
@@ -388,13 +376,33 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     return isSaved();
   }, [ensureSaved, isSaved]);
 
-  const generation = useSectionGeneration({ editor, ensureSaved, notify });
+  // The empty-state helper (empty-helper.tsx) and its "tell me" flow (use-tell-me.ts).
+  const tellMe = useTellMe({
+    editor,
+    ensureSaved,
+    change,
+    title: doc.title,
+    notes: doc.notes,
+    types,
+    snapshot,
+    onNeedType: () => setGalleryOpen(true),
+  });
+  // While "tell me" chooses a type and drafts, nothing else may change the
+  // document: its outline replaces the whole document, its result is one undo
+  // step, and a second run on one of its sections would race it. The toolbar
+  // and the panels show why.
+  const drafting = tellMe.state.phase === "choosing" || tellMe.state.phase === "drafting";
+  const lockReason = tellMe.state.phase === "choosing" ? TELL_ME_CHOOSING_LOCK : drafting ? TELL_ME_LOCK : null;
+  const lockedNotice = useCallback(() => notify({ text: lockReason ?? TELL_ME_LOCK }), [notify, lockReason]);
+
+  const generation = useSectionGeneration({ editor, ensureSaved, notify, locked: lockReason });
   const outlineStatus = useOutlineStatus({ documentId: doc.id, typeKey: currentType?.key ?? doc.type_key, saveStatus: status });
   const sectionNotes = useSectionNotes(doc.id);
   const caretSection = useCaretSectionId(editor);
 
-  /** Set the type; with text already there, merge its outline in (apply-outline.ts). `source` is "classifier" from the chip. */
+  /** Set the type; with text already there, merge its outline in (apply-outline.ts). `source` is "classifier" from the suggestion. */
   const chooseType = async (t: DocumentTypeSummary | null, source: "user" | "classifier" = "user") => {
+    if (drafting) return lockedNotice();
     change({ type_key: t?.key ?? null, type_source: source });
     if (!editor) return;
     if (!t) {
@@ -442,13 +450,14 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     (snap: TableSnapshot) => {
       const ed = editorRef.current;
       if (!ed) return;
+      if (drafting) return lockedNotice();
       ed.chain().focus().insertContent(tableSnapshotNodes(snap, { rows: snap.rows.length, at: new Date().toISOString() })).run();
       setModalTab(null);
       // The dialog held focus until now (and leaves it alone after an insert): back to the text.
       requestAnimationFrame(() => editorRef.current?.commands.focus(null, { scrollIntoView: true }));
       notify(undoNotice("Table inserted."));
     },
-    [notify, undoNotice],
+    [notify, undoNotice, drafting, lockedNotice],
   );
 
   /** The Workflows tab's "Apply to document": the run's change as one undo step after a snapshot, then a notice (phase6-spec.md §8.2). */
@@ -456,6 +465,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     async (proposed: ProposedChange): Promise<AppliedChange> => {
       const ed = editorRef.current;
       if (!ed) return { result: null, detail: "The editor isn't ready yet.", typeKey: null };
+      if (lockReason) return { result: null, detail: lockReason, typeKey: null };
       const out = await applyWorkflowChange(ed, proposed, {
         ensureSaved,
         isSaved,
@@ -470,7 +480,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       else notify({ text: out.detail, tone: out.result === null ? "error" : undefined });
       return out;
     },
-    [ensureSaved, isSaved, snapshot, types, change, notify, undoNotice],
+    [ensureSaved, isSaved, snapshot, types, change, notify, undoNotice, lockReason],
   );
 
   /** A workflow finding's location: the section's heading, in view. The dialog closes first. */
@@ -482,24 +492,17 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     });
   }, []);
 
-  /** The chip's "Restructure…" (and its Apply on a typed document): the restructure workflow, to this type. */
+  /** The suggestion's "Restructure…" (and its Apply on a typed document): the restructure workflow, to this type. */
   const openRestructure = (key: string) => {
+    if (drafting) return lockedNotice();
     setWorkflowsPrefill(restructurePrefill(key));
-    openModal("workflows", "sources");
-  };
-
-  /** A new document of the type, opened in place of this one. Resolves to an error message, or null. */
-  const startNewOfType = async (t: DocumentTypeSummary): Promise<string | null> => {
-    try {
-      const id = await createDocumentOfType(t.key);
-      router.push(`/d/${id}`);
-      return null;
-    } catch (e) {
-      return e instanceof Error ? e.message : "Couldn't create the document.";
-    }
+    // Opened from inside the Document Gallery, which closes: focus comes back to its header button.
+    openModal("workflows", galleryButtonRef.current);
   };
 
   const saveOutlineAsType = async (title: string): Promise<string | null> => {
+    // It sets the type and retags the headings, which "tell me" is rewriting.
+    if (lockReason) return lockReason;
     const id = await ensureSaved();
     if (!id) return "Save the document first.";
     try {
@@ -550,7 +553,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   };
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
 
-  const showStrip = !doc.id && !doc.type_key && isEmpty && types.length > 0;
+  const [helperOn, setHelperOn] = useState(false);
 
   // A panel closed from its own X unmounts the focused button: hand focus to the
   // floating button that reopens it (Tools for Section notes too), or to the
@@ -565,6 +568,12 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     });
   };
 
+  // A floating button hides once its card opens: move focus into the card so it isn't lost.
+  const openColumnPanel = (slot: ColumnSlot) => {
+    setColumn(slot === "outline" ? openOutline : openTools);
+    requestAnimationFrame(() => document.getElementById(slot === "outline" ? OUTLINE_SLOT_ID : TOOLS_SLOT_ID)?.focus());
+  };
+
   const outlinePanel =
     column.outline && editor ? (
       <OutlinePanel
@@ -573,12 +582,26 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         status={outlineStatus.status}
         statusError={outlineStatus.error}
         notes={sectionNotes.notes}
-        onChooseType={() => setGallery("set")}
+        onChooseType={() => setGalleryOpen(true)}
         onClose={() => closeColumnPanel("outline")}
+        currentSectionId={caretSection}
+        locked={lockReason}
       />
     ) : null;
   const lowerPanel = !editor ? null : column.lower === "tools" ? (
-    <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => closeColumnPanel("lower")} onCheckDocument={() => openCheckFor(null)} />
+    <ToolsPanel
+      editor={editor}
+      documentId={doc.id}
+      ensureSaved={ensureSaved}
+      type={currentType}
+      caretSectionId={caretSection}
+      run={generation.run}
+      busy={generation.busy}
+      locked={lockReason}
+      onClose={() => closeColumnPanel("lower")}
+      onCheckDocument={() => openCheckFor(null)}
+      onSectionNotes={() => caretSection && openNotesFor(caretSection)}
+    />
   ) : column.lower === "check" && checkTarget ? (
     <CheckPanel
       editor={editor}
@@ -605,8 +628,8 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
 
   return (
     <>
-      <header className="flex items-start justify-between gap-3 px-5 pb-4 pt-6 sm:px-12 sm:pt-8">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">
+      <header className="@container flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 pb-2 pt-6 sm:flex-nowrap sm:px-12 sm:pt-8">
+        <div className="flex min-w-0 basis-full flex-wrap items-center gap-x-4 gap-y-1 sm:flex-1 sm:basis-auto">
           {/* The page heading for screen readers; the title field shows it visually. */}
           <h1 className="sr-only">{doc.title.trim() || "Untitled document"}</h1>
           <label htmlFor="doc-title" className="sr-only">
@@ -620,40 +643,18 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
             style={{ fieldSizing: "content" } as React.CSSProperties}
             className="min-w-[10ch] max-w-full rounded-md bg-transparent text-[28px] font-medium tracking-tight text-[var(--ink)] outline-none placeholder:text-[var(--doc-muted)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)] sm:text-[32px]"
           />
-          <TypePicker types={types} value={doc.type_key} onChange={(t) => chooseType(t)} onBrowse={() => setGallery("set")} onSaveOutline={() => setSaveTypeOpen(true)} triggerRef={typeButtonRef} />
-          <button
-            ref={notesButtonRef}
-            type="button"
-            onClick={() => openModal("notes", "notes")}
-            aria-haspopup="dialog"
-            aria-expanded={modalTab !== null && modalOpener === "notes"}
-            aria-label="Notes"
-            title={doc.notes.trim() ? "Notes" : "Add notes"}
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-full text-[15px] font-medium text-[var(--go)] hover:bg-[var(--go-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] aria-expanded:bg-[var(--go-soft)] sm:h-9 sm:w-auto sm:px-3.5"
-          >
-            <NoteIcon className="h-5 w-5 shrink-0 sm:h-[18px] sm:w-[18px]" />
-            <span className="hidden sm:inline">Notes</span>
-            {doc.notes.trim() && <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--go)] sm:static sm:h-1.5 sm:w-1.5" />}
-          </button>
-          <ClassifierChip
-            suggestion={classifier.suggestion}
-            applyLabel={chipApplyAction(doc.type_key).label}
-            onApply={(key) => {
-              // A typed document (the drift case) restructures rather than only tagging headings.
-              if (chipApplyAction(doc.type_key).restructure) return openRestructure(key);
-              const t = findType(types, key);
-              if (t) void chooseType(t, "classifier");
-            }}
-            onRestructure={openRestructure}
-            onDismiss={(key) => void classifier.dismiss(key)}
-          />
           <StatusText status={status} error={error} isNew={!doc.id} />
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <ExportMenu documentId={doc.id || null} title={doc.title} ensureSaved={ensureSaved} notify={notify} />
-          <SharePopover documentId={doc.id} />
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 @min-[60rem]:gap-6">
+          <HeaderButton ref={sourcesButtonRef} label="Sources" icon={HeaderSourcesIcon} expanded={modalTab !== null} onClick={(e) => openModal("sources", e.currentTarget)} />
+          <HeaderButton ref={galleryButtonRef} label="Document Gallery" icon={GalleryIcon} expanded={galleryOpen} onClick={() => setGalleryOpen(true)} dot={!!classifier.suggestion} />
+          <HeaderButton ref={shareButtonRef} label="Share & Export" icon={ShareExportIcon} expanded={shareOpen} onClick={() => setShareOpen(true)} />
         </div>
       </header>
+      {/* The classifier's suggestion waits in the Document Gallery; say so when one arrives. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {suggestionAnnouncement(classifier.suggestion)}
+      </span>
 
       {conflict && (
         <div role="alert" className="mx-5 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--alert-warn-line)] bg-[var(--alert-warn-bg)] px-4 py-3 text-sm text-[var(--alert-warn-ink)] sm:mx-12">
@@ -668,7 +669,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       )}
 
       <div ref={toolbarRef} className="sticky top-0 z-[15] bg-[var(--editor-bg)]/95 backdrop-blur">
-        <div className="overflow-x-auto px-5 py-3 sm:px-12">{editor && <EditorToolbar editor={editor} onLink={setLink} />}</div>
+        <div className="overflow-x-auto px-5 py-3 sm:px-12">{editor && <EditorToolbar editor={editor} onLink={setLink} locked={drafting} />}</div>
         {linkDraft !== null && editor && (
           <form
             onSubmit={(e) => {
@@ -713,41 +714,58 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           the fixed drawer/sheet in some engines. */}
       <div ref={rowRef} className="flex min-h-[70vh]">
         <div className="min-w-0 flex-1 px-5 pb-32 pt-6 sm:px-12">
-          <div className="max-w-[64rem]">
+          <div className={`max-w-[64rem] ${helperOn ? "doc-helper-on" : ""}`}>
             <EditorContent editor={editor} />
             {editor && <CitationLayer editor={editor} documentId={doc.id || null} sourcesKey={sourcesKey} savedAt={doc.updated_at} />}
           </div>
-          {showStrip && <StartFromTypeStrip types={types} onChoose={startNewOfType} onBrowse={() => setGallery("new")} />}
         </div>
         <RightColumn
           mode={layout.mode}
           sheetLeft={layout.left}
-          top={outlinePanel}
-          bottom={lowerPanel}
+          tools={lowerPanel}
+          outline={outlinePanel}
           onDismiss={() => {
             setColumn(CLOSED_COLUMN);
-            editor?.commands.focus();
+            // Esc in the drawer or sheet: back to a pill once it has rendered, else the editor.
+            requestAnimationFrame(() => {
+              const pill = outlineButtonRef.current ?? toolsButtonRef.current;
+              if (pill?.isConnected) pill.focus();
+              else editor?.commands.focus();
+            });
           }}
         />
       </div>
 
+      {/* Before the pills: the helper sits to their left on the same line, so it comes first in Tab order. */}
+      {editor && (
+        <EmptyHelper
+          editor={editor}
+          documentId={doc.id || null}
+          typeKey={doc.type_key}
+          tellMe={tellMe}
+          onUploadSources={() => openModal("sources", document.activeElement, "upload")}
+          onChooseType={() => setGalleryOpen(true)}
+          leftEdge={layout.left}
+          covered={layout.mode !== "inline" && isColumnOpen(column)}
+          onVisibleChange={setHelperOn}
+        />
+      )}
       <FloatingActions
-        ref={sourcesButtonRef}
         outlineRef={outlineButtonRef}
         toolsRef={toolsButtonRef}
-        outlineOpen={column.outline}
-        toolsOpen={column.lower === "tools"}
-        sourcesOpen={modalTab !== null && modalOpener === "sources"}
-        onOutline={() => setColumn(toggleOutline)}
-        onTools={() => setColumn(toggleTools)}
-        onSources={() => openModal("sources", "sources")}
+        showOutline={!column.outline}
+        showTools={column.lower === null}
+        onOutline={() => openColumnPanel("outline")}
+        onTools={() => openColumnPanel("lower")}
       />
       <DocumentModal
         tab={modalTab}
         onTabChange={(t) => {
           setModalTab(t);
-          // The chip's prefill lasts while the Workflows tab is showing.
+          // The suggestion's prefill lasts while the Workflows tab is showing.
           if (t !== "workflows") setWorkflowsPrefill(null);
+          // The upload area opens once, when the helper asked for it.
+          if (t !== "sources") setSourcesMode(null);
         }}
         documentId={doc.id || null}
         documentTitle={doc.title}
@@ -757,7 +775,9 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         saveStatus={status}
         saveError={error}
         ensureSaved={ensureSaved}
-        returnFocusRef={modalOpener === "notes" ? notesButtonRef : sourcesButtonRef}
+        returnFocusRef={sourcesButtonRef}
+        openerRef={modalOpenerRef}
+        sourcesMode={sourcesMode}
         onSourcesChange={onSourcesChange}
         onInsertTable={insertTable}
         onApplyWorkflowChange={applyChange}
@@ -768,6 +788,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         onLearnedType={async (key) => {
           // The type was just saved: load it into the picker before choosing it.
           await catalog.reload();
+          if (lockReason) return lockedNotice();
           change({ type_key: key, type_source: "user" });
         }}
       />
@@ -783,34 +804,66 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           type={currentType}
           busy={generation.busy}
           onClose={() => setMenu(null)}
-          onRun={(req) => void generation.run(req)}
+          onRun={(req) => {
+            // The document is being drafted by tell me; a gutter run would race it.
+            if (!drafting) void generation.run(req);
+          }}
           onNotes={openNotesFor}
           onCheck={openCheckFor}
         />
       )}
 
-      <TypeGallery
-        open={gallery !== null}
-        onOpenChange={(o) => !o && setGallery(null)}
+      <DocumentGalleryDialog
+        open={galleryOpen}
+        onOpenChange={(o) => {
+          setGalleryOpen(o);
+          // Closed without a choice while "tell me" waits for a type: the flow ends.
+          if (!o && tellMe.state.phase === "needs_type") tellMe.reset();
+        }}
         types={types}
         loading={catalog.loading}
         error={catalog.error}
-        current={gallery === "set" ? (currentType?.key ?? null) : null}
-        title={gallery === "new" ? "New document from a type" : "Document types"}
-        // The fallback when the opener is gone (the picker's menu item, or Choose a type once a type is set).
-        // Not keyed on `gallery`: that is already null by the time the dialog hands focus back.
-        returnFocusRef={typeButtonRef}
-        onChoose={async (t) => {
-          if (gallery === "new") {
-            const err = await startNewOfType(t);
-            if (err) return err;
-          } else {
-            await chooseType(t);
-          }
-          setGallery(null);
+        typeKey={doc.type_key}
+        current={currentType}
+        returnFocusRef={galleryButtonRef}
+        onFocusDocument={() => {
+          // Back to the caret the choice left (chooseType's). Its focus() ran while the dialog's trap held
+          // focus, so the browser caret is stale; an unchanged selection isn't redrawn, so step away and back.
+          const ed = editorRef.current;
+          if (!ed) return;
+          const { from, to } = ed.state.selection;
+          ed.view.focus();
+          ed.commands.setTextSelection(0); // two dispatches: one chain would end where it began
+          ed.commands.setTextSelection({ from, to });
         }}
+        onChoose={async (t) => {
+          if (tellMe.state.phase === "needs_type") {
+            // "Tell me" found no type: go on drafting with the one chosen here.
+            // Closed directly, so the flow isn't reset as a close without a choice.
+            setGalleryOpen(false);
+            await tellMe.continueWithType(t);
+            return;
+          }
+          // "Tell me" is choosing or drafting: say so in the gallery rather than close it on nothing.
+          if (lockReason) return lockReason;
+          await chooseType(t);
+          setGalleryOpen(false);
+        }}
+        onFreeform={() => void chooseType(null)}
+        onSaveOutline={() => setSaveTypeOpen(true)}
+        suggestion={classifier.suggestion}
+        applyLabel={chipApplyAction(doc.type_key).restructure ? "Restructure?" : "Apply outline"}
+        onApplySuggestion={(key) => {
+          // A typed document (the drift case) restructures rather than only tagging headings.
+          if (chipApplyAction(doc.type_key).restructure) return openRestructure(key);
+          const t = findType(types, key);
+          if (t) void chooseType(t, "classifier");
+        }}
+        onRestructure={openRestructure}
+        onDismissSuggestion={(key) => void classifier.dismiss(key)}
       />
-      <SaveOutlineDialog open={saveTypeOpen} onOpenChange={setSaveTypeOpen} defaultTitle={doc.title} onSave={saveOutlineAsType} returnFocusRef={typeButtonRef} />
+      <SaveOutlineDialog open={saveTypeOpen} onOpenChange={setSaveTypeOpen} defaultTitle={doc.title} onSave={saveOutlineAsType} returnFocusRef={galleryButtonRef} />
+      <ShareExportDialog open={shareOpen} onOpenChange={setShareOpen} documentId={doc.id || null} title={doc.title} ensureSaved={ensureSaved} notify={notify} returnFocusRef={shareButtonRef} />
 
       <NoticeStack notices={notices} onDismiss={dismissNotice} />
     </>
