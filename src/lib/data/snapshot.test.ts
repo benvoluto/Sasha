@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { collectCitations } from "@/lib/citations/contract";
 import type { PMNode } from "@/lib/documents/sections";
 import { MAX_INSERT_ROWS, tableCitationHref, type DataRow, type DataTableSummary } from "./contract";
 import { tableSnapshotNodes } from "./snapshot";
@@ -51,11 +52,17 @@ describe("tableSnapshotNodes", () => {
     expect(text(cite)).toBe("Source: Costs — Budget.xlsx, Sheet: 2024.");
   });
 
-  it("links the table name to the table in the library", () => {
+  it("links the table name to the table in the library and cites the table", () => {
     const [, cite] = tableSnapshotNodes({ table: table(), rows: rows(3) }, { rows: 3, at: "x" });
     const link = cite.content!.find((n) => n.marks?.length);
     expect(link?.text).toBe("Costs");
-    expect(link?.marks).toEqual([{ type: "link", attrs: { href: tableCitationHref(table().source_id, table().id) } }]);
+    expect(link?.marks).toEqual([
+      { type: "link", attrs: { href: tableCitationHref(table().source_id, table().id) } },
+      { type: "citation", attrs: { kind: "table", passageId: null, sourceId: table().source_id, dataTableId: table().id, quote: null, verified: true } },
+    ]);
+    // The table is numbered among the document's sources cited.
+    const { references } = collectCitations({ type: "doc", content: [cite] });
+    expect(references).toMatchObject([{ key: `t:${table().id}`, number: 1, kind: "table", sourceId: table().source_id }]);
     expect(tableCitationHref(table().source_id, table().id)).toMatch(/^\/library\?source=.+&table=.+$/);
   });
 

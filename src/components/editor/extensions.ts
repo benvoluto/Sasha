@@ -2,7 +2,8 @@
 // section ids on headings, highlight, the "filled" mark for text that came from
 // sources or notes, the dividers between sections, the heading gutter (the
 // button that opens a section's actions) and tables that remember the data
-// table they were inserted from. Client-only.
+// table they were inserted from, and citations (a sentence's passage, or a
+// table's source line). Client-only.
 
 import { Extension, Mark, mergeAttributes } from "@tiptap/core";
 import Heading from "@tiptap/extension-heading";
@@ -22,6 +23,7 @@ import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } 
 import { Mapping } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import type { Extensions } from "@tiptap/react";
+import { CITATION_DATA_ATTRS, CITATION_MARK, citationAttrs, type CitationAttrs } from "@/lib/citations/contract";
 import { DATA_TABLE_ATTR } from "@/lib/data/contract";
 
 export const newSectionId = () => `s_${Math.random().toString(36).slice(2, 10)}`;
@@ -107,6 +109,40 @@ export const Filled = Mark.create({
   inclusive: false,
   parseHTML: () => [{ tag: "span[data-filled]" }],
   renderHTML: ({ HTMLAttributes }) => ["span", mergeAttributes(HTMLAttributes, { "data-filled": "", class: "filled-text" }), 0],
+});
+
+/**
+ * A citation (phase7-spec.md §2.3): the mark covers the supported text, and
+ * the reference number is drawn after it by the citation layer
+ * (citation-layer.tsx), never stored. Several citations may cover the same
+ * text (`excludes: ""`), and typing at its edge doesn't extend it. The
+ * attributes live on the span as data-* attributes, so copy and paste keep them.
+ */
+export const Citation = Mark.create({
+  name: CITATION_MARK,
+  inclusive: false,
+  excludes: "",
+  spanning: true,
+  addAttributes() {
+    const keys = Object.keys(CITATION_DATA_ATTRS) as Array<keyof CitationAttrs>;
+    return Object.fromEntries(
+      keys.map((key) => [
+        key,
+        {
+          default: key === "kind" ? "passage" : key === "verified" ? false : null,
+          // Read all attributes through citationAttrs, so a pasted span with odd values still parses.
+          parseHTML: (el: HTMLElement) => citationAttrs(Object.fromEntries(keys.map((k) => [k, el.getAttribute(CITATION_DATA_ATTRS[k])])))[key],
+          renderHTML: (attrs: Record<string, unknown>) => {
+            const v = attrs[key];
+            if (key === "verified") return { [CITATION_DATA_ATTRS.verified]: v === true || v === "true" ? "true" : "false" };
+            return v === null || v === undefined || v === "" ? {} : { [CITATION_DATA_ATTRS[key]]: String(v) };
+          },
+        },
+      ]),
+    );
+  },
+  parseHTML: () => [{ tag: `span[${CITATION_DATA_ATTRS.kind}]` }],
+  renderHTML: ({ HTMLAttributes }) => ["span", mergeAttributes(HTMLAttributes, { class: "citation" }), 0],
 });
 
 /** A string attribute kept as `name` (a data-* attribute) on the element, written only when set. */
@@ -406,6 +442,8 @@ export function documentExtensions(handlers: DocumentHandlers = {}): Extensions 
     Filled,
     // Relative hrefs ("/library?source=…&table=…", the snapshot citations) pass Link's default check.
     Link.configure({ openOnClick: false, autolink: true }),
+    // After Link, so a table's source line keeps the link as its first mark.
+    Citation,
     TextAlign.configure({ types: ["heading", "paragraph"] }),
     DataTable.configure({ resizable: true }),
     TableRow,

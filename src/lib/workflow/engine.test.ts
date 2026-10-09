@@ -82,7 +82,7 @@ vi.mock("./generic", () => ({
   },
 }));
 
-const { executeGraph, HANDLERS, LOOP_CONCURRENCY } = await import("./engine");
+const { executeGraph, HANDLERS, LOOP_CONCURRENCY, progressItem } = await import("./engine");
 const { createRun, getRun, normalizeRun, resetWorkflowStore } = await import("./store");
 const { checkpointDecisionFor } = await import("./core-nodes");
 
@@ -295,6 +295,8 @@ describe("executeGraph", () => {
     expect(run.pause_reason).toBe("budget");
     expect(fake.drafted).toEqual(["a", "b", "c"]);
     expect(run.steps.draft).toMatchObject({ status: "pending", progress: { done: 3, total: 5 } });
+    // Each item's state is listed on the step: the finished ones done, the rest still pending.
+    expect(run.steps.draft.progress!.items!.map((i) => i.state)).toEqual(["done", "done", "done", "pending", "pending"]);
     expect((run.outputs.draft.__loop as { results: unknown[] }).results.filter(Boolean)).toHaveLength(3);
     expect(run.steps.outcome.status).toBe("pending");
     expect((await getRun(TEAM, run.id))?.status).toBe("paused");
@@ -304,6 +306,7 @@ describe("executeGraph", () => {
     expect(fake.drafted).toEqual(["a", "b", "c", "d", "e"]);
     expect(run.status).toBe("complete");
     expect(run.steps.draft).toMatchObject({ status: "done", progress: { done: 5, total: 5 } });
+    expect(run.steps.draft.progress!.items!.every((i) => i.state === "done")).toBe(true);
     expect(run.outputs.draft.__loop).toBeUndefined();
     expect((run.outputs.draft.op as unknown[]).length).toBe(5);
     // A loop's findings are a list of lists; the outcome sees them flattened.
@@ -433,6 +436,13 @@ describe("executeGraph", () => {
     expect(run.outcome!.rationale.split("\n\nANSWER(")).toHaveLength(2);
   });
 
+  it("labels loop items for the progress list from their heading and section", () => {
+    expect(progressItem({ heading: "Budget", sectionId: "b1", markdown: "…" }, 0)).toEqual({ label: "Budget", sectionId: "b1" });
+    expect(progressItem({ title: "  A source " }, 1)).toEqual({ label: "A source" });
+    expect(progressItem("a", 2)).toEqual({ label: "Item 3" });
+    expect(progressItem({ heading: "x".repeat(200) }, 0).label).toHaveLength(120);
+  });
+
   it("loops a core node over a list, one call per item", async () => {
     fakeModel();
     const g = defaultWorkflowGraph();
@@ -442,7 +452,7 @@ describe("executeGraph", () => {
     await executeGraph(run);
     expect(run.outputs.sum.response).toHaveLength(2);
     expect((run.outputs.sum.response as string[])[1]).toMatch(/^ANSWER\(Summarize: [\s\S]*Most respondents/);
-    expect(run.steps.sum.progress).toEqual({ done: 2, total: 2 });
+    expect(run.steps.sum.progress).toEqual({ done: 2, total: 2, items: [{ label: "Item 1", state: "done" }, { label: "Item 2", state: "done" }] });
     expect(run.status).toBe("complete");
   });
 

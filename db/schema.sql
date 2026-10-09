@@ -370,3 +370,23 @@ CREATE TABLE IF NOT EXISTS suggestion_run (
   generated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   error              TEXT
 );
+
+-- Rubric check results (src/lib/rubric/store.ts owns these; keep in step with
+-- RUBRIC_CHECK_SCHEMA). One row per document and scope ('doc' | 'section:<id>'):
+-- the last result and the hash of what it checked, for the cache and the
+-- per-scope interval. rubric_check_call counts a team's model checks for the
+-- hourly limit (rows older than an hour are deleted as new ones arrive).
+CREATE TABLE IF NOT EXISTS rubric_check (
+  team_id            TEXT NOT NULL,
+  document_id        UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,
+  scope_key          TEXT NOT NULL,
+  inputs_hash        TEXT NOT NULL,             -- sha256 of criteria, type key and version, text checked
+  result             JSONB NOT NULL,            -- RubricCheckResponse
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (team_id, document_id, scope_key)
+);
+CREATE TABLE IF NOT EXISTS rubric_check_call (
+  team_id            TEXT NOT NULL,
+  called_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS rubric_check_call_team_idx ON rubric_check_call (team_id, called_at);

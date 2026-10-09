@@ -37,8 +37,13 @@ export type StepState = {
   error?: string;
   note?: string;
   /** A looping node's progress, kept across pauses. */
-  progress?: { done: number; total: number };
+  progress?: { done: number; total: number; items?: StepProgressItem[] };
 };
+
+/** Loop items listed on a step (the first MAX_PROGRESS_ITEMS), so the Workflows tab can show each section's state. */
+export const MAX_PROGRESS_ITEMS = 60;
+export const PROGRESS_ITEM_STATES = ["pending", "running", "done", "failed", "skipped"] as const;
+export type StepProgressItem = { label: string; state: (typeof PROGRESS_ITEM_STATES)[number]; sectionId?: string };
 
 /**
  * running: executing now. awaiting_review: stopped at a human checkpoint.

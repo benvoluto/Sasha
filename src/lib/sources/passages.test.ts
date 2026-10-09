@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkCitations, redact, toPassages } from "./passages";
+import { canon, checkCitations, redact, toPassages } from "./passages";
 
 const doc = (text: string, i = 0) => ({ doc_id: `g-${i}`, doc_type: "Teacher Report", text });
 
@@ -43,5 +43,12 @@ describe("redact", () => {
 
   it("leaves words that merely contain a name part", () => {
     expect(redact("Annabelle and Ann", { student: "Ann Lee" })).toBe("Annabelle and [Student]");
+  });
+});
+
+describe("canon", () => {
+  it("folds typography, case and punctuation for citation checks", () => {
+    expect(canon("“Demand”  rose—12%, year-over-year…")).toBe("demand rose 12 year over year");
+    expect(canon("   ")).toBe("");
   });
 });

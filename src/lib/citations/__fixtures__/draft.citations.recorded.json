@@ -1,0 +1,32 @@
+{
+  "recorded_at": "2026-10-08T23:23:18.081Z",
+  "model": "claude-opus-5-5",
+  "task": "draft.section",
+  "reply": "The budget below covers the repair of the two sections of the riverside footpath that collapsed after the January floods. Together they total 400 metres. [[p:S4a7db7fb.P0|Two sections, totalling 400 metres, collapsed after the January floods.]] All costs come from a single contractor estimate prepared by Bankside Civils. [[p:S6370e047.P0]]\n\n### Line items\n\n| Line item | Scope | Cost |\n|---|---|---|\n| Groundworks | Rebuilding the two collapsed sections | £31,000 |\n| Path surface | Permeable resin-bound surface, 400 metres | £14,000 |\n| Drainage | Four culverts, including installation | £9,000 |\n| Bank stabilisation | Willow spiling and planting | £6,000 |\n| **Total** | | **£60,000** |\n\n- **Groundworks** are the largest cost and restore the path's structural base. [[p:S6370e047.P0|Groundworks for the two collapsed sections are estimated at £31,000.]]\n- **Surfacing** uses a permeable resin-bound finish across the full 400 metres of repaired path. [[p:S6370e047.P0|A permeable resin-bound surface for 400 metres is quoted at £14,000.]]\n- **Drainage** covers four culverts, and the figure includes installation. [[p:S6370e047.P0|Four drainage culverts are estimated at £9,000 including installation.]]\n- **Bank stabilisation** uses willow spiling and planting to secure the riverbank alongside the repaired sections. [[p:S6370e047.P0|Willow spiling and planting to stabilize the bank is estimated at £6,000.]]\n\n### Total\n\nThe total requested is **£60,000**, the sum of the four line items above. [[p:S6370e047.P0]]\n\n### Validity of costs\n\nThe contractor's quote is valid until 30 November 2026. [[p:S6370e047.P0|The quote is valid until 30 November 2026.]] A decision before that date would let the works go ahead at the prices shown.\n\n### What the budget achieves\n\nThe investment reopens a route that has lost about two-thirds of its users. Average weekly walkers have fallen from 900 before the collapse to 310 since. [[p:S4a7db7fb.P0|an average of 900 walkers a week before the collapse and 310 a week since]] It also removes the need for the Station Road detour. That detour adds 700 metres and has no pavement for 150 metres. [[p:S4a7db7fb.P0|The detour along Station Road adds 700 metres and has no pavement for 150 metres.]]\n\n[The sources do not cover contingency, project management, VAT treatment or any match funding. These need confirming before submission.]",
+  "grounding": {
+    "sources": [
+      {
+        "id": "4a7db7fb-9c28-49d5-8678-1681ef19a016",
+        "title": "Riverside path condition survey (2026)"
+      },
+      {
+        "id": "6370e047-621c-4463-9073-b6a3b5f9a38b",
+        "title": "Contractor cost estimate, Bankside Civils"
+      }
+    ],
+    "passages": [
+      {
+        "id": "S4a7db7fb.P0",
+        "idx": 0,
+        "page": 1,
+        "text": "The riverside footpath between Mill Bridge and the boathouse is 1.2 kilometres long. Two sections, totalling 400 metres, collapsed after the January floods. Pedestrian counters recorded an average of 900 walkers a week before the collapse and 310 a week since. The detour along Station Road adds 700 metres and has no pavement for 150 metres."
+      },
+      {
+        "id": "S6370e047.P0",
+        "idx": 0,
+        "page": 1,
+        "text": "Groundworks for the two collapsed sections are estimated at £31,000. A permeable resin-bound surface for 400 metres is quoted at £14,000. Four drainage culverts are estimated at £9,000 including installation. Willow spiling and planting to stabilize the bank is estimated at £6,000. The quote is valid until 30 November 2026."
+      }
+    ]
+  }
+}

@@ -5,7 +5,8 @@
 // is added to it), the sources in the chosen folder in the middle, and the
 // chosen source's details on the right. ?folder= and ?source= keep the place in
 // the URL, so the tracker and the editor can link straight to a source;
-// ?table= opens one of its tables (a table snapshot's citation link).
+// ?table= opens one of its tables (a table snapshot's citation link), and
+// ?passage= shows and highlights one of its passages (a citation's "Open source").
 
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
@@ -298,7 +299,7 @@ export function SourceLibrary() {
                     <button
                       type="button"
                       aria-current={active ? "true" : undefined}
-                      onClick={() => setParams({ source: active ? null : s.id, table: null })}
+                      onClick={() => setParams({ source: active ? null : s.id, table: null, passage: null })}
                       className={`flex w-full items-start gap-3 px-4 py-3 text-left sm:px-6 ${active ? "bg-[var(--doc-accent-soft)]" : "hover:bg-[var(--doc-accent-soft)]/60"}`}
                     >
                       <KindIcon kind={s.kind} className="mt-0.5 h-4 w-4 shrink-0 text-[var(--doc-muted)]" />
@@ -322,14 +323,15 @@ export function SourceLibrary() {
             key={selectedId}
             id={selectedId}
             focusTableId={params.get("table")}
+            focusPassageId={params.get("passage")}
             folders={tree}
-            onClose={() => setParams({ source: null, table: null })}
+            onClose={() => setParams({ source: null, table: null, passage: null })}
             onChanged={(s) => {
               setSources((list) => (list ? mergeFresh(list, [s]) : list));
               void loadSources();
             }}
             onDeleted={() => {
-              setParams({ source: null, table: null });
+              setParams({ source: null, table: null, passage: null });
               void loadSources();
             }}
           />
@@ -647,6 +649,7 @@ type DocRef = { id: string; title: string };
 function SourceDrawer({
   id,
   focusTableId,
+  focusPassageId,
   folders,
   onClose,
   onChanged,
@@ -655,6 +658,8 @@ function SourceDrawer({
   id: string;
   /** ?table=: the table to scroll to and expand in the Tables section (a snapshot's citation link). */
   focusTableId: string | null;
+  /** ?passage=: the passage to show and highlight in the Passages section (a citation's link). */
+  focusPassageId: string | null;
   folders: TreeNode[];
   onClose: () => void;
   onChanged: (s: SourceSummary) => void;
@@ -908,6 +913,8 @@ function SourceDrawer({
 
           <SourceTables sourceId={source.id} canHave={canHaveTables(source)} busy={isBusy(source)} status={source.extraction_status} focusTableId={focusTableId} />
 
+          <SourcePassages sourceId={source.id} status={source.extraction_status} focusPassageId={focusPassageId} />
+
           <section className="space-y-1.5">
             <label htmlFor="source-folder" className="text-xs font-semibold uppercase tracking-wider text-[var(--doc-muted)]">
               Folder
@@ -975,6 +982,107 @@ function SourceDrawer({
         </div>
       )}
     </aside>
+  );
+}
+
+type PassageItem = { id: string; idx: number; page: number | null; text: string };
+
+/** The passage a citation names: by id, or by its index when the id's source prefix matches. */
+function isFocusPassage(p: PassageItem, focus: string | null): boolean {
+  if (!focus) return false;
+  if (p.id === focus) return true;
+  const m = /^(S[0-9a-f]{8})\.P(\d+)$/.exec(focus);
+  return !!m && p.id.startsWith(`${m[1]}.`) && p.idx === Number(m[2]);
+}
+
+/**
+ * The source's citable passages (the ids citations use), collapsed until
+ * opened. A citation's link (?passage=) opens the list, scrolls to the passage
+ * and highlights it; a passage that no longer exists (the source was read
+ * again) is said so.
+ */
+function SourcePassages({ sourceId, status, focusPassageId }: { sourceId: string; status: string; focusPassageId: string | null }) {
+  const [open, setOpen] = useState(!!focusPassageId);
+  const [passages, setPassages] = useState<PassageItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const focusRef = useCallback((el: HTMLLIElement | null) => {
+    if (!el) return;
+    el.scrollIntoView({ block: "center" });
+    el.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    if (focusPassageId) setOpen(true);
+  }, [focusPassageId]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void api<{ passages: PassageItem[] }>(`/api/sources/${encodeURIComponent(sourceId)}/passages`)
+      .then((r) => {
+        if (cancelled) return;
+        setPassages(r.passages);
+        setError(null);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(errorText(e, "Couldn't load the passages."));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, sourceId, status]);
+
+  const focusMissing = !!focusPassageId && passages !== null && !passages.some((p) => isFocusPassage(p, focusPassageId));
+
+  return (
+    <section className="space-y-1.5">
+      <details open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-[var(--doc-muted)]">
+          Passages{passages ? ` (${passages.length.toLocaleString()})` : ""}
+        </summary>
+        {error ? (
+          <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        ) : passages === null ? (
+          <p className="mt-2 flex items-center gap-2 text-sm text-[var(--doc-muted)]">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          </p>
+        ) : (
+          <>
+            {focusMissing && (
+              <p role="status" className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                The cited passage ({focusPassageId}) no longer exists: the source was read again since it was cited.
+              </p>
+            )}
+            {passages.length === 0 ? (
+              <p className="mt-2 text-sm text-[var(--doc-muted)]">No passages yet.</p>
+            ) : (
+              <ol className="mt-2 max-h-[50vh] space-y-1.5 overflow-auto pr-1">
+                {passages.map((p) => {
+                  const focus = isFocusPassage(p, focusPassageId);
+                  return (
+                    <li
+                      key={p.id}
+                      ref={focus ? focusRef : undefined}
+                      tabIndex={focus ? -1 : undefined}
+                      aria-current={focus ? "true" : undefined}
+                      className={`source-passage rounded-md px-2.5 py-2 text-xs leading-relaxed ${focus ? "source-passage--focus" : "bg-[var(--doc-accent-soft)]"}`}
+                    >
+                      <span className="mb-0.5 block font-mono text-[11px] text-[var(--doc-muted)]">
+                        {p.id}
+                        {p.page != null ? ` · p. ${p.page}` : ""}
+                      </span>
+                      {p.text}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </>
+        )}
+      </details>
+    </section>
   );
 }
 

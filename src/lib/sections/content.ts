@@ -5,12 +5,16 @@
 // CONTRACT (Phase 3): shared by the generation-backend track (owner) and the
 // editor-ui track.
 
+import { LEFTOVER_MARKER_RE, MARKER_RE, type CitationReport } from "@/lib/citations/contract";
+import { markCitations } from "@/lib/citations/marks";
 import { markdownToTiptap, type MarkdownOptions } from "@/lib/report/markdown-to-tiptap";
 import type { PMNode } from "@/lib/documents/sections";
 
-/** Citation markers ([[p:S1234abcd.P3]]) are a Phase 7 feature; until then they are removed before conversion. */
+const MARKER_WITH_SPACE_RE = new RegExp(String.raw`\s?` + MARKER_RE.source, "g");
+
+/** Remove citation markers ([[p:S1234abcd.P3]]): for replies the server didn't verify (no CitationReport) and for plain-text uses. */
 export function stripCitationMarkers(markdown: string): string {
-  return markdown.replace(/\s?\[\[p:[^\]]*\]\]/g, "");
+  return markdown.replace(MARKER_WITH_SPACE_RE, "").replace(LEFTOVER_MARKER_RE, "");
 }
 
 /**
@@ -19,10 +23,13 @@ export function stripCitationMarkers(markdown: string): string {
  * a heading that can't go lower becomes a bold paragraph). Never returns an
  * empty list: an empty result is one empty paragraph. `lineBreaks` keeps each
  * line of a paragraph on its own line (scaffolds and fixed front matter, whose
- * fields are written one per line).
+ * fields are written one per line). With `citations` (the server's report on
+ * the reply), each verified marker becomes a citation mark on the text it
+ * cites (markCitations); without it, markers are stripped.
  */
-export function sectionBlocksFromMarkdown(markdown: string, sectionLevel: number, opts: MarkdownOptions = {}): PMNode[] {
-  const doc = markdownToTiptap(stripCitationMarkers(markdown).trim(), opts);
+export function sectionBlocksFromMarkdown(markdown: string, sectionLevel: number, opts: MarkdownOptions & { citations?: CitationReport | null } = {}): PMNode[] {
+  const { citations, ...md } = opts;
+  const doc = markdownToTiptap((citations ? markdown : stripCitationMarkers(markdown)).trim(), md);
   const out: PMNode[] = [];
   for (const node of doc.content as PMNode[]) {
     if (node.type !== "heading") {
@@ -34,5 +41,6 @@ export function sectionBlocksFromMarkdown(markdown: string, sectionLevel: number
     if (target <= 3) out.push({ ...node, attrs: { level: target } });
     else out.push({ type: "paragraph", content: (node.content ?? []).map((c) => (c.type === "text" ? { ...c, marks: [...(c.marks ?? []), { type: "bold" }] } : c)) });
   }
-  return out.length ? out : [{ type: "paragraph" }];
+  const blocks = citations ? markCitations(out, citations) : out;
+  return blocks.length ? blocks : [{ type: "paragraph" }];
 }

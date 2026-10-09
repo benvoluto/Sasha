@@ -8,9 +8,12 @@ vi.mock("@/lib/llm/claude", async (importOriginal) => ({
 }));
 vi.mock("@/catalog", () => ({ getType: mocks.getType }));
 
+import { CITE_SOURCES_INSTRUCTION } from "@/lib/citations/contract";
 import { getSectionMeta, putSectionNotes } from "@/lib/documents/section-store";
 import { createDocument, getDocument, resetMemoryStore } from "@/lib/documents/store";
 import { listSections } from "@/lib/documents/sections";
+import { passagePrefix } from "@/lib/sources/pages";
+import { createSource, linkSource, replacePassages, resetSourceStore } from "@/lib/sources/store";
 import { dropRepeatedHeading, findTarget, generateSection, MODE_TASKS, neighboursOf, type ParsedGenerateRequest } from "./generate";
 import { docOf, heading, para, testType } from "./test-fixtures";
 
@@ -148,5 +151,63 @@ describe("neighboursOf", () => {
     const n = neighboursOf(sections, findTarget(sections, "s_sig", "Significance"));
     expect(n.previous).toEqual({ heading: "Research Strategy", text: "Overview." });
     expect(n.next).toEqual({ heading: "Approach", text: "Methods by aim." });
+  });
+});
+
+describe("generateSection citations", () => {
+  beforeEach(() => {
+    delete process.env.POSTGRES_URL;
+    resetMemoryStore();
+    resetSourceStore();
+    mocks.getType.mockReset().mockResolvedValue({ definition: def, origin: "file", enabled: true, overridden: false, updated_at: null });
+    mocks.configured.value = true;
+  });
+
+  async function grounded() {
+    const d = await makeDoc();
+    const s = await createSource(T, "ann", { kind: "note", title: "Cost study", extracted_text: "Staff cost $10k in 2025.", extraction_status: "ready" });
+    const id = `${passagePrefix(s.id)}.P0`;
+    await replacePassages(T, s.id, [{ id, idx: 0, page: 1, start_offset: 0, end_offset: 24, text: "Staff cost $10k in 2025." }]);
+    await linkSource(T, "ann", d.id, s.id);
+    return { d, s, id };
+  }
+
+  it("verifies the reply's markers and returns the report", async () => {
+    const { d, s, id } = await grounded();
+    mocks.claudeText.mockReset().mockResolvedValue(reply(`Staff cost $10k.[[p:${id}|staff cost $10k]] Rent is extra.[[p:S00000000.P4]] Total [[p:oops]].`));
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const res = await generateSection({ teamId: T, agent: "ann", documentId: d.id, sectionId: "s_bud", req: req({ mode: "draft" }) });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.response.markdown).toBe(`Staff cost $10k.[[p:${id}]] Rent is extra. Total.`);
+    expect(res.response.citations).toEqual({
+      kept: 1,
+      dropped: [
+        { raw: "[[p:S00000000.P4]]", passageId: "S00000000.P4", reason: "unknown_passage" },
+        { raw: "[[p:oops]]", passageId: "oops", reason: "malformed" },
+      ],
+      passages: { [id]: { passageId: id, sourceId: s.id, sourceTitle: "Cost study", page: 1, quote: "staff cost $10k", excerpt: "Staff cost $10k in 2025." } },
+    });
+    // Counts only in the log, never text.
+    expect(info).toHaveBeenCalledWith("[citations]", { kept: 1, dropped: 2 });
+    info.mockRestore();
+    const { system, user } = mocks.claudeText.mock.calls[0][0];
+    expect(system).toContain("[[p:ID]]");
+    expect(user).toContain(`[${id}] (p.1) Staff cost $10k in 2025.`);
+  });
+
+  it("refuses a Cite sources reply that rewords the body and leaves the section alone", async () => {
+    const { d, id } = await grounded();
+    const body = "Staff cost $10k in 2025. Rent is paid by the council.";
+    mocks.claudeText.mockReset().mockResolvedValue(reply(`Staffing came to roughly ten thousand dollars.[[p:${id}]] The council covers rent.`));
+    const res = await generateSection({ teamId: T, agent: "ann", documentId: d.id, sectionId: "s_bud", req: req({ mode: "rewrite", body, instruction: CITE_SOURCES_INSTRUCTION }) });
+    expect(res).toEqual({ ok: false, code: "wording_changed", status: 422, error: "Claude changed the wording; nothing was applied." });
+    expect((await getSectionMeta(T, d.id, "s_bud"))?.status).not.toBe("drafted");
+
+    // Markers already in the body are kept when the wording stays.
+    mocks.claudeText.mockResolvedValue(reply(`Staff cost $10k in 2025.[[p:${id}]] Rent is paid by the council.`));
+    const ok = await generateSection({ teamId: T, agent: "ann", documentId: d.id, sectionId: "s_bud", req: req({ mode: "rewrite", body: `Staff cost $10k in 2025.[[p:${id}]] Rent is paid by the council.`, instruction: CITE_SOURCES_INSTRUCTION }) });
+    expect(ok.ok && ok.response.citations?.kept).toBe(1);
+    expect(mocks.claudeText.mock.calls.at(-1)![0].user).toContain(`<current_draft>\nStaff cost $10k in 2025.[[p:${id}]]`);
   });
 });

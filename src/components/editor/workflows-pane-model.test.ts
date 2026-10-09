@@ -33,6 +33,7 @@ import {
   startBlocker,
   startRequest,
   stepRows,
+  canvasSelection,
   waitingCheckpoints,
   webHref,
   type CheckpointDraft,
@@ -175,7 +176,38 @@ describe("steps", () => {
       ["tr", "pending", null],
     ]);
     expect(stepRows(r)[1].label).toBe("Draft");
+    expect(stepRows(r)[1].items).toEqual([]);
     expect(progressText("step.trace", { done: 1, total: 4 })).toBe("1 of 4 items");
+  });
+
+  it("lists a looping step's items under it, with their states in words", () => {
+    const items = [
+      { label: "Summary", state: "done" as const, sectionId: "s1" },
+      { label: "Budget", state: "running" as const, sectionId: "b1" },
+      { label: "Item 3", state: "pending" as const },
+      { label: "Risks", state: "failed" as const, sectionId: "r1" },
+    ];
+    const r = run({
+      graph: { format: "graph-v1", nodes: [node("draft", "draft.section", {}, "Draft")], edges: [] },
+      steps: { draft: { status: "running", progress: { done: 1, total: 4, items } } },
+    });
+    expect(stepRows(r)[0].items.map((i) => [i.label, i.stateText, i.sectionId])).toEqual([
+      ["Summary", "Done", "s1"],
+      ["Budget", "In progress", "b1"],
+      ["Item 3", "Not started", null],
+      ["Risks", "Failed", "r1"],
+    ]);
+    expect(new Set(stepRows(r)[0].items.map((i) => i.key)).size).toBe(4);
+  });
+});
+
+describe("canvasSelection", () => {
+  it("reads ?workflow= and its alias ?workflowId=, with an optional version", () => {
+    expect(canvasSelection("?workflow=wf-1&version=3")).toEqual({ workflow: "wf-1", version: 3 });
+    expect(canvasSelection("?workflowId=builtin%3Atype-fie")).toEqual({ workflow: "builtin:type-fie", version: undefined });
+    expect(canvasSelection("?workflow=a&workflowId=b")).toEqual({ workflow: "a", version: undefined });
+    expect(canvasSelection("?version=x")).toEqual({ workflow: undefined, version: undefined });
+    expect(canvasSelection("")).toEqual({ workflow: undefined, version: undefined });
   });
 });
 

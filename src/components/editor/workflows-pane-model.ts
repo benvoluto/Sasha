@@ -26,6 +26,7 @@ import {
   type ScoreSummary,
   type Severity,
   type StartRunRequest,
+  type StepProgressItem,
   type WorkflowRunView,
 } from "@/lib/workflow/contract";
 
@@ -151,7 +152,10 @@ export function shouldAutoContinue(run: Pick<WorkflowRunView, "status" | "pause_
 
 // --- Steps --------------------------------------------------------------------------------
 
-export type StepRow = { id: string; label: string; type: string; status: string; note: string; error: string; progress: string | null };
+/** One loop item under a step row (a section being drafted), with its state in words. */
+export type StepItemRow = { key: string; label: string; state: StepProgressItem["state"]; stateText: string; sectionId: string | null };
+
+export type StepRow = { id: string; label: string; type: string; status: string; note: string; error: string; progress: string | null; items: StepItemRow[] };
 
 const LOOP_UNIT: Record<string, string> = { "draft.section": "sections", "restructure.rewrite": "sections" };
 
@@ -163,12 +167,31 @@ export function progressText(type: string, p: { done: number; total: number } | 
   return `${p.done} of ${p.total} ${LOOP_UNIT[type] ?? "items"}`;
 }
 
-/** The run's steps in graph order, with loop progress. */
+const ITEM_STATE_TEXT: Record<StepProgressItem["state"], string> = { pending: "Not started", running: "In progress", done: "Done", failed: "Failed", skipped: "Skipped" };
+
+/** A looping step's items (at most MAX_PROGRESS_ITEMS, as the engine lists them); none for a step that doesn't loop. */
+export function stepItemRows(items: StepProgressItem[] | undefined): StepItemRow[] {
+  return (items ?? []).map((it, i) => ({ key: `${i}:${it.sectionId ?? it.label}`, label: it.label, state: it.state, stateText: ITEM_STATE_TEXT[it.state] ?? it.state, sectionId: it.sectionId ?? null }));
+}
+
+/** The run's steps in graph order, with loop progress and each item's state. */
 export function stepRows(run: Pick<WorkflowRunView, "graph" | "steps">): StepRow[] {
   return run.graph.nodes.map((n) => {
     const s = run.steps[n.id];
-    return { id: n.id, label: nodeLabel(n), type: n.type, status: s?.status ?? "pending", note: s?.note ?? "", error: s?.error ?? "", progress: progressText(n.type, s?.progress) };
+    return { id: n.id, label: nodeLabel(n), type: n.type, status: s?.status ?? "pending", note: s?.note ?? "", error: s?.error ?? "", progress: progressText(n.type, s?.progress), items: stepItemRows(s?.progress?.items) };
   });
+}
+
+/**
+ * The canvas's selection from its URL: ?workflow=…&version=…, with
+ * ?workflowId= read as an alias of ?workflow= (links built from run records use it).
+ */
+export function canvasSelection(search: string): { workflow?: string; version?: number } {
+  const p = new URLSearchParams(search);
+  const workflow = p.get("workflow") || p.get("workflowId") || undefined;
+  const v = p.get("version");
+  const version = v === null || v === "" || !Number.isFinite(Number(v)) ? undefined : Number(v);
+  return { workflow, version };
 }
 
 /** "4 of 9 steps done". */

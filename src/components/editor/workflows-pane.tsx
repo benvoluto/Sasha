@@ -19,7 +19,7 @@
 // Pure logic lives in workflows-pane-model.ts.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, Loader2, Play, RefreshCw } from "@/components/icons";
+import { ArrowLeft, Check, ChevronDown, ChevronRight, CircleDashedIcon, CircleMinus, ExternalLink, Loader2, Play, RefreshCw, XCircle } from "@/components/icons";
 import { api, errorText } from "@/components/sources/shared";
 import { CheckpointPanel, type CheckpointSubmit } from "@/components/workflow/checkpoint-panel";
 import {
@@ -71,6 +71,7 @@ import {
   type CheckpointDraft,
   type StartForm,
   type StatusTone,
+  type StepItemRow,
   type WorkflowsPrefill,
 } from "./workflows-pane-model";
 
@@ -620,6 +621,17 @@ function RunView({
               {s.progress && <span className="text-xs text-[var(--doc-muted)]">{s.progress}</span>}
               {s.note && <span className="text-xs text-[var(--doc-muted)]">{s.note}</span>}
               {s.error && <span className="basis-full text-xs text-red-700 dark:text-red-300">{s.error}</span>}
+              {s.items.length > 0 && (
+                <ul aria-label={`${s.label}: items`} className="mb-1 ml-1 basis-full space-y-0.5 border-l border-[var(--doc-line)] pl-3">
+                  {s.items.map((it) => (
+                    <li key={it.key} className="flex items-center gap-1.5 text-xs">
+                      <ItemStateIcon state={it.state} />
+                      <span className={it.state === "pending" || it.state === "skipped" ? "text-[var(--doc-muted)]" : ""}>{it.label}</span>
+                      <span className="text-[var(--doc-muted)]">· {it.stateText}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ol>
@@ -684,6 +696,16 @@ function RunView({
       {run.outcome?.tables.map((t) => <OutcomeTableView key={t.key} table={t} onOpenSources={onOpenSources} />)}
     </div>
   );
+}
+
+/** A loop item's state as an icon; the state is also written out beside it, so the icon is decorative. */
+function ItemStateIcon({ state }: { state: StepItemRow["state"] }) {
+  const cls = "h-3.5 w-3.5 shrink-0";
+  if (state === "done") return <Check className={`${cls} text-emerald-700 dark:text-emerald-400`} aria-hidden />;
+  if (state === "running") return <Loader2 className={`${cls} animate-spin text-[var(--doc-accent)]`} aria-hidden />;
+  if (state === "failed") return <XCircle className={`${cls} text-red-700 dark:text-red-300`} aria-hidden />;
+  if (state === "skipped") return <CircleMinus className={`${cls} text-[var(--doc-muted)]`} aria-hidden />;
+  return <CircleDashedIcon className={`${cls} text-[var(--doc-muted)]`} aria-hidden />;
 }
 
 function stepTone(status: string): StatusTone {

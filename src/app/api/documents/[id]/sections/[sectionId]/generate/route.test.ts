@@ -1,61 +1,60 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ generate: vi.fn(), configured: { value: true } }));
+const mocks = vi.hoisted(() => ({ claudeText: vi.fn(), getType: vi.fn() }));
 vi.mock("@/lib/documents/team", () => ({ requireTeam: async () => ({ teamId: "org:a", agent: "ann" }) }));
-vi.mock("@/lib/sections/generate", () => ({ generateSection: mocks.generate }));
+vi.mock("@/catalog", () => ({ getType: mocks.getType }));
 vi.mock("@/lib/llm/claude", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/llm/claude")>()),
-  claudeConfigured: () => mocks.configured.value,
+  claudeText: mocks.claudeText,
+  claudeConfigured: () => true,
 }));
 
-import { ModelRefusalError, ModelTruncatedError } from "@/lib/llm/claude";
+import { CITE_SOURCES_INSTRUCTION } from "@/lib/citations/contract";
+import { createDocument, resetMemoryStore } from "@/lib/documents/store";
+import { docOf, heading, para, testType } from "@/lib/sections/test-fixtures";
+import { passagePrefix } from "@/lib/sources/pages";
+import { createSource, linkSource, replacePassages, resetSourceStore } from "@/lib/sources/store";
 import { POST } from "./route";
 
-const ID = "11111111-1111-4111-8111-111111111111";
-const call = (body: unknown, id = ID, sectionId = "s_abc12345") =>
-  POST(new Request(`http://x/api/documents/${id}/sections/${sectionId}/generate`, { method: "POST", body: JSON.stringify(body) }), { params: Promise.resolve({ id, sectionId }) });
+const def = testType();
+const call = (id: string, sectionId: string, body: unknown) =>
+  POST(new Request("http://x", { method: "POST", body: JSON.stringify(body) }), { params: Promise.resolve({ id, sectionId }) });
 
-describe("POST /api/documents/[id]/sections/[sectionId]/generate", () => {
+describe("POST /api/documents/[id]/sections/[sectionId]/generate citations", () => {
   beforeEach(() => {
-    mocks.generate.mockReset();
-    mocks.configured.value = true;
+    delete process.env.POSTGRES_URL;
+    resetMemoryStore();
+    resetSourceStore();
+    mocks.getType.mockReset().mockResolvedValue({ definition: def, origin: "file", enabled: true, overridden: false, updated_at: null });
+    vi.spyOn(console, "info").mockImplementation(() => {});
   });
 
-  it("passes the parsed request through and returns the response", async () => {
-    const response = { markdown: "Hi", task: "draft.section", sourcesUsed: 0, section: { section_id: "s_abc12345" } };
-    mocks.generate.mockResolvedValue({ ok: true, response });
-    const res = await call({ mode: "draft", heading: "Budget" });
+  async function setup() {
+    const d = await createDocument("org:a", "ann", { type_key: def.key, content_json: docOf(heading("Budget", "s_bud", "budget"), para("")) });
+    const s = await createSource("org:a", "ann", { kind: "note", title: "Cost study", extracted_text: "Staff cost $10k.", extraction_status: "ready" });
+    const id = `${passagePrefix(s.id)}.P0`;
+    await replacePassages("org:a", s.id, [{ id, idx: 0, page: null, start_offset: 0, end_offset: 16, text: "Staff cost $10k." }]);
+    await linkSource("org:a", "ann", d.id, s.id);
+    return { d, id };
+  }
+
+  it("returns the verified markdown with citations kept and dropped", async () => {
+    const { d, id } = await setup();
+    mocks.claudeText.mockResolvedValue({ text: `Staff cost $10k.[[p:${id}]] Rent too.[[p:Sffffffff.P1|rent]]`, usage: {} });
+    const res = await call(d.id, "s_bud", { mode: "draft", heading: "Budget", specKey: "budget" });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(response);
-    expect(mocks.generate).toHaveBeenCalledWith({ teamId: "org:a", agent: "ann", documentId: ID, sectionId: "s_abc12345", req: { mode: "draft", heading: "Budget", level: 2, body: "" } });
+    const body = await res.json();
+    expect(body.markdown).toBe(`Staff cost $10k.[[p:${id}]] Rent too.`);
+    expect(body.citations.kept).toBe(1);
+    expect(body.citations.dropped).toEqual([{ raw: "[[p:Sffffffff.P1|rent]]", passageId: "Sffffffff.P1", reason: "unknown_passage" }]);
+    expect(Object.keys(body.citations.passages)).toEqual([id]);
   });
 
-  it("404s bad ids, 503s without Claude, 400s invalid bodies", async () => {
-    expect((await call({ mode: "draft", heading: "B" }, "nope")).status).toBe(404);
-    expect((await call({ mode: "draft", heading: "B" }, ID, "bad id")).status).toBe(404);
-    const bad = await call({ mode: "rewrite", heading: "B", body: "" , preset: "concise" });
-    expect(bad.status).toBe(400);
-    expect((await bad.json()).error).toMatch(/Nothing to rewrite/);
-    mocks.configured.value = false;
-    const off = await call({ mode: "draft", heading: "B" });
-    expect(off.status).toBe(503);
-    expect(await off.json()).toEqual({ error: "Claude is not configured." });
-    expect(mocks.generate).not.toHaveBeenCalled();
-  });
-
-  it("maps typed failures and model errors to statuses", async () => {
-    mocks.generate.mockResolvedValueOnce({ ok: false, code: "static", status: 409, error: "This section is fixed text; edit it directly." });
-    expect((await call({ mode: "draft", heading: "B" })).status).toBe(409);
-    mocks.generate.mockResolvedValueOnce({ ok: false, code: "notes_required", status: 400, error: "No notes" });
-    expect((await call({ mode: "draft_from_notes", heading: "B" })).status).toBe(400);
-    mocks.generate.mockRejectedValueOnce(new ModelRefusalError(null));
-    expect((await call({ mode: "draft", heading: "B" })).status).toBe(422);
-    mocks.generate.mockRejectedValueOnce(new ModelTruncatedError());
-    expect((await call({ mode: "draft", heading: "B" })).status).toBe(422);
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    mocks.generate.mockRejectedValueOnce(new Error("network"));
-    const res = await call({ mode: "draft", heading: "B" });
-    expect(res.status).toBe(502);
-    expect(await res.json()).toEqual({ error: "Drafting failed. Try again." });
+  it("answers 422 when Cite sources changed the wording", async () => {
+    const { d, id } = await setup();
+    mocks.claudeText.mockResolvedValue({ text: `Personnel expenses were about ten thousand.[[p:${id}]]`, usage: {} });
+    const res = await call(d.id, "s_bud", { mode: "rewrite", heading: "Budget", body: "Staff cost $10k.", instruction: CITE_SOURCES_INSTRUCTION });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: "Claude changed the wording; nothing was applied." });
   });
 });

@@ -94,7 +94,7 @@ export const DRAFT_TRACED_SYSTEM = [
   "Rules:",
   "- Ground every sentence in the notes or in a source passage. Do not invent figures, dates, names or facts; where the material is silent, write less rather than guess.",
   "- For each sentence, list its support: {\"kind\": \"passage\", \"id\": \"<passage id>\"} for a passage (ids are the ones in square brackets inside <sources>, copied exactly), or {\"kind\": \"note\", \"id\": null} when it rests on the notes. A sentence with no support gets an empty list; keep those few.",
-  "- Do not put passage ids or citation markers in the sentence text.",
+  "- Do not put passage ids or citation markers in the sentence text: cite passages only through the support list, whatever the sources block says about markers.",
   "- Write plain sentences, no headings or lists. Set paragraph_break to true on the first sentence of each new paragraph after the first.",
   "- Follow the section's guidance and cover its required elements where the material allows.",
   'Return JSON: {"sentences": [{"text": "…", "support": [{"kind": "passage", "id": "S1a2b3c4d.P3"}], "paragraph_break": false}]}.',

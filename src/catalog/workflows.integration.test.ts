@@ -124,7 +124,7 @@ describe.skipIf(missingHandlers.length > 0)("built-in workflows end to end", () 
       expect(run.outcome!.scores.find((s) => s.item === "overall_impact")).toMatchObject({ median: 3, min: 3, max: 4 });
     });
 
-    it("FIE: a blocked gate skips the decision and the outcome carries no rationale", async () => {
+    it("FIE: a blocked gate skips the decision and the sign-off, so the run completes without waiting", async () => {
       claudeJson.mockImplementation(async (c: { task: string }) =>
         c.task === "workflow.gate" ? { data: { inputs: [] }, usage: USAGE } : c.task === "workflow.decide" ? { data: { needs: [], rationale: "Criteria not met.", cited: [] }, usage: USAGE } : { data: replyFor(c.task), usage: USAGE },
       );
@@ -133,6 +133,9 @@ describe.skipIf(missingHandlers.length > 0)("built-in workflows end to end", () 
       expect(run.outcome).toMatchObject({ value: "blocked", rationale: "" });
       expect(run.steps.decide).toMatchObject({ status: "skipped" });
       expect(claudeJson.mock.calls.some(([c]) => c.task === "workflow.decide")).toBe(false);
+      // The checkpoint waits on gate.pass: nothing to sign, so the run is complete rather than awaiting review.
+      expect(run.steps.cp).toMatchObject({ status: "skipped" });
+      expect(run.status).toBe("complete");
     });
 
     it("FIE: decides per category, so one category short of evidence does not hide another's result", async () => {

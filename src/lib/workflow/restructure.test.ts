@@ -142,3 +142,16 @@ describe("applyRestructurePlan", () => {
     expect(JSON.stringify(SAMPLE)).toBe(before);
   });
 });
+
+describe("applyRestructurePlan and citations", () => {
+  it("keeps citation marks on text it moves verbatim", () => {
+    const cite = { type: "citation", attrs: { kind: "passage", passageId: "S1a2b3c4d.P7", sourceId: "src-1", dataTableId: null, quote: "rose", verified: true } };
+    const cited: PMNode = { type: "paragraph", content: [{ type: "text", text: "Demand rose.", marks: [cite] }, { type: "text", text: " Plain." }] };
+    const d = doc(h("Background"), cited, h("Plan"), p("Next steps."));
+    const r = applyRestructurePlan(d, plan(d, { 0: "approach", 1: "summary" }), SECTIONS, newId);
+    expect(r.drift).toBe(false);
+    const moved = r.doc.content!.find((x) => x.content?.[0]?.text === "Demand rose.")!;
+    expect(moved.content![0].marks).toEqual([cite]);
+    expect(moved.content![1]).toEqual({ type: "text", text: " Plain." });
+  });
+});

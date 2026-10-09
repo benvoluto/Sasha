@@ -2,7 +2,8 @@
 
 // The section menu the heading gutter opens (PLAN §4.5): Draft / Draft again,
 // Rewrite with a preset (either direction) or a custom instruction, Section
-// notes, and the rubric and citation actions that arrive in a later phase.
+// notes, Check against rubric (the Check panel, scoped to the section) and
+// Cite sources (a rewrite that keeps the wording and adds citations).
 // Anchored to the gutter button's rectangle; the custom instruction opens a
 // small popover in the same place.
 
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import type { DocumentTypeSummary } from "@/catalog/schema";
+import { CITE_SOURCES_INSTRUCTION } from "@/lib/citations/contract";
 import { REWRITE_PRESET_ORDER, REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
 import { sectionBodyRange } from "./tracked-range";
 import type { GenerationRequest } from "./use-section-generation";
@@ -58,6 +60,7 @@ export function SectionMenu({
   onClose,
   onRun,
   onNotes,
+  onCheck,
 }: {
   editor: Editor;
   target: SectionMenuTarget | null;
@@ -66,6 +69,8 @@ export function SectionMenu({
   onClose: () => void;
   onRun: (req: GenerationRequest) => void;
   onNotes: (sectionId: string) => void;
+  /** Check against rubric: open the Check panel on this section. */
+  onCheck: (sectionId: string) => void;
 }) {
   const [custom, setCustom] = useState<SectionMenuTarget | null>(null);
   const [instruction, setInstruction] = useState("");
@@ -79,7 +84,6 @@ export function SectionMenu({
   const hasBody = !!section?.bodyText.trim();
   const hasHeading = !!section?.heading.trim();
   const isBusy = !!target && busy.has(target.sectionId);
-  const later = <span className="ml-auto pl-3 text-[11px] text-[var(--doc-muted)]">Coming in a later update</span>;
 
   return (
     <>
@@ -121,8 +125,12 @@ export function SectionMenu({
               <SectionNotesIcon className="h-4 w-4" /> Section notes
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>Check against rubric {later}</DropdownMenuItem>
-            <DropdownMenuItem disabled>Cite sources {later}</DropdownMenuItem>
+            <DropdownMenuItem disabled={!hasBody} onSelect={() => onCheck(target.sectionId)}>
+              Check against rubric
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!hasBody || !hasHeading || isStatic || isBusy} onSelect={() => onRun({ sectionId: target.sectionId, mode: "rewrite", instruction: CITE_SOURCES_INSTRUCTION })}>
+              Cite sources
+            </DropdownMenuItem>
           </DropdownMenuContent>
         )}
       </DropdownMenu>

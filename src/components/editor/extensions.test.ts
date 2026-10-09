@@ -195,3 +195,55 @@ describe("DataTable", () => {
     expect(fromHTML(html).content![0].attrs).toMatchObject({ dataTableId: null, sourceId: null, snapshotAt: null });
   });
 });
+
+describe("Citation mark", () => {
+  const docSchema = getSchema(documentExtensions());
+  const { document } = parseHTML("<!doctype html><html><body></body></html>") as unknown as { document: Document };
+  const toHTML = (json: PMJSON) => {
+    const node = PMNodeClass.fromJSON(docSchema, json);
+    const wrap = document.createElement("div");
+    wrap.appendChild(DOMSerializer.fromSchema(docSchema).serializeFragment(node.content, { document }));
+    return wrap.innerHTML;
+  };
+  const fromHTML = (html: string) => {
+    const wrap = document.createElement("div");
+    wrap.innerHTML = html;
+    return PMDOMParser.fromSchema(docSchema).parse(wrap as unknown as globalThis.Node).toJSON() as PMJSON;
+  };
+  const passage = { kind: "passage", passageId: "S1a2b3c4d.P7", sourceId: "22222222-2222-4222-8222-222222222222", dataTableId: null, quote: "rose 12 percent", verified: true };
+  const other = { ...passage, passageId: "S1a2b3c4d.P8", quote: null };
+  const doc = (marks: PMJSON["marks"]): PMJSON => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Demand rose." , marks }, { type: "text", text: " Next." }] }] });
+
+  it("round-trips JSON → HTML → JSON with its attributes", () => {
+    const html = toHTML(doc([{ type: "citation", attrs: passage }]));
+    expect(html).toContain('class="citation"');
+    expect(html).toContain('data-citation="passage"');
+    expect(html).toContain('data-passage-id="S1a2b3c4d.P7"');
+    expect(html).toContain('data-quote="rose 12 percent"');
+    expect(html).toContain('data-verified="true"');
+    expect(html).not.toContain("data-table-id");
+    const back = fromHTML(html);
+    expect(back.content![0].content![0].marks).toEqual([{ type: "citation", attrs: passage }]);
+  });
+
+  it("keeps two citations on the same text", () => {
+    const back = fromHTML(toHTML(doc([{ type: "citation", attrs: passage }, { type: "citation", attrs: other }])));
+    const marks = back.content![0].content![0].marks!;
+    expect(marks.map((m) => m.attrs?.passageId)).toEqual(["S1a2b3c4d.P7", "S1a2b3c4d.P8"]);
+  });
+
+  it("reads a table citation and a pasted span with loose values", () => {
+    const back = fromHTML('<p><span data-citation="table" data-table-id="t1" data-source-id="s1" data-verified="nope">Costs</span></p>');
+    expect(back.content![0].content![0].marks).toEqual([{ type: "citation", attrs: { kind: "table", passageId: null, sourceId: "s1", dataTableId: "t1", quote: null, verified: false } }]);
+  });
+
+  it("is not inclusive: typing at the end of a cited span stays outside it", () => {
+    expect(docSchema.marks.citation.spec.inclusive).toBe(false);
+    const state = EditorState.create({ schema: docSchema, doc: PMNodeClass.fromJSON(docSchema, doc([{ type: "citation", attrs: passage }])) });
+    const end = 1 + "Demand rose.".length;
+    const next = state.apply(state.tr.setSelection(TextSelection.create(state.doc, end)).insertText("!"));
+    const typed = next.doc.firstChild!.child(1);
+    expect(typed.text).toBe("! Next.");
+    expect(typed.marks).toEqual([]);
+  });
+});

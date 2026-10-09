@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { CATALOG_SCHEMA } from "@/catalog/store";
 import { DATA_SCHEMA } from "@/lib/data/schema";
 import { DOCUMENT_SCHEMA } from "@/lib/documents/store";
+import { RUBRIC_CHECK_SCHEMA } from "@/lib/rubric/store";
 import { SOURCE_SCHEMA } from "@/lib/sources/store";
 import { SUGGESTION_SCHEMA } from "@/lib/suggestions/schema";
 import { WORKFLOW_SCHEMA } from "./schema";
@@ -58,7 +59,7 @@ describe("WORKFLOW_SCHEMA", () => {
   });
 
   it("creates every table the setup route expects", () => {
-    const statements = [setupRoute, ...WORKFLOW_SCHEMA, ...DOCUMENT_SCHEMA, ...SOURCE_SCHEMA, ...DATA_SCHEMA, ...CATALOG_SCHEMA, ...SUGGESTION_SCHEMA].join("\n");
+    const statements = [setupRoute, ...WORKFLOW_SCHEMA, ...DOCUMENT_SCHEMA, ...SOURCE_SCHEMA, ...DATA_SCHEMA, ...CATALOG_SCHEMA, ...SUGGESTION_SCHEMA, ...RUBRIC_CHECK_SCHEMA].join("\n");
     for (const t of expectedTables()) expect(statements, t).toMatch(new RegExp(`CREATE TABLE IF NOT EXISTS ${t} \\(`));
   });
 });

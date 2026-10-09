@@ -5,6 +5,7 @@ import {
   closeOutline,
   columnCloseFocus,
   isColumnOpen,
+  openCheck,
   openNotes,
   RIGHT_COLUMN_MODE_CLASS,
   rightColumnMode,
@@ -45,6 +46,16 @@ describe("right column state", () => {
 
   it("opening notes again keeps notes open", () => {
     expect(openNotes(openNotes(CLOSED_COLUMN))).toEqual({ outline: false, lower: "notes" });
+  });
+
+  it("check takes the lower slot beside the outline; tools from check brings tools back; its close X returns to Tools", () => {
+    const s = openCheck({ outline: true, lower: "tools" });
+    expect(s).toEqual({ outline: true, lower: "check" });
+    expect(openCheck(s)).toEqual(s);
+    expect(openCheck(openNotes(CLOSED_COLUMN))).toEqual({ outline: false, lower: "check" });
+    expect(toggleTools(s)).toEqual({ outline: true, lower: "tools" });
+    expect(closeLower(s)).toEqual({ outline: true, lower: null });
+    expect(columnCloseFocus("lower")).toBe("tools");
   });
 
   it("closes each half on its own", () => {

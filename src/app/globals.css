@@ -413,6 +413,11 @@
   --doc-on-accent: #ffffff;
   --doc-filled: #2457c5;
   --doc-highlight: #fff1a8;
+  --doc-cite: #1f5fbf;
+  --doc-cite-line: #9db6dc;
+  --doc-stale: #a05a00;
+  --doc-stale-soft: #fff4e0;
+  --doc-pop-shadow: 0 10px 30px rgba(15, 23, 32, 0.16), 0 2px 6px rgba(15, 23, 32, 0.08);
 }
 .dark {
   --doc-bg: #0e131a;
@@ -427,6 +432,11 @@
   --doc-on-accent: #151c25;
   --doc-filled: #8fb6ff;
   --doc-highlight: #5b4a10;
+  --doc-cite: #8fb6ff;
+  --doc-cite-line: #3d5a86;
+  --doc-stale: #f0b35a;
+  --doc-stale-soft: #33260f;
+  --doc-pop-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 .doc-screen { background: var(--doc-bg); color: var(--doc-ink); }
 /* The editing screen is a plain white page (no grey ground or card). */
@@ -585,3 +595,52 @@
 .outline-dot-done { background: #16a34a; border-color: #16a34a; }
 .outline-dot-partial { background: linear-gradient(90deg, #d97706 50%, transparent 50%); border-color: #d97706; }
 .outline-dot-missing { background: transparent; opacity: 0.7; }
+
+/* Citations (citation-layer.tsx). The cited text keeps the body colour, with a
+   dotted underline only on hover; the reference number after it is a small
+   superscript. A stale citation (source unlinked, deleted or re-read) has an
+   amber, struck number. The popover and the caret hint sit above the page. */
+.doc-prose .citation { text-decoration: none; border-radius: 2px; }
+.doc-prose .citation:hover { text-decoration: underline dotted var(--doc-cite-line); text-underline-offset: 3px; }
+.doc-prose .citation--stale:hover { text-decoration-color: var(--doc-stale); }
+.citation-ref {
+  font-size: 0.68em; line-height: 0; margin-left: 0.08em; color: var(--doc-cite);
+  font-variant-numeric: tabular-nums; cursor: pointer; user-select: none; white-space: nowrap;
+}
+.citation-ref:hover { text-decoration: underline; }
+.citation-ref--stale { color: var(--doc-stale); text-decoration: line-through; }
+.citation-ref--stale:hover { text-decoration: line-through underline; }
+.citation-hint {
+  position: fixed; z-index: 60; pointer-events: none; max-width: calc(100vw - 32px);
+  padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.75rem; line-height: 1.4;
+  background: var(--doc-surface); color: var(--doc-muted); border: 1px solid var(--doc-line); box-shadow: var(--doc-pop-shadow);
+}
+.citation-popover {
+  position: fixed; z-index: 70; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.85rem 0.95rem;
+  border-radius: 10px; font-size: 0.875rem; line-height: 1.45;
+  background: var(--doc-surface); color: var(--doc-ink); border: 1px solid var(--doc-line); box-shadow: var(--doc-pop-shadow);
+}
+.citation-popover-title { font-weight: 600; overflow-wrap: anywhere; }
+.citation-popover-num { color: var(--doc-cite); font-variant-numeric: tabular-nums; }
+.citation-popover--stale .citation-popover-num { color: var(--doc-stale); text-decoration: line-through; }
+.citation-popover-page { font-weight: 400; color: var(--doc-muted); }
+.citation-popover-excerpt {
+  max-height: 11rem; overflow: auto; padding-left: 0.65rem; border-left: 3px solid var(--doc-accent-line);
+  color: var(--doc-muted); font-size: 0.8125rem;
+}
+.citation-popover-excerpt mark { background: var(--doc-highlight); color: var(--doc-ink); border-radius: 2px; padding: 0 0.1em; }
+.citation-popover-status { font-size: 0.75rem; color: var(--doc-muted); }
+.citation-popover-status.is-stale { color: var(--doc-stale); background: var(--doc-stale-soft); padding: 0.25rem 0.45rem; border-radius: 6px; }
+.citation-popover-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.citation-popover-actions button {
+  min-height: 2rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 600;
+  border: 1px solid var(--doc-line); color: var(--doc-ink); background: transparent;
+}
+.citation-popover-actions button:first-child { background: var(--doc-accent); border-color: var(--doc-accent); color: var(--doc-on-accent); }
+.citation-popover-actions button:hover:not(:disabled) { border-color: var(--doc-accent); }
+.citation-popover-actions button:disabled { opacity: 0.45; cursor: default; }
+.citation-popover-actions button:focus-visible { outline: 2px solid var(--doc-accent); outline-offset: 2px; }
+
+/* A passage a citation opened in the library drawer (source-library.tsx). */
+.source-passage--focus { background: var(--doc-highlight); box-shadow: inset 3px 0 0 var(--doc-accent); }
+.source-passage--focus:focus { outline: 2px solid var(--doc-accent); outline-offset: 1px; }

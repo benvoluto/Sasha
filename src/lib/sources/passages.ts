@@ -45,7 +45,8 @@ export function toPassages(documents: SourceDocument[]): Passage[] {
   return out;
 }
 
-const canon = (s: string) => normalizeForMatching(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+/** Text as citation checks compare it: typography folded, lower-case, anything but letters and digits as single spaces. */
+export const canon = (s: string) => normalizeForMatching(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 export type CitationCheck = {
   total: number;

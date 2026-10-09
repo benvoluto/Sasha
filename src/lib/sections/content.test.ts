@@ -27,8 +27,23 @@ describe("sectionBlocksFromMarkdown", () => {
 
   it("strips citation markers", () => {
     expect(stripCitationMarkers("Costs rose [[p:S1234abcd.P3]] sharply.")).toBe("Costs rose sharply.");
+    expect(stripCitationMarkers("Growth hit 12% [[p:S1234abcd.P3|Growth was 12% [3] in 2025]].")).toBe("Growth hit 12%.");
+    expect(stripCitationMarkers("Open [[p:S1234abcd.P3|never closed\nNext.")).toBe("Open\nNext.");
     const blocks = sectionBlocksFromMarkdown("Costs rose [[p:S1.P1]].", 2);
     expect(JSON.stringify(blocks)).not.toContain("[[p:");
+  });
+
+  it("turns verified markers into citation marks when given the report", () => {
+    const id = "S1a2b3c4d.P3";
+    const citations = { kept: 1, dropped: [], passages: { [id]: { passageId: id, sourceId: "src", sourceTitle: "Report", page: 1, quote: null, excerpt: "Costs rose." } } };
+    const [p] = sectionBlocksFromMarkdown(`Intro. Costs rose sharply.[[p:${id}]]`, 2, { citations });
+    expect(JSON.stringify(p)).not.toContain("[[p:");
+    expect(p.content).toEqual([
+      { type: "text", text: "Intro. " },
+      { type: "text", text: "Costs rose sharply.", marks: [{ type: "citation", attrs: { kind: "passage", passageId: id, sourceId: "src", dataTableId: null, quote: null, verified: true } }] },
+    ]);
+    // Without a report (an older server), markers are stripped and nothing is marked.
+    expect(JSON.stringify(sectionBlocksFromMarkdown(`Costs rose.[[p:${id}]]`, 2, { citations: null }))).not.toContain("citation");
   });
 
   it("returns one empty paragraph for empty input", () => {

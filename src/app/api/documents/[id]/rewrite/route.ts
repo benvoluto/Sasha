@@ -5,9 +5,12 @@ import { getDocument } from "@/lib/documents/store";
 import { requireTeam } from "@/lib/documents/team";
 import { claudeConfigured, claudeText, ModelDeadlineError, ModelRefusalError, ModelTruncatedError } from "@/lib/llm/claude";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
+import { groundingResolver, verifyMarkers, wordingChanged, WORDING_CHANGED_ERROR } from "@/lib/citations/verify";
+import type { CitationReport } from "@/lib/citations/contract";
 import { REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
-import { sourceSummariesBlock } from "@/lib/sections/grounding";
-import { delimit, selectionRewriteSystem } from "@/lib/sections/prompt";
+import { isCiteSources, logCitations } from "@/lib/sections/generate";
+import { buildGrounding } from "@/lib/sections/grounding";
+import { delimit, selectionRewriteSystem, stripFences } from "@/lib/sections/prompt";
 
 export const dynamic = "force-dynamic";
 // Draft-tier calls stream with an overall deadline (CLAUDE_STREAM_DEADLINE_MS)
@@ -17,9 +20,15 @@ export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/** Passages for a selection rewrite: fewer than a section draft, picked for the selection and the instruction. */
+const REWRITE_GROUNDING_BUDGET = 12_000;
+
+/** POST response: the rewritten passage, with its verified [[p:ID]] markers and the report on them (markCitations). */
+export type RewriteResponse = { markdown: string; citations: CitationReport };
+
 const Body = z
   .object({
-    /** The selected text to rewrite. */
+    /** The selected text to rewrite; citations in it are sent as bare [[p:ID]] markers so the rewrite keeps them. */
     text: z.string().min(1).max(40_000),
     preset: z.string().optional(),
     direction: z.enum(["more", "less"]).optional(),
@@ -42,7 +51,9 @@ export async function POST(req: Request, { params }: Ctx) {
   if (preset && !p) return NextResponse.json({ error: "Unknown preset." }, { status: 400 });
   const how = instruction?.trim() || (direction === "less" && p?.lessInstruction ? p.lessInstruction : p!.instruction);
   const type = (await getType(caller.teamId, doc.type_key))?.definition ?? null;
-  const sources = await sourceSummariesBlock(caller.teamId, doc.id);
+  // Linked, read sources give the model passages it can cite; none gives no <sources> block at all.
+  const grounding = await buildGrounding(caller.teamId, doc.id, { focus: [text, how], budget: REWRITE_GROUNDING_BUDGET });
+  const sources = grounding.sources.length ? grounding.block : "";
 
   const user = [
     `Document title: ${doc.title || "Untitled"}`,
@@ -58,7 +69,10 @@ export async function POST(req: Request, { params }: Ctx) {
 
   try {
     const { text: rewritten } = await claudeText({ task: "rewrite.selection", system: selectionRewriteSystem(type), user, agent: caller.agent, documentId: doc.id });
-    return NextResponse.json({ markdown: rewritten });
+    const { markdown, report } = await verifyMarkers(stripFences(rewritten), groundingResolver(caller.teamId, doc.id, grounding));
+    logCitations(report);
+    if (isCiteSources({ instruction }) && wordingChanged(text, markdown)) return NextResponse.json({ error: WORDING_CHANGED_ERROR }, { status: 422 });
+    return NextResponse.json({ markdown, citations: report } satisfies RewriteResponse);
   } catch (error) {
     if (error instanceof ModelRefusalError || error instanceof ModelTruncatedError) {
       return NextResponse.json({ error: error.message }, { status: 422 });

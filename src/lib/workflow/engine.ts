@@ -18,7 +18,7 @@ import { typePolicy } from "@/catalog/workflows";
 import { getType } from "@/catalog";
 import { getDocument, type DocumentRecord } from "@/lib/documents/store";
 import { NodeError, type NodeContext, type NodeHandler } from "./context";
-import { FUNCTION_LIMIT_MS, type WorkflowRunRecord } from "./contract";
+import { FUNCTION_LIMIT_MS, MAX_PROGRESS_ITEMS, type StepProgressItem, type WorkflowRunRecord } from "./contract";
 import { CORE_HANDLERS, nodeLabels } from "./core-nodes";
 import { GENERIC_HANDLERS } from "./generic";
 import { STEP_HANDLERS } from "./nodes";
@@ -64,6 +64,17 @@ export function numberLoopFindings(nodeId: string, results: Array<Record<string,
     const findings = res.findings.map((f) => (f && typeof f === "object" && typeof (f as { id?: unknown }).id === "string" ? { ...(f as object), id: `${nodeId}:${i + 1}.${++n}` } : f));
     return { ...res, findings };
   });
+}
+
+/**
+ * A loop item's label and section for the step's progress list: its heading
+ * (sections, drafts), else a label, title or name, else "Item n".
+ */
+export function progressItem(item: unknown, i: number): Pick<StepProgressItem, "label" | "sectionId"> {
+  const o = item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : {};
+  const text = [o.heading, o.label, o.title, o.name].find((v): v is string => typeof v === "string" && !!v.trim());
+  const label = (text ?? `Item ${i + 1}`).trim();
+  return { label: label.length > 120 ? `${label.slice(0, 119)}…` : label, ...(typeof o.sectionId === "string" && o.sectionId ? { sectionId: o.sectionId } : {}) };
 }
 
 /** The context a run's handlers share for one invocation. */
@@ -189,7 +200,14 @@ export async function executeGraph(run: WorkflowRunRecord, opts: { deadline?: nu
     const kept = run.outputs[id]?.__loop as LoopState | undefined;
     const state: LoopState = kept && kept.total === length && kept.results.length === length ? kept : { total: length, results: Array(length).fill(null) };
     const todo = state.results.flatMap((res, i) => (res === null ? [i] : []));
-    const progress = () => ({ done: state.results.filter((x) => x !== null).length, total: length });
+    // Per-item states for the first MAX_PROGRESS_ITEMS items (finished ones from an earlier invocation are done).
+    const labels = (inputs[lists[0]] as unknown[]).slice(0, MAX_PROGRESS_ITEMS).map(progressItem);
+    const itemState = new Map<number, StepProgressItem["state"]>();
+    const progress = () => ({
+      done: state.results.filter((x) => x !== null).length,
+      total: length,
+      items: labels.map((l, i): StepProgressItem => ({ ...l, state: state.results[i] !== null ? "done" : (itemState.get(i) ?? "pending") })),
+    });
     let outOfTime = false;
     let failure: unknown = null;
     let next = 0;
@@ -201,13 +219,21 @@ export async function executeGraph(run: WorkflowRunRecord, opts: { deadline?: nu
           return;
         }
         const i = todo[next++];
+        itemState.set(i, "running");
+        run.steps[id] = { ...run.steps[id], progress: progress() };
         const res = await handler({ ...inputs, ...Object.fromEntries(lists.map((k) => [k, (inputs[k] as unknown[])[i]])) }, r, ctx).catch((e) => {
           failure ??= e;
           return null;
         });
-        if (res === null) return;
+        if (res === null) {
+          itemState.set(i, "failed");
+          run.steps[id] = { ...run.steps[id], progress: progress() };
+          return;
+        }
         if (res === "wait") {
           failure ??= new NodeError("a looping node cannot wait");
+          itemState.set(i, "failed");
+          run.steps[id] = { ...run.steps[id], progress: progress() };
           return;
         }
         state.results[i] = res;

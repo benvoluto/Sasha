@@ -7,28 +7,38 @@
 // Scope: the subset the model is asked to produce (headings, paragraphs, lists,
 // bold/italic, rules, and GFM pipe tables). Figure-heavy content renders as tables.
 
-export type PMNode = { type: string; attrs?: Record<string, unknown>; content?: PMNode[]; text?: string; marks?: { type: string }[] };
+export type PMNode = { type: string; attrs?: Record<string, unknown>; content?: PMNode[]; text?: string; marks?: { type: string; attrs?: Record<string, unknown> }[] };
 export type PMDoc = { type: "doc"; content: PMNode[] };
 
 export function emptyDoc(): PMDoc {
   return { type: "doc", content: [{ type: "paragraph" }] };
 }
 
+// Backslash escapes (CommonMark: any ASCII punctuation) hide the character from
+// the inline patterns below and are restored as plain text, so `\*` stays a
+// literal asterisk. They are swapped for private-use characters while parsing.
+const ESCAPED = /\\([!-/:-@[-`{-~])/g;
+const PRIVATE_BASE = 0xe000;
+const hideEscapes = (text: string) => text.replace(ESCAPED, (_, c: string) => String.fromCharCode(PRIVATE_BASE + c.charCodeAt(0)));
+const restoreEscapes = (text: string) => text.replace(/[\ue021-\ue07e]/g, (c) => String.fromCharCode(c.charCodeAt(0) - PRIVATE_BASE));
+
 // Inline **bold**, *italic* / _italic_ → text nodes with marks. Minimal but safe.
-function inline(text: string): PMNode[] {
+function inline(raw: string): PMNode[] {
+  const text = hideEscapes(raw);
   const nodes: PMNode[] = [];
+  const push = (t: string, marks?: PMNode["marks"]) => nodes.push(marks ? { type: "text", text: restoreEscapes(t), marks } : { type: "text", text: restoreEscapes(t) });
   const re = /(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(_([^_]+)_)/g;
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    if (m.index > last) nodes.push({ type: "text", text: text.slice(last, m.index) });
-    if (m[2] !== undefined) nodes.push({ type: "text", text: m[2], marks: [{ type: "bold" }] });
-    else if (m[4] !== undefined) nodes.push({ type: "text", text: m[4], marks: [{ type: "italic" }] });
-    else if (m[6] !== undefined) nodes.push({ type: "text", text: m[6], marks: [{ type: "italic" }] });
+    if (m.index > last) push(text.slice(last, m.index));
+    if (m[2] !== undefined) push(m[2], [{ type: "bold" }]);
+    else if (m[4] !== undefined) push(m[4], [{ type: "italic" }]);
+    else if (m[6] !== undefined) push(m[6], [{ type: "italic" }]);
     last = m.index + m[0].length;
   }
-  if (last < text.length) nodes.push({ type: "text", text: text.slice(last) });
-  return nodes.length ? nodes : [{ type: "text", text }];
+  if (last < text.length) push(text.slice(last));
+  return nodes.length ? nodes : [{ type: "text", text: restoreEscapes(text) }];
 }
 
 function listItem(text: string): PMNode {
@@ -142,9 +152,28 @@ export function markdownToTiptap(markdown: string, opts: MarkdownOptions = {}): 
 // Lets a section be displayed (and exported) WITHOUT mounting a Tiptap editor.
 // Covers exactly the node/mark set the editor uses; unknown nodes render their
 // children so nothing silently disappears.
+//
+// Stored content is untrusted: every text and attribute is escaped, links pass
+// only for http(s), mailto, fragments and same-site paths, images only for
+// data: images, https and same-site paths (or what `imageSrc` allows), and no
+// style, event handler or raw HTML from the document reaches the output.
 
-const ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ESC[c]);
+const ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+export const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ESC[c]);
+const esc = escapeHtml;
+
+export type HtmlOptions = {
+  /**
+   * The reference number for a citation mark's attrs, or null. When given,
+   * each citation run is followed by `<sup class="cite"><a href="#ref-n">n</a></sup>`
+   * (the print export's endnotes carry the matching ids).
+   */
+  citationNumber?: (attrs: Record<string, unknown>) => number | null;
+  /** Relative links are made absolute against this origin; without it, same-site paths stay relative. */
+  origin?: string;
+  /** What an image src may be embedded as (a data: URI), or null to write its alt text. Without it, the default allow-list applies. */
+  imageSrc?: (src: string) => string | null;
+};
 
 const MARK_TAG: Record<string, string> = {
   bold: "strong",
@@ -152,15 +181,63 @@ const MARK_TAG: Record<string, string> = {
   underline: "u",
   strike: "s",
   code: "code",
+  highlight: "mark",
 };
 
-function renderText(n: PMNode): string {
+// Browsers ignore control characters and spaces inside a scheme ("java\tscript:").
+const squash = (s: string) => s.replace(/[\u0000-\u0020\u007f]/g, "");
+
+/** A link target that may be written, or null (text only). */
+export function safeLinkHref(raw: unknown, origin?: string): string | null {
+  if (typeof raw !== "string") return null;
+  const h = squash(raw);
+  if (!h) return null;
+  if (/^(https?:|mailto:)/i.test(h) || /^#[\w.:-]*$/.test(h)) return h;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(h) || h.startsWith("//") || h.startsWith("\\")) return null;
+  if (!origin) return h.startsWith("/") || h.startsWith("?") ? h : null;
+  try {
+    const url = new URL(h, origin);
+    return /^https?:$/.test(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+const DATA_IMAGE = /^data:image\/(png|jpeg|gif|webp|svg\+xml)[;,]/i;
+
+function imageSrcFor(raw: unknown, opts: HtmlOptions): string | null {
+  if (typeof raw !== "string" || !raw) return null;
+  if (opts.imageSrc) {
+    const out = opts.imageSrc(raw);
+    return out && DATA_IMAGE.test(out) ? out : null;
+  }
+  const h = squash(raw);
+  if (DATA_IMAGE.test(h) || /^https:/i.test(h) || (h.startsWith("/") && !h.startsWith("//"))) return h;
+  return null;
+}
+
+function citationNumbersOf(n: PMNode, opts: HtmlOptions): number[] {
+  if (!opts.citationNumber) return [];
+  const out = new Set<number>();
+  for (const m of n.marks ?? []) {
+    if (m.type !== "citation") continue;
+    const num = opts.citationNumber(m.attrs ?? {});
+    if (num) out.add(num);
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+function renderText(n: PMNode, opts: HtmlOptions): string {
   let html = esc(n.text ?? "");
-  for (const mark of n.marks ?? []) {
-    const m = mark as { type: string; attrs?: Record<string, unknown> };
+  let cited = false;
+  for (const m of n.marks ?? []) {
     if (m.type === "link") {
-      const href = esc(String(m.attrs?.href ?? ""));
-      html = `<a href="${href}">${html}</a>`;
+      const href = safeLinkHref(m.attrs?.href, opts.origin);
+      if (href) html = `<a href="${esc(href)}">${html}</a>`;
+    } else if (m.type === "citation") {
+      // One span however many citations cover the text (their numbers follow the run).
+      if (!cited) html = `<span class="citation">${html}</span>`;
+      cited = true;
     } else {
       const tag = MARK_TAG[m.type];
       if (tag) html = `<${tag}>${html}</${tag}>`;
@@ -169,56 +246,84 @@ function renderText(n: PMNode): string {
   return html;
 }
 
-function renderNode(n: PMNode): string {
-  const kids = () => (n.content ?? []).map(renderNode).join("");
+/** The inline children of a textblock, with a superscript number after each citation run. */
+function renderInline(kids: PMNode[], opts: HtmlOptions): string {
+  const sets = kids.map((k) => citationNumbersOf(k, opts));
+  return kids
+    .map((k, i) => {
+      const ending = sets[i].filter((num) => !(sets[i + 1] ?? []).includes(num));
+      return renderNode(k, opts) + ending.map((num) => `<sup class="cite"><a href="#ref-${num}">${num}</a></sup>`).join("");
+    })
+    .join("");
+}
+
+const ALIGN = new Set(["center", "right", "justify"]);
+
+const span = (v: unknown, name: string) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 1 && n < 1000 ? ` ${name}="${n}"` : "";
+};
+
+function renderNode(n: PMNode, opts: HtmlOptions): string {
+  const kids = () => {
+    const content = n.content ?? [];
+    return content.some((c) => c.type === "text") ? renderInline(content, opts) : content.map((c) => renderNode(c, opts)).join("");
+  };
   switch (n.type) {
     case "text":
-      return renderText(n);
+      return renderText(n, opts);
     case "paragraph": {
-      const align = n.attrs?.textAlign;
-      const style = align && align !== "left" ? ` style="text-align:${esc(String(align))}"` : "";
+      const align = String(n.attrs?.textAlign ?? "");
+      const style = ALIGN.has(align) ? ` style="text-align:${align}"` : "";
       return `<p${style}>${kids()}</p>`;
     }
     case "heading": {
-      const level = Math.min(6, Math.max(1, Number(n.attrs?.level ?? 2)));
+      const level = Math.min(6, Math.max(1, Number(n.attrs?.level ?? 2) || 2));
       return `<h${level}>${kids()}</h${level}>`;
     }
     case "bulletList":
       return `<ul>${kids()}</ul>`;
-    case "orderedList":
-      return `<ol>${kids()}</ol>`;
+    case "orderedList": {
+      const start = Number(n.attrs?.start ?? 1);
+      return `<ol${Number.isInteger(start) && start !== 1 && start >= 0 ? ` start="${start}"` : ""}>${kids()}</ol>`;
+    }
     case "listItem":
       return `<li>${kids()}</li>`;
     case "blockquote":
       return `<blockquote>${kids()}</blockquote>`;
     case "codeBlock":
-      return `<pre><code>${kids()}</code></pre>`;
+      return `<pre><code>${esc((n.content ?? []).map((c) => c.text ?? "").join(""))}</code></pre>`;
     case "horizontalRule":
       return "<hr>";
     case "hardBreak":
       return "<br>";
     case "image": {
-      const src = esc(String(n.attrs?.src ?? ""));
-      const alt = esc(String(n.attrs?.alt ?? ""));
-      return src ? `<img src="${src}" alt="${alt}">` : "";
+      const alt = String(n.attrs?.alt ?? "");
+      const src = imageSrcFor(n.attrs?.src, opts);
+      if (src) return `<img src="${esc(src)}" alt="${esc(alt)}">`;
+      return n.attrs?.src ? `<span class="image-missing">[Image${alt.trim() ? `: ${esc(alt.trim())}` : ""}]</span>` : "";
     }
-    case "table":
-      return `<table>${kids()}</table>`;
+    case "table": {
+      const rows = n.content ?? [];
+      const headerRow = rows.length > 1 && (rows[0].content ?? []).length > 0 && (rows[0].content ?? []).every((c) => c.type === "tableHeader");
+      const body = (headerRow ? rows.slice(1) : rows).map((r) => renderNode(r, opts)).join("");
+      return headerRow ? `<table><thead>${renderNode(rows[0], opts)}</thead><tbody>${body}</tbody></table>` : `<table><tbody>${body}</tbody></table>`;
+    }
     case "tableRow":
       return `<tr>${kids()}</tr>`;
     case "tableHeader":
-      return `<th>${kids()}</th>`;
+      return `<th${span(n.attrs?.colspan, "colspan")}${span(n.attrs?.rowspan, "rowspan")}>${kids()}</th>`;
     case "tableCell":
-      return `<td>${kids()}</td>`;
+      return `<td${span(n.attrs?.colspan, "colspan")}${span(n.attrs?.rowspan, "rowspan")}>${kids()}</td>`;
     default:
       return kids(); // unknown node: keep its children rather than dropping them
   }
 }
 
 /** Render a stored ProseMirror doc to HTML, without instantiating an editor. */
-export function tiptapToHtml(doc: PMDoc | PMNode | null | undefined): string {
+export function tiptapToHtml(doc: PMDoc | PMNode | null | undefined, opts: HtmlOptions = {}): string {
   if (!doc || !doc.content) return "";
-  return doc.content.map(renderNode).join("");
+  return doc.content.map((n) => renderNode(n, opts)).join("");
 }
 
 /** Flatten a ProseMirror doc to plain text (for content_text / preview / search). */

@@ -1,0 +1,583 @@
+{
+  "title": "Market memo",
+  "typeTitle": "Investment memo",
+  "typeKey": "investment-memo",
+  "origin": "https://sasha.app",
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2,
+          "sectionId": "sec-1",
+          "specKey": "summary"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Summary"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Demand rose 12% in 2025.",
+            "marks": [
+              {
+                "type": "citation",
+                "attrs": {
+                  "kind": "passage",
+                  "passageId": "S1a2b3c4d.P7",
+                  "sourceId": "1a2b3c4d-1111-4111-8111-111111111111",
+                  "dataTableId": null,
+                  "quote": "Demand rose 12 percent",
+                  "verified": true
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " "
+          },
+          {
+            "type": "text",
+            "text": "Prices held steady.",
+            "marks": [
+              {
+                "type": "citation",
+                "attrs": {
+                  "kind": "passage",
+                  "passageId": "S5e6f7a8b.P2",
+                  "sourceId": "5e6f7a8b-2222-4222-8222-222222222222",
+                  "dataTableId": null,
+                  "quote": null,
+                  "verified": true
+                }
+              },
+              {
+                "type": "citation",
+                "attrs": {
+                  "kind": "passage",
+                  "passageId": "S1a2b3c4d.P9",
+                  "sourceId": "1a2b3c4d-1111-4111-8111-111111111111",
+                  "dataTableId": null,
+                  "quote": null,
+                  "verified": true
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " Costs fell.",
+            "marks": [
+              {
+                "type": "citation",
+                "attrs": {
+                  "kind": "passage",
+                  "passageId": "S1a2b3c4d.P7",
+                  "sourceId": "1a2b3c4d-1111-4111-8111-111111111111",
+                  "dataTableId": null,
+                  "quote": null,
+                  "verified": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Some "
+          },
+          {
+            "type": "text",
+            "text": "bold",
+            "marks": [
+              {
+                "type": "bold"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " and "
+          },
+          {
+            "type": "text",
+            "text": "italic",
+            "marks": [
+              {
+                "type": "italic"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " and "
+          },
+          {
+            "type": "text",
+            "text": "underlined",
+            "marks": [
+              {
+                "type": "underline"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": ", "
+          },
+          {
+            "type": "text",
+            "text": "struck",
+            "marks": [
+              {
+                "type": "strike"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": ", "
+          },
+          {
+            "type": "text",
+            "text": "code_x",
+            "marks": [
+              {
+                "type": "code"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": ", "
+          },
+          {
+            "type": "text",
+            "text": "highlighted",
+            "marks": [
+              {
+                "type": "highlight"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " text, a "
+          },
+          {
+            "type": "text",
+            "text": "relative link",
+            "marks": [
+              {
+                "type": "link",
+                "attrs": {
+                  "href": "/library"
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " and "
+          },
+          {
+            "type": "text",
+            "text": "an external one",
+            "marks": [
+              {
+                "type": "link",
+                "attrs": {
+                  "href": "https://example.com/a?b=1"
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": ". Filled "
+          },
+          {
+            "type": "text",
+            "text": "from notes",
+            "marks": [
+              {
+                "type": "filled"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": "."
+          },
+          {
+            "type": "hardBreak"
+          },
+          {
+            "type": "text",
+            "text": "Second line with 5 * 3 = 15 and a_b_c."
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "# not a heading"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "- not a list"
+          }
+        ]
+      },
+      {
+        "type": "orderedList",
+        "attrs": {
+          "start": 1
+        },
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "First"
+                  }
+                ]
+              },
+              {
+                "type": "bulletList",
+                "content": [
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Nested A"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listItem",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "Nested B"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Second"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "blockquote",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Quoted text."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "codeBlock",
+        "attrs": {
+          "language": "ts"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "const a = `x`;\nconsole.log(a);"
+          }
+        ]
+      },
+      {
+        "type": "horizontalRule"
+      },
+      {
+        "type": "image",
+        "attrs": {
+          "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+          "alt": "Tiny chart"
+        }
+      },
+      {
+        "type": "image",
+        "attrs": {
+          "src": "https://evil.example/x.png",
+          "alt": "Remote"
+        }
+      },
+      {
+        "type": "table",
+        "attrs": {
+          "dataTableId": "tbl-1",
+          "sourceId": "9c0d1e2f-3333-4333-8333-333333333333",
+          "snapshotAt": "2026-09-01T00:00:00.000Z"
+        },
+        "content": [
+          {
+            "type": "tableRow",
+            "content": [
+              {
+                "type": "tableHeader",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Region"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "tableHeader",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Sales"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "tableRow",
+            "content": [
+              {
+                "type": "tableCell",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "North"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "tableCell",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "1|2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "tableRow",
+            "content": [
+              {
+                "type": "tableCell",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "South"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "tableCell",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "3"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Source: "
+          },
+          {
+            "type": "text",
+            "text": "Prices 2025",
+            "marks": [
+              {
+                "type": "link",
+                "attrs": {
+                  "href": "/library?source=9c0d1e2f-3333-4333-8333-333333333333&table=tbl-1"
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " — Pricing workbook.xlsx, sheet Prices."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 3,
+          "sectionId": "sec-2"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Risks"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Unsourced claim."
+          }
+        ]
+      }
+    ]
+  },
+  "references": [
+    {
+      "key": "p:S1a2b3c4d.P7",
+      "number": 1,
+      "kind": "passage",
+      "passageId": "S1a2b3c4d.P7",
+      "sourceId": "1a2b3c4d-1111-4111-8111-111111111111",
+      "dataTableId": null,
+      "quote": "Demand rose 12 percent",
+      "status": "ok",
+      "sourceTitle": "Q3 Industry Report",
+      "sourceUrl": null,
+      "page": 4,
+      "excerpt": "Demand rose 12 percent year over year, driven by new buyers in the north.",
+      "tableName": null
+    },
+    {
+      "key": "p:S5e6f7a8b.P2",
+      "number": 2,
+      "kind": "passage",
+      "passageId": "S5e6f7a8b.P2",
+      "sourceId": "5e6f7a8b-2222-4222-8222-222222222222",
+      "dataTableId": null,
+      "quote": null,
+      "status": "ok",
+      "sourceTitle": "Price watch \"weekly\"",
+      "sourceUrl": "https://news.example/prices",
+      "page": null,
+      "excerpt": "Prices were flat for the third straight quarter.",
+      "tableName": null
+    },
+    {
+      "key": "p:S1a2b3c4d.P9",
+      "number": 3,
+      "kind": "passage",
+      "passageId": "S1a2b3c4d.P9",
+      "sourceId": "1a2b3c4d-1111-4111-8111-111111111111",
+      "dataTableId": null,
+      "quote": null,
+      "status": "missing",
+      "sourceTitle": "Q3 Industry Report",
+      "sourceUrl": null,
+      "page": null,
+      "excerpt": null,
+      "tableName": null
+    },
+    {
+      "key": "t:tbl-1",
+      "number": 4,
+      "kind": "table",
+      "passageId": null,
+      "sourceId": "9c0d1e2f-3333-4333-8333-333333333333",
+      "dataTableId": "tbl-1",
+      "quote": null,
+      "status": "ok",
+      "sourceTitle": "Pricing workbook.xlsx",
+      "sourceUrl": null,
+      "page": null,
+      "excerpt": null,
+      "tableName": "Prices 2025"
+    }
+  ]
+}

@@ -1,9 +1,9 @@
 // The editor's right column, as pure state: the outline on top and one lower
-// panel (Tools or Section notes) below it. Outline and Tools are toggled by the
+// panel (Tools, Section notes or the rubric Check results) below it. Outline and Tools are toggled by the
 // floating buttons; opening notes from a heading's gutter takes the lower slot
 // from Tools. Kept apart from React so the rules are tested on their own.
 
-export type LowerPanel = "tools" | "notes";
+export type LowerPanel = "tools" | "notes" | "check";
 
 export type RightColumnState = { outline: boolean; lower: LowerPanel | null };
 
@@ -17,6 +17,9 @@ export const toggleTools = (s: RightColumnState): RightColumnState => ({ ...s, l
 /** Section notes replace Tools (or open alone); the outline stays as it is. */
 export const openNotes = (s: RightColumnState): RightColumnState => ({ ...s, lower: "notes" });
 
+/** The rubric Check results replace Tools or notes (or open alone); the outline stays as it is. */
+export const openCheck = (s: RightColumnState): RightColumnState => ({ ...s, lower: "check" });
+
 export const closeLower = (s: RightColumnState): RightColumnState => ({ ...s, lower: null });
 
 export const closeOutline = (s: RightColumnState): RightColumnState => ({ ...s, outline: false });
@@ -26,8 +29,8 @@ export type ColumnSlot = "outline" | "lower";
 
 /**
  * Which floating button takes focus when a slot's panel is closed from its own
- * X: the button that reopens it. Section notes have no button of their own, so
- * the lower slot always goes to Tools.
+ * X: the button that reopens it. Section notes and Check have no button of
+ * their own, so the lower slot always goes to Tools.
  */
 export const columnCloseFocus = (slot: ColumnSlot): "outline" | "tools" => (slot === "outline" ? "outline" : "tools");
 

@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { SectionSummary } from "@/catalog/schema";
 import type { PMNode } from "@/lib/documents/sections";
 import type { DocumentChangeOp, RestructurePlan } from "@/lib/workflow/contract";
-import { DRIFT_ERROR, markUnsourced, planWorkflowChange, type ChangeDeps, type RestructureFn } from "./apply-workflow-change";
+import { collectCitations } from "@/lib/citations/contract";
+import { DRIFT_ERROR, markSupported, markUnsourced, planWorkflowChange, type ChangeDeps, type RestructureFn } from "./apply-workflow-change";
 
 const text = (t: string, marks?: PMNode["marks"]): PMNode => ({ type: "text", text: t, ...(marks ? { marks } : {}) });
 const p = (...content: PMNode[]): PMNode => ({ type: "paragraph", ...(content.length ? { content } : {}) });
@@ -109,6 +110,48 @@ describe("markUnsourced", () => {
     const { blocks, marked } = markUnsourced([list], ["Claim one."]);
     expect(marked).toBe(1);
     expect(highlighted(blocks[0])).toEqual(["Claim one."]);
+  });
+});
+
+const support = (ref: string, sourceId = "src-1") => ({ kind: "passage" as const, ref, sourceId, label: "Report", quote: "passage text", page: 2, stance: "for" as const, verified: true });
+const citedIds = (n: PMNode): Array<[string, string[]]> =>
+  (n.content ?? []).flatMap((c) => (c.type === "text" ? [[c.text ?? "", (c.marks ?? []).filter((m) => m.type === "citation").map((m) => String(m.attrs?.passageId))] as [string, string[]]] : c.content ? citedIds(c) : []));
+
+describe("markSupported", () => {
+  it("puts a citation mark per passage support on each traced sentence, and none for note support", () => {
+    const trace = [
+      { text: "We surveyed 40 sites.", support: [support("S1a2b3c4d.P1"), support("S1a2b3c4d.P4")], unsourced: false },
+      { text: "Notes said so.", support: [{ ...support("s-methods"), kind: "note" as const, sourceId: null }], unsourced: false },
+      { text: "The response rate was high.", support: [], unsourced: true },
+    ];
+    const { blocks, cited } = markSupported([p(text("We surveyed 40 sites. Notes said so. The response rate was high."))], trace);
+    expect(cited).toBe(1);
+    expect(citedIds(blocks[0])).toEqual([
+      ["We surveyed 40 sites.", ["S1a2b3c4d.P1", "S1a2b3c4d.P4"]],
+      [" Notes said so. The response rate was high.", []],
+    ]);
+    const mark = blocks[0].content![0].marks![0];
+    expect(mark).toEqual({ type: "citation", attrs: { kind: "passage", passageId: "S1a2b3c4d.P1", sourceId: "src-1", dataTableId: null, quote: null, verified: true } });
+  });
+});
+
+describe("planWorkflowChange: traced support becomes citations", () => {
+  it("cites the sourced sentence and still highlights the unsourced one", () => {
+    const base = doc(h("Methods", "s-methods", "methods"), p());
+    const op = draftOp({
+      trace: [
+        { text: "We surveyed 40 sites.", support: [support("S1a2b3c4d.P1")], unsourced: false },
+        { text: "The response rate was high.", support: [], unsourced: true },
+      ],
+    });
+    const r = planWorkflowChange(base, { ops: [op] }, deps());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.marked).toBe(1);
+    const body = r.doc.content![1];
+    expect(citedIds(body)[0]).toEqual(["We surveyed 40 sites.", ["S1a2b3c4d.P1"]]);
+    expect(highlighted(body)).toEqual(["The response rate was high."]);
+    expect(collectCitations(r.doc).references.map((x) => x.key)).toEqual(["p:S1a2b3c4d.P1"]);
   });
 });
 

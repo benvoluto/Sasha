@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
-import { defuseTag, delimit, GENERIC_PREAMBLE, OUTPUT_RULES, selectionRewriteSystem, SHARED_RULES, stripFences, systemPrompt, userPrompt, type UserPromptInput } from "./prompt";
+import { CITATION_RULES, defuseTag, delimit, GENERIC_PREAMBLE, OUTPUT_RULES, selectionRewriteSystem, SHARED_RULES, stripFences, systemPrompt, userPrompt, type UserPromptInput } from "./prompt";
 import { testType } from "./test-fixtures";
 
 const def = testType();
@@ -23,6 +23,17 @@ describe("systemPrompt", () => {
     expect(systemPrompt(testType(), "draft")).toBe(a);
     for (const part of [def.preamble, `Audience: ${def.audience}`, `Tone: ${def.tone}`, SHARED_RULES, OUTPUT_RULES]) expect(a).toContain(part);
     expect(a).toContain("Do not repeat the section heading");
+  });
+
+  it("tells the model how to cite passages with markers, in every mode, and never forbids them", () => {
+    for (const mode of ["draft", "rewrite", "draft_from_notes", "rewrite_from_notes"] as const) expect(systemPrompt(def, mode)).toContain(CITATION_RULES);
+    expect(OUTPUT_RULES).not.toMatch(/passage ids|citation markers/);
+    expect(CITATION_RULES).toContain("[[p:ID]]");
+    expect(CITATION_RULES).toContain("[[p:ID|exact words from that passage]]");
+    expect(CITATION_RULES).toContain("never put a marker inside a table cell or heading");
+    expect(CITATION_RULES).toContain("When no sources are given, write no markers.");
+    // Static: the same text whether or not the request has sources, so the system prompt stays cacheable.
+    expect(systemPrompt(def, "draft")).toBe(systemPrompt(testType(), "draft"));
   });
 
   it("adds mode rules and uses a generic preamble without a type", () => {
@@ -98,5 +109,12 @@ describe("helpers", () => {
   it("adds the type preamble to the selection rewrite prompt", () => {
     expect(selectionRewriteSystem(def)).toContain(def.preamble);
     expect(selectionRewriteSystem(null)).not.toContain("Audience:");
+  });
+
+  it("gives the selection rewrite the same citation rules, about markers in the passage", () => {
+    for (const sys of [selectionRewriteSystem(def), selectionRewriteSystem(null)]) {
+      expect(sys).toContain("[[p:ID]]");
+      expect(sys).toContain("Keep any [[p:ID]] markers already in the passage");
+    }
   });
 });

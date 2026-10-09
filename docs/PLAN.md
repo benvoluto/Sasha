@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phases 0–6 and the editor layout are built. See §12 for progress notes.
+Status (October 2026): Phases 0–7 and the editor layout are built. See §12 for progress notes.
 
 ---
 
@@ -753,13 +753,39 @@ the interface, Hanken Grotesk for the document.
   the FIE without consent was blocked with the missing input named and no student details in web
   queries; restructure kept every paragraph verbatim.
 
+**Phase 7 (done).**
+- Citations (`src/lib/citations/`): drafting, rewrites and draft-all get numbered passages and return
+  `[[p:ID]]` markers; the server keeps a marker only if the passage exists, belongs to a source linked
+  to this document and team, and any quote matches (whole-word, numbers exact). Dropped markers are
+  reported. Kept markers become a `citation` mark with a numbered reference, a passage popover on
+  hover or Alt+Enter (phones: tap), and Open source to the library with the passage highlighted.
+  Data-table source lines cite the table. A wording guard rejects rewrites that change text they
+  should only cite. `GET /api/documents/[id]/citations` lists references and problems.
+- Rubric check (`src/lib/rubric/`, `/api/documents/[id]/check`): Sonnet scores a section or the
+  whole document against the type and universal rubrics, with evidence quoted from the document
+  (verified) and a fix per criterion; cited text counts as sourced. Cached by inputs hash, atomic
+  hourly cap. A Check panel in the right column; Apply rewrites the section through the generation
+  path (snapshot first, one undo, prompt if it changed since the check).
+- Export (`src/lib/export/`, `/api/documents/[id]/export`): Markdown (references list, GFM tables),
+  Word via `docx` (footnotes, lists, tables, images), PDF via puppeteer-core with
+  `@sparticuz/chromium` on Vercel or local Chrome, requests intercepted, rate-capped; an explicit
+  print fallback when no browser is available. Export menu next to Share.
+- Phase 6 debts closed: a blocked FIE no longer waits for sign-off; the canvas accepts
+  `?workflowId=`; draft-all shows per-section progress.
+
 **Known debt carried forward.**
+- The workflow `rubric.score` step does not yet pass citations to the model (the Check route does).
+- Exported reference excerpts can show raw Markdown from PDF passages.
+- Exported references link to the in-app library page, not a URL source's own address. To do in
+  Phase 8: include the original URL and title for URL sources, and no in-app links in exports.
+- The Check panel shows "Checking for changes…" for a few seconds even when cached.
 - Restructuring an already restructured document splits at every heading level, leaving empty rows.
+  Decided (user, 2026-10-08): drop rows for headings that hold no content of their own, but show the
+  author a warning listing the headings that will be dropped before the restructure applies (at the
+  mapping checkpoint). Scheduled with Phase 8.
 - Draft-all credits facts from document notes to the section's notes when the section has its own.
 - Model judgements are lenient in places (coverage, FIE input check, report support levels); code
   checks catch the arithmetic cases.
-- No per-section progress while drafting; a blocked FIE still waits at the supervisor sign-off; the
-  canvas ignores `?workflowId=`.
 - Re-reading a source drops table renames and cell overrides (v1 behaviour).
 - Suggestions marked added keep pointing at a table or source after it is deleted.
 - Deployments with a public Blob store must set `BLOB_ACCESS=public`.

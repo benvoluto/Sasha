@@ -10,7 +10,7 @@ Sasha started as a pruned copy of `benvoluto/proto-v2-organizer`. See
 
 ## Status
 
-Phases 0–6 are built: the blank-document editor with autosave, versions and
+Phases 0–7 are built: the blank-document editor with autosave, versions and
 Claude model routing; the team-scoped source library (folders, uploads, URL
 and note sources, extraction, summaries and passages); and the document-type
 catalog with outlines, the living outline and per-section drafting tools; the
@@ -19,7 +19,8 @@ and Phase 4: document notes with dictation, the type classifier with an
 apply-outline chip, and source and data suggestions; and Phase 5: data tables
 from CSV, XLSX and PDF sources, a Data tab and Insert table; and Phase 6:
 workflows (source coverage, restructure, draft all, and a workflow per document
-type). Next is Phase 7, citations, rubric check and export.
+type); and Phase 7: verified citations, the rubric check and Markdown, Word and
+PDF export. Next is Phase 8, the rest of the catalog and learning from an example.
 Per-type workflow specs for Phase 6 are in
 `docs/workflows-by-document-type.md`. See
 `docs/PLAN.md` §12.

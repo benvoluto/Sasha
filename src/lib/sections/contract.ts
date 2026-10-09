@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { REWRITE_PRESETS } from "@/lib/report/rewrite-presets";
 import { DocumentTypeDefinition, Family, TypeKey, type DocumentTypeSummary, type TypeOrigin } from "@/catalog/schema";
+import type { CitationReport } from "@/lib/citations/contract";
 
 // --- Section metadata (document_section) ------------------------------------
 
@@ -92,6 +93,13 @@ export type SectionGenerateResponse = {
   sourcesUsed: number;
   /** The section row after the run (status "drafted", last_generated_at set). */
   section: SectionMeta;
+  /**
+   * Phase 7: the markers left in `markdown` (each a verified bare [[p:ID]]) and
+   * the ones dropped. Pass it to sectionBlocksFromMarkdown as `citations` to
+   * turn the markers into citation marks. Absent from older servers: markers
+   * are then stripped.
+   */
+  citations?: CitationReport;
 };
 
 /** Which mode the notes panel's action button runs (PLAN §4.5). null hides the button. */

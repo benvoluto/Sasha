@@ -6,6 +6,7 @@ import { SOURCE_SCHEMA } from "@/lib/sources/store";
 import { CATALOG_SCHEMA } from "@/catalog/store";
 import { SUGGESTION_SCHEMA } from "@/lib/suggestions/schema";
 import { DATA_SCHEMA } from "@/lib/data/schema";
+import { RUBRIC_CHECK_SCHEMA } from "@/lib/rubric/store";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,8 @@ const STATEMENTS = [
   ...CATALOG_SCHEMA,
   // Suggested sources, data and web resources per document (src/lib/suggestions/schema.ts).
   ...SUGGESTION_SCHEMA,
+  // Rubric check results and the check's rate gate (after the documents: rows reference document).
+  ...RUBRIC_CHECK_SCHEMA,
   `ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
 ];
 
@@ -58,6 +61,8 @@ const EXPECTED_TABLES = [
   "document_type",
   "suggestion",
   "suggestion_run",
+  "rubric_check",
+  "rubric_check_call",
 ];
 
 /**

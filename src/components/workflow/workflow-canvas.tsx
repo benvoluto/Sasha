@@ -35,6 +35,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { canvasSelection } from '@/components/editor/workflows-pane-model';
 import { AlertTriangle, BarChart3, ClipboardList, Copy, Loader2, Play, Plus, RefreshCw, Save, Workflow } from '@/components/icons';
 import type { RunBrief } from '@/lib/workflow/contract';
 import { CATEGORIES, NODE_SPECS, NODE_SPEC_INDEX } from '@/lib/workflow/registry';
@@ -533,13 +534,8 @@ function Editor({
 export function WorkflowCanvas() {
   const [info, setInfo] = useState<WorkflowResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Which workflow and version to show: from the URL (?workflow=…&version=…), else the default's newest.
-  const [selection, setSelection] = useState<{ workflow?: string; version?: number }>(() => {
-    if (typeof window === 'undefined') return {};
-    const p = new URLSearchParams(window.location.search);
-    const v = p.get('version');
-    return { workflow: p.get('workflow') ?? undefined, version: v === null || v === '' ? undefined : Number(v) };
-  });
+  // Which workflow and version to show: from the URL (?workflow=…&version=…, or ?workflowId=…), else the default's newest.
+  const [selection, setSelection] = useState<{ workflow?: string; version?: number }>(() => (typeof window === 'undefined' ? {} : canvasSelection(window.location.search)));
   const load = useCallback(async () => {
     const params = new URLSearchParams();
     if (selection.workflow) params.set('workflow', selection.workflow);

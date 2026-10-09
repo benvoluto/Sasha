@@ -31,10 +31,13 @@ import type { ProposedChange } from "@/lib/workflow/contract";
 import { applyRestructurePlan } from "@/lib/workflow/restructure";
 import { applyOutlineMerge } from "./apply-outline";
 import { applyWorkflowChange, type AppliedChange } from "./apply-workflow-change";
+import { CheckPanel, type CheckTarget } from "./check-panel";
+import { CitationLayer } from "./citation-layer";
 import { ClassifierChip } from "./classifier-chip";
 import { DocumentModal } from "./document-modal";
 import type { DocumentModalTab } from "./document-modal-model";
 import { EditorToolbar } from "./editor-toolbar";
+import { ExportMenu } from "./export-menu";
 import { documentExtensions, newSectionId } from "./extensions";
 import { FloatingActions } from "./floating-actions";
 import { NoticeStack, useNotices, type Notice } from "./notice";
@@ -47,6 +50,7 @@ import {
   closeLower,
   closeOutline,
   columnCloseFocus,
+  openCheck,
   openNotes,
   rightColumnMode,
   toggleOutline,
@@ -301,6 +305,8 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
   const undoNotice = useCallback((text: string): Notice => ({ text, actions: [{ label: "Undo", run: () => editorRef.current?.chain().focus().undo().run() }] }), []);
   const [menu, setMenu] = useState<SectionMenuTarget | null>(null);
+  /** The rubric Check panel's subject (the whole document, or a section from its gutter menu). */
+  const [checkTarget, setCheckTarget] = useState<CheckTarget | null>(null);
   /** The gallery's purpose: set this document's type, or start a new document of a type. */
   const [gallery, setGallery] = useState<"set" | "new" | null>(null);
   const [saveTypeOpen, setSaveTypeOpen] = useState(false);
@@ -497,6 +503,12 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     }
   };
 
+  const openCheckFor = (sectionId: string | null) => {
+    const nonce = Date.now();
+    setCheckTarget(sectionId ? { scope: "section", sectionId, nonce } : { scope: "document", nonce });
+    setColumn(openCheck);
+  };
+
   const openNotesFor = (sectionId: string) => {
     if (editor) {
       const s = sectionBodyRange(editor.state.doc, sectionId);
@@ -540,7 +552,18 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       />
     ) : null;
   const lowerPanel = !editor ? null : column.lower === "tools" ? (
-    <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => closeColumnPanel("lower")} />
+    <ToolsPanel editor={editor} documentId={doc.id} ensureSaved={ensureSaved} onClose={() => closeColumnPanel("lower")} onCheckDocument={() => openCheckFor(null)} />
+  ) : column.lower === "check" && checkTarget ? (
+    <CheckPanel
+      editor={editor}
+      documentId={doc.id}
+      target={checkTarget}
+      ensureSaved={ensureSaved}
+      run={generation.run}
+      busy={generation.busy}
+      onJumpToSection={jumpToSection}
+      onClose={() => closeColumnPanel("lower")}
+    />
   ) : column.lower === "notes" ? (
     <SectionNotesPanel
       editor={editor}
@@ -598,7 +621,10 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           />
           <StatusText status={status} error={error} isNew={!doc.id} />
         </div>
-        <SharePopover documentId={doc.id} />
+        <div className="flex shrink-0 items-center gap-2">
+          <ExportMenu documentId={doc.id || null} title={doc.title} ensureSaved={ensureSaved} notify={notify} />
+          <SharePopover documentId={doc.id} />
+        </div>
       </header>
 
       {conflict && (
@@ -661,6 +687,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         <main className="min-w-0 flex-1 px-5 pb-32 pt-6 sm:px-12">
           <div className="max-w-[64rem]">
             <EditorContent editor={editor} />
+            {editor && <CitationLayer editor={editor} documentId={doc.id || null} sourcesKey={sourcesKey} savedAt={doc.updated_at} />}
           </div>
           {showStrip && <StartFromTypeStrip types={types} onChoose={startNewOfType} onBrowse={() => setGallery("new")} />}
         </main>
@@ -724,6 +751,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           onClose={() => setMenu(null)}
           onRun={(req) => void generation.run(req)}
           onNotes={openNotesFor}
+          onCheck={openCheckFor}
         />
       )}
 

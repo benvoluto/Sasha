@@ -11,6 +11,13 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@phosphor-icons/react"],
   },
+  // PDF export (src/lib/export/pdf.ts) launches Chromium: keep both packages
+  // out of the bundle so the brotli-packed binary and puppeteer's dynamic
+  // requires load from node_modules at run time.
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  outputFileTracingIncludes: {
+    "/api/documents/[id]/export": ["./node_modules/@sparticuz/chromium/bin/**"],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.googleusercontent.com", pathname: "/**" },

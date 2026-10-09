@@ -10,7 +10,8 @@
 // - replace_section_body: the section is found by sectionId, or by specKey
 //   after a restructure. With onlyIfEmpty a section that has text by now is
 //   skipped and reported. The body becomes sectionBlocksFromMarkdown of the
-//   markdown, with each unsourced sentence highlighted.
+//   markdown, with each traced sentence carrying a citation mark per passage
+//   behind it and each unsourced sentence highlighted.
 //
 // planWorkflowChange is pure over ProseMirror JSON (unit-tested); the
 // restructure function is passed in, so this module stays independent of the
@@ -18,9 +19,10 @@
 
 import type { Editor } from "@tiptap/react";
 import type { SectionSummary } from "@/catalog/schema";
+import { CITATION_MARK, type CitationAttrs } from "@/lib/citations/contract";
 import { listSections, type PMNode } from "@/lib/documents/sections";
 import { sectionBlocksFromMarkdown } from "@/lib/sections/content";
-import type { DocumentChangeOp, ProposedChange, RestructurePlan } from "@/lib/workflow/contract";
+import type { DocumentChangeOp, ProposedChange, RestructurePlan, SentenceTrace } from "@/lib/workflow/contract";
 
 /** applyRestructurePlan's shape (src/lib/workflow/restructure.ts). */
 export type RestructureFn = (
@@ -82,18 +84,23 @@ function findSection(nodes: PMNode[], op: Extract<DocumentChangeOp, { op: "repla
 const INLINE = new Set(["text", "hardBreak"]);
 const isTextblock = (n: PMNode) => !!n.content?.length && n.content.every((c) => INLINE.has(c.type));
 
-/** Highlight each occurrence of `sentences` inside one textblock, splitting text nodes at the edges. Returns the block and the sentences found in it. */
-function markTextblock(block: PMNode, sentences: string[]): { node: PMNode; hits: string[] } {
+type Mark = NonNullable<PMNode["marks"]>[number];
+/** A sentence and the marks each of its occurrences gets. */
+type MarkSpec = { text: string; marks: Mark[] };
+
+const sameMark = (a: Mark, b: Mark) => a.type === b.type && JSON.stringify(a.attrs ?? null) === JSON.stringify(b.attrs ?? null);
+
+/** Add each spec's marks to every occurrence of its sentence inside one textblock, splitting text nodes at the edges. Returns the block and the sentences found in it. */
+function markTextblock(block: PMNode, specs: MarkSpec[]): { node: PMNode; hits: string[] } {
   const inline = block.content ?? [];
   const full = inline.map((c) => (c.type === "text" ? (c.text ?? "") : "\n")).join("");
-  const ranges: Array<[number, number]> = [];
+  const ranges: Array<{ from: number; to: number; marks: Mark[] }> = [];
   const hits: string[] = [];
-  for (const s of sentences) {
-    for (let at = full.indexOf(s); at >= 0; at = full.indexOf(s, at + s.length)) ranges.push([at, at + s.length]);
-    if (full.includes(s)) hits.push(s);
+  for (const s of specs) {
+    for (let at = full.indexOf(s.text); at >= 0; at = full.indexOf(s.text, at + s.text.length)) ranges.push({ from: at, to: at + s.text.length, marks: s.marks });
+    if (full.includes(s.text)) hits.push(s.text);
   }
   if (!ranges.length) return { node: block, hits };
-  const inRange = (i: number) => ranges.some(([a, b]) => i >= a && i < b);
   const out: PMNode[] = [];
   let offset = 0;
   for (const c of inline) {
@@ -105,35 +112,67 @@ function markTextblock(block: PMNode, sentences: string[]): { node: PMNode; hits
     const text = c.text;
     // Cut points: the range edges that fall inside this text node.
     const cuts = new Set([0, text.length]);
-    for (const [a, b] of ranges) {
-      if (a > offset && a < offset + text.length) cuts.add(a - offset);
-      if (b > offset && b < offset + text.length) cuts.add(b - offset);
+    for (const { from, to } of ranges) {
+      if (from > offset && from < offset + text.length) cuts.add(from - offset);
+      if (to > offset && to < offset + text.length) cuts.add(to - offset);
     }
     const points = [...cuts].sort((x, y) => x - y);
     for (let k = 0; k < points.length - 1; k++) {
-      const marks = c.marks ?? [];
-      const highlight = inRange(offset + points[k]) && !marks.some((m) => m.type === HIGHLIGHT);
-      out.push({ ...c, text: text.slice(points[k], points[k + 1]), ...(highlight ? { marks: [...marks, { type: HIGHLIGHT }] } : {}) });
+      const at = offset + points[k];
+      const marks = [...(c.marks ?? [])];
+      for (const r of ranges) {
+        if (at < r.from || at >= r.to) continue;
+        for (const m of r.marks) if (!marks.some((x) => sameMark(x, m))) marks.push(m);
+      }
+      out.push({ ...c, text: text.slice(points[k], points[k + 1]), ...(marks.length ? { marks } : {}) });
     }
     offset += text.length;
   }
   return { node: { ...block, content: out }, hits };
 }
 
-/** Highlight the unsourced sentences in inserted blocks (paragraphs, list items, quotes). `marked` counts the distinct sentences found. */
-export function markUnsourced(blocks: PMNode[], sentences: string[]): { blocks: PMNode[]; marked: number } {
-  const wanted = [...new Set(sentences.map((s) => s.trim()).filter(Boolean))];
-  if (!wanted.length) return { blocks, marked: 0 };
+/** Apply `specs` to every textblock in `blocks` (paragraphs, list items, quotes). Returns the blocks and the distinct sentences found. */
+function markSentences(blocks: PMNode[], specs: MarkSpec[]): { blocks: PMNode[]; found: Set<string> } {
   const found = new Set<string>();
+  if (!specs.length) return { blocks, found };
   const walk = (n: PMNode): PMNode => {
     if (isTextblock(n)) {
-      const r = markTextblock(n, wanted);
+      const r = markTextblock(n, specs);
       r.hits.forEach((h) => found.add(h));
       return r.node;
     }
     return n.content ? { ...n, content: n.content.map(walk) } : n;
   };
-  return { blocks: blocks.map(walk), marked: found.size };
+  return { blocks: blocks.map(walk), found };
+}
+
+/** Highlight the unsourced sentences in inserted blocks (paragraphs, list items, quotes). `marked` counts the distinct sentences found. */
+export function markUnsourced(blocks: PMNode[], sentences: string[]): { blocks: PMNode[]; marked: number } {
+  const wanted = [...new Set(sentences.map((s) => s.trim()).filter(Boolean))];
+  const r = markSentences(blocks, wanted.map((text) => ({ text, marks: [{ type: HIGHLIGHT }] })));
+  return { blocks: r.blocks, marked: r.found.size };
+}
+
+/**
+ * Cite each traced sentence's passages (phase7-spec.md §2.3): a citation mark
+ * per passage support on the sentence's text, as the generate path does for
+ * markers. The support was checked against the grounding by traceDraft, so the
+ * marks are verified. `cited` counts the distinct sentences found.
+ */
+export function markSupported(blocks: PMNode[], trace: SentenceTrace[]): { blocks: PMNode[]; cited: number } {
+  const specs: MarkSpec[] = [];
+  for (const t of trace) {
+    const text = t.text.trim();
+    const marks: Mark[] = t.support
+      .filter((e) => e.kind === "passage" && e.ref)
+      .map((e) => {
+        const attrs: CitationAttrs = { kind: "passage", passageId: e.ref, sourceId: e.sourceId, dataTableId: null, quote: null, verified: e.verified };
+        return { type: CITATION_MARK, attrs };
+      });
+    if (text && marks.length) specs.push({ text, marks });
+  }
+  const r = markSentences(blocks, specs);
+  return { blocks: r.blocks, cited: r.found.size };
 }
 
 /** The document after `change`, or why it can't be applied. Pure. */
@@ -167,7 +206,8 @@ export function planWorkflowChange(doc: PMNode, change: Pick<ProposedChange, "op
     }
     const level = Number(nodes[index].attrs?.level ?? op.level ?? 2);
     const unsourced = op.trace.filter((t) => t.unsourced).map((t) => t.text);
-    const { blocks, marked: m } = markUnsourced(sectionBlocksFromMarkdown(op.markdown, level), unsourced);
+    const cited = markSupported(sectionBlocksFromMarkdown(op.markdown, level), op.trace);
+    const { blocks, marked: m } = markUnsourced(cited.blocks, unsourced);
     marked += m;
     current = { ...current, content: [...nodes.slice(0, index + 1), ...blocks, ...nodes.slice(bodyEnd(nodes, index))] };
     applied++;

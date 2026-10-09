@@ -2838,7 +2838,8 @@
           ]
         },
         "in": {
-          "items": "out.outcome"
+          "items": "out.outcome",
+          "after": "gate.pass"
         },
         "loop": false
       }

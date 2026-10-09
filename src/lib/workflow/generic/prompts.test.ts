@@ -53,3 +53,10 @@ describe("generic prompts", () => {
     expect(user).toContain("[S12345678.P1] text");
   });
 });
+
+describe("draft.traced and the grounding's marker wording", () => {
+  it("keeps citations in the support list even though the sources block mentions markers", () => {
+    expect(DRAFT_TRACED_SYSTEM).toContain("Do not put passage ids or citation markers in the sentence text");
+    expect(DRAFT_TRACED_SYSTEM).toContain("cite passages only through the support list, whatever the sources block says about markers");
+  });
+});

@@ -10,8 +10,11 @@
 
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CITATION_MARK, CITE_SOURCES_INSTRUCTION, type CitationReport } from "@/lib/citations/contract";
 import type { SectionGenerateRequest, SectionGenerateResponse, SectionMode } from "@/lib/sections/contract";
 import { sectionBlocksFromMarkdown } from "@/lib/sections/content";
+import { textWithMarkers } from "./citation-layer-model";
+import { placeCitations } from "./cite-in-place";
 import { setBusySections } from "./extensions";
 import type { Notify } from "./notice";
 import { sectionBodyRange, type SectionBody } from "./tracked-range";
@@ -40,6 +43,9 @@ export function applyDecision(sentBody: string, current: Pick<SectionBody, "body
 
 const isRewrite = (mode: SectionMode) => mode === "rewrite" || mode === "rewrite_from_notes";
 
+/** The section menu's "Cite sources": a rewrite whose instruction is the constant (the server's isCiteSources). */
+export const isCiteSources = (req: Pick<GenerationRequest, "mode" | "instruction">) => req.mode === "rewrite" && req.instruction?.trim() === CITE_SOURCES_INSTRUCTION;
+
 /** A readable message for a failed generate call. */
 export function generationError(status: number, body: { error?: unknown }): string {
   if (typeof body.error === "string" && body.error) return body.error;
@@ -63,6 +69,22 @@ export function preflightError(target: Pick<SectionBody, "heading" | "bodyText">
   if (!target.heading.trim()) return "Give the section a heading first.";
   if (isRewrite(mode) && !target.bodyText.trim()) return "Nothing to rewrite: the section is empty.";
   return null;
+}
+
+/** The notice for markers the server couldn't check ("" when none were dropped). */
+export function droppedNotice(report: Pick<CitationReport, "dropped"> | null | undefined): string {
+  const n = report?.dropped.length ?? 0;
+  if (!n) return "";
+  return n === 1 ? "1 citation couldn't be checked against the sources and was left out." : `${n} citations couldn't be checked against the sources and were left out.`;
+}
+
+/**
+ * The section body as sent to a rewrite: its text (as bodyText reads it) with
+ * each passage citation written as a bare [[p:ID]] marker after the text it
+ * cites, so the rewrite can keep it (the server checks it again).
+ */
+export function bodyWithMarkers(editor: Pick<Editor, "state">, range: Pick<SectionBody, "from" | "to">): string {
+  return range.to > range.from ? textWithMarkers(editor.state.doc, range.from, range.to) : "";
 }
 
 async function postJson(url: string, body: unknown): Promise<Response> {
@@ -95,20 +117,52 @@ export function useSectionGeneration({
 
   /** Replace the section's body with the result, as one undoable step. */
   const insert = useCallback(
-    (sectionId: string, markdown: string, mode: SectionMode, lineBreaks = false): boolean => {
+    (sectionId: string, markdown: string, mode: SectionMode, lineBreaks = false, citations: CitationReport | null = null): boolean => {
       if (!editor || editor.isDestroyed) return false;
       const current = sectionBodyRange(editor.state.doc, sectionId);
       if (!current) {
         notify({ text: "That section was deleted while Claude was writing.", tone: "error" });
         return false;
       }
-      const blocks = sectionBlocksFromMarkdown(markdown, current.level, { lineBreaks });
+      const blocks = sectionBlocksFromMarkdown(markdown, current.level, { lineBreaks, citations });
       editor.chain().insertContentAt({ from: current.from, to: current.to }, blocks, { updateSelection: false }).run();
+      const dropped = droppedNotice(citations);
       notify({
-        text: `${isRewrite(mode) ? "Rewrote" : "Drafted"} “${current.heading || "Untitled section"}”.`,
+        text: `${isRewrite(mode) ? "Rewrote" : "Drafted"} “${current.heading || "Untitled section"}”.${dropped ? ` ${dropped}` : ""}`,
         actions: [{ label: "Undo", run: () => editor.chain().focus().undo().run() }],
       });
       return true;
+    },
+    [editor, notify],
+  );
+
+  /**
+   * "Cite sources": add the reply's citations as marks on the section's own
+   * text, as one undoable step, instead of replacing the body (which would
+   * flatten tables and drop links, formatting and table citations).
+   */
+  const cite = useCallback(
+    (sectionId: string, markdown: string, citations: CitationReport | null): string | null => {
+      if (!editor || editor.isDestroyed) return null;
+      const current = sectionBodyRange(editor.state.doc, sectionId);
+      if (!current) return "That section was deleted while Claude was writing.";
+      const placed = citations ? placeCitations(editor.state.doc, current, markdown, citations) : [];
+      if (!placed) return `“${current.heading || "Untitled section"}” changed too much while Claude was working; no citations were added.`;
+      const dropped = droppedNotice(citations);
+      if (!placed.length) {
+        notify({ text: `No new citations for “${current.heading || "Untitled section"}”.${dropped ? ` ${dropped}` : ""}` });
+        return null;
+      }
+      const type = editor.schema.marks[CITATION_MARK];
+      const tr = editor.state.tr;
+      for (const c of placed) tr.addMark(c.from, c.to, type.create(c.attrs));
+      editor.view.dispatch(tr);
+      const n = new Set(placed.map((c) => c.attrs.passageId)).size;
+      notify({
+        text: `Cited ${n === 1 ? "1 source passage" : `${n} source passages`} in “${current.heading || "Untitled section"}”.${dropped ? ` ${dropped}` : ""}`,
+        actions: [{ label: "Undo", run: () => editor.chain().focus().undo().run() }],
+      });
+      return null;
     },
     [editor, notify],
   );
@@ -141,7 +195,8 @@ export function useSectionGeneration({
           heading: target.heading,
           level: target.level,
           specKey: target.specKey,
-          body: target.bodyText,
+          // Citations go as markers so a rewrite keeps them; a draft replaces the body, so it needs none.
+          body: isRewrite(req.mode) ? bodyWithMarkers(editor, target) : target.bodyText,
           ...(req.preset ? { preset: req.preset } : {}),
           ...(req.direction ? { direction: req.direction } : {}),
           ...(req.instruction?.trim() ? { instruction: req.instruction.trim() } : {}),
@@ -157,7 +212,15 @@ export function useSectionGeneration({
         if (!res.ok) return fail(generationError(res.status, out));
         const markdown = String(out.markdown ?? "");
         const lineBreaks = out.lineBreaks === true;
+        const citations = out.citations ?? null;
         if (editor.isDestroyed) return null;
+
+        // Only marks are added, on the text as it is now (the person may have
+        // kept writing), so no "changed while Claude was writing" choice.
+        if (isCiteSources(req)) {
+          const failed = cite(req.sectionId, markdown, citations);
+          return failed ? fail(failed) : null;
+        }
 
         const decision = applyDecision(target.bodyText, sectionBodyRange(editor.state.doc, req.sectionId));
         if (decision === "deleted") return fail("That section was deleted while Claude was writing.");
@@ -168,19 +231,19 @@ export function useSectionGeneration({
             sticky: true,
             key: `changed:${req.sectionId}`,
             actions: [
-              { label: "Replace anyway", run: () => void insert(req.sectionId, markdown, req.mode, lineBreaks) },
+              { label: "Replace anyway", run: () => void insert(req.sectionId, markdown, req.mode, lineBreaks, citations) },
               { label: "Discard", run: () => {} },
             ],
           });
           return null;
         }
-        insert(req.sectionId, markdown, req.mode, lineBreaks);
+        insert(req.sectionId, markdown, req.mode, lineBreaks, citations);
         return null;
       } finally {
         mark(req.sectionId, false);
       }
     },
-    [editor, ensureSaved, insert, mark, notify],
+    [editor, ensureSaved, insert, cite, mark, notify],
   );
 
   return { run, busy };

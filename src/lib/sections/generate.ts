@@ -14,6 +14,8 @@
 // the route, which maps them to 422 / 502.
 
 import { getType } from "@/catalog";
+import { CITE_SOURCES_INSTRUCTION, type CitationReport } from "@/lib/citations/contract";
+import { groundingResolver, verifyMarkers, wordingChanged, WORDING_CHANGED_ERROR } from "@/lib/citations/verify";
 import type { DocumentTypeDefinition, SectionSpec } from "@/catalog/schema";
 import { getSectionMeta, markSectionGenerated } from "@/lib/documents/section-store";
 import { listSections, type SectionInfo } from "@/lib/documents/sections";
@@ -42,7 +44,8 @@ export type GenerateFailure =
   | { ok: false; code: "not_found"; status: 404; error: string }
   | { ok: false; code: "static"; status: 409; error: string }
   | { ok: false; code: "not_configured"; status: 503; error: string }
-  | { ok: false; code: "notes_required"; status: 400; error: string };
+  | { ok: false; code: "notes_required"; status: 400; error: string }
+  | { ok: false; code: "wording_changed"; status: 422; error: string };
 
 export type GenerateResult = { ok: true; response: SectionGenerateResponse } | GenerateFailure;
 
@@ -135,10 +138,22 @@ export async function generateSection({ teamId, agent, documentId, sectionId, re
   });
 
   const { text } = await claudeText({ task, system, user, agent, documentId });
-  const markdown = dropRepeatedHeading(stripFences(text), req.heading);
-  if (!markdown) throw new Error("The model returned an empty section.");
+  const reply = dropRepeatedHeading(stripFences(text), req.heading);
+  if (!reply) throw new Error("The model returned an empty section.");
+  const { markdown, report } = await verifyMarkers(reply, groundingResolver(teamId, documentId, grounding));
+  logCitations(report);
+  // "Cite sources" may only add markers: a reply that rewords the body is refused, not applied.
+  if (isCiteSources(req) && wordingChanged(req.body, markdown)) return { ok: false, code: "wording_changed", status: 422, error: WORDING_CHANGED_ERROR };
 
   const section = await markSectionGenerated(teamId, documentId, sectionId, spec?.key ?? req.specKey ?? null);
   if (!section) return { ok: false, code: "not_found", status: 404, error: "Document not found." };
-  return { ok: true, response: { markdown, ...(spec?.renderer === "static" ? { lineBreaks: true } : {}), task, sourcesUsed: grounding.sources.length, section } };
+  return { ok: true, response: { markdown, ...(spec?.renderer === "static" ? { lineBreaks: true } : {}), task, sourcesUsed: grounding.sources.length, section, citations: report } };
+}
+
+/** The section menu's "Cite sources": a rewrite whose instruction is the constant. */
+export const isCiteSources = (req: { mode?: SectionMode; instruction?: string }) => (req.mode === undefined || req.mode === "rewrite") && req.instruction?.trim() === CITE_SOURCES_INSTRUCTION;
+
+/** Counts only (never text): how many markers a reply kept and dropped. */
+export function logCitations(report: CitationReport) {
+  if (report.kept || report.dropped.length) console.info("[citations]", { kept: report.kept, dropped: report.dropped.length });
 }

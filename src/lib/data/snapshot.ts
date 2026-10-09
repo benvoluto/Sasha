@@ -6,7 +6,12 @@
 // The snapshot is a copy: later overrides or re-reads don't change it. Every
 // cell goes through neutralizeFormula, since documents export to formats a
 // spreadsheet may open.
+//
+// The table name on the source line carries both the link (older documents
+// have only that, and the exporters still read it) and a table citation
+// (phase7-spec.md §2.3), so the table is numbered among the sources cited.
 
+import { CITATION_MARK, type CitationAttrs } from "@/lib/citations/contract";
 import type { PMNode } from "@/lib/documents/sections";
 import { MAX_INSERT_ROWS, neutralizeFormula, tableCitationHref, tableLocation, type Cell, type TableSnapshot } from "./contract";
 
@@ -33,12 +38,20 @@ export function tableSnapshotNodes(snapshot: TableSnapshot, opts: { rows: number
 
   const from = table.source.title || table.source.filename || "a source";
   const where = tableLocation(table);
+  const cite: CitationAttrs = { kind: "table", passageId: null, sourceId: table.source_id, dataTableId: table.id, quote: null, verified: true };
   const cut = count < table.row_count ? ` First ${count.toLocaleString("en-US")} of ${table.row_count.toLocaleString("en-US")} rows.` : "";
   const citation: PMNode = {
     type: "paragraph",
     content: [
       { type: "text", text: "Source: " },
-      { type: "text", text: table.name || "Table", marks: [{ type: "link", attrs: { href: tableCitationHref(table.source_id, table.id) } }] },
+      {
+        type: "text",
+        text: table.name || "Table",
+        marks: [
+          { type: "link", attrs: { href: tableCitationHref(table.source_id, table.id) } },
+          { type: CITATION_MARK, attrs: cite },
+        ],
+      },
       { type: "text", text: ` — ${from}${where ? `, ${where}` : ""}.${cut}` },
     ],
   };
