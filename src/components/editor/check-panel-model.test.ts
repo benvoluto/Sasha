@@ -3,6 +3,8 @@ import type { RubricCheckResult } from "@/lib/rubric/contract";
 import {
   applyState,
   changedSections,
+  checkingText,
+  storedIsCurrent,
   checkedText,
   checkErrorText,
   CHANGED_CONFIRM,
@@ -83,6 +85,25 @@ describe("stale and apply", () => {
     const now: Record<string, string | null> = { s1: "aaaa", s2: "changed", s3: null };
     expect(changedSections({ s1: "aaaa", s2: "bbbb", s3: "cccc" }, (id) => now[id] ?? null)).toEqual(["s2", "s3"]);
     expect(changedSections({ s1: "aaaa" }, (id) => now[id] ?? null)).toEqual([]);
+  });
+
+  it("calls a stored result current only when no section changed and none was added (whole document)", () => {
+    const now: Record<string, string> = { s1: "aaaa", s2: "bbbb" };
+    const fp = (id: string) => now[id] ?? null;
+    expect(storedIsCurrent({ s1: "aaaa", s2: "bbbb" }, fp)).toBe(true);
+    expect(storedIsCurrent({ s1: "aaaa", s2: "bbbb" }, fp, ["s1", "s2"])).toBe(true);
+    expect(storedIsCurrent({ s1: "aaaa", s2: "old!" }, fp)).toBe(false);
+    expect(storedIsCurrent({ s1: "aaaa" }, fp, ["s1", "s2"])).toBe(false);
+    // A section check compares only its own section.
+    expect(storedIsCurrent({ s1: "aaaa" }, fp, null)).toBe(true);
+  });
+
+  it("shows no 'Checking for changes…' while quietly refreshing a current result", () => {
+    expect(checkingText("quiet", true)).toBeNull();
+    expect(checkingText(null, true)).toBeNull();
+    expect(checkingText("checking", true)).toBe("Checking for changes…");
+    expect(checkingText("loading", false)).toBe("Loading…");
+    expect(checkingText("checking", false)).toMatch(/Checking against the rubric/);
   });
 
   it("enables Apply only with a fix, a fix section that exists and isn't being written", () => {

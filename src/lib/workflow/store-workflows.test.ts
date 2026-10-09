@@ -66,6 +66,50 @@ describe("team workflows", () => {
   });
 });
 
+describe("workflows bound to a type (Phase 8)", () => {
+  it("records the bound type, keeps the old positional basedOn, and deletes a team workflow with its versions", async () => {
+    const bound = await svc.createWorkflow("org:a", "Learned review", graph, auth, { appliesTo: "equipment-request", note: "Learned from 2 examples" });
+    expect(bound).toMatchObject({ applies_to: "equipment-request", based_on: null });
+    expect((await svc.getWorkflow("org:a", bound.id))?.note).toBe("Learned from 2 examples");
+    const copy = await svc.createWorkflow("org:a", "Copy", graph, auth, "builtin:mini-review");
+    expect(copy).toMatchObject({ based_on: "builtin:mini-review", applies_to: null });
+    expect((await svc.listWorkflows("org:a")).map((w) => [w.name, w.applies_to])).toEqual([
+      ["Learned review", "equipment-request"],
+      ["Copy", null],
+    ]);
+    expect(await svc.deleteWorkflow("org:b", bound.id)).toBe(false);
+    expect(await svc.deleteWorkflow("org:a", "builtin:mini-review")).toBe(false);
+    expect(await svc.deleteWorkflow("org:a", bound.id)).toBe(true);
+    expect(await svc.getWorkflow("org:a", bound.id)).toBeNull();
+    expect(await svc.listVersions("org:a", bound.id)).toEqual([]);
+  });
+
+  it("offers a bound workflow only on documents of its type, before the general-report fallback; unbound ones everywhere", async () => {
+    const { availableWorkflows, offeredFor } = await import("./availability");
+    const { createDocument } = await import("@/lib/documents/store");
+    const bound = await svc.createWorkflow("org:a", "Learned review", graph, auth, { appliesTo: "equipment-request" });
+    const plain = await svc.createWorkflow("org:a", "Our check", graph, auth);
+    const typeDef = { key: "equipment-request", aliases: ["equip_req"] };
+    expect(offeredFor({ applies_to: null }, null, null)).toBe(true);
+    expect(offeredFor({ applies_to: "equipment-request" }, "equip_req", null)).toBe(false);
+    expect(offeredFor({ applies_to: "equip_req" }, "equipment-request", typeDef)).toBe(true);
+
+    const typed = await createDocument("org:a", "ann", { title: "Req", type_key: "equipment-request" });
+    const ids = (await availableWorkflows("org:a", typed, typeDef as never)).map((a) => a.id);
+    // The generic built-ins, the bound workflow, the fallback type workflow (this team type has no built-in of its own), then the rest.
+    expect(ids.indexOf(bound.id)).toBeGreaterThan(-1);
+    expect(ids.indexOf(bound.id)).toBeLessThan(ids.indexOf("builtin:type-general-report"));
+    expect(ids.at(-1)).toBe(plain.id);
+
+    const other = await createDocument("org:a", "ann", { title: "Proposal", type_key: "proposal" });
+    const offered = (await availableWorkflows("org:a", other, null)).map((a) => a.id);
+    expect(offered).not.toContain(bound.id);
+    expect(offered).toContain(plain.id);
+    const untyped = await createDocument("org:a", "ann", { title: "Notes" });
+    expect((await availableWorkflows("org:a", untyped, null)).map((a) => a.id)).not.toContain(bound.id);
+  });
+});
+
 describe("built-in workflows", () => {
   it("resolve as builtin:<key>, compiled from the definition, read-only, with no saved versions", async () => {
     const b = await svc.getWorkflow("org:a", "builtin:mini-review");

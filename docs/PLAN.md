@@ -7,7 +7,7 @@ keeps a switchable list of documents, treats uploaded material as a shared
 types** (outlines plus rubrics) to scaffold, classify, check and restructure
 writing.
 
-Status (October 2026): Phases 0–7 and the editor layout are built. See §12 for progress notes.
+Status (October 2026): Phases 0–8 and the editor layout are built. See §12 for progress notes.
 
 ---
 
@@ -773,16 +773,60 @@ the interface, Hanken Grotesk for the document.
 - Phase 6 debts closed: a blocked FIE no longer waits for sign-off; the canvas accepts
   `?workflowId=`; draft-all shows per-section progress.
 
+**Phase 8 (done).**
+- Catalog: 26 types, 12 dated requirement sets, 29 workflows (one per type plus source coverage,
+  restructure and draft all). New types: NSF project description (with the Data Management and
+  Sharing Plan), foundation letter of inquiry, funder progress report, strategy memo, resume/CV,
+  cover letter, literature review, response to reviewers, IEP, reevaluation review, FBA/BIP,
+  Diátaxis reference and explanation, incident postmortem. New sets: NSF PAPPG, Uniform Guidance
+  reporting, IDEA IEP and discipline (34 CFR). The FIE outline was checked against the organizer
+  template. `docs/workflows-by-document-type.md` lists all 26 as "In catalog"; the five
+  Sasha-drafted entries are labelled for the owner's review.
+- Engine additions: trace `exemptField` (a need with a stated reason for no goal is a note, not a
+  gap), count checks with a `status` list, deadlines in years and by report kind (`byKind`), decide
+  shows counts as values. The gate ignores unfilled template lines and matches keywords at word
+  starts (acronyms whole-word).
+- Learn from an example (`src/lib/learn/`, `/api/document-types/learn{,/save}`, `src/components/learn/`):
+  1–5 examples from the library to a draft type, workflow and inferred requirement set, with
+  confidence by example count, differences between examples, nearest catalog type, verbatim-overlap
+  and personal-detail checks (names, all-caps headers, IDs, contacts; assessment names and role
+  words exempt; the author can keep a name or organization flag, never contact or ID details).
+  Side-by-side review with type editing, then a checkpoint save that creates team rows atomically
+  (server-owned set fields; no orphan on failure). "Use it for this document" applies the type.
+  Evaluation harness `npm run learn:eval` (learned vs nearest catalog type vs no type).
+- `npm run catalog:import` (`scripts/catalog/import-clawhub.ts`): ClawHub skills to drafts in
+  `src/catalog/types/_drafts/` for review; refuses unless every declared licence is permissive and
+  the security scan is clean; untrusted strings are stripped of control characters.
+- Restructure of an already restructured document drops heading-only rows, and the mapping
+  checkpoint lists the headings that will be removed before apply (user decision, 2026-10-08).
+- Phase 7 debts closed: the workflow rubric step sees citations; export references give a URL
+  source's own address and title (no in-app links); excerpts are plain text (including table rows);
+  the Check panel opens from cache without "Checking for changes…".
+- Smoke-tested with real models: all 14 new workflows reached a valid outcome (the resume run caught
+  "seven years" against a history starting in 2018; IEP with no evaluation was blocked); learning
+  from two examples took 168 s and the saved team type and workflow ran on a new document. One
+  evaluation case (PEP 572): the learned type scored 26% structure match vs 2.5% for the nearest
+  catalog type; verdict inconclusive on one case.
+
 **Known debt carried forward.**
-- The workflow `rubric.score` step does not yet pass citations to the model (the Check route does).
-- Exported reference excerpts can show raw Markdown from PDF passages.
-- Exported references link to the in-app library page, not a URL source's own address. To do in
-  Phase 8: include the original URL and title for URL sources, and no in-app links in exports.
-- The Check panel shows "Checking for changes…" for a few seconds even when cached.
-- Restructuring an already restructured document splits at every heading level, leaving empty rows.
-  Decided (user, 2026-10-08): drop rows for headings that hold no content of their own, but show the
-  author a warning listing the headings that will be dropped before the restructure applies (at the
-  mapping checkpoint). Scheduled with Phase 8.
+- Learn from an example runs close to the time limit (one example took 256 s before the effort was
+  lowered to medium; five long examples may pass the first call's 200 s limit). Not re-timed.
+- The evaluation harness needs more cases: coverage scores are 100% for every condition when a case
+  has no public sources, and the no-type run is scored on the universal rubric only, so rubric
+  scores are not comparable across conditions.
+- Incident postmortem: time to detect, mitigate and resolve are checked by the responder reviewer,
+  not computed in code (needs a `duration` compute kind).
+- The ClawHub importer refuses skills with no declared licence, which is most of them.
+- `fba-bip` may search pbis.org (not a .gov site); remove it if sources must be government only.
+- The 2026 Texas §89.1040 amendment was read from a summary, not the published text; check it.
+- A two-capital-word learned title with no document words (e.g. "Software Design Document") is
+  flagged as a name; the author can keep it at save.
+- ClawHub draft `retrieved` dates are UTC.
+- Resume/CV workflow has no Tailor step (spec step 4) and so no changed lines for the candidate to
+  approve (spec step 8): it checks a resume the candidate has tailored. The departure is stated in the
+  workflow's notes and not-assessed list. For the doc owner to decide: add a tailor node that proposes
+  line rewrites from the master history, truth-checked before the "after" score, applied through
+  `doc.write` so each line can be accepted.
 - Draft-all credits facts from document notes to the section's notes when the section has its own.
 - Model judgements are lenient in places (coverage, FIE input check, report support levels); code
   checks catch the arithmetic cases.

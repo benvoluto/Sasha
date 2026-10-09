@@ -1,0 +1,175 @@
+{
+  "key": "foundation-letter-of-inquiry",
+  "version": 1,
+  "title": "Foundation Letter of Inquiry",
+  "family": "grant",
+  "summary": "A short letter of inquiry (LOI), or the general proposal that follows it, asking a private or community foundation to consider funding a project. It states the ask up front, the need, the project, the expected outcomes, the timeline and why the organization is the right one, matched to the funder's published priorities and eligibility rules.",
+  "signals": [
+    "letter of inquiry",
+    "LOI",
+    "letter of intent",
+    "foundation",
+    "Dear Program Officer",
+    "we respectfully request",
+    "grant request of",
+    "funding priorities",
+    "our mission",
+    "501(c)(3)",
+    "fiscal sponsor",
+    "invitation to submit a full proposal",
+    "general operating support",
+    "program officer"
+  ],
+  "audience": "A foundation program officer screening many inquiries against the funder's priorities, eligibility rules and typical grant size, often reading for two minutes before deciding whether to invite a full proposal.",
+  "tone": "Direct, warm and specific; plain language with no jargon, the ask and the fit visible in the first paragraph, confident without overclaiming.",
+  "preamble": "You are an experienced development director drafting a letter of inquiry or general proposal to a foundation on behalf of a nonprofit or fiscally sponsored project. Follow the funder's published guidelines exactly where they are linked: their format, length limit, required elements and deadlines override anything here, and their stated priorities and eligibility rules come before any priorities you infer. Put the amount requested and the project in the opening paragraph. Connect each funder priority to a concrete activity or result of the project in the organization's own words; never repeat the funder's language without a matching activity behind it. Keep the ask consistent with the project budget and within the funder's usual grant range if the sources show it. Do not invent statistics, outcomes from past work, partners, board members, budget figures, tax status or prior contact with the funder; where a fact is missing, write a marked placeholder such as [number served last year]. Write one letter for one funder; never leave another funder's name or priorities in the text.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "header",
+      "heading": "Letter header",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "renderer": "static",
+      "guidance": "The routing block that identifies the letter: date, the program officer or contact named in the guidelines, the foundation's name and address, and a subject line naming the request. Address a named person where the guidelines give one. Check the foundation's name and the contact against the current guidelines; a wrong or leftover name ends the reading.",
+      "elements": ["Date", "Named contact and foundation address", "Subject line naming the request and amount"],
+      "sourcesNeeded": ["Funder guidelines or website contact page"],
+      "dataNeeded": [],
+      "scaffold": "[Date]\n\n[Contact name, title]\n[Foundation name]\n[Address]\n\n**Re:** Letter of inquiry: [project name], request of $[amount]"
+    },
+    {
+      "key": "opening-and-request",
+      "heading": "Introduction and Request",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "In one paragraph: who the organization is, the amount requested, what it will pay for, over what period, and the one or two funder priorities the project serves. A program officer should be able to stop reading here and know the ask and the fit. If someone at the foundation suggested the inquiry, say so in a phrase. Common failures: a mission statement before the ask; an amount that differs from the budget; priorities named but not connected to the project.",
+      "lengthHint": "One paragraph",
+      "elements": ["Organization named in a phrase", "Amount requested and period", "What the grant will fund", "Funder priority or priorities the project serves"],
+      "sourcesNeeded": ["Funder guidelines and priorities", "Project budget"],
+      "dataNeeded": ["Amount requested", "Grant period"]
+    },
+    {
+      "key": "need",
+      "heading": "Need",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Describe the problem the project addresses for the people or place it serves, with one or two current, local, sourced figures and, where possible, a sentence of community voice. Show why it matters now and what happens without the project. Keep it about the community, not the organization's own needs. Common failures: national statistics with no local link; need described as the organization's budget gap; undated or unsourced figures.",
+      "lengthHint": "One to two paragraphs",
+      "elements": ["Problem and who it affects", "Current, sourced local evidence of the need", "Why now and the cost of inaction"],
+      "sourcesNeeded": ["Local data sources (census, agency or community data)", "Needs assessments or community input"],
+      "dataNeeded": ["One or two local figures with their source and year"]
+    },
+    {
+      "key": "project-description",
+      "heading": "Project Description",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Say what the project does, for whom, where and how many, and who delivers it. Tie each major activity to the funder priority it serves, in your own words. Mention partners only where the sources confirm the partnership. Keep it concrete enough to picture a week of the program. Common failures: activities described in abstractions (\"empower\", \"transform\"); funder language pasted in with no activity behind it; a project too large for the ask with no other funding shown.",
+      "lengthHint": "Two to three paragraphs",
+      "elements": ["Activities and how they work", "Who is served and how many", "Who delivers the project, including partners", "Each activity tied to a funder priority"],
+      "sourcesNeeded": ["Program description or logic model", "Partner agreements"],
+      "dataNeeded": ["Number to be served", "Staffing for the project"]
+    },
+    {
+      "key": "outcomes-and-evaluation",
+      "heading": "Expected Outcomes and Evaluation",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "State two to four outcomes the grant period will produce, each measurable (a change in people or conditions, not just activities completed), and how you will measure and report them. Where past results support the outcomes, give them with their source. Common failures: outputs presented as outcomes (\"hold 12 workshops\"); targets with no baseline; evaluation promised with no method.",
+      "lengthHint": "One paragraph or a short list",
+      "elements": ["2-4 measurable outcomes", "How each outcome is measured", "Evidence from past results, where available"],
+      "sourcesNeeded": ["Past program evaluations or reports"],
+      "dataNeeded": ["Baselines and targets for each outcome"]
+    },
+    {
+      "key": "organization",
+      "heading": "Organization and Capacity",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Give the organization's mission in a sentence, its track record with this population or work, its tax status (or fiscal sponsor) and the qualifications of the project lead. Keep only what helps the funder trust the organization to deliver this project. Common failures: a history going back decades; tax status or fiscal sponsor missing when the funder requires it; capacity claims with no evidence.",
+      "lengthHint": "One paragraph",
+      "elements": ["Mission in one sentence", "Track record relevant to the project", "Tax status or fiscal sponsor", "Project lead's qualifications"],
+      "sourcesNeeded": ["IRS determination letter or fiscal sponsor agreement", "Annual report"],
+      "dataNeeded": ["Annual operating budget", "Years serving this population"]
+    },
+    {
+      "key": "budget-and-timeline",
+      "heading": "Budget and Timeline",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "Include when the guidelines ask for it, and always in a general (full) proposal. Give the total project cost, the amount requested, other secured and pending funding, and the main cost categories, then the timeline with start and end dates and milestones. The request must match the opening paragraph and the budget; the parts must sum to the total. Common failures: a total that does not add up; other funding left out so the funder appears to carry everything; a timeline with no milestones.",
+      "lengthHint": "Short table or paragraph",
+      "elements": ["Total project cost and amount requested", "Other secured and pending funding", "Main cost categories", "Start and end dates with milestones"],
+      "sourcesNeeded": ["Project budget spreadsheet"],
+      "dataNeeded": ["Budget lines and totals", "Other funding sources and amounts", "Milestone dates"]
+    },
+    {
+      "key": "closing",
+      "heading": "Closing",
+      "level": 2,
+      "order": 80,
+      "required": true,
+      "guidance": "Restate the request and the result in one sentence, thank the reader once, offer to send a full proposal or more information, and give the contact person's name, email and phone. Sign as the executive director or authorized officer. Common failures: a new argument in the closing; no contact details.",
+      "lengthHint": "Two to three sentences",
+      "elements": ["Request and result restated in one sentence", "Contact person with email and phone", "Signature of an authorized officer"],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Contact details"]
+    }
+  ],
+  "rubric": [
+    {
+      "key": "funder-fit",
+      "criterion": "Funder fit: each stated funder priority is matched by a concrete activity or result in the letter, in the organization's own words.",
+      "levels": [
+        { "score": 4, "descriptor": "Every priority cited is backed by a specific activity and outcome; no echoed wording without substance; nothing outside the funder's scope." },
+        { "score": 3, "descriptor": "Clear fit with one priority supported only loosely." },
+        { "score": 2, "descriptor": "Fit asserted mostly by repeating the funder's words; activities only partly match." },
+        { "score": 1, "descriptor": "Generic letter that could go to any funder, or a project outside the funder's priorities." }
+      ],
+      "appliesTo": ["opening-and-request", "project-description", "outcomes-and-evaluation"]
+    },
+    {
+      "key": "ask-clarity",
+      "criterion": "The ask: amount, purpose and period stated in the opening paragraph and consistent with the budget and the funder's typical range.",
+      "levels": [
+        { "score": 3, "descriptor": "Amount, purpose and period in the first paragraph; matches the budget section and fits the funder's range." },
+        { "score": 2, "descriptor": "The ask is present but late, vague about purpose, or inconsistent with the budget." },
+        { "score": 1, "descriptor": "No clear ask, or an amount far outside the funder's range with no explanation." }
+      ],
+      "appliesTo": ["opening-and-request", "budget-and-timeline", "closing"]
+    },
+    {
+      "key": "measurable-outcomes",
+      "criterion": "Outcomes: measurable changes for people or conditions, with a way to measure them, rather than activities.",
+      "levels": [
+        { "score": 3, "descriptor": "Each outcome is a measurable change with a baseline or target and a measurement method." },
+        { "score": 2, "descriptor": "Some outcomes are outputs or lack a method." },
+        { "score": 1, "descriptor": "Only activities or aspirations; nothing measurable." }
+      ],
+      "appliesTo": ["outcomes-and-evaluation"]
+    },
+    {
+      "key": "eligibility-shown",
+      "criterion": "Eligibility visible: tax status or fiscal sponsor, geography and population match what the funder requires.",
+      "levels": [
+        { "score": 3, "descriptor": "Tax status or sponsor, location and population served are stated and match the guidelines." },
+        { "score": 2, "descriptor": "Eligibility mostly stated; one requirement left implicit." },
+        { "score": 1, "descriptor": "Eligibility unclear or contradicts the guidelines." }
+      ],
+      "appliesTo": ["organization", "project-description"]
+    }
+  ],
+  "provenance": {
+    "source": "hand-written (common foundation LOI practice; structure follows the elements named in docs/workflows-by-document-type.md)",
+    "url": "",
+    "license": "Own text",
+    "retrieved": "2026-10-08"
+  }
+}

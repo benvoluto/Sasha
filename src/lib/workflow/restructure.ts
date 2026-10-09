@@ -18,13 +18,19 @@
 //   4. text before the first heading with no target stays at the top;
 //   5. other parts with no target go, verbatim, under a final untagged
 //      “Content to place” heading.
-// Nothing is ever dropped: every text node of the input appears in the output.
+// Nothing is ever dropped but the headings the plan lists in `dropped`
+// (Phase 8, user decision 2026-10-08): a part that is only a heading (no
+// text, table or image of its own, typically a level-2 heading left by an
+// earlier restructure over kept level-3 headings) is removed, after the
+// mapping checkpoint has warned about it. A dropped heading whose text reads
+// as a target section's heading passes its sectionId on to that section.
+// Every other text node of the input appears in the output.
 
 import { normalizeHeading } from "@/catalog/outline-merge";
 import { headingNode, randomSectionId, sectionNodes } from "@/catalog/outline";
 import { sortedSections, type SectionSummary } from "@/catalog/schema";
 import { nodeText, type PMNode } from "@/lib/documents/sections";
-import { NO_HOME_HEADING, type RestructurePlan } from "./contract";
+import { NO_HOME_HEADING, type RestructureDroppedHeading, type RestructurePlan } from "./contract";
 
 /** Headings at this level or above start a new part; deeper sub-headings stay in their part's body. */
 export const MAX_CHUNK_LEVEL = 3;
@@ -40,6 +46,8 @@ export type RestructureChunk = {
   /** The body's text (without the heading), for the model and the mapping table. */
   text: string;
   excerpt: string;
+  /** Only a heading: no text, table or image in its run. The plan leaves it out and the apply removes it. */
+  headingOnly: boolean;
 };
 
 const levelOf = (n: PMNode) => Number(n.attrs?.level ?? 1);
@@ -83,6 +91,7 @@ export function restructureChunks(doc: PMNode): RestructureChunk[] {
       level: headed ? levelOf(first) : null,
       text,
       excerpt: text.length > EXCERPT_CHARS ? `${text.slice(0, EXCERPT_CHARS - 1)}…` : text,
+      headingOnly: headed && body.every(isBlank),
     });
   };
   nodes.forEach((n, i) => {
@@ -95,6 +104,18 @@ export function restructureChunks(doc: PMNode): RestructureChunk[] {
   return out;
 }
 
+/**
+ * The warning shown before a plan is applied (the mapping checkpoint, the run
+ * inspector, the proposed change, and the plan's finding), or "" when the plan
+ * drops nothing. Plans stored before Phase 8 have no `dropped`.
+ */
+export function droppedWarning(dropped: RestructureDroppedHeading[] | undefined): string {
+  const list = dropped ?? [];
+  if (!list.length) return "";
+  const name = (t: string) => `“${t.length > 120 ? `${t.slice(0, 119)}…` : t}”`;
+  return `These headings hold no text of their own and will be removed: ${list.map((d) => name(d.heading)).join(", ")}.`;
+}
+
 export type RestructureResult = {
   doc: PMNode;
   /** Parts placed in a target section. */
@@ -103,6 +124,8 @@ export type RestructureResult = {
   added: number;
   /** Parts kept under “Content to place”. */
   noHome: number;
+  /** Headings removed because they held nothing of their own (the plan's `dropped`). */
+  removed: number;
   /** True when the document no longer matches the plan; `doc` is then the input, unchanged. */
   drift: boolean;
 };
@@ -121,13 +144,30 @@ function keptHeading(node: PMNode, level: number, newId: () => string): PMNode {
 export function applyRestructurePlan(doc: PMNode, plan: RestructurePlan, sections: TargetSection[], newId: () => string = randomSectionId): RestructureResult {
   const nodes = doc.content ?? [];
   const hashes = nodes.map(blockHash);
-  if (hashes.length !== plan.blockHashes.length || hashes.some((h, i) => h !== plan.blockHashes[i])) return { doc, moved: 0, added: 0, noHome: 0, drift: true };
+  if (hashes.length !== plan.blockHashes.length || hashes.some((h, i) => h !== plan.blockHashes[i])) return { doc, moved: 0, added: 0, noHome: 0, removed: 0, drift: true };
 
   const outline = sortedSections(sections);
   const keys = new Set(outline.map((s) => s.key));
   const rows = [...plan.rows].sort((a, b) => a.from - b.from);
   const covered = new Set<number>();
   for (const r of rows) for (let i = r.from; i <= r.to; i++) covered.add(i);
+  // Dropped headings (plans from before Phase 8 have none): only a heading at
+  // that index is removed, so a stale entry can never take text with it.
+  const dropped = (plan.dropped ?? []).filter((d) => !covered.has(d.index) && nodes[d.index]?.type === "heading");
+  for (const d of dropped) covered.add(d.index);
+  const passOn = new Map<string, string>();
+  for (const d of dropped) {
+    const id = nodes[d.index].attrs?.sectionId;
+    const want = normalizeHeading(nodeText(nodes[d.index]));
+    if (typeof id === "string" && id && want && !passOn.has(want)) passOn.set(want, id);
+  }
+  /** A dropped heading's sectionId for section `s`, used once. */
+  const takeId = (s: { heading: string }): string | null => {
+    const want = normalizeHeading(s.heading);
+    const id = passOn.get(want) ?? null;
+    passOn.delete(want);
+    return id;
+  };
   const headedRow = (r: (typeof rows)[number]) => r.heading !== null && isBoundary(nodes[r.from] ?? { type: "paragraph" });
   const bodyOf = (r: (typeof rows)[number]) => nodes.slice(headedRow(r) ? r.from + 1 : r.from, r.to + 1).map(clone);
 
@@ -142,7 +182,9 @@ export function applyRestructurePlan(doc: PMNode, plan: RestructurePlan, section
   for (const s of outline) {
     const mine = rows.filter((r) => r.target === s.key);
     if (!mine.length) {
-      content.push(...sectionNodes(s, newId));
+      const id = takeId(s);
+      const [head, ...body] = sectionNodes(s, newId);
+      content.push(id ? { ...head, attrs: { ...head.attrs, sectionId: id } } : head, ...body);
       added++;
       continue;
     }
@@ -154,7 +196,7 @@ export function applyRestructurePlan(doc: PMNode, plan: RestructurePlan, section
       h.attrs = { ...(h.attrs ?? {}), level, specKey: s.key, sectionId: h.attrs?.sectionId || newId() };
       content.push(h);
     } else {
-      content.push(headingNode(s, newId()));
+      content.push(headingNode(s, takeId(s) ?? newId()));
     }
     for (const r of mine) {
       if (r !== own && headedRow(r)) content.push(keptHeading(nodes[r.from], Math.min(level + 1, MAX_CHUNK_LEVEL), newId));
@@ -172,5 +214,5 @@ export function applyRestructurePlan(doc: PMNode, plan: RestructurePlan, section
     for (const p of pieces) for (const n of p.nodes) content.push(isBoundary(n) ? keptHeading(n, Math.max(levelOf(n), 3), newId) : clone(n));
   }
 
-  return { doc: { ...doc, content: content.length ? content : [{ type: "paragraph" }] }, moved, added, noHome: homeless.length, drift: false };
+  return { doc: { ...doc, content: content.length ? content : [{ type: "paragraph" }] }, moved, added, noHome: homeless.length, removed: dropped.length, drift: false };
 }

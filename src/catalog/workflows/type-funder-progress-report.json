@@ -1,0 +1,218 @@
+{
+  "key": "type-funder-progress-report",
+  "version": 1,
+  "title": "Progress report objectives trace",
+  "summary": "An objectives trace: each objective in the award with its status (met, on track, delayed, changed) and the reported evidence, every reported result tied to an objective, plus a separate compliance check of the funder's required sections. Dates and numbers are checked in code; changes that may need prior approval are flagged. The PI approves.",
+  "kind": "type",
+  "appliesTo": ["funder-progress-report"],
+  "outcome": {
+    "label": "Objectives trace",
+    "values": [
+      { "key": "ready", "label": "Ready: every objective reported, every result tied" },
+      { "key": "gaps_found", "label": "Gaps found in the trace" },
+      { "key": "sections_missing", "label": "Required sections missing" }
+    ]
+  },
+  "checkpoint": { "role": "Principal investigator or project director", "required": true },
+  "requirementSets": ["uniform-guidance-reporting"],
+  "notAssessed": ["Financial reports (SF-425) and spending accuracy beyond the numbers linked", "Whether a flagged change actually received prior approval (confirm with the funder's records)"],
+  "notes": [
+    "The award's terms and the funder's report format override the federal defaults; NIH and NSF use the RPPR, foundations set their own formats.",
+    "The due-date check uses the 2 CFR 200.329 defaults by report kind: 90 days for an annual report, 30 for a quarterly or semiannual one, 120 after the period of performance for the final report. NIH and NSF annual reports are due before the budget period ends, so they are not assessed; see the nih-rppr and nsf-project-reports items and the award.",
+    "The organization's authorized representative submits after the PI approves."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "notes", "node": "doc.notes", "label": "Notes" },
+    { "id": "src", "node": "sources.read", "label": "Source passages" },
+    { "id": "data", "node": "data.list", "label": "Linked data" },
+    { "id": "req", "node": "requirements.read", "label": "Requirements", "config": { "sets": ["uniform-guidance-reporting"] } },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: award and period",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          { "key": "award_objectives", "label": "The award's objectives or aims", "kind": "source", "match": ["notice of award", "award notice", "NoA", "grant agreement", "funded proposal", "proposal", "specific aims", "objectives"], "help": "Link the funded proposal or notice of award: the trace runs against its objectives." },
+          { "key": "period", "label": "The reporting period", "kind": "any", "match": ["reporting period", "budget period", "period covered"], "specKeys": ["award-information"], "help": "Give the reporting period start and end dates in the award information block." },
+          { "key": "format", "label": "The funder's report format", "kind": "any", "match": ["RPPR", "report format", "report template", "reporting requirements", "annual report", "final report"], "help": "Name or link the funder's report format (RPPR for NIH and NSF; the foundation's template otherwise)." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "notes": "notes.notes" }
+    },
+    {
+      "id": "obj",
+      "node": "step.extract",
+      "label": "Award objectives",
+      "config": {
+        "item": "objective",
+        "from": ["sources"],
+        "sourceMatch": ["award", "proposal", "agreement", "aims", "objectives", "NoA"],
+        "maxItems": 30,
+        "instructions": "List each objective, aim or milestone the award commits to, with its number and wording as funded, and what was due in this period if stated.",
+        "fields": [
+          { "name": "objective", "label": "Objective", "type": "text", "description": "The objective or aim as funded, with its number", "required": true },
+          { "name": "due_this_period", "label": "Due this period", "type": "text", "description": "Milestones or results due in this reporting period, if stated" }
+        ]
+      },
+      "in": { "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "res",
+      "node": "step.extract",
+      "label": "Reported results",
+      "config": {
+        "item": "reported item",
+        "from": ["document"],
+        "sectionKeys": ["award-information", "summary", "accomplishments", "products", "participants", "impact", "changes-and-problems"],
+        "maxItems": 80,
+        "instructions": "List the reporting period (one item of kind period with its start and end dates, the submission date and the report kind), then each result, activity, product and change the report states, with its date and the objective it names, if any.",
+        "fields": [
+          { "name": "kind", "label": "Kind", "type": "enum", "values": ["period", "result", "activity", "product", "change"], "description": "What the item is", "required": true },
+          { "name": "name", "label": "Item", "type": "text", "description": "The item as written; for the period, \"Reporting period\"", "required": true },
+          { "name": "date", "label": "Date", "type": "date", "description": "When it happened; for the period, its start date" },
+          { "name": "period_end", "label": "Period end", "type": "date", "description": "For the period item only: the end date of the reporting period" },
+          { "name": "submitted", "label": "Submitted", "type": "date", "description": "For the period item only: the report's submission date" },
+          { "name": "report_kind", "label": "Report kind", "type": "enum", "values": ["annual", "interim", "final", "agency_dated"], "description": "For the period item only: annual, interim (quarterly or semiannual) or final, as the award information states; agency_dated for an NIH RPPR or NSF annual report, which is due before the budget period ends" },
+          { "name": "after_item", "label": "Happens after", "type": "text", "description": "For results, activities, products and changes: \"Reporting period\"" },
+          { "name": "objective", "label": "Objective", "type": "text", "description": "The award objective the report ties it to, if any" }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "trobj",
+      "node": "step.trace",
+      "label": "Objective status",
+      "config": {
+        "against": "document",
+        "statuses": [
+          { "key": "met", "label": "Met", "ok": true, "severity": "info" },
+          { "key": "on_track", "label": "On track", "ok": true, "severity": "info" },
+          { "key": "delayed", "label": "Delayed (with reason and plan)", "ok": true, "severity": "minor" },
+          { "key": "changed", "label": "Changed", "ok": false, "severity": "minor" },
+          { "key": "no_progress_reported", "label": "No progress reported", "ok": false, "severity": "major" }
+        ],
+        "unverifiedStatus": "no_progress_reported",
+        "question": "What status does the report give this objective, and what evidence does it report? Quote it. An objective the report never mentions has no progress reported."
+      },
+      "in": { "items": "obj.items", "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "trres",
+      "node": "step.trace",
+      "label": "Results to objectives",
+      "config": {
+        "against": "targets",
+        "bothWays": true,
+        "statuses": [
+          { "key": "tied", "label": "Tied to an objective", "ok": true, "severity": "info" },
+          { "key": "loosely_tied", "label": "Loosely tied", "ok": false, "severity": "minor" },
+          { "key": "untied", "label": "Ties to no objective", "ok": false, "severity": "major" }
+        ],
+        "unverifiedStatus": "untied",
+        "question": "Which award objective does this reported item serve? Ignore the period item. Flag activities reported as outcomes.",
+        "instructions": "Targets are the award's objectives. With both ways on, also list objectives no reported item serves."
+      },
+      "in": { "items": "res.items", "targets": "obj.items", "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "comp",
+      "node": "step.compute",
+      "label": "Dates and numbers",
+      "config": {
+        "checks": [
+          { "kind": "date_order", "key": "after_period_start", "label": "Reported items fall on or after the period start", "severity": "major", "dateField": "date", "idField": "name", "dependsOnField": "after_item", "labelField": "name" },
+          { "kind": "deadline", "key": "report_due", "label": "Submitted by the federal default for the report kind (award terms govern)", "severity": "minor", "startField": "period_end", "byKind": { "field": "report_kind", "requirements": { "annual": "uniform-guidance-reporting#annual-report-due", "interim": "uniform-guidance-reporting#interim-report-due", "final": "uniform-guidance-reporting#final-report-due" }, "notAssessed": "NIH and NSF annual reports are due before the budget period ends; check the award and the nih-rppr or nsf-project-reports item" }, "endField": "submitted" },
+          { "kind": "numbers_match", "key": "summary_numbers", "label": "Numbers in the summary appear in the body", "severity": "major", "fromSpecKeys": ["summary"], "toSpecKeys": ["accomplishments", "products", "participants", "impact", "changes-and-problems"] }
+        ]
+      },
+      "in": { "document": "doc.document", "items": "res.items", "data": "data.tables", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "chg",
+      "node": "step.check",
+      "label": "Changes and prior approval",
+      "config": {
+        "instructions": "Use the requirement set: 2 CFR 200.308(f) lists revisions that need prior approval on federal awards. For foundation awards, use the grant agreement where linked.",
+        "checklist": [
+          { "key": "delays_explained", "label": "Delays disclosed with reason and plan", "question": "Is every delay or goal not met disclosed with its reason and a plan?", "severity": "major", "appliesTo": ["accomplishments", "changes-and-problems"] },
+          { "key": "dates_in_period", "label": "Results inside the reporting period", "question": "Do all reported results fall on or before the end of the reporting period, rather than before it began or after it ended?", "severity": "minor", "appliesTo": ["accomplishments", "products"] },
+          { "key": "prior_approval_flagged", "label": "Changes needing prior approval flagged", "question": "Does the report describe a change in scope or objectives, key personnel, the PI's effort (over three months away or a 25 percent cut), participant support funds, subawards, cost sharing or the period of performance? If so, does it state that prior approval was requested or granted?", "severity": "major", "appliesTo": ["changes-and-problems", "accomplishments", "participants"] },
+          { "key": "numbers_agree", "label": "Numbers agree with linked data and the last report", "question": "Do participant counts, spending and product counts agree across sections, with the linked data and with the previous report if linked?", "severity": "major" },
+          { "key": "no_dropped_objective", "label": "No objective dropped without comment", "question": "Is every objective in the award either reported on or explained?", "severity": "major", "appliesTo": ["accomplishments"] }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "data": "data.tables", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "fmt",
+      "node": "step.check",
+      "label": "Required sections",
+      "config": {
+        "instructions": "Check against the funder's report format in the sources. Without one, check the RPPR-style sections the type uses and say so.",
+        "checklist": [
+          { "key": "required_sections", "label": "Every required section present", "question": "Does the report contain every section the funder's format requires (for an RPPR: accomplishments, products, participants, impact, changes or problems, special reporting requirements)? Name any missing.", "severity": "blocking" },
+          { "key": "compare_to_objectives", "label": "Accomplishments compared with objectives", "question": "Do the accomplishments compare what was achieved with what the award set for the period, and explain goals not met (2 CFR 200.329(c)(2))?", "severity": "major", "appliesTo": ["accomplishments"] },
+          { "key": "special_items", "label": "Special reporting items answered", "question": "Are the award's special reporting items answered? Answer not_applicable when the award adds none.", "severity": "major", "appliesTo": ["special-requirements"] }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "criteria": [
+          { "key": "progress", "label": "Progress against the aims", "scale": { "kind": "enum", "values": ["satisfactory", "concerns", "unsatisfactory"] } },
+          { "key": "support", "label": "Claims supported by the evidence", "scale": { "kind": "enum", "values": ["supported", "partly_supported", "unsupported"] } }
+        ],
+        "instructions": "Tie every strength and weakness to a passage of the report and, where possible, to the award's objectives in the sources.",
+        "reviewers": [
+          { "key": "program_officer", "label": "Program officer", "brief": "Read as the funder's program officer deciding on continued support: is progress against each funded aim satisfactory for this point in the award, are delays credible with workable plans, and does anything need a conversation or prior approval?" },
+          { "key": "auditor", "label": "Auditor", "brief": "Read as an auditor: for each claim of progress, is there evidence in the report or linked data, do numbers agree across sections and with the data, and are activities being passed off as outcomes?" }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    { "id": "agree", "node": "step.agree", "label": "Agreement", "config": { "mode": "verdict", "blockingVerdicts": ["unsatisfactory", "unsupported"] }, "in": { "reviews": "rev.reviews" } },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          { "value": "sections_missing", "when": { "findings": { "kind": ["required_sections"], "severity": ["blocking"], "min": 1 } } },
+          { "value": "gaps_found", "when": { "anyOf": [{ "findings": { "severity": ["blocking", "major"], "min": 1 } }, { "computeFailed": { "min": 1 } }, { "disagreements": { "min": 1, "blocking": true } }] } }
+        ],
+        "fallback": "ready"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": ["trobj.findings", "trres.findings", "comp.findings", "chg.findings", "fmt.findings", "rev.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": "comp.results",
+        "tables": ["trobj.table", "trres.table", "res.table", "chg.table", "fmt.table", "agree.table"]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "PI approval",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Review the objectives trace and every flag. Approve when the report is accurate; the organization's authorized representative then submits it.",
+        "recordFields": [
+          { "key": "prior_approvals", "label": "Prior approvals requested or granted for flagged changes", "required": false },
+          { "key": "submitter", "label": "Authorized representative who will submit", "required": false }
+        ]
+      },
+      "in": { "items": "out.outcome" }
+    }
+  ]
+}

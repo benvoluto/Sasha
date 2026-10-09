@@ -1,0 +1,173 @@
+{
+  "key": "type-literature-review",
+  "version": 1,
+  "title": "Literature review coverage and synthesis",
+  "summary": "A coverage and synthesis result for the stated research question: adequate or gaps found. Checks that each citation says what it is cited for, flags uncited empirical claims, searches for likely missing sources, checks the synthesis, and for systematic reviews the PRISMA 2020 reporting points. The author accepts or dismisses each candidate source; Sasha never inserts citations.",
+  "kind": "type",
+  "appliesTo": ["literature-review"],
+  "outcome": {
+    "label": "Coverage and synthesis",
+    "values": [
+      { "key": "adequate", "label": "Adequate (no gaps found in the sources searched)" },
+      { "key": "gaps_found", "label": "Gaps found" }
+    ]
+  },
+  "checkpoint": { "role": "Author", "required": true },
+  "requirementSets": ["equator-reporting-guidelines"],
+  "notAssessed": ["Subscription databases that are not connected", "Full text of sources Sasha cannot open (marked could not verify)"],
+  "notes": [
+    "Coverage is bounded by what Sasha can search: \"no gaps found\" means none in the sources searched, which are listed with the candidates.",
+    "Candidate sources from the web stay unverified until the author accepts them; Sasha proposes citations and never inserts them.",
+    "PRISMA 2020 applies to systematic reviews only; use the official checklist (CC BY 4.0), which is not reproduced here."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "notes", "node": "doc.notes", "label": "Notes" },
+    { "id": "src", "node": "sources.read", "label": "Source passages", "config": { "budget": 60000 } },
+    { "id": "req", "node": "requirements.read", "label": "Requirements", "config": { "sets": ["equator-reporting-guidelines"], "items": ["equator-reporting-guidelines#prisma-2020"] } },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: question, scope, kind",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          { "key": "question", "label": "The research question", "kind": "any", "specKeys": ["introduction"], "match": ["research question", "this review asks", "aim of this review", "we ask", "objective of this review"], "help": "State the research question or aim the review answers." },
+          { "key": "scope", "label": "The scope: dates, fields and inclusion rules", "kind": "any", "specKeys": ["methods"], "match": ["inclusion criteria", "exclusion criteria", "date range", "databases", "searched", "scope"], "help": "State the years, fields and inclusion rules the review covers." },
+          { "key": "kind", "label": "The kind of review", "kind": "any", "match": ["narrative review", "scoping review", "systematic review", "integrative review", "meta-analysis", "literature review"], "help": "Say whether this is a narrative, scoping or systematic review." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "notes": "notes.notes" }
+    },
+    {
+      "id": "cites",
+      "node": "step.extract",
+      "label": "Cited claims",
+      "config": {
+        "item": "cited claim",
+        "from": ["document"],
+        "sectionKeys": ["introduction", "thematic-synthesis", "gaps-and-limitations", "conclusion"],
+        "maxItems": 150,
+        "instructions": "List each claim that carries a citation, with the citation as written.",
+        "fields": [
+          { "name": "claim", "label": "Claim", "type": "text", "description": "The claim as written", "required": true },
+          { "name": "citation", "label": "Citation", "type": "text", "description": "The citation as written (author, year or number)", "required": true }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "integ",
+      "node": "step.trace",
+      "label": "Citation integrity",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          { "key": "supports", "label": "Source says this", "ok": true, "severity": "info" },
+          { "key": "overstated", "label": "Source says less than claimed", "ok": false, "severity": "major" },
+          { "key": "misrepresented", "label": "Source does not say this", "ok": false, "severity": "major" },
+          { "key": "could_not_verify", "label": "Could not verify (text out of reach)", "ok": false, "severity": "minor" }
+        ],
+        "unverifiedStatus": "could_not_verify",
+        "question": "Does the cited source resolve to a real, linked source, and does it say what the claim cites it for? Quote the passage."
+      },
+      "in": { "items": "cites.items", "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "uncited",
+      "node": "step.extract",
+      "label": "Uncited empirical claims",
+      "config": {
+        "item": "uncited empirical claim",
+        "from": ["document"],
+        "sectionKeys": ["introduction", "thematic-synthesis", "gaps-and-limitations", "conclusion"],
+        "maxItems": 60,
+        "instructions": "List every empirical claim (a finding, statistic, trend or causal statement about the world) that carries no citation. Leave out the author's own reasoning, definitions and claims about the review itself. Return nothing if every empirical claim is cited.",
+        "fields": [
+          { "name": "claim", "label": "Claim", "type": "text", "description": "The uncited claim as written", "required": true }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "count",
+      "node": "step.compute",
+      "label": "Uncited claims",
+      "config": {
+        "checks": [
+          { "kind": "count", "key": "no_uncited", "label": "Every empirical claim carries a citation", "severity": "major", "max": 0 }
+        ]
+      },
+      "in": { "items": "uncited.items", "after": "gate.pass" }
+    },
+    { "id": "cov", "node": "type.coverage", "label": "Source coverage", "in": { "document": "doc.document", "sources": "src.sources", "after": "gate.pass" } },
+    {
+      "id": "web",
+      "node": "web.find",
+      "label": "Candidate missing sources",
+      "config": { "maxResults": 8, "maxSearches": 6 },
+      "in": { "gaps": "cov.gaps", "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "syn",
+      "node": "step.check",
+      "label": "Synthesis",
+      "config": {
+        "checklist": [
+          { "key": "by_theme", "label": "Organized by theme or argument", "question": "Is the synthesis organized by theme, debate or argument rather than source by source?", "severity": "major", "appliesTo": ["thematic-synthesis"] },
+          { "key": "tied_to_question", "label": "Each theme tied to the question", "question": "Is each theme tied explicitly to the research question?", "severity": "major", "appliesTo": ["thematic-synthesis"] },
+          { "key": "agreements_contradictions", "label": "Agreements, contradictions and gaps named", "question": "Are agreements, contradictions and gaps between studies named, with reasons for the differences?", "severity": "major", "appliesTo": ["thematic-synthesis", "gaps-and-limitations"] },
+          { "key": "disconfirming", "label": "Disconfirming evidence included", "question": "Is evidence that cuts against the main view included and weighed?", "severity": "major", "appliesTo": ["thematic-synthesis"] },
+          { "key": "recent", "label": "Up to date", "question": "Does the review include recent work, or does it stop several years back?", "severity": "minor", "appliesTo": ["thematic-synthesis", "methods"] },
+          { "key": "conclusion_supported", "label": "Conclusions follow from the sources", "question": "Do the conclusions follow from the synthesis without going beyond what the sources show?", "severity": "major", "appliesTo": ["conclusion"] }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "prisma",
+      "node": "step.check",
+      "label": "Systematic reviews: PRISMA 2020",
+      "config": {
+        "instructions": "Apply only to a systematic review; answer not_applicable to every item for a narrative or scoping review. These are pointers to PRISMA 2020 reporting, not its checklist text; for the full 27 items use the official checklist.",
+        "checklist": [
+          { "key": "search_strategy", "label": "Search strategy reported", "question": "Are the databases and other sources, the search terms and the date of the last search reported fully enough to repeat?", "severity": "major", "appliesTo": ["methods"] },
+          { "key": "screening_flow", "label": "Screening flow reported", "question": "Is the screening flow reported, with counts of records found, screened, excluded (with reasons) and included?", "severity": "major", "appliesTo": ["methods"] },
+          { "key": "appraisal", "label": "Quality appraisal reported", "question": "Is the risk of bias or quality of the included studies appraised and reported, with the method used?", "severity": "major", "appliesTo": ["methods", "thematic-synthesis"] },
+          { "key": "eligibility", "label": "Eligibility criteria stated", "question": "Are the inclusion and exclusion criteria stated?", "severity": "major", "appliesTo": ["methods"] }
+        ]
+      },
+      "in": { "document": "doc.document", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          { "value": "gaps_found", "when": { "anyOf": [{ "findings": { "severity": ["blocking", "major"], "min": 1 } }, { "computeFailed": { "min": 1 } }] } }
+        ],
+        "fallback": "adequate"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": ["integ.findings", "count.findings", "cov.findings", "web.findings", "syn.findings", "prisma.findings"],
+        "results": "count.results",
+        "tables": ["integ.table", "uncited.table", "cov.table", "syn.table", "prisma.table"]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Accept or dismiss candidate sources",
+      "config": {
+        "allowExclude": true,
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Accept or dismiss each candidate source. Sasha proposes citations and never inserts them; accepted sources still need you to read and cite them."
+      },
+      "in": { "items": ["web.resources", "out.outcome"] }
+    }
+  ]
+}

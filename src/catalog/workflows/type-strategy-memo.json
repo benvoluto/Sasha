@@ -1,0 +1,177 @@
+{
+  "key": "type-strategy-memo",
+  "version": 1,
+  "title": "Strategy review",
+  "summary": "A recommendation (adopt, revise or reject) with a coherence result for the strategy's three parts (diagnosis, guiding policy, actions) and the three strongest objections, each paired with the memo's answer or marked unanswered. Four reviewers object from distinct stances: competitor, customer, finance and operator. The author answers or accepts each top objection.",
+  "kind": "type",
+  "appliesTo": ["strategy-memo"],
+  "outcome": {
+    "label": "Recommendation",
+    "values": [
+      { "key": "adopt", "label": "Adopt" },
+      { "key": "revise", "label": "Revise" },
+      { "key": "reject", "label": "Reject" }
+    ]
+  },
+  "checkpoint": { "role": "Memo author", "required": true },
+  "notAssessed": ["Accuracy of market and financial figures beyond the linked sources"],
+  "notes": [
+    "The three-part test follows Rumelt's kernel (Good Strategy Bad Strategy), described in Sasha's own words.",
+    "Objections that would fit any strategy (\"execution risk\") are weak; each must cite a passage and a mechanism.",
+    "The review variant, for a strategy in use, also checks results against what the strategy predicted."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "src", "node": "sources.read", "label": "Source passages" },
+    {
+      "id": "kernel",
+      "node": "step.extract",
+      "label": "Diagnosis, policy, actions",
+      "config": {
+        "item": "strategy element",
+        "from": ["document"],
+        "maxItems": 40,
+        "instructions": "List the diagnosis (the challenge named), the guiding policy (the approach and what it rules out) and each action, as the memo states them.",
+        "fields": [
+          { "name": "part", "label": "Part", "type": "enum", "values": ["diagnosis", "guiding_policy", "action"], "description": "Which part of the strategy it is", "required": true },
+          { "name": "statement", "label": "Statement", "type": "text", "description": "The element as written", "required": true },
+          { "name": "owner", "label": "Owner", "type": "text", "description": "For actions: who owns it" },
+          { "name": "resources", "label": "Resources", "type": "text", "description": "For actions: resources committed" },
+          { "name": "timing", "label": "Timing", "type": "text", "description": "For actions: when" }
+        ]
+      },
+      "in": { "document": "doc.document" }
+    },
+    {
+      "id": "parts",
+      "node": "step.compute",
+      "label": "Three parts present",
+      "config": {
+        "checks": [
+          { "kind": "count", "key": "diagnosis_present", "label": "A diagnosis is stated", "severity": "major", "where": { "field": "part", "equals": "diagnosis" }, "min": 1 },
+          { "kind": "count", "key": "policy_present", "label": "A guiding policy is stated", "severity": "major", "where": { "field": "part", "equals": "guiding_policy" }, "min": 1 },
+          { "kind": "count", "key": "actions_present", "label": "At least one action is stated", "severity": "major", "where": { "field": "part", "equals": "action" }, "min": 1 }
+        ]
+      },
+      "in": { "items": "kernel.items" }
+    },
+    {
+      "id": "coh",
+      "node": "step.check",
+      "label": "Coherence",
+      "config": {
+        "checklist": [
+          { "key": "specific_challenge", "label": "Diagnosis names a specific challenge", "question": "Does the diagnosis name a specific, critical challenge, rather than a goal or a list of problems?", "severity": "major", "appliesTo": ["diagnosis"] },
+          { "key": "diagnosis_evidence", "label": "Diagnosis rests on evidence", "question": "Does the diagnosis rest on evidence in the linked sources? Name claims with no source.", "severity": "major", "appliesTo": ["diagnosis"] },
+          { "key": "policy_answers", "label": "Policy answers the diagnosis", "question": "Does the guiding policy address the challenge the diagnosis names, and its causes?", "severity": "major", "appliesTo": ["guiding-policy"] },
+          { "key": "policy_rules_out", "label": "Policy says what will not be done", "question": "Does the guiding policy say what the organization will not do?", "severity": "major", "appliesTo": ["guiding-policy"] },
+          { "key": "actions_follow", "label": "Actions follow from the policy and support each other", "question": "Does each action follow from the guiding policy, and do the actions reinforce rather than compete with each other?", "severity": "major", "appliesTo": ["coherent-actions"] },
+          { "key": "actions_owned", "label": "Actions have owners, resources and timing", "question": "Does each action have an owner, resources and timing?", "severity": "major", "appliesTo": ["coherent-actions"] }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "items": "kernel.items" }
+    },
+    {
+      "id": "bad",
+      "node": "step.check",
+      "label": "Common failures",
+      "config": {
+        "checklist": [
+          { "key": "goals_as_strategy", "label": "Goals or metrics standing in for strategy", "question": "Do goals, targets or metrics stand in for a strategy (saying what is wanted, not how the obstacle will be overcome)?", "severity": "major" },
+          { "key": "unnamed_challenge", "label": "Challenge left unnamed", "question": "Is the central challenge left unnamed or vague?", "severity": "major" },
+          { "key": "unrelated_initiatives", "label": "List of unrelated initiatives", "question": "Is the plan a list of unrelated initiatives rather than coordinated actions?", "severity": "major", "appliesTo": ["coherent-actions"] },
+          { "key": "no_alternative", "label": "No alternative considered", "question": "Are real alternatives, including staying the course, considered and compared?", "severity": "major", "appliesTo": ["alternatives-considered"] },
+          { "key": "results_vs_predictions", "label": "Results against predictions (review variant)", "question": "For a review of a strategy in use, are results set beside what the strategy predicted? Answer not_applicable for a new strategy.", "severity": "minor", "appliesTo": ["results-review"] }
+        ],
+        "statuses": [
+          { "key": "absent", "label": "Failure absent", "ok": true, "severity": "info" },
+          { "key": "partly_present", "label": "Partly present", "ok": false, "severity": "minor" },
+          { "key": "present", "label": "Failure present", "ok": false, "severity": "major" },
+          { "key": "not_applicable", "label": "Not applicable", "ok": true, "severity": "info" }
+        ],
+        "instructions": "For the first four items, absent means the memo avoids the failure. For the last item, absent means results are compared with predictions."
+      },
+      "in": { "document": "doc.document" }
+    },
+    {
+      "id": "ext",
+      "node": "step.review",
+      "label": "Objections: outside stances",
+      "config": {
+        "criteria": [
+          { "key": "recommendation", "label": "Recommendation", "guidance": "Your view after making your strongest objection.", "scale": { "kind": "enum", "values": ["adopt", "revise", "reject"] } }
+        ],
+        "instructions": "Give your single strongest objection in its strongest form: cite the passage it targets, the mechanism by which the strategy would fail, whether the memo answers it, and the evidence that would change your mind. Avoid objections that fit any strategy.",
+        "reviewers": [
+          { "key": "competitor", "label": "Competitor", "brief": "You lead the strongest competitor. Predict your most damaging response to this strategy, explain how it would blunt the strategy's advantage, and judge whether the memo anticipates it." },
+          { "key": "customer", "label": "Customer", "brief": "You are a demanding customer in the target segment. Say whether this strategy would change what you buy and why, which promised benefit you doubt, and what the memo assumes about you without evidence." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "items": "kernel.items" }
+    },
+    {
+      "id": "int",
+      "node": "step.review",
+      "label": "Objections: inside stances",
+      "config": {
+        "criteria": [
+          { "key": "recommendation", "label": "Recommendation", "guidance": "Your view after making your strongest objection.", "scale": { "kind": "enum", "values": ["adopt", "revise", "reject"] } }
+        ],
+        "instructions": "Give your single strongest objection in its strongest form: cite the passage it targets, the mechanism by which the strategy would fail, whether the memo answers it, and the evidence that would change your mind. Avoid objections that fit any strategy.",
+        "reviewers": [
+          { "key": "finance", "label": "Finance", "brief": "You are the CFO. Examine the trade-offs: what the strategy costs, what it gives up, whether the resources match the actions, and which financial assumption, if wrong, breaks it." },
+          { "key": "operator", "label": "Operator", "brief": "You run the operations that must carry out the actions. Judge whether the owners, capacity, sequencing and timing are realistic, and name the action most likely to stall and why." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "items": "kernel.items" }
+    },
+    { "id": "agree", "node": "step.agree", "label": "Agreement", "config": { "mode": "verdict", "blockingVerdicts": ["reject"] }, "in": { "reviews": ["ext.reviews", "int.reviews"] } },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Recommendation",
+      "config": {
+        "values": ["adopt", "revise", "reject"],
+        "guidance": "Begin with the coherence result for the three parts. Then rank the objections by how much each would change the recommendation and list the top three, each with its stance, the passage and mechanism it rests on, and the memo's answer or \"unanswered\". adopt when the three parts cohere and no top objection is unanswered; revise when fixes or answers are needed (list them); reject when the diagnosis or policy fails or an unanswered objection would defeat the strategy. Discard objections that cite no passage or mechanism."
+      },
+      "in": {
+        "findings": ["parts.findings", "coh.findings", "bad.findings", "ext.findings", "int.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": ["coh.results", "bad.results", "parts.results"]
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": { "rules": [], "fallback": "revise" },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "findings": ["parts.findings", "coh.findings", "bad.findings", "ext.findings", "int.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": "parts.results",
+        "tables": ["kernel.table", "coh.table", "bad.table", "agree.table"]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Answer the top objections",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Before the memo goes to its audience, answer or accept each of the top three objections. Record how each was handled.",
+        "recordFields": [
+          { "key": "objection_1", "label": "Objection 1: answered (where) or accepted as a stated risk", "required": true },
+          { "key": "objection_2", "label": "Objection 2: answered (where) or accepted as a stated risk", "required": true },
+          { "key": "objection_3", "label": "Objection 3: answered (where) or accepted as a stated risk", "required": true }
+        ]
+      },
+      "in": { "items": "out.outcome" }
+    }
+  ]
+}

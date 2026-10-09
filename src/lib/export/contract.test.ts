@@ -7,7 +7,10 @@ import {
   countCitationOccurrences,
   exportCitations,
   exportFilename,
+  isLibraryHref,
+  referenceExcerpt,
   referenceHref,
+  referenceLabel,
   referenceLine,
   safeHref,
   staleNote,
@@ -44,7 +47,7 @@ describe("citations for export", () => {
     expect(tableLinkCitation(42)).toBeNull();
   });
 
-  it("numbers legacy table links with the citation marks, by first appearance", () => {
+  it("numbers legacy table links with the citation marks, by first appearance, and leaves no library link", () => {
     const doc: PMNode = {
       type: "doc",
       content: [
@@ -55,9 +58,27 @@ describe("citations for export", () => {
     const { references, numberOf, doc: out } = exportCitations(doc);
     expect(references.map((r) => r.key)).toEqual(["t:t1", "p:S1a2b3c4d.P1"]);
     expect(numberOf.get("t:t1")).toBe(1);
-    expect(out.content?.[0].content?.[0].marks?.map((m) => m.type)).toEqual(["link", "citation"]);
+    // The table's "Source:" line keeps its text and gains the table citation; the in-app link goes.
+    expect(out.content?.[0].content?.[0]).toMatchObject({ text: "Table" });
+    expect(out.content?.[0].content?.[0].marks?.map((m) => m.type)).toEqual(["citation"]);
     // The input is not mutated.
     expect(doc.content?.[0].content?.[0].marks).toHaveLength(1);
+  });
+
+  it("drops any relative library link to its text, and keeps other links", () => {
+    const link = (href: string): PMNode => ({ type: "paragraph", content: [{ type: "text", text: "x", marks: [{ type: "link", attrs: { href } }, { type: "bold" }] }] });
+    const { doc: out } = exportCitations({ type: "doc", content: [link("/library?source=s1"), link("https://example.com/library"), link("/d/1")] });
+    expect(out.content!.map((p) => p.content![0].marks!.map((m) => m.type))).toEqual([["bold"], ["link", "bold"], ["link", "bold"]]);
+  });
+
+  it("recognizes library links: relative, or absolute on the app's origin", () => {
+    expect(isLibraryHref("/library?source=s1&passage=S1.P2")).toBe(true);
+    expect(isLibraryHref("/library/x")).toBe(true);
+    expect(isLibraryHref("https://sasha.app/library?source=s1", "https://sasha.app")).toBe(true);
+    expect(isLibraryHref("https://sasha.app/library?source=s1")).toBe(false);
+    expect(isLibraryHref("https://example.com/library", "https://sasha.app")).toBe(false);
+    expect(isLibraryHref("/libraryish")).toBe(false);
+    expect(isLibraryHref(null)).toBe(false);
   });
 
   it("places numbers at the end of each run, once per occurrence", () => {
@@ -100,10 +121,25 @@ describe("references as text", () => {
     expect(referenceLine(ref({ kind: "table", tableName: "Prices", sourceTitle: "Book.xlsx", page: null }))).toBe("Table “Prices”, Book.xlsx");
   });
 
-  it("links to the library, else the source URL", () => {
-    expect(referenceHref(ref({}), "https://sasha.app")).toBe("https://sasha.app/library?source=src%201&passage=S1a2b3c4d.P1");
-    expect(referenceHref(ref({ sourceId: null, sourceUrl: "https://news.example/a" }), "https://sasha.app")).toBe("https://news.example/a");
-    expect(referenceHref(ref({ sourceId: null, sourceUrl: "javascript:alert(1)" }), "https://sasha.app")).toBeNull();
+  it("links only to a URL source's own address, never the in-app library", () => {
+    expect(referenceHref(ref({}), "https://sasha.app")).toBeNull();
+    expect(referenceHref(ref({ kind: "table", dataTableId: "t1" }), "https://sasha.app")).toBeNull();
+    expect(referenceHref(ref({ sourceUrl: "https://news.example/a" }), "https://sasha.app")).toBe("https://news.example/a");
+    for (const bad of ["javascript:alert(1)", "/library?source=s1", "https://sasha.app/library?source=s1", "//evil.example/x"]) expect(referenceHref(ref({ sourceUrl: bad }), "https://sasha.app")).toBeNull();
+  });
+
+  it("cites an upload by title, file name and page, and a URL source by title and address", () => {
+    expect(referenceLabel({ ...ref({}), fileName: "q3-report.pdf" })).toBe("Report (q3-report.pdf), p. 3");
+    expect(referenceLabel({ ...ref({ sourceTitle: "q3-report.pdf" }), fileName: "q3-report.pdf" })).toBe("q3-report.pdf, p. 3");
+    expect(referenceLabel(ref({ sourceTitle: "Rates explained", sourceUrl: "https://example.org/rates", page: null }))).toBe("Rates explained, https://example.org/rates");
+    // A URL source with no title already reads as its address: not repeated.
+    expect(referenceLabel(ref({ sourceTitle: "https://example.org/rates", sourceUrl: "https://example.org/rates", page: null }))).toBe("https://example.org/rates");
+    expect(referenceLabel({ ...ref({ kind: "table", tableName: "Prices", sourceTitle: "Pricing", page: 2 }), fileName: "prices.xlsx" })).toBe("Table “Prices”, Pricing (prices.xlsx), p. 2");
+  });
+
+  it("prints excerpts as plain text, not the passage's Markdown", () => {
+    expect(referenceExcerpt(ref({ excerpt: "## Results\n\n**Demand** rose [12%](https://x.example) in _2025_.\n\n| Year | Sales |\n|---|---|\n| 2025 | 12 |" }))).toBe("“Results Demand rose 12% in 2025. Year · Sales 2025 · 12”");
+    expect(referenceExcerpt(ref({ excerpt: "![chart](a.png)" }))).toBeNull();
   });
 
   it("notes stale references only", () => {

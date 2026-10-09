@@ -53,13 +53,19 @@ type Props = {
   issues: string[];
   onSave: (definition: DocumentTypeInput | unknown) => void;
   onCancel: () => void;
+  /**
+   * Start in the JSON editor with this text: a definition that does not parse
+   * (a learned draft the repair round could not fix) can't fill the form, so it
+   * is fixed as JSON; the form opens once it parses.
+   */
+  initialJson?: string;
 };
 
 /** Form + JSON editor for an existing type. */
-export function TypeEditor({ initial, busy, error, issues, onSave, onCancel }: Props) {
+export function TypeEditor({ initial, busy, error, issues, onSave, onCancel, initialJson }: Props) {
   const [draft, setDraft] = useState<DocumentTypeDefinition>(() => structuredClone(initial));
-  const [jsonMode, setJsonMode] = useState(false);
-  const [jsonText, setJsonText] = useState("");
+  const [jsonMode, setJsonMode] = useState(initialJson !== undefined);
+  const [jsonText, setJsonText] = useState(initialJson ?? "");
   const [jsonError, setJsonError] = useState<string | null>(null);
 
   const set = <K extends keyof DocumentTypeDefinition>(k: K, v: DocumentTypeDefinition[K]) => setDraft((d) => ({ ...d, [k]: v }));

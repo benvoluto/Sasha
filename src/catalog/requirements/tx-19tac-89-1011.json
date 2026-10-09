@@ -1,21 +1,24 @@
 {
   "key": "tx-19tac-89-1011",
-  "version": 1,
+  "version": 2,
   "title": "Texas FIE timelines (19 TAC §89.1011)",
   "authority": "Texas Education Agency (Commissioner's rules)",
   "jurisdiction": "Texas",
   "appliesTo": ["fie"],
-  "effective": "",
+  "effective": "2024-07-30",
   "checked": "2026-10-08",
   "provenance": {
-    "source": "19 TAC §89.1011, Full Individual and Initial Evaluation (summarized in docs/workflows-by-document-type.md)",
+    "source": "19 TAC §89.1011, Full Individual and Initial Evaluation, as amended effective July 30, 2024 (49 TexReg 5515); no later amendment found on 2026-10-08. Summarized in docs/workflows-by-document-type.md",
     "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1011",
     "license": "Paraphrased summary (source: Texas Administrative Code, public law)"
   },
   "items": [
+    { "key": "referral", "kind": "policy", "title": "Referral", "text": "Referral for an initial evaluation is part of the district's multi-tiered system of supports. A district may not require a set period of intervention before referral, refers when difficulties continue or a disability is suspected, and keeps providing supports while the evaluation is under way.", "citation": "19 TAC §89.1011(a)" },
+    { "key": "parent-request", "kind": "deadline", "title": "Response to a parent's written request", "text": "Not later than the 15th school day after receiving a parent's written request for an evaluation, the district gives prior written notice of the proposed evaluation with the procedural safeguards notice, the agency's parent overview and an opportunity to consent, or prior written notice of its refusal with the same notices.", "value": 15, "unit": "school_days", "citation": "19 TAC §89.1011(b)" },
     { "key": "fie-report", "kind": "deadline", "title": "Written FIE report", "text": "The written report is due by the 45th school day after the district receives written consent. When the student is absent three or more school days in that period, the deadline is extended by the number of school days missed.", "value": 45, "unit": "school_days", "citation": "19 TAC §89.1011(d)(1)" },
-    { "key": "ard-decision", "kind": "deadline", "title": "ARD committee decision", "text": "The ARD committee makes its eligibility decision within 30 calendar days of the date the written report is completed.", "value": 30, "unit": "calendar_days", "citation": "19 TAC §89.1011(g)" },
-    { "key": "parent-copy", "kind": "deadline", "title": "Parent copy of the report", "text": "The parent receives a copy of the report at least five school days before the initial ARD meeting.", "value": 5, "unit": "school_days", "citation": "19 TAC §89.1011(h)" },
-    { "key": "end-of-year", "kind": "policy", "title": "End-of-year exceptions", "text": "Different deadlines apply when consent is received near the end of the school year. See source for the rules.", "citation": "19 TAC §89.1011(e)" }
+    { "key": "end-of-year", "kind": "policy", "title": "End-of-year exceptions", "text": "When consent is received at least 35 but fewer than 45 school days before the last instructional day of the school year, the report goes to the parent by June 30 (unless the student is absent three or more days in that period, when the usual timeline applies). When consent is received fewer than 35 school days before the last instructional day, the usual timeline applies. See source for the details.", "citation": "19 TAC §89.1011(e)" },
+    { "key": "ard-decision", "kind": "deadline", "title": "ARD committee decision", "text": "The ARD committee makes its eligibility decision within 30 calendar days of the date the written report is completed. If that day falls in the summer, the committee meets by the 15th school day of the next school year, or sooner when the report shows a need for extended school year services.", "value": 30, "unit": "calendar_days", "citation": "19 TAC §89.1011(g)" },
+    { "key": "parent-copy", "kind": "deadline", "title": "Parent copy of the report", "text": "The parent receives a copy of the report as soon as possible after it is completed and at least five school days before the initial ARD meeting (by June 30 under the end-of-year exception).", "value": 5, "unit": "school_days", "citation": "19 TAC §89.1011(h)" },
+    { "key": "school-days", "kind": "policy", "title": "What counts as a school day", "text": "For these timelines, school days do not include days between the last instructional day of the spring term and the first instructional day of the fall term.", "citation": "19 TAC §89.1011(i)" }
   ]
 }

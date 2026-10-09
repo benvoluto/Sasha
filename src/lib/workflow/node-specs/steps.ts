@@ -330,6 +330,8 @@ export const STEP_NODE_SPECS: NodeSpec[] = [
       question: z.string().max(1000),
       /** Also flag targets no item links to (needs with no goal, goals with no requirement). */
       bothWays: z.boolean(),
+      /** With bothWays: a target whose field of this name is filled in (a stated reason for no goal) is not flagged. */
+      exemptField: z.string().max(80).default(""),
       instructions: z.string().max(4000),
     }),
     defaults: () => ({
@@ -343,6 +345,7 @@ export const STEP_NODE_SPECS: NodeSpec[] = [
       unverifiedStatus: "unverified",
       question: "Does the cited support establish the item as stated?",
       bothWays: false,
+      exemptField: "",
       instructions: "",
     }),
     inputs: () => [{ name: "items", label: "items", type: "json" }, optionalJson("sources"), optionalJson("targets"), optionalJson("data"), optionalJson("document")],

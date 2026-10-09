@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, CircleDashedIcon, CircleMinus, ExternalLink, Loader2, Play, RefreshCw, XCircle } from "@/components/icons";
 import { api, errorText } from "@/components/sources/shared";
-import { CheckpointPanel, type CheckpointSubmit } from "@/components/workflow/checkpoint-panel";
+import { CheckpointPanel, DroppedWarning, type CheckpointSubmit } from "@/components/workflow/checkpoint-panel";
 import {
   OUTCOME_BLOCKED,
   outcomeLabel,
@@ -44,6 +44,7 @@ import { findType, useDocumentTypes } from "./type-picker";
 import {
   briefText,
   changeHeadings,
+  changeWarnings,
   checkpointText,
   computedLine,
   evidenceLabel,
@@ -1188,6 +1189,9 @@ function ChangeCard({
         {change.summary && <p className="text-xs leading-relaxed text-[var(--doc-muted)]">{change.summary}</p>}
       </div>
       {headings.length > 0 && <p className="text-xs">Sections: {headings.join(", ")}</p>}
+      {changeWarnings(change).map((w, i) => (
+        <DroppedWarning key={i} text={w} />
+      ))}
       {drafts.map((d, i) => (
         <details key={`${d.sectionId ?? d.specKey}:${i}`} className="text-sm">
           <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 sm:min-h-8">

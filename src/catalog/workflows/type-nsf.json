@@ -1,0 +1,234 @@
+{
+  "key": "type-nsf",
+  "version": 1,
+  "title": "Mock NSF panel review",
+  "summary": "A mock panel summary: strengths and weaknesses under Intellectual Merit and Broader Impacts with an overall rating, plus a separate compliance result (15-page limit, Broader Impacts heading, no URLs, Results from Prior NSF Support, DMSP). Checks the Broader Impacts plan and that the DMSP covers the data the plan produces.",
+  "kind": "type",
+  "appliesTo": ["nsf-project-description"],
+  "outcome": {
+    "label": "Overall rating (mock panel)",
+    "values": [
+      { "key": "excellent", "label": "Excellent" },
+      { "key": "very_good", "label": "Very good" },
+      { "key": "good", "label": "Good" },
+      { "key": "fair", "label": "Fair" },
+      { "key": "poor", "label": "Poor" },
+      { "key": "not_compliant", "label": "Not compliant: may be returned without review" }
+    ]
+  },
+  "checkpoint": null,
+  "requirementSets": ["nsf-pappg"],
+  "notAssessed": [
+    "Budget and budget justification",
+    "Biographical sketches, Current and Pending (Other) Support, Facilities",
+    "Project Summary (checked for presence only if included)",
+    "Human subjects, vertebrate animals and other special information"
+  ],
+  "notes": [
+    "The five-level rating (Excellent to Poor) is confirmed in secondary sources only; check it against the current NSF reviewer form.",
+    "The solicitation governs where it differs from the PAPPG (PAPPG 24-1 with Supplements 1 and 2, NSF 26-200 and 26-202).",
+    "Page counts are estimated from words; figures and formatting are not counted.",
+    "DMSP tool prompts are taken from NSF Engineering guidance and may vary by directorate; check the live Research.gov form.",
+    "The PI decides what to revise and the institution's authorized representative submits; there is no checkpoint."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "notes", "node": "doc.notes", "label": "Notes" },
+    { "id": "src", "node": "sources.read", "label": "Source passages" },
+    { "id": "req", "node": "requirements.read", "label": "Requirements", "config": { "sets": ["nsf-pappg"] } },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: solicitation",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "solicitation",
+            "label": "Program solicitation or program description",
+            "kind": "any",
+            "match": ["solicitation", "program description", "NSF 2", "Dear Colleague Letter", "DCL", "funding opportunity", "CAREER", "program announcement"],
+            "help": "Link or cite the solicitation or program description (e.g. NSF 25-xxx). It governs where it differs from the PAPPG, including page limits and extra review criteria."
+          },
+          {
+            "key": "pappg",
+            "label": "PAPPG version in force",
+            "kind": "any",
+            "required": false,
+            "match": ["PAPPG", "Proposal & Award Policies", "Proposal and Award Policies"],
+            "help": "PAPPG 24-1 with Supplements 1 and 2 was in force when this workflow was checked; note the version the solicitation names."
+          }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "notes": "notes.notes" }
+    },
+    {
+      "id": "len",
+      "node": "step.compute",
+      "label": "Page limits",
+      "config": {
+        "checks": [
+          {
+            "kind": "length",
+            "key": "project_description_pages",
+            "label": "Project Description within 15 pages (incl. Results from Prior NSF Support)",
+            "severity": "blocking",
+            "specKeys": ["overview-and-objectives", "relation-to-current-knowledge", "research-plan", "assessing-success-and-timeline", "broader-impacts", "project-team-and-management", "results-from-prior-nsf-support"],
+            "unit": "pages",
+            "requirement": "nsf-pappg#project-description-15"
+          },
+          {
+            "kind": "length",
+            "key": "prior_support_pages",
+            "label": "Results from Prior NSF Support within 5 pages",
+            "severity": "major",
+            "specKeys": ["results-from-prior-nsf-support"],
+            "unit": "pages",
+            "requirement": "nsf-pappg#prior-support-5"
+          }
+        ]
+      },
+      "in": { "document": "doc.document", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "comply",
+      "node": "step.check",
+      "label": "Compliance",
+      "config": {
+        "instructions": "These are PAPPG compliance checks; NSF can return a non-compliant proposal without review. Use the requirements given and the solicitation where linked.",
+        "checklist": [
+          { "key": "bi_heading", "label": "\"Broader Impacts\" heading on its own line", "question": "Does the Project Description contain a separate section with \"Broader Impacts\" as a heading on its own line?", "severity": "blocking", "appliesTo": ["broader-impacts"] },
+          { "key": "no_urls", "label": "No URLs in the Project Description", "question": "Is the Project Description free of URLs (web addresses)? Name any found.", "severity": "major", "appliesTo": ["overview-and-objectives", "relation-to-current-knowledge", "research-plan", "assessing-success-and-timeline", "broader-impacts", "project-team-and-management", "results-from-prior-nsf-support"] },
+          { "key": "prior_support_present", "label": "Prior support reported when required", "question": "If the notes or sources show any PI or co-PI has current NSF funding or an award that ended in the past five years, are Results from Prior NSF Support given? Answer not_applicable when there is no such award.", "severity": "major", "appliesTo": ["results-from-prior-nsf-support"] },
+          { "key": "prior_support_items", "label": "Prior support items and separate headings", "question": "Do the Results from Prior NSF Support give award number, amount, period, title, results under separate Intellectual Merit and Broader Impacts headings, publications (or none), and research products? Answer not_applicable when the section is absent and not required.", "severity": "major", "appliesTo": ["results-from-prior-nsf-support"] },
+          { "key": "dmsp_present", "label": "DMSP present", "question": "Is a Data Management and Sharing Plan present (drafted here for the Research.gov tool)?", "severity": "blocking", "appliesTo": ["data-management-and-sharing-plan"] },
+          { "key": "no_moved_text", "label": "No narrative moved out to dodge the limit", "question": "Is there any sign that narrative was moved into references, appendices or other documents to get around the page limit?", "severity": "minor" }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "bi",
+      "node": "step.check",
+      "label": "Broader Impacts plan",
+      "config": {
+        "checklist": [
+          { "key": "named_activities", "label": "Named activities", "question": "Are the Broader Impacts activities specific and named, each tied to a societal outcome?", "severity": "major", "appliesTo": ["broader-impacts"] },
+          { "key": "who", "label": "Who carries them out", "question": "Does each activity say who carries it out, including partners?", "severity": "major", "appliesTo": ["broader-impacts", "project-team-and-management"] },
+          { "key": "resources", "label": "Resources", "question": "Are the resources for each activity (people, partners, budget, facilities) stated?", "severity": "major", "appliesTo": ["broader-impacts"] },
+          { "key": "assessment", "label": "How success is assessed", "question": "Does each activity say how its success will be assessed?", "severity": "major", "appliesTo": ["broader-impacts", "assessing-success-and-timeline"] },
+          { "key": "open_to_all", "label": "Open to all", "question": "Is any participation, outreach or recruitment activity limited to a group defined by a protected characteristic? NSF's priorities statement says such activities must be open to all Americans. Answer not_met and name the activity if so.", "severity": "major", "appliesTo": ["broader-impacts"] }
+        ]
+      },
+      "in": { "document": "doc.document", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "data",
+      "node": "step.extract",
+      "label": "Data and products",
+      "config": {
+        "item": "data or research product",
+        "from": ["document"],
+        "sectionKeys": ["research-plan", "relation-to-current-knowledge", "assessing-success-and-timeline"],
+        "maxItems": 30,
+        "instructions": "List each kind of data, sample, software or other research product the plan says the project will produce or collect.",
+        "fields": [
+          { "name": "product", "label": "Data or product", "type": "text", "description": "The data type or product as named", "required": true },
+          { "name": "objective", "label": "Objective", "type": "text", "description": "The objective or activity that produces it" }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "dmspcov",
+      "node": "step.check",
+      "label": "Data in the DMSP",
+      "config": {
+        "perItem": true,
+        "checklist": [
+          { "key": "in_dmsp", "label": "Covered by the DMSP", "question": "Does the Data Management and Sharing Plan have an entry covering this data or product, with access, archiving and a timeline?", "severity": "major", "appliesTo": ["data-management-and-sharing-plan"] }
+        ]
+      },
+      "in": { "document": "doc.document", "items": "data.items", "after": "gate.pass" }
+    },
+    {
+      "id": "dmsp",
+      "node": "step.check",
+      "label": "DMSP check",
+      "config": {
+        "checklist": [
+          { "key": "tool_prompts", "label": "Research.gov prompts answered", "question": "For each data or product category, does the plan answer the tool's prompts: access policies and limitations, data standards and metadata, provenance, public archiving, timeline for public accessibility, data availability and accountability?", "severity": "major", "appliesTo": ["data-management-and-sharing-plan"] },
+          { "key": "publication_data", "label": "Publication data shared at publication", "question": "Does the plan share data supporting publications at the time of publication, or describe and justify the exception?", "severity": "major", "appliesTo": ["data-management-and-sharing-plan"] },
+          { "key": "matches_methods", "label": "Consistent with the methods", "question": "Does anything in the plan contradict the Research Plan (data types, volumes, sensitive data, timing)?", "severity": "major", "appliesTo": ["data-management-and-sharing-plan", "research-plan"] },
+          { "key": "one_plan", "label": "One plan for a collaborative proposal", "question": "If this is a collaborative proposal or has subawards, is there one combined plan? Answer not_applicable otherwise.", "severity": "minor", "appliesTo": ["data-management-and-sharing-plan"] },
+          { "key": "no_plan_justified", "label": "A no-plan statement is justified", "question": "If the plan says no detailed plan is needed, is that clearly justified? Answer not_applicable otherwise.", "severity": "major", "appliesTo": ["data-management-and-sharing-plan"] }
+        ]
+      },
+      "in": { "document": "doc.document", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "criteria": [
+          { "key": "intellectual_merit", "label": "Intellectual Merit", "guidance": "The potential to advance knowledge, judged on the five review elements: potential, creativity and originality, a sound plan with a mechanism to assess success, qualifications, resources.", "scale": { "kind": "enum", "values": ["excellent", "very_good", "good", "fair", "poor"] } },
+          { "key": "broader_impacts", "label": "Broader Impacts", "guidance": "The potential to benefit society, judged on the same five elements.", "scale": { "kind": "enum", "values": ["excellent", "very_good", "good", "fair", "poor"] } },
+          { "key": "overall", "label": "Overall rating", "guidance": "Your overall rating, weighing both criteria.", "scale": { "kind": "enum", "values": ["excellent", "very_good", "good", "fair", "poor"] } }
+        ],
+        "instructions": "Write strengths and weaknesses under Intellectual Merit and under Broader Impacts, as an NSF panelist would, each tied to a passage. Consider the DMSP under either criterion. Make no prediction about funding.",
+        "reviewers": [
+          { "key": "field_expert", "label": "Panelist in the field", "brief": "You are a panelist working in this subfield. Judge whether the objectives would genuinely advance knowledge, whether the approach is original, and whether the methods and qualifications fit. Name the specific scientific weaknesses an expert would see." },
+          { "key": "adjacent", "label": "Panelist from an adjacent field", "brief": "You are a panelist from a neighbouring discipline. Judge how clearly the case for importance reads to a scientist outside the subfield, and weigh the Broader Impacts plan: who benefits, how, with what resources and how success is measured." },
+          { "key": "plan_skeptic", "label": "Skeptical panelist", "brief": "Test the plan: is it well reasoned and organized, is there a real mechanism to assess success, are the resources and timeline adequate, and are there risks with no alternative? Rate from the weaknesses you find." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    { "id": "agree", "node": "step.agree", "label": "Agreement", "config": { "mode": "verdict" }, "in": { "reviews": "rev.reviews" } },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Panel summary",
+      "config": {
+        "values": ["excellent", "very_good", "good", "fair", "poor", "not_compliant"],
+        "guidance": "Write the panel summary: strengths and weaknesses under Intellectual Merit, then under Broader Impacts, then the overall rating the agreement supports. Report disagreements with each rationale; do not average. Choose not_compliant only when a compliance or page-limit finding is blocking; then list the compliance problems first and still give the panel's rating in the rationale."
+      },
+      "in": {
+        "findings": ["len.findings", "comply.findings", "bi.findings", "dmspcov.findings", "dmsp.findings", "rev.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": ["len.results", "comply.results", "bi.results", "dmsp.results"],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "good",
+        "guards": [
+          {
+            "values": ["excellent", "very_good", "good", "fair", "poor"],
+            "when": { "findings": { "severity": ["blocking"], "min": 1 } },
+            "instead": "not_compliant",
+            "reason": "a blocking compliance finding (page limit, Broader Impacts heading or missing DMSP) can lead NSF to return the proposal without review."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": ["len.findings", "comply.findings", "bi.findings", "dmspcov.findings", "dmsp.findings", "rev.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": "len.results",
+        "tables": ["agree.table", "comply.table", "bi.table", "data.table", "dmspcov.table", "dmsp.table"]
+      }
+    }
+  ]
+}

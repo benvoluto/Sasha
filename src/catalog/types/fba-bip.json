@@ -1,0 +1,303 @@
+{
+  "key": "fba-bip",
+  "version": 1,
+  "title": "Functional Behavior Assessment and Behavior Intervention Plan",
+  "family": "clinical",
+  "summary": "A functional behavior assessment and the behavior intervention plan built on it, for a school team: the target behavior defined in observable terms, indirect and direct data such as antecedent-behavior-consequence records, a hypothesized function supported by that data, and interventions matched to the function (antecedent strategies, a replacement behavior, responses), with a baseline and a progress-monitoring plan. Drafted for the team, including the parent.",
+  "signals": [
+    "functional behavior assessment",
+    "FBA",
+    "behavior intervention plan",
+    "BIP",
+    "target behavior operational definition",
+    "antecedent-behavior-consequence (ABC)",
+    "hypothesized function of behavior",
+    "escape, attention, tangible, sensory",
+    "replacement behavior",
+    "antecedent strategies",
+    "setting events",
+    "frequency and duration data",
+    "positive behavioral interventions",
+    "manifestation determination"
+  ],
+  "audience": "The IEP or behavior support team: the parents, teachers, the behavior specialist or school psychologist, administrators and other staff who will carry out the plan.",
+  "tone": "Objective, behavioral and respectful: observable terms rather than labels, plain language a parent can follow, strengths stated, and the plan worded as a proposal.",
+  "preamble": "You are helping a behavior specialist or school psychologist draft a functional behavior assessment (FBA) and behavior intervention plan (BIP) for a school team. This is a DRAFT for the team, which includes the parent; the team adopts or changes the plan. Do not diagnose, do not infer a disability, and do not judge the student's character or intent: describe behavior in observable, measurable terms (what it looks like, how often, how long) and never with labels such as \"defiant\", \"angry\", \"manipulative\" or \"lazy\". State the function as a hypothesis supported by named, dated data, not as a fact. Match every intervention to the hypothesized function: the replacement behavior must serve the same function as the target behavior, and responses must not deliver that function for the target behavior. Prefer positive, teaching-based strategies; describe any safety or crisis procedures only as the material and state rules allow. Never invent incidents, counts, percentages or dates; frequencies and percentages are computed from the records, and where data is missing write a placeholder such as \"[baseline needed]\". Refer to the student as \"[Student]\" or by the first name already in the material, and add no identifying details beyond those already there.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "plan-information",
+      "heading": "FBA and Plan Information",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Front matter the specialist fills in: student placeholders, why the FBA was conducted, the dates of data collection, and the team members. Marks the document as a draft. Not drafted by the model.",
+      "elements": [
+        "Draft status stated",
+        "Reason the FBA was conducted (behavior impeding learning, discipline-related change of placement, plan review)",
+        "Data collection dates",
+        "Team members by role, including the parent"
+      ],
+      "sourcesNeeded": [
+        "Referral or meeting notes requesting the FBA"
+      ],
+      "dataNeeded": [
+        "Data collection start and end dates"
+      ],
+      "renderer": "static",
+      "scaffold": "**DRAFT for the team: proposals only**\n\n| Field | Entry |\n|---|---|\n| Student | [Student name] |\n| Grade | [Grade] |\n| School | [School] |\n| Reason for the FBA | [Behavior impedes learning / Discipline-related / Review of existing plan] |\n| Data collected | [YYYY-MM-DD to YYYY-MM-DD] |\n| Plan review date | [YYYY-MM-DD] |\n\n**Team**\n\n| Role | Name |\n|---|---|\n| Parent or guardian | [Name] |\n| Teacher(s) | [Name] |\n| Behavior specialist or school psychologist | [Name] |\n| Administrator | [Name] |"
+    },
+    {
+      "key": "target-behavior",
+      "heading": "Target Behavior",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Define each target behavior so that two observers would agree on whether it happened: what it looks like and sounds like, with examples and non-examples, and when an episode starts and ends. Give the baseline in the measure that fits (frequency per day or period, duration, latency or intensity) with the dates it covers, and explain why the behavior matters for the student's learning or that of others. Describe the student's strengths and the situations where the behavior does not occur. Limit the plan to one to three priority behaviors. Common failures: labels or feelings in place of behavior; no baseline, so progress cannot be measured; several behaviors lumped into one definition.",
+      "lengthHint": "A short definition and baseline per behavior",
+      "elements": [
+        "Observable, measurable definition with examples and non-examples",
+        "Start and end of an episode",
+        "Baseline in a stated measure, with dates",
+        "How the behavior affects learning",
+        "Strengths and situations where the behavior does not occur"
+      ],
+      "sourcesNeeded": [
+        "Behavior incident records",
+        "Teacher and parent descriptions"
+      ],
+      "dataNeeded": [
+        "Baseline frequency, duration or intensity with dates"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "data-collection",
+      "heading": "Assessment Methods and Data Sources",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "List the methods used, from at least two kinds: indirect (record review, interviews with the student, parent and teachers, rating scales or questionnaires) and direct (antecedent-behavior-consequence recording, frequency or duration counts, scatterplots, structured observations). For each, give the date or date range, the setting and activity, who collected it and for how long. Note the settings observed and any setting where the behavior is reported but was not observed. A table (method, kind, dates, setting, collected by) keeps this short.",
+      "lengthHint": "A short table or list",
+      "elements": [
+        "Indirect methods with dates and informants",
+        "Direct observation methods with dates, settings and observers",
+        "Settings and activities observed",
+        "Total observation time"
+      ],
+      "sourcesNeeded": [
+        "Interview notes",
+        "Rating scales or questionnaires",
+        "ABC records and observation logs",
+        "Discipline and attendance records"
+      ],
+      "dataNeeded": [
+        "Observation dates, settings and durations"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "data-summary",
+      "heading": "Summary of Data Patterns",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Summarize what the data shows: how often and how long the behavior occurred per observation or day, and the share of incidents by antecedent (demands, transitions, denied access, unstructured time, peer interaction) and by consequence (escape or avoidance, adult or peer attention, access to items or activities, sensory), using the counts computed from the records. Include setting events (sleep, health, changes at home or school) that make the behavior more likely, and times or settings with few or no incidents. Present counts in a small table and describe where the indirect and direct data agree or conflict. Report only figures the records support.",
+      "lengthHint": "A count table plus 1–2 short paragraphs",
+      "elements": [
+        "Frequency or duration per observation or day, from the records",
+        "Incidents by antecedent, with counts",
+        "Incidents by consequence, with counts",
+        "Setting events",
+        "Agreement or conflict between indirect and direct data"
+      ],
+      "sourcesNeeded": [
+        "ABC records and observation logs",
+        "Interview and rating scale results"
+      ],
+      "dataNeeded": [
+        "Incident counts by antecedent and consequence"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "hypothesis",
+      "heading": "Hypothesized Function",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "State a testable hypothesis for each target behavior in one sentence: when [setting event and antecedent], [Student] [behavior], which results in [consequence], so the behavior is likely maintained by [function: escape or avoidance, attention, access to items or activities, or sensory]. Then cite the data pattern behind it (counts by antecedent and consequence, interview findings) and note any competing explanation the data does not rule out. Word it as a hypothesis for the team to confirm, not a conclusion about the student.",
+      "lengthHint": "One statement per behavior plus 2–4 sentences of support",
+      "elements": [
+        "Hypothesis statement with setting event, antecedent, behavior, consequence and function",
+        "Data pattern supporting the hypothesis",
+        "Competing explanations not ruled out",
+        "Worded as a hypothesis"
+      ],
+      "sourcesNeeded": [
+        "Summary of data patterns above"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "intervention-plan",
+      "heading": "Behavior Intervention Plan",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Propose interventions matched to the hypothesized function, labelling the function each one addresses: (1) antecedent and setting-event strategies that make the behavior less likely; (2) a replacement behavior that serves the same function as the target behavior and is easier for the student, and how it will be taught and prompted; (3) how adults respond to the replacement behavior (deliver the function quickly) and to the target behavior (so it no longer delivers the function, for example no escape from work for disruption that escapes work); (4) any safety procedures, only as the material and state rules allow. Say who does what, where and when, so the plan can be carried out in the actual setting. Common failures: a response that delivers the function; a punishment-only plan; a replacement behavior that serves a different function; strategies nobody is named to carry out.",
+      "lengthHint": "A grouped list or table of strategies",
+      "elements": [
+        "Antecedent and setting-event strategies, each labelled with the function it addresses",
+        "Replacement behavior serving the same function, and how it is taught",
+        "Responses to the replacement behavior",
+        "Responses to the target behavior that do not deliver its function",
+        "Safety procedures only as allowed",
+        "Who carries out each strategy, where and when"
+      ],
+      "sourcesNeeded": [
+        "Hypothesized function above",
+        "Teacher input on what is feasible in the classroom"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "progress-monitoring",
+      "heading": "Progress Monitoring and Review",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Say how progress will be measured for the target and replacement behaviors (the same measure as the baseline), who collects data, how often, the goal for each behavior with a date, how fidelity of the plan will be checked, how the parent will be kept informed, and when the team will review the plan and what result would lead it to change the plan.",
+      "lengthHint": "A short table or list",
+      "elements": [
+        "Measure for target and replacement behaviors, matching the baseline",
+        "Goal and date for each behavior",
+        "Who collects data and how often",
+        "Fidelity checks",
+        "Communication with the parent",
+        "Review date and decision rule for changing the plan"
+      ],
+      "sourcesNeeded": [
+        "Baseline data"
+      ],
+      "dataNeeded": [
+        "Review schedule"
+      ],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "operational-definition",
+      "criterion": "Observable definition and baseline: the target behavior is defined so two observers would agree, with a baseline in a stated measure.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Definition is observable and measurable with examples, non-examples and episode boundaries; no labels; baseline is given with its measure and dates."
+        },
+        {
+          "score": 3,
+          "descriptor": "Definition is observable, but lacks non-examples or boundaries, or the baseline has no dates."
+        },
+        {
+          "score": 2,
+          "descriptor": "Definition relies partly on labels or inner states, or there is no baseline."
+        },
+        {
+          "score": 1,
+          "descriptor": "The behavior is described only with labels (\"defiant\", \"aggressive\")."
+        }
+      ],
+      "appliesTo": [
+        "target-behavior",
+        "progress-monitoring"
+      ]
+    },
+    {
+      "key": "function-data-link",
+      "criterion": "Hypothesis supported by data: the hypothesized function follows from the recorded antecedents and consequences, from at least two methods.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Indirect and direct data are both used; the hypothesis names setting event, antecedent, behavior, consequence and function, and cites the counts behind it; competing explanations are noted."
+        },
+        {
+          "score": 3,
+          "descriptor": "The hypothesis follows from the data, but rests mainly on one method or omits setting events."
+        },
+        {
+          "score": 2,
+          "descriptor": "The function is asserted with little data, or contradicts the recorded pattern."
+        },
+        {
+          "score": 1,
+          "descriptor": "No hypothesis, or a function stated with no data."
+        }
+      ],
+      "appliesTo": [
+        "data-collection",
+        "data-summary",
+        "hypothesis"
+      ]
+    },
+    {
+      "key": "function-matched-plan",
+      "criterion": "Function-matched interventions: each strategy addresses the hypothesized function, the replacement behavior serves the same function, and responses do not deliver it for the target behavior.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every antecedent strategy, the replacement behavior and both response types are labelled with and consistent with the function; the plan is teaching-based, not punishment-only."
+        },
+        {
+          "score": 3,
+          "descriptor": "Mostly matched; one strategy is generic or its function is unclear."
+        },
+        {
+          "score": 2,
+          "descriptor": "The replacement behavior serves a different function, or a response delivers the function (for example time out for escape-maintained behavior)."
+        },
+        {
+          "score": 1,
+          "descriptor": "Interventions are unrelated to the function, or the plan is consequences only."
+        }
+      ],
+      "appliesTo": [
+        "intervention-plan"
+      ]
+    },
+    {
+      "key": "feasibility-and-monitoring",
+      "criterion": "Workable and measurable: the plan names who does what in the real setting and how progress and fidelity are checked.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Each strategy has a person, place and time; progress is measured with the baseline measure toward dated goals; fidelity checks, parent communication and a review rule are stated."
+        },
+        {
+          "score": 3,
+          "descriptor": "Workable and measured, but fidelity or the review rule is missing."
+        },
+        {
+          "score": 2,
+          "descriptor": "Strategies have no one assigned, or progress measures differ from the baseline."
+        },
+        {
+          "score": 1,
+          "descriptor": "No implementation or monitoring plan."
+        }
+      ],
+      "appliesTo": [
+        "intervention-plan",
+        "progress-monitoring"
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "IDEA Part B behavior provisions, 34 CFR 300.530(d)(1)(ii) and (f) (FBA and behavioral intervention plan in discipline) and 300.324(a)(2)(i) (positive behavioral interventions); FBA and BIP structure is common school practice; section list and guidance are own text",
+    "url": "https://www.law.cornell.edu/cfr/text/34/300.530",
+    "license": "Own text (requirements from 34 CFR Part 300, public domain US government)",
+    "retrieved": "2026-10-08"
+  }
+}

@@ -1,7 +1,9 @@
 // step.trace: each item linked to its support (source passages, target items,
 // the document) with a status. With nothing to check against (claims about
 // code, or no sources linked) it makes no model call and marks every item
-// unverified. bothWays also flags targets no item links to.
+// unverified. bothWays also flags targets no item links to, except a target
+// whose exemptField is filled in (a need the draft gives a reason for no goal),
+// which is noted instead.
 
 import { z } from "zod";
 import { claudeJson } from "@/lib/llm/claude";
@@ -18,6 +20,8 @@ export type TraceConfig = {
   unverifiedStatus: string;
   question: string;
   bothWays: boolean;
+  /** A target with this field filled in is exempt from the bothWays flag; "" for none. */
+  exemptField?: string;
   instructions: string;
 };
 
@@ -91,6 +95,13 @@ export function applyTrace(reply: TraceReply, config: TraceConfig, m: TraceMater
   });
 }
 
+/** The stated reason a target needs no link (its exemptField, filled in), or "". */
+function exemptReason(target: ExtractedItem, field: string | undefined): string {
+  if (!field) return "";
+  const v = target.fields[field];
+  return (Array.isArray(v) ? v.join("; ") : v === null || v === undefined ? "" : String(v)).trim();
+}
+
 /** Pure: findings for failing statuses, and (bothWays) for targets nothing links to. */
 export function traceFindings(nodeId: string, traced: TracedItem[], config: TraceConfig, m: TraceMaterial, verified: boolean): Finding[] {
   const f = new Findings(nodeId);
@@ -103,7 +114,10 @@ export function traceFindings(nodeId: string, traced: TracedItem[], config: Trac
     const linked = new Set(traced.flatMap((t) => t.linkedTargets));
     for (const target of m.targets) {
       if (linked.has(target.id)) continue;
-      f.add({ kind: "untraced_target", severity: "major", title: `Nothing links to: ${itemName(target)}`, detail: "No item traces to this one.", location: target.location, evidence: [{ kind: "item", ref: target.id, sourceId: null, label: itemName(target), quote: "", page: null, stance: "neutral", verified: true }], verified });
+      const evidence = [{ kind: "item" as const, ref: target.id, sourceId: null, label: itemName(target), quote: "", page: null, stance: "neutral" as const, verified: true }];
+      const reason = exemptReason(target, config.exemptField);
+      if (reason) f.add({ kind: "exempt_target", severity: "info", title: `No link, reason stated: ${itemName(target)}`, detail: reason, location: target.location, evidence, verified });
+      else f.add({ kind: "untraced_target", severity: "major", title: `Nothing links to: ${itemName(target)}`, detail: "No item traces to this one.", location: target.location, evidence, verified });
     }
   }
   return f.list();

@@ -6,7 +6,7 @@ vi.mock("@/lib/llm/claude", async (orig) => ({ ...(await orig<typeof import("@/l
 import type { ExtractedItem, GateReport, TracedItem } from "../contract";
 import type { FieldSpec, GateInput } from "../node-specs/steps";
 import { buildItems, coerceField, extractSchema, stepExtract, type ExtractConfig } from "./extract";
-import { gateReport, keywordGate, stepGate, type GateMaterial } from "./gate";
+import { gateReport, keywordGate, stepGate, withoutTemplateLines, type GateMaterial } from "./gate";
 import { snapshotDocument } from "./readers";
 import { ctxFor, heading, makeDocument, nodeOf, para, resetStores, USAGE } from "./test-fixtures";
 import { stepTrace, applyTrace, type TraceConfig } from "./trace";
@@ -70,6 +70,36 @@ describe("gate keyword logic (pure)", () => {
     const [type, sec] = keywordGate([gi({ key: "type", kind: "type" }), gi({ key: "sec", kind: "section", specKeys: ["reason_for_referral"] })], m2);
     expect(type.present).toBe(false);
     expect(sec.present).toBe(false);
+  });
+});
+
+describe("gate and unfilled templates", () => {
+  it("drops template lines whose value is still a placeholder, and keeps filled ones", () => {
+    const text = ["Field\tEntry", "Most recent evaluation\t[YYYY-MM-DD]", "Eligibility category (from the evaluation)\t[Category]", "Date: [Date]", "[City, State] · [Phone]", "Last evaluation\t2023-11-12", "Re: Letter of inquiry: [project name], request of $[amount]", "Reads 58 words [correct] per minute."].join("\n");
+    expect(withoutTemplateLines(text).split("\n")).toEqual(["Field\tEntry", "Last evaluation\t2023-11-12", "Re: Letter of inquiry: [project name], request of $[amount]", "Reads 58 words [correct] per minute."]);
+  });
+
+  it("cues match at word starts; acronyms must end the word", () => {
+    const find = (text: string, word: string) => keywordGate([gi({ key: "k", kind: "any", match: [word] })], { doc: snapshot([para(text)]), sources: [], tables: [], notes: null })[0].present;
+    expect(find("Needs identified in the classroom.", "FIE")).toBe(false);
+    expect(find("Field\tEntry", "FIE")).toBe(false);
+    expect(find("See the FIE of 2023.", "FIE")).toBe(true);
+    expect(find("Two prior FIEs were reviewed.", "FIE")).toBe(true);
+    expect(find("A reevaluation is due.", "evaluation")).toBe(false);
+    expect(find("Earlier evaluations found a disability.", "evaluation")).toBe(true);
+    expect(find("Submitted under NSF 25-512.", "NSF 2")).toBe(true);
+    expect(find("The steps to install it.", "install")).toBe(true);
+    expect(find("Installation takes a minute.", "install")).toBe(true);
+  });
+
+  it("an IEP scaffold row naming the evaluation doesn't satisfy the evaluation input", () => {
+    const row = (a: string, b: string) => ({ type: "tableRow", content: [a, b].map((t) => ({ type: "tableCell", content: [para(t)] })) });
+    const table = { type: "table", content: [row("Field", "Entry"), row("Most recent evaluation", "[YYYY-MM-DD]"), row("Person who can interpret evaluation results", "[Name]")] };
+    const input = gi({ key: "evaluation", kind: "any", match: ["evaluation", "evaluation report"] });
+    const empty = { doc: snapshot([heading("Plan Information", "p1", "plan-information"), table as never]), sources: [], tables: [], notes: null };
+    expect(keywordGate([input], empty)[0].present).toBe(false);
+    const filled = { ...empty, doc: snapshot([heading("Plan Information", "p1", "plan-information"), table as never, para("The evaluation report of 12 November 2023 found a reading disability.")]) };
+    expect(keywordGate([input], filled)[0].present).toBe(true);
   });
 });
 
@@ -224,6 +254,24 @@ describe("step.trace", () => {
       ["I3", "unverified", []],
     ]);
     expect(out.findings.filter((f) => f.kind === "untraced_target").map((f) => f.title)).toEqual(["Nothing links to: Goal Y"]);
+  });
+
+  it("notes, rather than flags, an unlinked target whose exempt field gives a reason (bothWays)", async () => {
+    const { doc } = await makeDocument({});
+    const goals = [item("I1", "Reads 90 words a minute")];
+    const needs: ExtractedItem[] = [
+      { id: "I1", fields: { need: "Reading fluency", reason_no_goal: "" }, location: null, evidence: [] },
+      { id: "I2", fields: { need: "Fine motor", reason_no_goal: "Met through accommodations (pencil grip, keyboard)." }, location: null, evidence: [] },
+      { id: "I3", fields: { need: "Math facts" }, location: null, evidence: [] },
+    ];
+    claudeJson.mockResolvedValue({ data: { items: [{ id: "I1", status: "supported", evidence: [], linked_targets: ["T1"], rationale: "Fluency goal." }] }, usage: USAGE });
+    const node = nodeOf("step.trace", { against: "targets", bothWays: true, exemptField: "reason_no_goal" });
+    const out = (await stepTrace({ items: goals, targets: needs }, node, ctxFor(doc.id))) as { findings: Array<{ kind: string; severity: string; title: string; detail: string }> };
+    expect(out.findings.map((f) => [f.kind, f.severity, f.title])).toEqual([
+      ["exempt_target", "info", "No link, reason stated: Fine motor"],
+      ["untraced_target", "major", "Nothing links to: Math facts"],
+    ]);
+    expect(out.findings[0].detail).toMatch(/accommodations/);
   });
 
   it("applyTrace keeps verified passage support (pure)", () => {

@@ -22,7 +22,7 @@ vi.mock("@vercel/postgres", () => {
 vi.mock("@/lib/ontology/ensure-schema", () => ({ ensureSchema: async () => {} }));
 vi.mock("@/lib/ontology/governance", () => ({ defaultAuditSink: () => ({ write: async () => {} }) }));
 
-import { claimRun, createRun, getDefaultWorkflowId, getRun, getWorkflow, latestRuns, recordChangeResult, saveRun, saveWorkflow, setDefaultWorkflowId, STALE_RUN_MS } from "./store";
+import { claimRun, createRun, createWorkflow, getDefaultWorkflowId, getRun, getWorkflow, latestRuns, recordChangeResult, saveRun, saveWorkflow, setDefaultWorkflowId, STALE_RUN_MS } from "./store";
 
 const DOC = "6d1e4b8a-2c3f-4e5a-8b7c-9d0e1f2a3b4c";
 const auth = { agent: "ann", permissions: [] };
@@ -126,5 +126,19 @@ describe("workflow store SQL", () => {
     mocks.calls.length = 0;
     await getDefaultWorkflowId("org:b");
     expect(mocks.calls[0]).toMatchObject({ text: "SELECT value FROM app_setting WHERE team_id = $1 AND key = 'default_workflow'", params: ["org:b"] });
+  });
+
+  it("stores a workflow's bound type (applies_to) in the insert", async () => {
+    mocks.respond = (c) =>
+      c.text.startsWith("SELECT id, team_id, name")
+        ? { rows: [{ id: "w1", team_id: "org:a", name: "Learned", based_on: null, applies_to: "equipment-request", created_by: "ann", created_at: "2026-10-08T12:00:00Z" }] }
+        : c.text.startsWith("INSERT INTO workflow_version")
+          ? { rows: [{ version: 1, created_at: "2026-10-08T12:00:00Z" }] }
+          : { rows: [] };
+    const w = await createWorkflow("org:a", "Learned", defaultWorkflowGraph(), auth, { appliesTo: "equipment-request" });
+    expect(w.applies_to).toBe("equipment-request");
+    const insert = mocks.calls.find((c) => c.text.startsWith("INSERT INTO workflow ("))!;
+    expect(insert.text).toMatch(/\(id, team_id, name, based_on, applies_to, created_by\)/);
+    expect(insert.params.slice(1)).toEqual(["org:a", "Learned", null, "equipment-request", "ann"]);
   });
 });

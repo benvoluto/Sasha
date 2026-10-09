@@ -1,0 +1,186 @@
+{
+  "key": "type-response-to-reviewers",
+  "version": 1,
+  "title": "Response completeness",
+  "summary": "A completeness result: ready or gaps found. Every reviewer comment is extracted and traced to a response and to a change in the revised text with its location, or to a reasoned rebuttal. Checks disagreements, consistency across reviewers and the length limit (one page for most NIH resubmission Introductions). The corresponding author or PI approves.",
+  "kind": "type",
+  "appliesTo": ["response-to-reviewers"],
+  "outcome": {
+    "label": "Completeness",
+    "values": [
+      { "key": "ready", "label": "Ready" },
+      { "key": "gaps_found", "label": "Gaps found" }
+    ]
+  },
+  "checkpoint": { "role": "Corresponding author or PI", "required": true },
+  "requirementSets": ["nih-page-limits", "nih-ai-and-review-policy"],
+  "notAssessed": ["Whether the scientific changes themselves answer the reviewers well enough (that is the reviewers' call)"],
+  "notes": [
+    "Link both the earlier and the revised versions so each claimed change can be confirmed; otherwise claimed changes are unverified.",
+    "The one-page check applies to NIH resubmission Introductions (three pages for some training programs; the NOFO can differ). Journals set their own limits.",
+    "NIH resubmissions: outline changes only in the Introduction; do not mark them up in the application."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "src", "node": "sources.read", "label": "Source passages", "config": { "budget": 60000 } },
+    { "id": "req", "node": "requirements.read", "label": "Requirements", "config": { "sets": ["nih-page-limits"], "items": ["nih-page-limits#resubmission-introduction"] } },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: comments and revision",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          { "key": "comments", "label": "The reviewer comments", "kind": "source", "match": ["summary statement", "decision letter", "reviewer comments", "reviews", "critique", "referee report", "peer review"], "help": "Link the decision letter or summary statement with the reviewers' comments." },
+          { "key": "revised", "label": "The revised text", "kind": "source", "match": ["revised", "revision", "resubmission", "manuscript", "application", "tracked changes"], "help": "Link the revised manuscript or application so each claimed change can be checked." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources" }
+    },
+    {
+      "id": "cmts",
+      "node": "step.extract",
+      "label": "Reviewer comments",
+      "config": {
+        "item": "comment",
+        "from": ["sources"],
+        "sourceMatch": ["summary statement", "decision", "review", "critique", "referee", "comments"],
+        "maxItems": 120,
+        "instructions": "Split the reviews into individual points. Keep each reviewer's numbering; split a numbered comment that makes two separate requests into two items so none is lost.",
+        "fields": [
+          { "name": "reviewer", "label": "Reviewer", "type": "text", "description": "Reviewer 1, Reviewer 2, Editor…", "required": true },
+          { "name": "number", "label": "Number", "type": "text", "description": "The comment's number as given" },
+          { "name": "point", "label": "Point", "type": "text", "description": "The point, closely paraphrased", "required": true },
+          { "name": "asks_for", "label": "Asks for", "type": "enum", "values": ["change", "clarification", "answer"], "description": "Whether it asks for a change, a clarification or an answer" }
+        ]
+      },
+      "in": { "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "answered",
+      "node": "step.trace",
+      "label": "Comment to response",
+      "config": {
+        "against": "document",
+        "statuses": [
+          { "key": "change_with_location", "label": "Change made, location given", "ok": true, "severity": "info" },
+          { "key": "reasoned_rebuttal", "label": "Reasoned rebuttal", "ok": true, "severity": "info" },
+          { "key": "no_location", "label": "Change claimed, no location", "ok": false, "severity": "minor" },
+          { "key": "addressed_only", "label": "Answered only with \"addressed\" or similar", "ok": false, "severity": "major" },
+          { "key": "no_response", "label": "No response", "ok": false, "severity": "major" }
+        ],
+        "unverifiedStatus": "no_response",
+        "question": "Where does the response answer this comment? Quote it. Does it give the change and its location, or a reasoned rebuttal?"
+      },
+      "in": { "items": "cmts.items", "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "changes",
+      "node": "step.extract",
+      "label": "Claimed changes",
+      "config": {
+        "item": "claimed change",
+        "from": ["document"],
+        "maxItems": 120,
+        "instructions": "List each change the response says was made, with the location it gives.",
+        "fields": [
+          { "name": "change", "label": "Change", "type": "text", "description": "The change as the response describes it", "required": true },
+          { "name": "location", "label": "Location", "type": "text", "description": "Section, page or line given, if any" },
+          { "name": "for_comment", "label": "For comment", "type": "text", "description": "The reviewer and comment number it answers" }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "confirm",
+      "node": "step.trace",
+      "label": "Claimed change in the revision",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          { "key": "confirmed", "label": "Found in the revised text", "ok": true, "severity": "info" },
+          { "key": "not_found", "label": "Not in the revised text", "ok": false, "severity": "major" },
+          { "key": "unverified", "label": "Unverified (revised text not linked)", "ok": false, "severity": "minor" }
+        ],
+        "unverifiedStatus": "unverified",
+        "question": "Does the revised manuscript or application contain this change, at the stated location if given? Quote it. Compare against the earlier version where both are linked."
+      },
+      "in": { "items": "changes.items", "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "chk",
+      "node": "step.check",
+      "label": "Response checks",
+      "config": {
+        "checklist": [
+          { "key": "disagreements_reasoned", "label": "Disagreements give evidence or reasoning", "question": "Does every response that declines a change give evidence or reasoning, and acknowledge the concern?", "severity": "major", "appliesTo": ["reviewer-1", "reviewer-2", "reviewer-3", "editor-or-chair"] },
+          { "key": "no_contradiction", "label": "No contradictions between reviewers", "question": "Do answers to different reviewers contradict each other, or does a change made for one reviewer undo another's request? Name any.", "severity": "major" },
+          { "key": "none_merged", "label": "No comments merged and lost", "question": "Has any comment been merged with another so that one of its points goes unanswered?", "severity": "major" },
+          { "key": "thanks_once", "label": "Thanks once", "question": "Are the reviewers thanked once rather than in every reply, without flattery?", "severity": "minor" },
+          { "key": "tone", "label": "Courteous, not defensive", "question": "Is the tone courteous and specific throughout, with no dismissive or defensive passages?", "severity": "minor" }
+        ]
+      },
+      "in": { "document": "doc.document", "items": "cmts.items", "after": "gate.pass" }
+    },
+    {
+      "id": "len",
+      "node": "step.compute",
+      "label": "Length limit",
+      "config": {
+        "checks": [
+          { "kind": "length", "key": "nih_introduction", "label": "Within one page (NIH resubmission Introduction; journals set their own limits)", "severity": "minor", "unit": "pages", "requirement": "nih-page-limits#resubmission-introduction" }
+        ]
+      },
+      "in": { "document": "doc.document", "requirements": "req.requirements", "after": "gate.pass" }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "criteria": [
+          { "key": "answered", "label": "Points answered", "guidance": "Were the points answered as asked, with changes you can find?", "scale": { "kind": "enum", "values": ["fully", "mostly", "poorly"] } },
+          { "key": "disagreements", "label": "Disagreements reasonable", "scale": { "kind": "enum", "values": ["reasonable", "mixed", "unreasonable", "none"] } }
+        ],
+        "instructions": "Read the response beside the original comments in the sources. Tie each weakness to a comment and a passage.",
+        "reviewers": [
+          { "key": "original_reviewer", "label": "Original reviewer", "brief": "You wrote these comments. For each of your points, say whether it was answered as you meant it, whether you can find the change, and which answers dodge the question or answer an easier one." },
+          { "key": "editor", "label": "Editor or chair", "brief": "You are the handling editor or panel chair weighing the whole response: are the authors' disagreements reasonable and evidenced, were conflicting requests resolved sensibly, and is the revision ready to go back to review?" }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "items": "cmts.items", "after": "gate.pass" }
+    },
+    { "id": "agree", "node": "step.agree", "label": "Agreement", "config": { "mode": "verdict", "blockingVerdicts": ["poorly", "unreasonable"] }, "in": { "reviews": "rev.reviews" } },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          { "value": "gaps_found", "when": { "anyOf": [{ "findings": { "severity": ["blocking", "major"], "min": 1 } }, { "disagreements": { "min": 1, "blocking": true } }] } }
+        ],
+        "fallback": "ready"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": ["answered.findings", "confirm.findings", "chk.findings", "len.findings", "rev.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": "len.results",
+        "tables": ["answered.table", "confirm.table", "chk.table", "agree.table"]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Approve before submission",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Approve the response before submission, after resolving or accepting each gap."
+      },
+      "in": { "items": "out.outcome" }
+    }
+  ]
+}

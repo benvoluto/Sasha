@@ -68,15 +68,23 @@ export const RequirementSetShape = z.strictObject({
   status: z.enum(["current", "superseded"]).default("current"),
   provenance: z.strictObject({
     source: z.string().trim().min(1).max(300),
-    url: z.url(),
+    /** "" only for an inferred set (learned from an example, which has no rules page to link). */
+    url: z.union([z.literal(""), z.url()]),
     license: z.string().trim().min(1).max(200),
   }),
+  /**
+   * Inferred from example documents (Phase 8, PLAN §6.11) rather than read from
+   * the authority's rules: shown as "Inferred from examples, not from the
+   * rules" and never offered as a cited rule. Catalog files are never inferred.
+   */
+  inferred: z.boolean().default(false),
   /** Shown with every use: agencies change these; check the source before relying on them. */
   verifyNote: z.string().trim().min(1).max(500).default("Verify before relying: agency rules change. Check the source for the current version."),
   items: z.array(RequirementItem).min(1).max(80),
 });
 
 export const RequirementSet = RequirementSetShape.superRefine((s, ctx) => {
+  if (!s.inferred && !s.provenance.url) ctx.addIssue({ code: "custom", path: ["provenance", "url"], message: "a requirement set read from rules needs its source URL" });
   const seen = new Set<string>();
   s.items.forEach((it, i) => {
     if (seen.has(it.key)) ctx.addIssue({ code: "custom", path: ["items", i, "key"], message: `duplicate item key "${it.key}"` });
@@ -87,6 +95,7 @@ export const RequirementSet = RequirementSetShape.superRefine((s, ctx) => {
   });
 });
 export type RequirementSet = z.output<typeof RequirementSet>;
+export type RequirementSetInput = z.input<typeof RequirementSet>;
 
 export function parseRequirementSet(input: unknown): { ok: true; set: RequirementSet } | { ok: false; errors: string[] } {
   const r = RequirementSet.safeParse(input);

@@ -1,0 +1,376 @@
+{
+  "key": "iep",
+  "version": 1,
+  "title": "Individualized Education Program (IEP) draft",
+  "family": "clinical",
+  "summary": "A draft individualized education program prepared for the IEP team meeting: present levels of performance, measurable annual goals with baselines, how progress is measured and reported, services with start date, frequency, location and duration, participation with peers, assessment accommodations and, where due, transition planning. The team, including the parent, adopts or changes it.",
+  "signals": [
+    "Individualized Education Program",
+    "IEP draft",
+    "present levels of academic achievement",
+    "PLAAFP / PLEP",
+    "measurable annual goal",
+    "baseline and criterion",
+    "short-term objectives or benchmarks",
+    "progress reports to parents",
+    "special education and related services",
+    "frequency, location and duration",
+    "supplementary aids and services",
+    "least restrictive environment",
+    "state assessment accommodations",
+    "postsecondary transition goals",
+    "annual IEP review",
+    "ARD or IEP meeting"
+  ],
+  "audience": "The IEP team: the parents, general and special education teachers, related service providers, an agency representative, the student when appropriate, and the case manager who prepares the draft for the meeting.",
+  "tone": "Plain, specific and respectful: concrete, observable language a parent can check, person-first wording, strengths stated alongside needs, and every proposal worded as a proposal.",
+  "preamble": "You are helping a case manager draft parts of an individualized education program (IEP) before the team meets. This is a DRAFT for the IEP team, which includes the parent; the team develops and adopts the IEP at the meeting and may change any part of it, so word goals, services and placements as proposals (\"proposed\", \"for the team to consider\"), never as decisions already made. Do not diagnose and do not decide eligibility: take the student's eligibility, evaluation results and needs from the material. Use federal (IDEA) terms; state forms, committee names and any state-specific requirements come from the requirement set the team uses. Ground every present level, baseline and need in a dated source (evaluation report, progress data, assessment results, teacher or parent input) and name it. Write measurable goals: a condition, an observable behavior, a criterion and a time frame within one year, with a baseline on the same measure and unit as the criterion; avoid verbs that cannot be observed (understand, improve, appreciate). Never invent scores, dates, minutes or service amounts: where one is missing write a placeholder such as \"[baseline needed]\" or \"[minutes per week]\". Refer to the student as \"[Student]\" or by the first name already in the material, and add no identifying details beyond those already there.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "plan-information",
+      "heading": "IEP Information",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Front matter the case manager fills in: placeholders for the student and the meeting, the purpose of the meeting, the IEP dates and the team members by role. It marks the document as a draft so no one mistakes it for the adopted IEP. Not drafted by the model.",
+      "elements": [
+        "Draft status stated",
+        "Student placeholders, grade and eligibility category from the evaluation",
+        "Meeting purpose (initial, annual, revision) and date",
+        "Proposed IEP start and end dates",
+        "Team members by role, including the parent"
+      ],
+      "sourcesNeeded": [
+        "Most recent evaluation report",
+        "Current IEP, if any"
+      ],
+      "dataNeeded": [
+        "Meeting date and proposed IEP dates"
+      ],
+      "renderer": "static",
+      "scaffold": "**DRAFT for the IEP team meeting: proposals only, not the adopted IEP**\n\n| Field | Entry |\n|---|---|\n| Student | [Student name] |\n| Date of birth | [YYYY-MM-DD] |\n| Grade | [Grade] |\n| Eligibility category (from the evaluation) | [Category] |\n| Most recent evaluation | [YYYY-MM-DD] |\n| Meeting purpose | [Initial / Annual review / Revision] |\n| Meeting date | [YYYY-MM-DD] |\n| Proposed IEP dates | [YYYY-MM-DD to YYYY-MM-DD] |\n\n**IEP team**\n\n| Role | Name |\n|---|---|\n| Parent or guardian | [Name] |\n| General education teacher | [Name] |\n| Special education teacher or provider | [Name] |\n| Agency representative | [Name] |\n| Person who can interpret evaluation results | [Name] |\n| Related service providers and others | [Name, role] |\n| Student (when appropriate) | [Name] |"
+    },
+    {
+      "key": "present-levels",
+      "heading": "Present Levels of Academic Achievement and Functional Performance",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Describe where the student is now in each area of need, drawing on the most recent evaluation, current classroom and progress data, state and district assessments, and teacher and parent input. For each area (for example reading, written expression, math, communication, behavior, motor, daily living), give current performance with dated data on a named measure, the student's strengths, and how the disability affects involvement and progress in the general curriculum (for a preschool child, in age-appropriate activities). Include the parent's concerns for enhancing the student's education in their own terms. End each area with the specific need it shows, since every annual goal will trace back to a need here. Common failures: present levels copied unchanged from last year's IEP or the evaluation; data with no date or measure; needs that no data supports; no strengths.",
+      "lengthHint": "A short paragraph or list per area of need",
+      "elements": [
+        "Current performance in each area of need, with dated data on a named measure",
+        "Student strengths",
+        "How the disability affects involvement and progress in the general curriculum",
+        "Parent concerns for the student's education",
+        "Results of the most recent evaluation, summarized",
+        "A specific need stated for each area"
+      ],
+      "sourcesNeeded": [
+        "Most recent evaluation report",
+        "Progress-monitoring data and progress reports on the current IEP",
+        "State and district assessment results",
+        "Teacher and parent input"
+      ],
+      "dataNeeded": [
+        "Current scores or data points by area, with dates",
+        "Grade-level expectations for comparison"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "special-factors",
+      "heading": "Special Factors",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Record what the team should consider for each special factor, with the evidence: whether behavior impedes the student's learning or that of others (and, if so, the positive behavioral interventions and supports proposed, or a link to the behavior intervention plan); the language needs of a student with limited English proficiency; Braille for a student who is blind or visually impaired; communication needs, including language and communication mode for a student who is deaf or hard of hearing; and assistive technology devices and services. Say \"not indicated by the data\" where a factor does not apply rather than leaving it out, and leave the decision on each to the team.",
+      "lengthHint": "One line or short paragraph per factor",
+      "elements": [
+        "Behavior: whether it impedes learning, with positive behavioral supports proposed if so",
+        "Language needs for a student with limited English proficiency",
+        "Braille for a student who is blind or visually impaired",
+        "Communication needs and mode",
+        "Assistive technology devices and services"
+      ],
+      "sourcesNeeded": [
+        "Evaluation report",
+        "Behavior data or functional behavior assessment, where relevant",
+        "English proficiency assessment, where relevant",
+        "Assistive technology assessment, where relevant"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "annual-goals",
+      "heading": "Proposed Annual Goals",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Propose one or more measurable annual goals for each need in the present levels, academic and functional. Write each goal with four parts: the condition (given what, in what setting), the observable behavior, the criterion (how well, how often, on what measure) and the time frame (by a date within one year). State the baseline beside each goal on the same measure and unit as the criterion, and make sure the target is above the baseline. Number the goals and name the need each addresses. For a student who takes an alternate assessment aligned to alternate achievement standards, add benchmarks or short-term objectives. If a need gets no goal (for example because an accommodation meets it), say so with the reason. Common failures: verbs that cannot be observed; a target at or below the baseline; baseline and target in different units; a goal carried over unchanged with no new data; several skills crammed into one goal.",
+      "lengthHint": "Usually 2–6 goals, each 1–3 sentences with its baseline",
+      "elements": [
+        "One or more goals per need, each naming the need it addresses",
+        "Condition, observable behavior, criterion and a date within one year in each goal",
+        "Baseline on the same measure and unit as the criterion",
+        "Target above the baseline",
+        "Benchmarks or short-term objectives for a student who takes alternate assessments",
+        "Reason stated for any need with no goal"
+      ],
+      "sourcesNeeded": [
+        "Present levels and the data behind them",
+        "Grade-level or alternate achievement standards",
+        "Progress data on last year's goals"
+      ],
+      "dataNeeded": [
+        "Baseline data for each goal"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "progress-reporting",
+      "heading": "Measuring and Reporting Progress",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "For each goal, say how progress will be measured (the tool or method, who collects it, how often) and when the parent will receive periodic progress reports (for example each grading period, with report cards). The measure should be the one the goal's criterion uses, so reports compare like with like. A table works well: goal number, measure, collected by, frequency, reported to parent.",
+      "lengthHint": "A short table or one line per goal",
+      "elements": [
+        "Measurement method for each goal, matching its criterion",
+        "Who collects the data and how often",
+        "When progress reports go to the parent"
+      ],
+      "sourcesNeeded": [
+        "District progress-reporting schedule"
+      ],
+      "dataNeeded": [
+        "Grading or reporting periods"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "services",
+      "heading": "Proposed Services, Aids and Supports",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "List the proposed special education services, related services, supplementary aids and services, program modifications and supports for school personnel, each tied to the goals or needs it serves. For every service give the projected start date and the anticipated frequency, location and duration in a table (service, goals served, start date, frequency, location, duration, provider role). Include classroom accommodations here or in their own list. Prefer supports with a research base where the sources name one. Keep amounts as placeholders unless the material gives them, and word everything as proposed for the team's decision. Common failures: a goal with no service behind it; \"as needed\" in place of a frequency; services with no location.",
+      "lengthHint": "A service table plus a short accommodations list",
+      "elements": [
+        "Special education services with the goals each serves",
+        "Related services, where indicated",
+        "Supplementary aids, accommodations and program modifications",
+        "Supports for school personnel",
+        "Start date, frequency, location and duration for every service"
+      ],
+      "sourcesNeeded": [
+        "Evaluation recommendations",
+        "Related service evaluations",
+        "District service options"
+      ],
+      "dataNeeded": [
+        "Proposed minutes, frequency and location for each service"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "participation-and-placement",
+      "heading": "Participation with Peers",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Explain the extent, if any, to which the student would not take part with nondisabled peers in the regular class and in extracurricular and nonacademic activities under the proposed services, and why, in terms of the student's needs. Describe the supports that let the student take part where they do. The team decides placement; present the proposal and the reasons, not a conclusion.",
+      "lengthHint": "1–2 short paragraphs",
+      "elements": [
+        "Time or settings away from nondisabled peers, if any",
+        "The reason for any removal, tied to the student's needs",
+        "Supports for participation in regular classes and activities"
+      ],
+      "sourcesNeeded": [
+        "Proposed services",
+        "Present levels"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "assessment-participation",
+      "heading": "State and District Assessments",
+      "level": 2,
+      "order": 80,
+      "required": true,
+      "guidance": "Propose how the student takes part in state and districtwide assessments: the individual accommodations needed (consistent with those used in instruction), or, when an alternate assessment is proposed, why the student cannot take the regular assessment and why the alternate one is appropriate. Take the list of allowed accommodations from the state's current assessment policy, not from memory.",
+      "lengthHint": "A short list or paragraph",
+      "elements": [
+        "Assessment accommodations, consistent with instructional accommodations",
+        "If an alternate assessment is proposed, why the regular one is not suitable and why the alternate one is"
+      ],
+      "sourcesNeeded": [
+        "State assessment accommodation policy",
+        "Prior assessment participation"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "transition",
+      "heading": "Transition Planning",
+      "level": 2,
+      "order": 90,
+      "required": false,
+      "guidance": "Include when the IEP will be in effect when the student turns 16, or earlier if the team or state requires it. Propose measurable postsecondary goals for training or education, employment and, where appropriate, independent living, each based on age-appropriate transition assessments named with their dates, and the transition services and course of study that support them. Note that the student is invited to the meeting and how the student's preferences and interests were gathered. Beginning at least a year before the state's age of majority, include the statement that the student has been told of the rights that will transfer.",
+      "lengthHint": "A short list of postsecondary goals and services",
+      "elements": [
+        "Measurable postsecondary goals (education or training, employment, independent living where appropriate)",
+        "Age-appropriate transition assessments named and dated",
+        "Transition services and course of study",
+        "Student preferences and interests, and how they were gathered",
+        "Transfer-of-rights statement when within a year of the age of majority"
+      ],
+      "sourcesNeeded": [
+        "Transition assessments and interest inventories",
+        "Student and parent input"
+      ],
+      "dataNeeded": [
+        "Student's age at the IEP start date"
+      ],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "goal-measurability",
+      "criterion": "Measurable goals: each goal has a condition, an observable behavior, a criterion and a date within a year, with a baseline on the same measure.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every goal has all four parts, an observable verb, a baseline on the same measure and unit as the criterion, and a target above the baseline."
+        },
+        {
+          "score": 3,
+          "descriptor": "Goals are measurable, but one lacks a baseline, mixes units, or bundles more than one skill."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several goals use verbs that cannot be observed, lack a criterion or date, or set a target at or below the baseline."
+        },
+        {
+          "score": 1,
+          "descriptor": "Goals are general aims (\"will improve reading\") that no one could measure."
+        }
+      ],
+      "appliesTo": [
+        "annual-goals",
+        "progress-reporting"
+      ]
+    },
+    {
+      "key": "needs-goals-trace",
+      "criterion": "Needs to goals to services: every need in the present levels leads to a goal (or a stated reason for none), and every goal has a documented need and a service behind it.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "The trace holds in both directions: each need maps to a goal or a reason, each goal names its need and is served by at least one listed service."
+        },
+        {
+          "score": 3,
+          "descriptor": "One need lacks a goal or reason, or one goal lacks a clear service."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several needs go unaddressed, or goals appear with no need in the present levels."
+        },
+        {
+          "score": 1,
+          "descriptor": "Goals and services bear no visible relation to the present levels."
+        }
+      ],
+      "appliesTo": [
+        "present-levels",
+        "annual-goals",
+        "services"
+      ]
+    },
+    {
+      "key": "data-grounding",
+      "criterion": "Current, dated data: present levels and baselines rest on named, dated measures and current input, not last year's text.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every present level and baseline cites a named measure and date from the current period; strengths and parent concerns are included; nothing is carried over unchanged."
+        },
+        {
+          "score": 3,
+          "descriptor": "Mostly current and dated; one area relies on general description or older data."
+        },
+        {
+          "score": 2,
+          "descriptor": "Present levels are largely narrative with few data points, or repeat the evaluation or last IEP."
+        },
+        {
+          "score": 1,
+          "descriptor": "No data; present levels are impressions."
+        }
+      ],
+      "appliesTo": [
+        "present-levels",
+        "annual-goals"
+      ]
+    },
+    {
+      "key": "service-specificity",
+      "criterion": "Service details: each service has a start date, frequency, location, duration and provider role.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every service, aid and modification lists all of start date, frequency, location and duration, with placeholders where the amount is still to be set."
+        },
+        {
+          "score": 3,
+          "descriptor": "One service lacks a detail, or uses a vague amount."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several services use \"as needed\" or omit location or duration."
+        },
+        {
+          "score": 1,
+          "descriptor": "Services are named with no details."
+        }
+      ],
+      "appliesTo": [
+        "services"
+      ]
+    },
+    {
+      "key": "draft-for-team",
+      "criterion": "A draft for the team: proposals are worded as proposals, and the parent's part in deciding is preserved.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "The document is labelled a draft; goals, services and placement are worded as proposals; parent concerns appear; nothing reads as decided before the meeting."
+        },
+        {
+          "score": 3,
+          "descriptor": "Labelled a draft, but a few statements read as settled (\"will receive\")."
+        },
+        {
+          "score": 2,
+          "descriptor": "Large parts read as final decisions, or parent input is absent."
+        },
+        {
+          "score": 1,
+          "descriptor": "Presented as a finished, adopted IEP."
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "IDEA Part B IEP requirements, 34 CFR 300.320–300.324 (contents, team, parent participation, timing, development and review); section list and guidance are own text",
+    "url": "https://www.law.cornell.edu/cfr/text/34/300.320",
+    "license": "Own text (structure from 34 CFR Part 300, public domain US government)",
+    "retrieved": "2026-10-08"
+  }
+}

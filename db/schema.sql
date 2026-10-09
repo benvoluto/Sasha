@@ -62,6 +62,11 @@ CREATE TABLE IF NOT EXISTS workflow (
 ALTER TABLE workflow ADD COLUMN IF NOT EXISTS team_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE workflow ADD COLUMN IF NOT EXISTS based_on TEXT;
 CREATE INDEX IF NOT EXISTS workflow_team_idx ON workflow (team_id, created_at);
+-- Phase 8: the document type a team workflow is bound to (a workflow learned
+-- with its type); NULL offers it on every document. WORKFLOW_BINDING_SCHEMA in
+-- src/lib/workflow/store.ts.
+ALTER TABLE workflow ADD COLUMN IF NOT EXISTS applies_to TEXT;
+CREATE INDEX IF NOT EXISTS workflow_applies_idx ON workflow (team_id, applies_to);
 
 -- Workflow versions (node graphs) edited on the workflow canvas, numbered per workflow.
 CREATE TABLE IF NOT EXISTS workflow_version (
@@ -390,3 +395,22 @@ CREATE TABLE IF NOT EXISTS rubric_check_call (
   called_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS rubric_check_call_team_idx ON rubric_check_call (team_id, called_at);
+
+-- Learn from an example (src/lib/learn/store.ts owns these; keep in step with
+-- LEARN_SCHEMA). requirement_set: a team's inferred requirement sets (keys
+-- prefixed 'team-'; the catalog's sets ship in requirements.bundle.json), shown
+-- as "Inferred from examples, not from the rules". learn_call counts a team's
+-- extractions for the hourly limit.
+CREATE TABLE IF NOT EXISTS requirement_set (
+  team_id            TEXT NOT NULL,
+  key                TEXT NOT NULL,
+  definition         JSONB NOT NULL,            -- RequirementSet (inferred: true)
+  created_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (team_id, key)
+);
+CREATE TABLE IF NOT EXISTS learn_call (
+  team_id            TEXT NOT NULL,
+  called_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS learn_call_team_idx ON learn_call (team_id, called_at);

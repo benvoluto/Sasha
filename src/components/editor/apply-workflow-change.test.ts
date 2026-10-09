@@ -5,7 +5,7 @@ import type { SectionSummary } from "@/catalog/schema";
 import type { PMNode } from "@/lib/documents/sections";
 import type { DocumentChangeOp, RestructurePlan } from "@/lib/workflow/contract";
 import { collectCitations } from "@/lib/citations/contract";
-import { DRIFT_ERROR, markSupported, markUnsourced, planWorkflowChange, type ChangeDeps, type RestructureFn } from "./apply-workflow-change";
+import { changeDetail, DRIFT_ERROR, markSupported, markUnsourced, planWorkflowChange, type ChangeDeps, type RestructureFn } from "./apply-workflow-change";
 
 const text = (t: string, marks?: PMNode["marks"]): PMNode => ({ type: "text", text: t, ...(marks ? { marks } : {}) });
 const p = (...content: PMNode[]): PMNode => ({ type: "paragraph", ...(content.length ? { content } : {}) });
@@ -201,5 +201,16 @@ describe("planWorkflowChange: restructure", () => {
     expect(r.ok && r.typeKey).toBe("general-report");
     const words = (n: PMNode): string => (n.text ?? "") + (n.content ?? []).map(words).join(" ");
     expect(r.ok && words(r.doc)).toContain("Hello.");
+  });
+
+  it.skipIf(!existsSync(restructurePath))("removes the plan's dropped headings and says so", async () => {
+    const mod = (await import(/* @vite-ignore */ restructurePath)) as { applyRestructurePlan: RestructureFn; blockHashes: (d: PMNode) => string[] };
+    const withEmpty = doc(h("Old part", "s-old"), h("Intro", "s-intro"), p(text("Hello.")));
+    const pl: RestructurePlan = { ...plan, blockHashes: mod.blockHashes(withEmpty), rows: [{ ...plan.rows[0], from: 1, to: 2 }], dropped: [{ index: 0, heading: "Old part", level: 2 }] };
+    const r = planWorkflowChange(withEmpty, { ops: [{ op: "restructure", plan: pl }] }, deps({ restructure: mod.applyRestructurePlan, sectionsFor: () => sections }));
+    if (!r.ok) throw new Error(r.error);
+    expect(JSON.stringify(r.doc)).not.toContain("Old part");
+    expect(r.removed).toEqual(["Old part"]);
+    expect(changeDetail(r)).toMatch(/Removed 1 heading with no text of its own: “Old part”/);
   });
 });

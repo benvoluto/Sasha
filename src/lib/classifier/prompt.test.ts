@@ -3,10 +3,62 @@ import { fileTypes } from "@/catalog/files";
 import type { CatalogEntry } from "@/catalog/schema";
 import { testType } from "@/lib/sections/test-fixtures";
 import { CLASSIFY_INPUT_CHARS } from "./contract";
-import { CLASSIFY_NOTES_CHARS, classifySystem, classifyUser, cutWords, typeBlock } from "./prompt";
+import {
+  cappedTypeText,
+  CLASSIFY_NOTES_CHARS,
+  CLASSIFY_SYSTEM_MAX,
+  CLASSIFY_SYSTEM_MIN,
+  classifySystem,
+  classifyUser,
+  cutWords,
+  TYPE_TEXT_MAX,
+  typeBlock,
+  typeTextLength,
+} from "./prompt";
 
 const entry = (definition: CatalogEntry["definition"], enabled = true): CatalogEntry => ({ definition, origin: "file", enabled, overridden: false, updated_at: null });
 const catalog = () => fileTypes().map((d) => entry(d));
+
+describe("prompt budget (Phase 8)", () => {
+  it("keeps every file type's summary + signals within TYPE_TEXT_MAX", () => {
+    const over = fileTypes()
+      .map((d) => ({ key: d.key, chars: typeTextLength(d.summary, d.signals) }))
+      .filter((x) => x.chars > TYPE_TEXT_MAX);
+    expect(over).toEqual([]);
+  });
+
+  it("keeps the file catalog's system prompt within CLASSIFY_SYSTEM_MAX and cacheable", () => {
+    const system = classifySystem(catalog());
+    expect(system.length).toBeLessThanOrEqual(CLASSIFY_SYSTEM_MAX);
+    // Haiku 5.5 caches a prefix of 512 tokens or more: with a single type listed the prompt is still long enough.
+    expect(classifySystem(catalog().slice(0, 1)).length).toBeGreaterThanOrEqual(CLASSIFY_SYSTEM_MIN);
+    // Phase 8 grows the catalog to 26 types: the ones not yet authored, at the 850-character limit plus their tag, still fit.
+    const missing = Math.max(0, 26 - fileTypes().length);
+    expect(system.length + missing * (850 + 250)).toBeLessThanOrEqual(CLASSIFY_SYSTEM_MAX);
+  });
+
+  it("lists file types unchanged by the cap", () => {
+    for (const d of fileTypes()) expect(cappedTypeText(d.summary, d.signals)).toEqual({ summary: d.summary.trim(), signals: d.signals.map((x) => x.trim()) });
+  });
+
+  it("shortens an oversized team type (signals first, then the summary) instead of dropping it", () => {
+    const signals = Array.from({ length: 40 }, (_, i) => `signal number ${i} with some extra words to pad it out a lot more than needed`);
+    const capped = cappedTypeText("A summary. ".repeat(20), signals);
+    expect(typeTextLength(capped.summary, capped.signals)).toBeLessThanOrEqual(TYPE_TEXT_MAX);
+    expect(capped.signals.length).toBeGreaterThanOrEqual(3);
+    expect(capped.signals[0]).toBe(signals[0]);
+    expect(capped.summary).toBe("A summary. ".repeat(20).trim());
+
+    const huge = cappedTypeText("word ".repeat(2000), signals);
+    expect(typeTextLength(huge.summary, huge.signals)).toBeLessThanOrEqual(TYPE_TEXT_MAX);
+    expect(huge.summary.endsWith("…")).toBe(true);
+    expect(huge.signals.length).toBe(3);
+
+    const block = typeBlock(entry(testType({ key: "team-big", summary: "word ".repeat(198), signals: signals.slice(0, 20) })));
+    expect(block.length).toBeLessThan(TYPE_TEXT_MAX + 300);
+    expect(block).toContain('key="team-big"');
+  });
+});
 
 describe("classifySystem", () => {
   it("lists the enabled types sorted by key, byte-stable across calls and input order", () => {

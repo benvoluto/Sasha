@@ -1,0 +1,844 @@
+{
+  "key": "type-fba-bip",
+  "version": 1,
+  "title": "Hypothesis-to-intervention trace (FBA and BIP)",
+  "summary": "Checks that the behavior is defined in observable terms, that the hypothesized function rests on data from at least two methods, and that each intervention (antecedent strategy, replacement behavior, response) matches that function. Incident counts by antecedent and consequence are computed in code. A behavior analyst and a teacher review independently; the team, including the parent, adopts or changes the plan.",
+  "kind": "type",
+  "appliesTo": [
+    "fba-bip"
+  ],
+  "outcome": {
+    "label": "Hypothesis-to-intervention trace",
+    "values": [
+      {
+        "key": "plan_matches",
+        "label": "The plan matches the hypothesis"
+      },
+      {
+        "key": "gaps_found",
+        "label": "Gaps found"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Team lead, recording the team's decision with the parent",
+    "required": true
+  },
+  "requirementSets": [
+    "idea-discipline-34cfr",
+    "idea-iep-34cfr"
+  ],
+  "notAssessed": [
+    "Whether the hypothesis is true: only further data or a functional analysis can confirm it.",
+    "State rules on restraint, time-out and parent notice, which apply on top of the plan."
+  ],
+  "notes": [
+    "IDEA requires an FBA and a behavioral intervention plan in some discipline cases (34 CFR 300.530(d)(1)(ii) and (f)); otherwise the IEP team considers positive behavioral interventions when behavior impedes learning (300.324(a)(2)(i)).",
+    "The replacement behavior must serve the same function as the target behavior.",
+    "Incident counts come from the extracted records; check them against the raw ABC data before relying on them.",
+    "Student records are protected (FERPA): web lookups for this type use only public regulations and guidance, and carry no student details."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "notes",
+      "node": "doc.notes",
+      "label": "Notes"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "req",
+      "node": "requirements.read",
+      "label": "Requirements",
+      "config": {
+        "sets": [
+          "idea-discipline-34cfr"
+        ]
+      }
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: behavior, two methods, settings",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "target_behavior",
+            "label": "The target behavior",
+            "kind": "section",
+            "specKeys": [
+              "target-behavior"
+            ],
+            "match": [
+              "target behavior",
+              "operational definition"
+            ],
+            "help": "Define the target behavior before checking the plan."
+          },
+          {
+            "key": "indirect_data",
+            "label": "Indirect data (interviews, rating scales, records)",
+            "kind": "any",
+            "match": [
+              "interview",
+              "questionnaire",
+              "rating scale",
+              "FAST",
+              "QABF",
+              "record review"
+            ],
+            "help": "Link interview notes, rating scales or a record review."
+          },
+          {
+            "key": "direct_data",
+            "label": "Direct observation data (ABC records, counts)",
+            "kind": "any",
+            "match": [
+              "ABC",
+              "antecedent",
+              "observation",
+              "scatterplot",
+              "frequency count"
+            ],
+            "help": "Link antecedent-behavior-consequence records or other direct observation data."
+          },
+          {
+            "key": "settings",
+            "label": "Settings observed",
+            "kind": "any",
+            "match": [
+              "setting",
+              "classroom",
+              "cafeteria",
+              "recess"
+            ],
+            "help": "Say which settings and activities were observed."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "notes": "notes.notes"
+      }
+    },
+    {
+      "id": "hyp",
+      "node": "step.extract",
+      "label": "Definition and hypothesis",
+      "config": {
+        "item": "hypothesis",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "target-behavior",
+          "hypothesis"
+        ],
+        "maxItems": 3,
+        "instructions": "One item per target behavior: its definition, baseline and the hypothesized function as the draft states them.",
+        "fields": [
+          {
+            "name": "behavior",
+            "label": "Behavior",
+            "type": "text",
+            "description": "The target behavior as defined",
+            "required": true
+          },
+          {
+            "name": "baseline",
+            "label": "Baseline",
+            "type": "text",
+            "description": "The baseline with its measure and dates"
+          },
+          {
+            "name": "antecedent",
+            "label": "Antecedent",
+            "type": "text",
+            "description": "The antecedent or setting event in the hypothesis"
+          },
+          {
+            "name": "function",
+            "label": "Function",
+            "type": "enum",
+            "description": "The hypothesized function",
+            "values": [
+              "escape_avoidance",
+              "attention",
+              "tangible",
+              "sensory",
+              "other"
+            ],
+            "required": true
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "abc",
+      "node": "step.extract",
+      "label": "Incidents",
+      "config": {
+        "item": "incident",
+        "from": [
+          "sources",
+          "data",
+          "document"
+        ],
+        "sourceMatch": [
+          "ABC",
+          "observation",
+          "incident",
+          "behavior log"
+        ],
+        "maxItems": 200,
+        "instructions": "One row per recorded incident of the target behavior from the observation records. Copy what was recorded; classify the antecedent and consequence into the given categories only when the record makes it clear, otherwise use other.",
+        "fields": [
+          {
+            "name": "date",
+            "label": "Date",
+            "type": "date",
+            "description": "Date of the incident"
+          },
+          {
+            "name": "setting",
+            "label": "Setting",
+            "type": "text",
+            "description": "Setting and activity"
+          },
+          {
+            "name": "antecedent",
+            "label": "Antecedent",
+            "type": "text",
+            "description": "What happened just before",
+            "required": true
+          },
+          {
+            "name": "behavior",
+            "label": "Behavior",
+            "type": "text",
+            "description": "What the student did",
+            "required": true
+          },
+          {
+            "name": "consequence",
+            "label": "Consequence",
+            "type": "text",
+            "description": "What happened just after",
+            "required": true
+          },
+          {
+            "name": "duration_minutes",
+            "label": "Duration (minutes)",
+            "type": "number",
+            "description": "Duration, if recorded"
+          },
+          {
+            "name": "antecedent_type",
+            "label": "Antecedent type",
+            "type": "enum",
+            "description": "Category of the antecedent",
+            "values": [
+              "demand",
+              "transition",
+              "denied_access",
+              "unstructured",
+              "peer",
+              "other"
+            ]
+          },
+          {
+            "name": "consequence_type",
+            "label": "Consequence type",
+            "type": "enum",
+            "description": "Category of the consequence",
+            "values": [
+              "escape",
+              "adult_attention",
+              "peer_attention",
+              "tangible",
+              "sensory",
+              "other"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "iv",
+      "node": "step.extract",
+      "label": "Interventions",
+      "config": {
+        "item": "intervention",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "intervention-plan",
+          "progress-monitoring"
+        ],
+        "maxItems": 30,
+        "instructions": "One row per strategy in the plan.",
+        "fields": [
+          {
+            "name": "strategy",
+            "label": "Strategy",
+            "type": "text",
+            "description": "The strategy as written",
+            "required": true
+          },
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "What kind of strategy it is",
+            "values": [
+              "antecedent",
+              "replacement_behavior",
+              "teaching",
+              "response_to_replacement",
+              "response_to_target",
+              "safety",
+              "monitoring"
+            ],
+            "required": true
+          },
+          {
+            "name": "function_addressed",
+            "label": "Function addressed",
+            "type": "text",
+            "description": "The function the plan says it addresses, if stated"
+          },
+          {
+            "name": "who",
+            "label": "Who carries it out",
+            "type": "text",
+            "description": "The person or role responsible, if stated"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "counts",
+      "node": "step.compute",
+      "label": "Incident counts",
+      "config": {
+        "checks": [
+          {
+            "kind": "count",
+            "key": "incidents",
+            "label": "Incidents recorded",
+            "severity": "major",
+            "min": 1
+          },
+          {
+            "kind": "count",
+            "key": "after_demand",
+            "label": "Incidents after a demand",
+            "severity": "info",
+            "where": {
+              "field": "antecedent_type",
+              "equals": "demand"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "after_transition",
+            "label": "Incidents after a transition",
+            "severity": "info",
+            "where": {
+              "field": "antecedent_type",
+              "equals": "transition"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "after_denied_access",
+            "label": "Incidents after denied access",
+            "severity": "info",
+            "where": {
+              "field": "antecedent_type",
+              "equals": "denied_access"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "in_unstructured",
+            "label": "Incidents in unstructured time",
+            "severity": "info",
+            "where": {
+              "field": "antecedent_type",
+              "equals": "unstructured"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "followed_by_escape",
+            "label": "Incidents followed by escape",
+            "severity": "info",
+            "where": {
+              "field": "consequence_type",
+              "equals": "escape"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "followed_by_adult_attention",
+            "label": "Incidents followed by adult attention",
+            "severity": "info",
+            "where": {
+              "field": "consequence_type",
+              "equals": "adult_attention"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "followed_by_peer_attention",
+            "label": "Incidents followed by peer attention",
+            "severity": "info",
+            "where": {
+              "field": "consequence_type",
+              "equals": "peer_attention"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "followed_by_tangible",
+            "label": "Incidents followed by access to an item or activity",
+            "severity": "info",
+            "where": {
+              "field": "consequence_type",
+              "equals": "tangible"
+            },
+            "min": 0
+          },
+          {
+            "kind": "count",
+            "key": "sensory",
+            "label": "Incidents with a sensory consequence",
+            "severity": "info",
+            "where": {
+              "field": "consequence_type",
+              "equals": "sensory"
+            },
+            "min": 0
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "abc.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "def",
+      "node": "step.check",
+      "label": "Definition check",
+      "config": {
+        "checklist": [
+          {
+            "key": "observable",
+            "label": "Observable and measurable",
+            "question": "Is each target behavior defined in observable, measurable terms that two observers would agree on, with no labels such as defiant, angry or aggressive standing in for behavior?",
+            "severity": "major",
+            "appliesTo": [
+              "target-behavior"
+            ]
+          },
+          {
+            "key": "baseline",
+            "label": "Baseline stated",
+            "question": "Is there a baseline in a stated measure (frequency, duration, latency or intensity) with dates, so progress can be measured?",
+            "severity": "major",
+            "appliesTo": [
+              "target-behavior"
+            ]
+          },
+          {
+            "key": "two_methods",
+            "label": "Two kinds of data",
+            "question": "Does the assessment use both indirect and direct methods?",
+            "severity": "major",
+            "appliesTo": [
+              "data-collection"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "trh",
+      "node": "step.trace",
+      "label": "Hypothesis to data",
+      "config": {
+        "against": "targets",
+        "question": "Does the recorded pattern of antecedents and consequences in the incidents support this hypothesized function? Link the incidents that support it, and say if most incidents point to a different function.",
+        "statuses": [
+          {
+            "key": "supported",
+            "label": "Supported by the incident pattern",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "partly_supported",
+            "label": "Partly supported",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "contradicted",
+            "label": "The data point to another function",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "no_data",
+            "label": "No incident data to check",
+            "ok": false,
+            "severity": "major"
+          }
+        ],
+        "unverifiedStatus": "no_data"
+      },
+      "in": {
+        "items": "hyp.items",
+        "targets": "abc.items",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "tri",
+      "node": "step.trace",
+      "label": "Interventions to function",
+      "config": {
+        "against": "targets",
+        "bothWays": true,
+        "question": "Does this strategy address the hypothesized function of the behavior it targets? Link the hypothesis it addresses. A response to the target behavior that delivers the function (for example removal from work for escape-maintained behavior) does not match.",
+        "statuses": [
+          {
+            "key": "matched",
+            "label": "Matches the function",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "generic",
+            "label": "Generic, not tied to the function",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "delivers_function",
+            "label": "Delivers the function for the target behavior",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "unverified",
+            "label": "Could not be checked",
+            "ok": false,
+            "severity": "minor"
+          }
+        ],
+        "unverifiedStatus": "unverified"
+      },
+      "in": {
+        "items": "iv.items",
+        "targets": "hyp.items",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "planchk",
+      "node": "step.check",
+      "label": "Plan check",
+      "config": {
+        "checklist": [
+          {
+            "key": "replacement_same_function",
+            "label": "Replacement serves the same function",
+            "question": "Is there a replacement behavior, and does it serve the same function as the target behavior?",
+            "severity": "major",
+            "appliesTo": [
+              "intervention-plan"
+            ]
+          },
+          {
+            "key": "not_punishment_only",
+            "label": "Not punishment-only",
+            "question": "Does the plan teach and reinforce a replacement behavior and change antecedents, rather than relying only on consequences for the target behavior?",
+            "severity": "major",
+            "appliesTo": [
+              "intervention-plan"
+            ]
+          },
+          {
+            "key": "progress_measure",
+            "label": "Progress measured like the baseline",
+            "question": "Is progress measured with the same measure as the baseline, toward a dated goal, with a review date?",
+            "severity": "major",
+            "appliesTo": [
+              "progress-monitoring"
+            ]
+          },
+          {
+            "key": "draft_wording",
+            "label": "Worded as a draft",
+            "question": "Is the plan labelled a draft and worded as a proposal for the team?",
+            "severity": "minor"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "iv.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "instructions": "Rate the plan from the document, the incident table and the interventions list. Cite the passages and incidents you rely on.",
+        "strengthsAndWeaknesses": false,
+        "criteria": [
+          {
+            "key": "function_logic",
+            "label": "Function-based logic",
+            "guidance": "Does each part of the plan follow from the hypothesized function?",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sound",
+                "concerns",
+                "unsound"
+              ]
+            }
+          },
+          {
+            "key": "feasibility",
+            "label": "Can be carried out in the setting",
+            "guidance": "Can the named staff carry out each strategy in the actual setting with the time and support available?",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sound",
+                "concerns",
+                "unsound"
+              ]
+            }
+          }
+        ],
+        "reviewers": [
+          {
+            "key": "analyst",
+            "label": "Behavior analyst",
+            "brief": "Review as a behavior analyst: test the chain from incident data to hypothesized function to each strategy. Flag any replacement behavior with a different function, any response that reinforces the target behavior, and any hypothesis the counts do not support."
+          },
+          {
+            "key": "teacher",
+            "label": "Classroom teacher",
+            "brief": "Review as the classroom teacher who must run this plan with a full class: is each strategy specific enough to do, assigned to someone, and realistic in time and staffing? Flag steps that would be skipped in practice."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "iv.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement",
+      "config": {
+        "mode": "verdict",
+        "blockingVerdicts": [
+          "unsound"
+        ]
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Result",
+      "config": {
+        "values": [
+          "plan_matches",
+          "gaps_found"
+        ],
+        "guidance": "Choose plan_matches only when the definition is observable with a baseline, the hypothesis is supported by the incident pattern, every strategy matches the function, no response delivers the function, and both reviewers rate the plan sound or with minor concerns. Otherwise gaps_found. In the rationale, cite the incident counts behind the hypothesis, list each gap by section, and list every reviewer disagreement for the team."
+      },
+      "in": {
+        "findings": [
+          "def.findings",
+          "trh.findings",
+          "tri.findings",
+          "planchk.findings",
+          "agree.findings",
+          "counts.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "counts.results",
+          "def.results",
+          "planchk.results"
+        ],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "gaps_found",
+        "guards": [
+          {
+            "values": [
+              "plan_matches"
+            ],
+            "instead": "gaps_found",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "findings": {
+                    "kind": [
+                      "delivers_function",
+                      "contradicted",
+                      "replacement_same_function"
+                    ],
+                    "min": 1
+                  }
+                }
+              ]
+            },
+            "reason": "a response delivers the behavior's function, the data point to another function, or the replacement behavior does not serve the same function."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": [
+          "def.findings",
+          "trh.findings",
+          "tri.findings",
+          "planchk.findings",
+          "agree.findings",
+          "counts.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "counts.results"
+        ],
+        "tables": [
+          "counts.table",
+          "abc.table",
+          "trh.table",
+          "tri.table",
+          "planchk.table",
+          "agree.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Team decision",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Record what the team, including the parent, decided: adopt the plan, adopt it with changes, or gather more data. Note the changes and the review date.",
+        "recordFields": [
+          {
+            "key": "signed_name",
+            "label": "Name and role of the person recording",
+            "required": true
+          },
+          {
+            "key": "decision_date",
+            "label": "Date the team decided",
+            "required": true
+          },
+          {
+            "key": "review_date",
+            "label": "Plan review date",
+            "required": false
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome",
+        "after": "gate.pass"
+      }
+    }
+  ]
+}

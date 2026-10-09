@@ -188,6 +188,14 @@ describe("evaluateOutcome", () => {
     const o = evaluateOutcome(config({ requirementSets: ["nih-page-limits", "nope"] }), {}, state());
     expect(o.requirementSets).toEqual([{ key: "nih-page-limits", title: "NIH page limits", effective: "2025-01-25", checked: "2026-10-08", url: "https://grants.nih.gov", verifyNote: "Verify before relying." }]);
   });
+
+  it("cites a team's inferred set through the run's resolver, after the catalog", () => {
+    const inferred = { key: "team-x", title: "Inferred", effective: "2026-10-08", checked: "2026-10-08", url: "", verifyNote: "Inferred from examples, not from the rules." };
+    const resolveSet = (k: string) => (k === "team-x" ? inferred : null);
+    const o = evaluateOutcome(config({ requirementSets: ["team-x", "nih-page-limits", "nope"] }), {}, state({ resolveSet }));
+    expect(o.requirementSets.map((r) => r.key)).toEqual(["team-x", "nih-page-limits"]);
+    expect(o.requirementSets[0]).toEqual(inferred);
+  });
 });
 
 describe("signOutcome", () => {

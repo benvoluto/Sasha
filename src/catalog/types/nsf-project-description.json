@@ -1,0 +1,229 @@
+{
+  "key": "nsf-project-description",
+  "version": 1,
+  "title": "NSF Project Description, Broader Impacts and Data Management and Sharing Plan",
+  "family": "grant",
+  "summary": "The core of a U.S. National Science Foundation proposal: a Project Description of 15 pages or fewer with objectives, relation to current knowledge, the plan of work, a separate Broader Impacts section and, when required, Results from Prior NSF Support, plus the Data Management and Sharing Plan (DMSP) built in Research.gov. Reviewers judge it on Intellectual Merit and Broader Impacts.",
+  "signals": [
+    "Project Description",
+    "Intellectual Merit",
+    "Broader Impacts",
+    "Results from Prior NSF Support",
+    "Data Management and Sharing Plan",
+    "DMSP",
+    "National Science Foundation",
+    "NSF",
+    "PAPPG",
+    "program solicitation",
+    "CAREER",
+    "Research.gov",
+    "transformative",
+    "PI and co-PI"
+  ],
+  "audience": "An NSF merit review panel and ad hoc reviewers, usually scientists in or near the field, plus the program officer who makes the recommendation; they read many proposals and look for the two merit review criteria and the five review elements.",
+  "tone": "Clear, concrete and confident scientific prose, readable by a scientist outside the subfield; specific about what will be done and how success will be measured, never promotional.",
+  "preamble": "You are an experienced NSF-funded principal investigator drafting the Project Description and Data Management and Sharing Plan of an NSF proposal under PAPPG 24-1 as amended by Supplement 2 (NSF 26-202). Reviewers judge two criteria, Intellectual Merit (the potential to advance knowledge) and Broader Impacts (the potential to benefit society), on five elements: the potential of the activity, its creativity and originality, a well-reasoned plan with a mechanism to assess success, the qualifications of the team, and the adequacy of resources. Write so each element can be found. The program solicitation governs where it differs from the PAPPG: if one is linked, follow its page limits, required sections and extra review criteria. The whole Project Description, including figures and Results from Prior NSF Support, must fit in 15 pages unless the solicitation says otherwise; it must be self-contained and contain no URLs; and Broader Impacts must be a separate section with \"Broader Impacts\" as a heading on its own line. Broader Impacts activities must be specific (who does what, with what resources, and how success is measured) and open to all Americans; do not limit participation by a protected characteristic. Keep the data types, methods and sharing in the DMSP consistent with the research plan. Do not invent preliminary results, publications, prior award numbers or amounts, collaborators, partner institutions, facilities, participant counts or data repositories; where a fact is missing from the sources, write a marked placeholder such as [prior award number needed]. Do not move narrative into References or other documents to get around the page limit.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "overview-and-objectives",
+      "heading": "Overview and Objectives",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Open with the problem and why it matters now, then state the project's goal and two to four specific objectives or research questions for the award period. Say in a sentence each what will be learned or built and what difference it makes, so a reviewer can find the Intellectual Merit claim in the first half page. Name the expected significance plainly: the advance in knowledge if the objectives are met. Preview the Broader Impacts in one sentence and point to the section. Common failures: a long literature preamble before the objectives appear, objectives that are activities (\"we will collect data\") rather than outcomes, and claims of transformation with no stated mechanism.",
+      "lengthHint": "About 1-1.5 pages",
+      "elements": [
+        "Problem and why it matters stated in the opening paragraph",
+        "Overall goal of the project",
+        "2-4 specific objectives or research questions for the award period",
+        "Expected significance: the advance in knowledge if the objectives are met",
+        "One-sentence preview of the Broader Impacts"
+      ],
+      "sourcesNeeded": ["Program solicitation or program description", "Key literature establishing the problem"],
+      "dataNeeded": ["Award period and requested start date"]
+    },
+    {
+      "key": "relation-to-current-knowledge",
+      "heading": "Background and Relation to Current Knowledge",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Place the project against the current state of knowledge: what is known, what is contested and the specific gap this project addresses. Relate it to the PI's own work in progress under other support and say what is new here, so reviewers see the project is neither duplicating nor merely extending existing awards. Include preliminary results only where they show the approach can work, with figures sized to earn their space. Common failures: a survey of the field that never names the gap; preliminary data presented without saying what it proves; no mention of related current support that reviewers will see in the Current and Pending forms.",
+      "lengthHint": "About 2-3 pages",
+      "elements": [
+        "Current state of knowledge summarized with citations",
+        "Specific gap or open question the project addresses",
+        "Relation to the PI's work in progress under other support",
+        "Preliminary results showing feasibility, where available",
+        "What is creative, original or potentially transformative about the approach"
+      ],
+      "sourcesNeeded": ["Peer-reviewed literature on the state of the field", "PI's publications and preliminary results", "Current and pending support list"],
+      "dataNeeded": ["Preliminary results with sample sizes"]
+    },
+    {
+      "key": "research-plan",
+      "heading": "Research Plan",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Organize by objective, using the same numbering as the overview. For each, give the rationale, the design of the activities, and the methods and procedures where appropriate, with enough detail that a reviewer can judge the plan well reasoned and well organized. Name the data, samples, software or other products each activity produces, because the DMSP must account for them. State the risks to each objective and the alternative you would use, and how the objectives depend on one another. Common failures: methods described at a level a reviewer cannot evaluate; a plan that does not map to the objectives; data types appearing here that the DMSP never mentions.",
+      "lengthHint": "About 5-7 pages",
+      "elements": [
+        "Sub-section for each objective matching the overview",
+        "Design, methods and procedures for each objective",
+        "Data and research products each activity produces",
+        "Risks and alternative approaches",
+        "Dependencies between objectives addressed"
+      ],
+      "sourcesNeeded": ["Methods references and protocols", "Preliminary data and figures", "Letters of collaboration describing partner roles"],
+      "dataNeeded": ["Sample sizes or scale of data collection", "Data types and estimated volumes"]
+    },
+    {
+      "key": "assessing-success-and-timeline",
+      "heading": "Evaluation Plan and Timeline",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Say how you will know whether the project succeeded: for each objective, the measurable outcome or benchmark and how it will be assessed, which answers review element 3's mechanism to assess success. Include a timeline by year or quarter for the research and the Broader Impacts activities, with milestones a program officer can check in annual reports. Where a solicitation asks for an external evaluator or a management plan, say who and how. Common failures: a timeline with no milestones; success defined as \"publishing papers\"; Broader Impacts left out of the timeline.",
+      "lengthHint": "About half a page to 1 page",
+      "elements": [
+        "Measurable outcome or benchmark for each objective",
+        "How and when success will be assessed",
+        "Timeline by year or quarter with milestones",
+        "Broader Impacts activities included in the timeline"
+      ],
+      "sourcesNeeded": ["Solicitation evaluation or management requirements, if any"],
+      "dataNeeded": ["Milestone dates by year"]
+    },
+    {
+      "key": "broader-impacts",
+      "heading": "Broader Impacts",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "This heading must appear on its own line, exactly as \"Broader Impacts\". Describe how the project benefits society: through the research itself, activities tied directly to it, or complementary activities the project supports. For each activity name what will be done, who carries it out, who it reaches, the resources behind it (partners, budget, staff time) and how success will be measured. Activities for participation, outreach or recruitment must be open to all Americans; do not limit eligibility by a protected characteristic (NSF priorities statement, April 18, 2025). Scale ambitions to the budget and team. Common failures: intentions with no plan to assess them (\"we will engage the public\"); activities with no named lead or partner; a list of generic outreach unrelated to the research.",
+      "lengthHint": "About 1-2 pages",
+      "elements": [
+        "\"Broader Impacts\" heading on its own line",
+        "Specific named activities and the societal outcome each serves",
+        "Who carries out each activity, and partners",
+        "Resources committed to each activity",
+        "How success of each activity is assessed",
+        "Activities open to all, with no eligibility limited by protected characteristic"
+      ],
+      "sourcesNeeded": ["Partner letters of collaboration", "Institutional programs or facilities used for the activities", "NSF priorities statement"],
+      "dataNeeded": ["Expected reach (participants, users, schools) with its basis", "Budget or staff time for the activities"]
+    },
+    {
+      "key": "project-team-and-management",
+      "heading": "Project Team and Management",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "Include when there are several senior personnel, institutions or a collaborative proposal, or when the solicitation asks for a management or collaboration plan. Say who leads each objective and activity, why they are qualified (with a phrase each, not a biosketch), how the team coordinates and decides, and the resources at the home organization or through collaborations that make the work possible. This is where review elements 4 and 5, qualifications and resources, become visible. Keep facility details in the Facilities, Equipment and Other Resources document and refer to it.",
+      "lengthHint": "About half a page",
+      "elements": [
+        "Lead for each objective and activity",
+        "Qualifications tied to the methods",
+        "Coordination and decision-making across people or institutions",
+        "Resources available through the organization or collaborations"
+      ],
+      "sourcesNeeded": ["Biographical sketches", "Facilities, Equipment and Other Resources", "Letters of collaboration"],
+      "dataNeeded": []
+    },
+    {
+      "key": "results-from-prior-nsf-support",
+      "heading": "Results from Prior NSF Support",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "Required when any PI or co-PI has an NSF award that ended in the past five years or any current NSF funding, including no-cost extensions; each reports only the award most closely related to this proposal. For each, give the award number, amount, period of support and title; a summary of results under two separate headings, Intellectual Merit and Broader Impacts; the publications from the award with full citations (here or in References Cited) or a statement that there were none; evidence of research products and their availability, as the earlier data plan described; and, for a renewal, how the completed work relates to the proposed work. A recent award with no results yet describes its major goals and broader impacts. Keep it to five pages or fewer; it counts toward the 15. Never invent an award number, amount or result.",
+      "lengthHint": "5 pages or fewer; counts toward the 15",
+      "elements": [
+        "Award number, amount and period of support",
+        "Project title",
+        "Intellectual Merit results under its own heading",
+        "Broader Impacts results under its own heading",
+        "Publications from the award, or a statement that there were none",
+        "Research products and their availability",
+        "Relation to the proposed work (renewals)"
+      ],
+      "sourcesNeeded": ["Prior NSF award notices", "Annual and final project reports", "Publication list for the award"],
+      "dataNeeded": ["Award numbers, amounts and dates"]
+    },
+    {
+      "key": "data-management-and-sharing-plan",
+      "heading": "Data Management and Sharing Plan",
+      "level": 2,
+      "order": 80,
+      "required": true,
+      "guidance": "Draft the DMSP here, then enter it in the Research.gov DMSP tool (required for proposals since April 27, 2026; it is not part of the 15-page Project Description). Check the tool and the solicitation for any length limit; NSF 26-202 and NSF Engineering's guidance still refer to a two-page limit. Data management material that does not fit may use part of the 15-page Project Description, but do not use the DMSP to get around the Project Description page limit. NSF Engineering's guidance lists the tool's prompts for each data or research product category: the category itself; access policies and limitations; data standards and metadata; provenance; public archiving; timeline for public accessibility; data availability; and accountability (the senior personnel responsible). Use one block per category and confirm the prompts in the live form, since directorates may differ. Data supporting publications must be shared at publication; justify any exception here at submission. A collaborative proposal or one with subawards carries one combined plan. Saying no detailed plan is needed requires a clear justification. Reviewers assess the DMSP under Intellectual Merit, Broader Impacts or both, so every data type named in the Research Plan should appear here. Do not name a repository, standard or embargo the sources do not support; mark it [repository to confirm].",
+      "lengthHint": "Entered in Research.gov; check the solicitation for limits",
+      "elements": [
+        "One entry per data or research product category",
+        "Access policies and limitations for each category",
+        "Data standards and metadata",
+        "Provenance of each category",
+        "Public archiving: where products are deposited",
+        "Timeline for public accessibility, with publication data shared at publication",
+        "Data availability and retention",
+        "Accountability: senior personnel responsible",
+        "Exceptions to sharing described and justified"
+      ],
+      "sourcesNeeded": ["Directorate or program DMSP guidance", "Repository policies", "Research.gov DMSP tool prompts"],
+      "dataNeeded": ["Data types and estimated volumes from the Research Plan", "Planned repositories and embargo periods"]
+    }
+  ],
+  "rubric": [
+    {
+      "key": "intellectual-merit",
+      "criterion": "Intellectual Merit: the potential to advance knowledge, judged on potential, creativity and originality, a well-reasoned plan with a mechanism to assess success, qualifications and resources.",
+      "levels": [
+        { "score": 4, "descriptor": "Objectives address a clearly stated gap; the approach is original; the plan maps to each objective with measurable benchmarks; the team and resources visibly fit the methods." },
+        { "score": 3, "descriptor": "Strong case with minor gaps, such as one objective without a benchmark or originality asserted more than shown." },
+        { "score": 2, "descriptor": "The gap or the plan is vague in places; success is not measurable for some objectives; qualifications or resources for key methods are unclear." },
+        { "score": 1, "descriptor": "No clear gap or plan; objectives are activities; nothing shows how success will be judged." }
+      ],
+      "appliesTo": ["overview-and-objectives", "relation-to-current-knowledge", "research-plan", "assessing-success-and-timeline", "project-team-and-management"]
+    },
+    {
+      "key": "broader-impacts-plan",
+      "criterion": "Broader Impacts: specific activities with a named lead, resources, reach and assessment, open to all, under a 'Broader Impacts' heading of its own.",
+      "levels": [
+        { "score": 4, "descriptor": "Each activity names what, who, the resources and how success is measured; the outcomes are plausible for the budget; the heading stands alone; participation is open to all." },
+        { "score": 3, "descriptor": "Activities are specific but one lacks a lead, resources or an assessment." },
+        { "score": 2, "descriptor": "Mostly intentions; little on who carries them out or how they are assessed." },
+        { "score": 1, "descriptor": "Generic or missing; no separate heading; or eligibility limited by a protected characteristic." }
+      ],
+      "appliesTo": ["broader-impacts", "assessing-success-and-timeline"]
+    },
+    {
+      "key": "dmsp-consistency",
+      "criterion": "DMSP consistency: the plan covers every data and product type the Research Plan names, follows the tool's prompts, and shares publication data at publication or justifies the exception.",
+      "levels": [
+        { "score": 4, "descriptor": "Every data type in the Research Plan has an entry with access, standards, archiving, timeline and accountability; exceptions are justified." },
+        { "score": 3, "descriptor": "Complete for the main data types; a minor product or prompt is thin." },
+        { "score": 2, "descriptor": "Some data types named in the methods are missing, or the timeline or responsibility is unclear." },
+        { "score": 1, "descriptor": "Generic boilerplate that contradicts or ignores the methods." }
+      ],
+      "appliesTo": ["data-management-and-sharing-plan", "research-plan"]
+    },
+    {
+      "key": "prior-support-compliance",
+      "criterion": "Results from Prior NSF Support: complete PAPPG items, Intellectual Merit and Broader Impacts under separate headings, within five pages.",
+      "levels": [
+        { "score": 3, "descriptor": "Award number, amount, period, title, separate Intellectual Merit and Broader Impacts results, publications and products all present; within five pages." },
+        { "score": 2, "descriptor": "One required item is missing or the two headings are merged." },
+        { "score": 1, "descriptor": "Several items missing, results unrelated to the award, or over five pages." }
+      ],
+      "appliesTo": ["results-from-prior-nsf-support"]
+    }
+  ],
+  "provenance": {
+    "source": "NSF PAPPG 24-1 Ch. II.D.2 (Project Description, Results from Prior NSF Support) and Ch. III.A (merit review criteria); PAPPG 24-1 Supplement 2 (NSF 26-202) and NSF ENG guidance for the Research.gov DMSP tool",
+    "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation",
+    "license": "Public domain (US government)",
+    "retrieved": "2026-10-08"
+  }
+}

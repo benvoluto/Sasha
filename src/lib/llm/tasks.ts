@@ -44,6 +44,17 @@ export const TASKS = {
   "workflow.review": { tier: "mid", effort: "high", maxTokens: 16000 },
   "workflow.check": { tier: "mid", effort: "medium", maxTokens: 16000 },
   "workflow.decide": { tier: "mid", effort: "medium", maxTokens: 4000 },
+  /**
+   * Phase 8: learn a type and workflow from example documents (src/lib/learn). Large: streams.
+   * Medium effort: at high, two short examples took about 250 s (31k output tokens), past the
+   * first call's 200 s deadline; medium took about 140 s (17k) with drafts that validated as well.
+   */
+  "learn.extract": { tier: "draft", effort: "medium", maxTokens: 32000 },
+  /** Phase 8 evaluation harness: an example's key points, and whether a generated document covers them. */
+  "learn.keypoints": { tier: "mid", effort: "medium", maxTokens: 8000 },
+  "learn.coverage": { tier: "mid", effort: "medium", maxTokens: 8000 },
+  /** Phase 8: draft a catalog definition from a ClawHub skill (scripts/catalog/import-clawhub.ts). */
+  "catalog.import": { tier: "mid", effort: "high", maxTokens: 16000 },
 } as const satisfies Record<string, TaskSpec>;
 
 export type Task = keyof typeof TASKS;

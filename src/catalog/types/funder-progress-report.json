@@ -1,0 +1,186 @@
+{
+  "key": "funder-progress-report",
+  "version": 1,
+  "title": "Funder Progress Report",
+  "family": "grant",
+  "summary": "An annual, interim or final progress report to a funder on an awarded grant: accomplishments compared with the award's objectives, products, participants, impact, and changes or problems with their reasons and plans. Federal awards follow 2 CFR 200.329 and the agency's form, such as the NIH or NSF RPPR; foundations set their own formats.",
+  "signals": [
+    "progress report",
+    "annual report",
+    "final report",
+    "RPPR",
+    "reporting period",
+    "accomplishments",
+    "objectives of the award",
+    "products",
+    "participants",
+    "changes/problems",
+    "no-cost extension",
+    "budget period",
+    "project outcomes report",
+    "grant number"
+  ],
+  "audience": "The funder's program officer, and for federal awards the grants management staff, who check progress against the funded objectives, decide on continued funding and look for changes that need prior approval.",
+  "tone": "Factual, specific and candid: results stated with their evidence, delays and changes disclosed plainly with reasons and plans, no promotional language.",
+  "preamble": "You are the principal investigator or project director drafting a progress report on a funded award. Report against the award's own objectives or aims, using their numbering and wording from the funded proposal or notice of award, and give each one a status (met, on track, delayed or changed) with the evidence. Report only what happened in the reporting period, keep activities (what was done) separate from outcomes (what changed), and tie every result to an objective. Disclose delays, problems and changes with the reason and the plan; changes in scope or objectives, key personnel, the PI's effort or certain budget categories need the funder's prior approval on federal awards (2 CFR 200.308), so flag them rather than reporting them as done. Follow the funder's report format and section names where one is linked (NIH and NSF use the RPPR; foundations have their own). Numbers must agree across sections, with the linked data and with the last report. Do not invent results, participant counts, publications, spending figures, dates or approvals; where a fact is missing, write a marked placeholder such as [number enrolled to date].",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "award-information",
+      "heading": "Award information",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "renderer": "static",
+      "guidance": "The identifying block the funder uses to file the report: award number, project title, recipient organization, PI or project director, reporting period start and end dates, the kind of report (annual, interim or final) and the submission date. Copy the award number and period from the notice of award; a wrong period makes every date check fail.",
+      "elements": ["Award number and project title", "Recipient organization and PI", "Reporting period start and end dates", "Report kind: annual, interim or final"],
+      "sourcesNeeded": ["Notice of award or grant agreement"],
+      "dataNeeded": ["Reporting period dates", "Submission date"],
+      "scaffold": "**Award number:** [number]\n**Project title:** [title]\n**Recipient:** [organization]\n**PI / project director:** [name]\n**Reporting period:** [start date] to [end date]\n**Report:** [Annual / Interim / Final]\n**Submitted:** [date]"
+    },
+    {
+      "key": "summary",
+      "heading": "Summary",
+      "level": 2,
+      "order": 20,
+      "required": false,
+      "guidance": "Include when the format asks for one or the report is long. In a paragraph, state the overall status against the objectives, the two or three most important results, and any change or delay the funder must know about. Add no claim that the body does not support, and use the same numbers as the body. For an NSF award, the public Project Outcomes Report is a separate document of no more than 800 words written for a general audience.",
+      "lengthHint": "One paragraph",
+      "elements": ["Overall status against the objectives", "Most important results", "Changes or delays the funder must know about"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    },
+    {
+      "key": "accomplishments",
+      "heading": "Accomplishments",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Go objective by objective, using the award's numbering and wording. For each, give the status (met, on track, delayed, changed), the major activities in the period, the significant results with their evidence, and the plan for the next period. Separate activities from outcomes, and compare results with what the award said would be achieved this period (2 CFR 200.329(c)(2)). Explain any goal not met. Include training and dissemination when the format asks. Common failures: activities reported as outcomes; an objective dropped without comment; results that tie to no objective; cumulative results presented as this period's.",
+      "lengthHint": "The bulk of the report",
+      "elements": [
+        "Each award objective listed with its number and wording",
+        "Status for each objective: met, on track, delayed or changed",
+        "Major activities in the period",
+        "Significant results with their evidence",
+        "Explanation for each goal not met",
+        "Plans for the next reporting period"
+      ],
+      "sourcesNeeded": ["Funded proposal and notice of award (objectives, milestones)", "Previous progress report", "Project records, data and minutes"],
+      "dataNeeded": ["Milestones planned for the period", "Results with figures and dates"]
+    },
+    {
+      "key": "products",
+      "heading": "Products",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "List what the project produced in the period: publications (with full citations and, for federal awards, public access status), conference presentations, data sets, software, curricula, websites, inventions or other products, each tied to the objective it serves. Say where each is available. Common failures: products from outside the period or from other awards; publications without acknowledgement of the award; no availability information for data and software.",
+      "lengthHint": "A list",
+      "elements": ["Publications with full citations", "Other products: data, software, materials, presentations", "Where each product is available", "Objective each product serves"],
+      "sourcesNeeded": ["Publication list", "Repository or website records"],
+      "dataNeeded": ["Product list with dates"]
+    },
+    {
+      "key": "participants",
+      "heading": "Participants and Partners",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Name the people who worked on the project in the period with their roles and effort as the format asks, and the partner organizations and what each contributed. Where the project serves people (students, patients, community members), report the numbers reached with their source. Numbers must agree with the accomplishments and with linked data. Common failures: effort that contradicts the budget; partners listed with no contribution; counts that differ between sections.",
+      "lengthHint": "A table or list",
+      "elements": ["People who worked on the project, with roles and effort", "Partner organizations and their contributions", "Number of people served or reached, with its source"],
+      "sourcesNeeded": ["Personnel and effort records", "Partner agreements", "Participation or enrollment records"],
+      "dataNeeded": ["Personnel effort by person", "Participant counts"]
+    },
+    {
+      "key": "impact",
+      "heading": "Impact",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "Include when the format asks. Describe the project's effect on its field, on other disciplines, on people and institutions, or on society so far, with evidence, without forecasting impact that has not happened. Keep it consistent with the accomplishments.",
+      "lengthHint": "One to three paragraphs",
+      "elements": ["Impact on the field or discipline", "Impact on people, institutions or society", "Evidence for each impact claimed"],
+      "sourcesNeeded": ["Citations, adoption records, or stakeholder feedback"],
+      "dataNeeded": []
+    },
+    {
+      "key": "changes-and-problems",
+      "heading": "Changes and Problems",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Disclose changes in approach, delays, problems and their causes, with the plan to resolve each and the effect on the objectives and budget. For federal awards, state whether a change needs or already has prior approval: changes in scope or objectives, key personnel, the PI's disengagement for more than three months or a 25 percent cut in effort, moving participant support funds, new subawards, cost-sharing changes and no-cost extensions are among the revisions 2 CFR 200.308(f) lists; problems or delays that affect milestones are also reported when they occur (200.329(e)). Report changes in human subjects, animals or biohazards where the format asks. If nothing changed, say so in a sentence. Common failures: a change reported as done when it needed approval first; delays with no recovery plan; spending far from plan with no explanation.",
+      "lengthHint": "As needed; one sentence if none",
+      "elements": [
+        "Each change, delay or problem with its cause",
+        "Plan to resolve each, with its effect on objectives and budget",
+        "Prior approval status for changes that need it",
+        "Explanation of spending that departs from the plan"
+      ],
+      "sourcesNeeded": ["Award terms and conditions", "Prior approval correspondence", "Financial reports"],
+      "dataNeeded": ["Spending to date against budget"]
+    },
+    {
+      "key": "special-requirements",
+      "heading": "Special Reporting Requirements",
+      "level": 2,
+      "order": 80,
+      "required": false,
+      "guidance": "Answer any reporting items the award's terms or the funder's format add: for example, human subjects and inclusion data, certifications, budget forms or award-specific questions. Copy the funder's item names so each answer can be found. Leave this out when the funder adds nothing.",
+      "lengthHint": "As required",
+      "elements": ["Each special reporting item named and answered", "Certifications or forms the terms require"],
+      "sourcesNeeded": ["Award terms and conditions", "Funder report form or instructions"],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "objectives-trace",
+      "criterion": "Objectives trace: every award objective has a status and evidence, and every reported result ties to an objective.",
+      "levels": [
+        { "score": 4, "descriptor": "Each objective appears with its award wording, a status and evidence; no result is untied; goals not met are explained." },
+        { "score": 3, "descriptor": "All objectives covered; one result is untied or one status lacks evidence." },
+        { "score": 2, "descriptor": "An objective is missing or several results tie to nothing." },
+        { "score": 1, "descriptor": "The report narrates activities with no link to the award's objectives." }
+      ],
+      "appliesTo": ["accomplishments", "products", "summary"]
+    },
+    {
+      "key": "outcomes-not-activities",
+      "criterion": "Outcomes kept apart from activities: results describe what changed or was learned, with evidence, not only what was done.",
+      "levels": [
+        { "score": 3, "descriptor": "Activities and results are separated; each result has evidence." },
+        { "score": 2, "descriptor": "Some activities are presented as outcomes." },
+        { "score": 1, "descriptor": "Activities only; nothing shows what changed." }
+      ],
+      "appliesTo": ["accomplishments", "impact"]
+    },
+    {
+      "key": "candid-changes",
+      "criterion": "Changes disclosed: delays, problems and changes are stated with reasons, plans and prior-approval status.",
+      "levels": [
+        { "score": 3, "descriptor": "Every change and delay is disclosed with cause, plan and approval status where needed." },
+        { "score": 2, "descriptor": "Changes disclosed but without plans, or an approval question is not addressed." },
+        { "score": 1, "descriptor": "Changes or delays visible elsewhere in the report are not disclosed." }
+      ],
+      "appliesTo": ["changes-and-problems", "accomplishments"]
+    },
+    {
+      "key": "numbers-agree",
+      "criterion": "Numbers agree: counts, dates and spending match across sections, linked data and the previous report, and fall in the reporting period.",
+      "levels": [
+        { "score": 3, "descriptor": "All figures agree and all dates fall in the period." },
+        { "score": 2, "descriptor": "A minor mismatch or an undated result." },
+        { "score": 1, "descriptor": "Figures conflict between sections or with the data." }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "2 CFR 200.329 (performance reporting) and 200.308 (prior approvals), eCFR; NIH RPPR and NSF project reporting guidance (section headings follow the RPPR)",
+    "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329",
+    "license": "Public domain (US government)",
+    "retrieved": "2026-10-08"
+  }
+}

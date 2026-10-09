@@ -49,7 +49,7 @@ describe("exportDocx", () => {
     expect(occurrences).toBe(5); // [1], [2][3], [1] again, and the table's [4]
     expect(count(document, /<w:footnoteReference /g)).toBe(occurrences);
     expect(footnotes).toContain("[1] Q3 Industry Report, p. 4. “Demand rose 12 percent”");
-    expect(footnotes).toContain("[2] Price watch &quot;weekly&quot;. “Prices were flat for the third straight quarter.”");
+    expect(footnotes).toContain("[2] Price watch &quot;weekly&quot;, https://news.example/prices. “Prices were flat for the third straight quarter.”");
     expect(footnotes).toContain("[4] Table “Prices 2025”, Pricing workbook.xlsx");
   });
 
@@ -65,7 +65,9 @@ describe("exportDocx", () => {
     expect(document).toContain("<w:strike/>");
     expect(document).toContain('w:ascii="Consolas"');
     expect(document).toContain("<w:hyperlink");
-    expect(rels).toMatch(/Target="https:\/\/sasha\.app\/library" TargetMode="External"/);
+    // No in-app library links (Phase 8): the relative /library link and the references' library targets are gone.
+    expect(rels).not.toContain("/library");
+    expect(rels).toContain('Target="https://news.example/prices"');
     expect(rels).toContain('Target="https://example.com/a?b=1"');
     // The remote image is never fetched: its alt text stands in; the data image is embedded.
     expect(document).toContain("[Image: Remote]");

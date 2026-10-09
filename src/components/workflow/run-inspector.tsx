@@ -7,12 +7,12 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Play } from '@/components/icons';
-import { signatureState, signatureText } from '@/components/editor/workflows-pane-model';
+import { mappingDropped, runPlan, signatureState, signatureText } from '@/components/editor/workflows-pane-model';
 import { outcomeLabel } from '@/lib/workflow/contract';
 import { CHECKPOINT_NODE_TYPE, NODE_SPEC_INDEX, OUTPUT_NODE_TYPE } from '@/lib/workflow/registry';
 import { runOutcome } from '@/lib/workflow/run-stats';
 import type { GraphNode } from '@/lib/workflow/types';
-import { CheckpointPanel, type CheckpointSubmit } from './checkpoint-panel';
+import { CheckpointPanel, DroppedWarning, type CheckpointSubmit } from './checkpoint-panel';
 import { RunTimeline } from './run-timeline';
 import { Muted, OutcomeBadge, Section, StepStatus, summaryOf } from './run-parts';
 import type { WorkflowRunView } from './types';
@@ -101,6 +101,9 @@ export function RunInspector({
   const spec = NODE_SPEC_INDEX[node.type];
   const state = run.steps[node.id];
   const outputs = run.outputs[node.id];
+  // The restructure plan this node made: its removal warning above the raw output (the checkpoint's mapping shows it too).
+  const plan = outputs ? runPlan({ outputs: { [node.id]: outputs } }) : null;
+  const dropped = plan ? mappingDropped(plan) : '';
   return (
     <div className="space-y-4">
       <div>
@@ -114,6 +117,7 @@ export function RunInspector({
       {node.type === OUTPUT_NODE_TYPE && state && state.status !== 'done' && state.status !== 'running' && (
         <Muted>No result was saved. {summary.nodes.filter((n) => run.steps[n.id]?.status === 'failed').map((n) => n.label).join(', ') || 'An earlier step'} did not finish; see the run log.</Muted>
       )}
+      {dropped && <DroppedWarning text={dropped} />}
       {outputs && state?.status !== 'waiting' &&
         Object.entries(outputs).map(([port, value]) => (
           <Section key={port} title={port.replace(/_/g, ' ')}>

@@ -4,7 +4,7 @@
   "title": "EQUATOR reporting guidelines",
   "authority": "EQUATOR Network",
   "jurisdiction": "International",
-  "appliesTo": ["research-report-imrad"],
+  "appliesTo": ["research-report-imrad", "literature-review"],
   "effective": "",
   "checked": "2026-10-08",
   "provenance": {
@@ -16,6 +16,6 @@
   "items": [
     { "key": "consort", "kind": "guideline", "title": "CONSORT", "text": "For randomized trials. Updated in 2025. Checklist items are not reproduced here; use the official checklist.", "url": "https://www.equator-network.org/" },
     { "key": "strobe", "kind": "guideline", "title": "STROBE", "text": "For observational studies. Checklist items are not reproduced here; use the official checklist.", "url": "https://www.equator-network.org/" },
-    { "key": "prisma-2020", "kind": "guideline", "title": "PRISMA 2020", "text": "For systematic reviews. Checklist items are not reproduced here; use the official checklist.", "url": "https://www.equator-network.org/" }
+    { "key": "prisma-2020", "kind": "guideline", "title": "PRISMA 2020", "text": "For systematic reviews: report the search strategy, the screening flow from records found to studies included, and the appraisal of study quality and risk of bias. The 27-item checklist (Page et al., BMJ 2021; CC BY 4.0) is not reproduced here; use the official checklist. Narrative and scoping reviews are not held to it.", "url": "https://www.prisma-statement.org/prisma-2020-checklist" }
   ]
 }

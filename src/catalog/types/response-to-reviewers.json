@@ -1,0 +1,162 @@
+{
+  "key": "response-to-reviewers",
+  "version": 1,
+  "title": "Response to Reviewers",
+  "family": "academic",
+  "summary": "A point-by-point response to peer review of a manuscript, or the Introduction to a resubmitted grant application. It summarizes the main changes, then answers every reviewer and editor comment with the change made and where, or a reasoned, evidence-based rebuttal.",
+  "signals": [
+    "response to reviewers",
+    "rebuttal letter",
+    "Reviewer 1",
+    "Reviewer 2",
+    "Comment 1",
+    "Response:",
+    "we thank the reviewer",
+    "we have revised",
+    "revised manuscript",
+    "summary statement",
+    "Introduction to Resubmission",
+    "decision letter",
+    "point-by-point",
+    "line numbers"
+  ],
+  "audience": "The original reviewers and the handling editor (or, for a grant resubmission, the new study section and program staff), who check that each point was taken seriously and find each change quickly.",
+  "tone": "Courteous, specific and non-defensive; firm and evidence-based when disagreeing, never dismissive; thanks given once rather than in every reply.",
+  "preamble": "You are the corresponding author or PI drafting a response to peer review. Answer every comment: keep the reviewers' numbering, quote or closely paraphrase each comment, then say what changed and exactly where (section, page or line numbers in the revised text) or, if you disagree, give the reasoning and evidence. Never claim a change the revised text does not contain, and never merge two comments so that one is lost. Keep answers to different reviewers consistent; if two reviewers ask for opposite things, say how you resolved it. Thank the reviewers once at the start, not in every reply, and avoid both flattery and defensiveness. Do not invent new analyses, results, citations or page numbers; where the author has not yet made or located a change, write a marked placeholder such as [page and line of the revision]. For an NIH resubmission, the response is the Introduction: one page for most activity codes (three for some training programs; the funding opportunity can differ). It must summarize substantial additions, deletions and changes and respond to the summary statement, and changes are outlined only there, not marked up in the application. Group points by theme and keep them terse to fit. Follow the journal's or funder's instructions where they are linked.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "header",
+      "heading": "Header",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "renderer": "static",
+      "guidance": "Identify what is being answered: the manuscript or application title, its ID or application number, the journal or funder, the date, and the corresponding author or PI. A grant Introduction usually needs no header beyond its title, so keep it short.",
+      "elements": ["Title and manuscript or application ID", "Journal or funder", "Date and corresponding author or PI"],
+      "sourcesNeeded": ["Decision letter or summary statement"],
+      "dataNeeded": [],
+      "scaffold": "**Response to reviewers**\n**Manuscript / application:** [title] ([ID])\n**Journal / funder:** [name]\n**Date:** [date]\n**Corresponding author / PI:** [name]"
+    },
+    {
+      "key": "summary-of-changes",
+      "heading": "Summary of Changes",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Thank the reviewers and editor once, then summarize the main changes in a few bullets or sentences: the substantial additions, deletions and changes, each tied to the concern that prompted it. Readers who only read this should know the revision's shape. For an NIH resubmission this begins the one-page Introduction. Common failures: generic thanks repeated later; a summary that lists every minor edit; changes summarized that the revision does not contain.",
+      "lengthHint": "A short paragraph or 3-6 bullets",
+      "elements": ["Thanks given once", "Main changes listed", "Each change tied to the concern that prompted it"],
+      "sourcesNeeded": ["Decision letter or summary statement", "Revised manuscript or application"],
+      "dataNeeded": []
+    },
+    {
+      "key": "editor-or-chair",
+      "heading": "Response to the Editor",
+      "level": 2,
+      "order": 30,
+      "required": false,
+      "guidance": "Include when the editor (or the summary statement's resume and summary of discussion) raised points of their own or set priorities among the reviews. Answer those first, in the same comment-response-change pattern, and say how conflicting reviewer requests were resolved.",
+      "lengthHint": "As needed",
+      "elements": ["Each editor point answered with change and location", "How conflicting reviewer requests were resolved"],
+      "sourcesNeeded": ["Decision letter or summary statement"],
+      "dataNeeded": []
+    },
+    {
+      "key": "reviewer-1",
+      "heading": "Reviewer 1",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Answer each of this reviewer's comments in order, keeping their numbering. For each: the comment (quoted or closely paraphrased, marked as theirs), then the response: what was changed and where (section, page or line in the revised text), or the reasoning and evidence for not changing it. Answer what was asked, not a nearby easier point. When disagreeing, acknowledge the concern, give evidence or reasoning, and say whether you clarified the text so others will not misread it. Common failures: \"addressed\" with no location; a change claimed but not made; tone that reads as defensive; a comment silently skipped.",
+      "lengthHint": "One entry per comment",
+      "elements": ["Every comment listed with the reviewer's numbering", "A response to each comment", "Location of each change in the revised text", "Reasoning and evidence for each disagreement"],
+      "sourcesNeeded": ["Reviewer 1's comments", "Revised manuscript or application"],
+      "dataNeeded": ["Page or line numbers of changes"]
+    },
+    {
+      "key": "reviewer-2",
+      "heading": "Reviewer 2",
+      "level": 2,
+      "order": 50,
+      "required": false,
+      "guidance": "Same pattern as Reviewer 1: every comment in order with its number, the response, and the location of each change or the reasoning for none. Make sure answers do not contradict those to Reviewer 1; where the reviewers disagreed, say how you resolved it and refer to the other answer.",
+      "lengthHint": "One entry per comment",
+      "elements": ["Every comment listed with the reviewer's numbering", "A response to each comment", "Location of each change in the revised text", "Consistency with answers to other reviewers"],
+      "sourcesNeeded": ["Reviewer 2's comments", "Revised manuscript or application"],
+      "dataNeeded": ["Page or line numbers of changes"]
+    },
+    {
+      "key": "reviewer-3",
+      "heading": "Reviewer 3",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "Same pattern for a third reviewer, and add further reviewer sections the same way if there are more. NIH study sections usually have at least three assigned reviewers; in a one-page Introduction, group shared points by theme and name the reviewers who raised them instead of repeating answers.",
+      "lengthHint": "One entry per comment",
+      "elements": ["Every comment listed with the reviewer's numbering", "A response and change location for each comment"],
+      "sourcesNeeded": ["Reviewer 3's comments", "Revised manuscript or application"],
+      "dataNeeded": []
+    },
+    {
+      "key": "other-changes",
+      "heading": "Other Changes",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "List changes the authors made that no reviewer asked for (updated data, new co-authors, corrected errors), so the editor and reviewers are not surprised. Keep it brief and give locations.",
+      "lengthHint": "A few bullets",
+      "elements": ["Unrequested changes with their locations", "Reason for each"],
+      "sourcesNeeded": ["Revised manuscript or application"],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "complete-mapping",
+      "criterion": "Completeness: every reviewer and editor comment is answered and mapped to a change with its location or to a reasoned rebuttal.",
+      "levels": [
+        { "score": 4, "descriptor": "Every comment answered in order with a specific location or a reasoned rebuttal; none merged or lost." },
+        { "score": 3, "descriptor": "All answered, but a few responses lack locations." },
+        { "score": 2, "descriptor": "A comment is skipped or answered only with \"addressed\"." },
+        { "score": 1, "descriptor": "Many comments unanswered or answered generically." }
+      ],
+      "appliesTo": ["reviewer-1", "reviewer-2", "reviewer-3", "editor-or-chair"]
+    },
+    {
+      "key": "reasoned-disagreement",
+      "criterion": "Disagreement: rebuttals acknowledge the concern and give evidence or reasoning, and the text is clarified where readers could misread it.",
+      "levels": [
+        { "score": 3, "descriptor": "Each disagreement is respectful, evidenced and paired with a clarification where useful." },
+        { "score": 2, "descriptor": "Disagreements asserted with thin reasoning." },
+        { "score": 1, "descriptor": "Dismissive or defensive rebuttals with no evidence." }
+      ],
+      "appliesTo": ["reviewer-1", "reviewer-2", "reviewer-3", "editor-or-chair"]
+    },
+    {
+      "key": "claims-match-revision",
+      "criterion": "Accuracy: each change the response claims is present in the revised text at the stated location, and answers to different reviewers do not contradict each other.",
+      "levels": [
+        { "score": 3, "descriptor": "Every claimed change is where the response says; answers are consistent across reviewers." },
+        { "score": 2, "descriptor": "A location is wrong or a minor inconsistency between answers." },
+        { "score": 1, "descriptor": "Claimed changes are missing from the revision, or answers contradict each other." }
+      ]
+    },
+    {
+      "key": "fits-the-limit",
+      "criterion": "Form: thanks once, terse, and within the funder's or journal's length limit (one page for most NIH resubmission Introductions).",
+      "levels": [
+        { "score": 3, "descriptor": "Within the limit, grouped sensibly, thanks once." },
+        { "score": 2, "descriptor": "Near the limit or repetitive thanks and restatement." },
+        { "score": 1, "descriptor": "Over the limit or padded." }
+      ],
+      "appliesTo": ["summary-of-changes", "reviewer-1", "reviewer-2", "reviewer-3"]
+    }
+  ],
+  "provenance": {
+    "source": "hand-written; NIH resubmission Introduction rules from NIH Resubmission Applications policy and the NIH table of page limits",
+    "url": "https://grants.nih.gov/grants-process/submit/submission-policies/resubmission-applications",
+    "license": "Own text (NIH rules paraphrased; source public domain US government)",
+    "retrieved": "2026-10-08"
+  }
+}

@@ -1,0 +1,598 @@
+{
+  "key": "type-reevaluation-review",
+  "version": 1,
+  "title": "Data decision (reevaluation review)",
+  "summary": "Drafts a data decision for the team: no additional data needed, or additional data needed by area with the question each would answer (34 CFR 300.305(a)(2)). Existing data is extracted and dated, the three-year date is computed in code, each of the four review questions is checked against the data, and two independent reviewers argue for sufficiency and for more assessment. The team, including the parent, decides; Sasha never makes the decision.",
+  "kind": "type",
+  "appliesTo": [
+    "reevaluation-review"
+  ],
+  "outcome": {
+    "label": "Data decision (draft for the team)",
+    "values": [
+      {
+        "key": "no_additional_data",
+        "label": "Draft: no additional data needed"
+      },
+      {
+        "key": "additional_data_needed",
+        "label": "Draft: additional data needed"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Team lead, recording the team's decision",
+    "required": true
+  },
+  "requirementSets": [
+    "idea-evaluation-34cfr",
+    "tx-19tac-89-1040"
+  ],
+  "notAssessed": [
+    "Whether the student continues to have a disability or to need services: the team decides after any additional data is gathered.",
+    "State reevaluation timelines beyond the federal three-year rule: check the state's rules."
+  ],
+  "notes": [
+    "When the team needs no additional data, the parent is told so, with the reasons, and of the right to ask for an assessment anyway (34 CFR 300.305(d)).",
+    "New assessments need parent consent (300.300(c)); reviewing existing data does not (300.300(d)(1)(i)).",
+    "The three-year date is computed from the date of the last evaluation in calendar years; it is shown beside the outcome, not decided by the model.",
+    "Student records are protected (FERPA): web lookups for this type use only public regulations and guidance, and carry no student details."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "notes",
+      "node": "doc.notes",
+      "label": "Notes"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "req",
+      "node": "requirements.read",
+      "label": "Requirements",
+      "config": {
+        "sets": [
+          "idea-evaluation-34cfr",
+          "tx-19tac-89-1040"
+        ]
+      }
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: existing data, parent input, last evaluation",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "existing_data",
+            "label": "Existing evaluation data",
+            "kind": "any",
+            "match": [
+              "evaluation",
+              "assessment",
+              "progress report",
+              "observation",
+              "state assessment",
+              "benchmark"
+            ],
+            "help": "Link the prior evaluation, current classroom-based and state assessment results, and teacher and provider observations."
+          },
+          {
+            "key": "parent_input",
+            "label": "Parent input",
+            "kind": "any",
+            "match": [
+              "parent input",
+              "parent concerns",
+              "parent interview"
+            ],
+            "specKeys": [
+              "parent-input"
+            ],
+            "help": "Record the parent's input for this review, or note when it was sought."
+          },
+          {
+            "key": "last_evaluation",
+            "label": "Date of the last evaluation",
+            "kind": "any",
+            "match": [
+              "last evaluation",
+              "date of evaluation",
+              "evaluation date"
+            ],
+            "help": "State the date of the last full evaluation; the three-year date is computed from it."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "notes": "notes.notes"
+      }
+    },
+    {
+      "id": "ext",
+      "node": "step.extract",
+      "label": "Existing data",
+      "config": {
+        "item": "data",
+        "from": [
+          "sources",
+          "document",
+          "data"
+        ],
+        "maxItems": 80,
+        "instructions": "List each piece of existing data: one row per evaluation result, assessment, observation, progress report or piece of parent information. Copy dates and results as written.",
+        "fields": [
+          {
+            "name": "data",
+            "label": "Data",
+            "type": "text",
+            "description": "The measure, record or observation",
+            "required": true
+          },
+          {
+            "name": "source",
+            "label": "Source",
+            "type": "text",
+            "description": "Who provided it or what record it comes from",
+            "required": true
+          },
+          {
+            "name": "date",
+            "label": "Date",
+            "type": "date",
+            "description": "When it was collected"
+          },
+          {
+            "name": "area",
+            "label": "Area",
+            "type": "text",
+            "description": "Cognitive, academic, communication, social-emotional, adaptive, motor, health, vision, hearing"
+          },
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "Which part of the review it belongs to",
+            "values": [
+              "parent_information",
+              "prior_evaluation",
+              "classroom_or_state_assessment",
+              "classroom_observation",
+              "teacher_or_provider_observation",
+              "iep_progress",
+              "other"
+            ]
+          },
+          {
+            "name": "shows",
+            "label": "What it shows",
+            "type": "text",
+            "description": "The result in brief"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "dates",
+      "node": "step.extract",
+      "label": "Key dates",
+      "config": {
+        "item": "date",
+        "from": [
+          "document",
+          "sources",
+          "notes"
+        ],
+        "maxItems": 1,
+        "instructions": "Find the date of the last full evaluation, the start date of the current IEP, and the date of this review, where stated.",
+        "fields": [
+          {
+            "name": "last_evaluation_date",
+            "label": "Last evaluation",
+            "type": "date",
+            "description": "The date of the last full evaluation or reevaluation",
+            "required": true
+          },
+          {
+            "name": "iep_start_date",
+            "label": "Current IEP start",
+            "type": "date",
+            "description": "The start date of the current IEP"
+          },
+          {
+            "name": "review_date",
+            "label": "Review date",
+            "type": "date",
+            "description": "The date of this review or the planned reevaluation completion"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "notes": "notes.notes",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "due",
+      "node": "step.compute",
+      "label": "Three-year date",
+      "config": {
+        "checks": [
+          {
+            "kind": "deadline",
+            "key": "three_year_due",
+            "label": "Reevaluation due (three years from the last evaluation)",
+            "severity": "major",
+            "startField": "last_evaluation_date",
+            "requirement": "idea-evaluation-34cfr#three-year",
+            "endField": "review_date"
+          }
+        ]
+      },
+      "in": {
+        "items": "dates.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "fresh",
+      "node": "step.check",
+      "label": "Data currency",
+      "config": {
+        "instructions": "Use the existing data in <items> and the dates the document gives.",
+        "checklist": [
+          {
+            "key": "current_data",
+            "label": "Current data in each area",
+            "question": "Does each area related to the disability have data newer than the current IEP? Name each area that relies only on older data.",
+            "severity": "major",
+            "appliesTo": [
+              "existing-data"
+            ]
+          },
+          {
+            "key": "present_levels_fresh",
+            "label": "Present levels not copied",
+            "question": "Are present levels taken from current data rather than repeated from the last evaluation unchanged?",
+            "severity": "major",
+            "appliesTo": [
+              "review-by-question"
+            ]
+          },
+          {
+            "key": "same_student",
+            "label": "Data belongs to this student",
+            "question": "Is there any sign that a piece of data comes from another student's file (a different name, date of birth or grade)? Mark not_met if so.",
+            "severity": "blocking"
+          },
+          {
+            "key": "new_concern",
+            "label": "No new area of concern overlooked",
+            "question": "Does any data or parent input suggest a disability or need not previously identified? Mark not_met if it does and the draft does not propose data for it.",
+            "severity": "blocking",
+            "appliesTo": [
+              "reason-for-review",
+              "additional-data"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ext.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "qs",
+      "node": "step.check",
+      "label": "The four questions (300.305(a)(2))",
+      "config": {
+        "instructions": "For each question, name the existing data in <items> that bears on it, or the gap. Judge whether the data covers the question, not what the answer is.",
+        "statuses": [
+          {
+            "key": "covered",
+            "label": "Existing data covers it",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "partly_covered",
+            "label": "Partly covered",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "gap",
+            "label": "Gap: more data needed",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "not_applicable",
+            "label": "Not applicable",
+            "ok": true,
+            "severity": "info"
+          }
+        ],
+        "checklist": [
+          {
+            "key": "continued_disability",
+            "label": "Continued disability and needs",
+            "question": "Which existing data bears on whether the student continues to have a disability and on the student's educational needs? Is it enough?",
+            "severity": "major",
+            "appliesTo": [
+              "review-by-question"
+            ]
+          },
+          {
+            "key": "present_levels",
+            "label": "Present levels",
+            "question": "Which existing data shows the present levels of academic achievement and related developmental needs? Is it current and enough?",
+            "severity": "major",
+            "appliesTo": [
+              "review-by-question"
+            ]
+          },
+          {
+            "key": "continued_need",
+            "label": "Continued need for services",
+            "question": "Which existing data bears on whether the student continues to need special education and related services? Is it enough?",
+            "severity": "major",
+            "appliesTo": [
+              "review-by-question"
+            ]
+          },
+          {
+            "key": "service_changes",
+            "label": "Changes to services",
+            "question": "Which existing data bears on whether additions or changes to services are needed to meet the IEP goals and take part in the general curriculum? Is it enough?",
+            "severity": "major",
+            "appliesTo": [
+              "review-by-question"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "ext.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "instructions": "Rate whether the existing data is sufficient for each question. Cite the rows of existing data you rely on. Do not judge whether the student is eligible.",
+        "strengthsAndWeaknesses": false,
+        "criteria": [
+          {
+            "key": "continued_disability",
+            "label": "Continued disability and educational needs",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sufficient",
+                "more_data_needed"
+              ]
+            }
+          },
+          {
+            "key": "present_levels",
+            "label": "Present levels and developmental needs",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sufficient",
+                "more_data_needed"
+              ]
+            }
+          },
+          {
+            "key": "continued_need",
+            "label": "Continued need for special education",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sufficient",
+                "more_data_needed"
+              ]
+            }
+          },
+          {
+            "key": "service_changes",
+            "label": "Changes to services to meet the goals",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "sufficient",
+                "more_data_needed"
+              ]
+            }
+          }
+        ],
+        "reviewers": [
+          {
+            "key": "sufficiency",
+            "label": "Existing data suffice",
+            "brief": "Argue that the existing data are enough to answer each review question. For each, cite the dated rows that answer it and say why nothing more is needed; concede a question only when no current data addresses it."
+          },
+          {
+            "key": "more_data",
+            "label": "More assessment needed",
+            "brief": "Argue for additional assessment wherever the existing data is outdated, thin, conflicting, from a single source, or silent on a new concern. Name the area and the question new data would answer, and cite the gap."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "ext.items",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement",
+      "config": {
+        "mode": "verdict"
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Decide (draft)",
+      "config": {
+        "values": [
+          "no_additional_data",
+          "additional_data_needed"
+        ],
+        "guidance": "Draft the data decision for the team. Choose additional_data_needed when any question has a gap or partial coverage the reviewers agree on, when the reviewers disagree on a question, or when a new area of concern has no proposed data; otherwise no_additional_data. In the rationale, list each question with the data that covers it or the gap, name each proposed area with the question it would answer, and list every disagreement for the team. This is a draft; the team decides."
+      },
+      "in": {
+        "findings": [
+          "fresh.findings",
+          "qs.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "fresh.results",
+          "qs.results",
+          "due.results"
+        ],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "additional_data_needed",
+        "guards": [
+          {
+            "values": [
+              "no_additional_data"
+            ],
+            "instead": "additional_data_needed",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "findings": {
+                    "status": [
+                      "gap"
+                    ],
+                    "min": 1
+                  }
+                }
+              ]
+            },
+            "reason": "a review question has a gap in the existing data, a new area of concern has no data proposed, or data may belong to another student (34 CFR 300.305(a)(2))."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": [
+          "fresh.findings",
+          "qs.findings",
+          "agree.findings",
+          "due.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "due.results"
+        ],
+        "tables": [
+          "ext.table",
+          "qs.table",
+          "agree.table",
+          "fresh.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Team decision",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Record the team's decision, which includes the parent. Edit the value if the team decided differently, and note the reasons. If no additional data is needed, the parent is told of the decision, the reasons, and the right to ask for an assessment; if assessment is needed, obtain consent before it begins.",
+        "recordFields": [
+          {
+            "key": "signed_name",
+            "label": "Name and role of the person recording",
+            "required": true
+          },
+          {
+            "key": "decision_date",
+            "label": "Date the team decided",
+            "required": true
+          },
+          {
+            "key": "parent_participation",
+            "label": "How the parent took part",
+            "required": true
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome",
+        "after": "gate.pass"
+      }
+    }
+  ]
+}

@@ -17,6 +17,8 @@ import {
   findingsBySeverity,
   findingsRespondable,
   groupAvailable,
+  changeWarnings,
+  mappingDropped,
   mappingGaps,
   mappingRows,
   missingInputs,
@@ -401,6 +403,15 @@ describe("restructure mapping", () => {
     expect(mappingRows(plan, sections, { R2: null })[1].movesTo).toMatch(/Content to place/);
     expect(mappingGaps(plan, sections)).toEqual(["Timeline"]);
     expect(mappingGaps(plan, sections, { R1: "timeline" })).toEqual([]);
+  });
+
+  it("warns, before apply, about headings with no text of their own (and not for plans stored before Phase 8)", () => {
+    expect(mappingDropped(plan)).toBe("");
+    const dropping = { ...plan, dropped: [{ index: 3, heading: "Overview", level: 2 }, { index: 5, heading: "Details", level: 2 }] };
+    expect(mappingDropped(dropping)).toBe("These headings hold no text of their own and will be removed: “Overview”, “Details”.");
+    const change = (p: RestructurePlan): ProposedChange => ({ id: "w", title: "Restructure", summary: "", ops: [{ op: "restructure", plan: p }], basisUpdatedAt: "", snapshotReason: "" });
+    expect(changeWarnings(change(plan))).toEqual([]);
+    expect(changeWarnings(change(dropping))).toEqual([mappingDropped(dropping)]);
   });
 });
 

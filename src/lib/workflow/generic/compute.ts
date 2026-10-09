@@ -74,6 +74,14 @@ export function addDays(start: string, n: number, weekdays: boolean): string {
   return isoDay(t);
 }
 
+/** `start` plus `n` whole calendar years; 29 February falls back to 28 February in a common year (never later). */
+export function addYears(start: string, n: number): string {
+  const [y, m, d] = start.split("-").map(Number);
+  const year = y + Math.trunc(n);
+  const last = new Date(Date.UTC(year, m, 0)).getUTCDate();
+  return isoDay(Date.UTC(year, m - 1, Math.min(d, last)));
+}
+
 // --- Numbers in text -----------------------------------------------------------------------
 
 const NUMBER_RE = /(?<![\w.,])-?\d+(?:,\d{3})*(?:\.\d+)?%?/g;
@@ -264,11 +272,20 @@ function dateOrder(c: Extract<ComputeCheck, { kind: "date_order" }>, { items }: 
   return out.length ? out : [result({ ok: null, detail: "No item names a dependency." })];
 }
 
+/** A traced item's status (step.trace output), or null for a plain extracted item. */
+const statusOf = (item: ExtractedItem) => {
+  const s = (item as ExtractedItem & { status?: unknown }).status;
+  return typeof s === "string" ? s : null;
+};
+
 function countCheck(c: Extract<ComputeCheck, { kind: "count" }>, { items }: Ctx): Res[] {
-  const n = items.filter((i) => whereHolds(i, c.where)).length;
+  const pool = items.filter((i) => whereHolds(i, c.where));
+  const status = c.status ? new Set(c.status) : null;
+  const n = status ? pool.filter((i) => status.has(statusOf(i) ?? "")).length : pool.length;
+  const actual = status ? `${n} of ${pool.length}` : String(n);
   const expected = [c.min !== null ? `at least ${c.min}` : "", c.max !== null ? `at most ${c.max}` : ""].filter(Boolean).join(" and ");
-  if (c.min === null && c.max === null) return [result({ ok: null, actual: String(n), detail: "No minimum or maximum set." })];
-  return [result({ ok: (c.min === null || n >= c.min) && (c.max === null || n <= c.max), expected, actual: String(n) })];
+  if (c.min === null && c.max === null) return [result({ ok: null, actual, detail: "No minimum or maximum set." })];
+  return [result({ ok: (c.min === null || n >= c.min) && (c.max === null || n <= c.max), expected, actual })];
 }
 
 function numbersMatch(c: Extract<ComputeCheck, { kind: "numbers_match" }>, { doc }: Ctx): Res[] {
@@ -315,13 +332,38 @@ function valuesInText(c: Extract<ComputeCheck, { kind: "values_in_text" }>, { do
 }
 
 function deadlineCheck(c: Extract<ComputeCheck, { kind: "deadline" }>, { items }: Ctx): Res[] {
-  const r = requirementItem(c.requirement);
-  if (!r || typeof r.item.value !== "number" || !r.item.unit) return [result({ ok: null, detail: `Unknown requirement ${c.requirement}.` })];
-  const reqLink = requirementLink(c.requirement, r.item.title, r.item.citation);
   const item = items.find((i) => toDate(i.fields[c.startField]));
+  // With byKind the item's kind picks the period (a final report's 120 days,
+  // not the annual 90); an unmapped or unstated kind is not assessed.
+  let ref = c.requirement;
+  if (c.byKind) {
+    const kind = item ? fold(text(item.fields[c.byKind.field])).replace(/[\s-]+/g, "_") : "";
+    ref = kind && Object.hasOwn(c.byKind.requirements, kind) ? c.byKind.requirements[kind] : null;
+    if (item && !ref) {
+      const said = kind ? `${c.byKind.field.replace(/_/g, " ")} “${text(item.fields[c.byKind.field])}”` : `no ${c.byKind.field.replace(/_/g, " ")} stated`;
+      return [result({ ok: null, actual: said, detail: `Not assessed: ${(c.byKind.notAssessed || "no due-date rule for this kind").replace(/\.$/, "")}.`, evidence: [itemLink(item, said)] })];
+    }
+    ref ??= Object.values(c.byKind.requirements)[0] ?? null;
+  }
+  const r = ref ? requirementItem(ref) : null;
+  if (!ref || !r || typeof r.item.value !== "number" || !r.item.unit) return [result({ ok: null, detail: `Unknown requirement ${ref ?? "(none)"}.` })];
+  const reqLink = requirementLink(ref, r.item.title, r.item.citation);
   if (!item) return [result({ ok: null, detail: `No ${c.startField.replace(/_/g, " ")} found.`, evidence: [reqLink] })];
   const start = toDate(item.fields[c.startField])!;
   const unit = r.item.unit;
+  const end = c.endField ? toDate(item.fields[c.endField]) : null;
+  if (unit === "years") {
+    // Whole calendar years (the IDEA three-year reevaluation); no extension applies.
+    const due = addYears(start, r.item.value);
+    return [
+      result({
+        ok: end ? end <= due : null,
+        expected: `by ${due} (${fmt(r.item.value)} year(s) from ${start})`,
+        actual: end ? `stated ${end}` : "",
+        evidence: [itemLink(item, start), reqLink],
+      }),
+    ];
+  }
   const weekdays = unit === "school_days" || unit === "business_days";
   if (!weekdays && unit !== "calendar_days") return [result({ ok: null, detail: `A deadline in ${unit} cannot be computed.`, evidence: [reqLink] })];
   let days = r.item.value;
@@ -333,8 +375,8 @@ function deadlineCheck(c: Extract<ComputeCheck, { kind: "deadline" }>, { items }
   }
   const due = addDays(start, days, weekdays);
   if (weekdays) notes.push("school calendar not linked; holidays and breaks not counted");
+  if (c.byKind) notes.push(`${text(item.fields[c.byKind.field])}: ${r.item.title}`);
   const unitWord = unit.replace(/_/g, " ");
-  const end = c.endField ? toDate(item.fields[c.endField]) : null;
   return [
     result({
       ok: end ? end <= due : null,

@@ -1,0 +1,136 @@
+{
+  "key": "cover-letter",
+  "version": 1,
+  "title": "Cover Letter",
+  "family": "career",
+  "summary": "A one-page letter that accompanies a resume for one specific job. It says which role the candidate is applying for, answers two to four of the employer's top requirements with specific examples from the candidate's history, gives a real reason for wanting this employer, and closes with a request to talk.",
+  "signals": [
+    "cover letter",
+    "Dear Hiring Manager",
+    "I am writing to apply",
+    "I am excited to apply",
+    "position of",
+    "your job posting",
+    "my resume",
+    "attached resume",
+    "I would welcome the opportunity",
+    "thank you for your consideration",
+    "Sincerely",
+    "hiring committee"
+  ],
+  "audience": "A hiring manager or recruiter for one specific role, reading quickly to decide whether the candidate fits and genuinely wants this job.",
+  "tone": "Professional, warm and specific; in the candidate's own voice, confident without exaggeration, no clichés.",
+  "preamble": "You are a career coach drafting a cover letter in the candidate's voice for one specific job. Facts about the candidate come only from the master resume, the tailored resume and the candidate's notes: never add an employer, title, date, number, skill or achievement the history does not contain, and keep every fact consistent with the resume. Facts about the employer come only from linked sources (the posting, the employer's own site or news the candidate linked); anything else is marked [unverified]. Choose two to four of the posting's most important requirements and answer each with one specific example: the situation, what the candidate did and the result. Add context the resume cannot give rather than restating its lines. Give one genuine reason for this employer drawn from a linked source. Keep it to one page, address the right person, company and role, and check that no name from another application remains. Where the candidate lacks a requirement, address it briefly and honestly only if it helps (for example, a plan to close it); never imply experience they do not have. The candidate approves the letter before it is sent.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "header",
+      "heading": "Letter header",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "renderer": "static",
+      "guidance": "The candidate's name and contact details, the date, and the recipient: a named hiring manager where the posting or sources give one, otherwise the team or hiring committee, with the company name and the role. The company and role must match the posting exactly.",
+      "elements": ["Candidate name and contact details", "Date", "Recipient, company and role as in the posting"],
+      "sourcesNeeded": ["Job posting"],
+      "dataNeeded": [],
+      "scaffold": "[Your name]\n[City, State] · [Phone] · [Email]\n\n[Date]\n\n[Hiring manager's name or \"Hiring Team\"]\n[Company name]\n\n**Re:** [Job title], [requisition number if given]\n\nDear [Name or Hiring Team],"
+    },
+    {
+      "key": "opening",
+      "heading": "Opening",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Name the role, and in two or three sentences give the candidate's headline fit (field, level, the strength the role most needs) and a hook: a referral, a specific connection to the employer's work, or a result that matches the job. Common failures: \"I am writing to apply\" with nothing after it; the wrong role or company; flattery with no specific reason.",
+      "lengthHint": "2-3 sentences",
+      "elements": ["The role applied for", "Headline fit for the role", "A specific hook: referral, connection or matching result"],
+      "sourcesNeeded": ["Job posting", "Tailored resume"],
+      "dataNeeded": ["Referrer's name, if any"]
+    },
+    {
+      "key": "evidence-of-fit",
+      "heading": "Fit for the Role",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "One or two paragraphs that answer two to four of the posting's top requirements, each with a specific example from the history: the situation, what the candidate did, the result with the source's number. Lead with the requirement the employer stresses most. Add the context and motivation a resume line cannot carry; do not restate bullets. Common failures: a list of adjectives; examples with no result; claims the resume cannot back; restating the resume line by line.",
+      "lengthHint": "1-2 paragraphs",
+      "elements": ["2-4 top requirements addressed", "A specific example with a result for each", "Context the resume does not give"],
+      "sourcesNeeded": ["Job posting", "Tailored resume", "Master resume or work history"],
+      "dataNeeded": ["Results and numbers for the examples"]
+    },
+    {
+      "key": "why-this-employer",
+      "heading": "Why This Employer",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "A short paragraph giving one or two real reasons the candidate wants this employer and role, drawn from a linked source (the posting, the employer's site, a product, a published value or initiative), and how the candidate would contribute to it. Common failures: generic praise that fits any company; facts about the employer with no source; a reason about what the candidate wants to get rather than give.",
+      "lengthHint": "One short paragraph",
+      "elements": ["Specific reason drawn from a linked source", "How the candidate would contribute"],
+      "sourcesNeeded": ["Employer website or other linked source"],
+      "dataNeeded": []
+    },
+    {
+      "key": "closing",
+      "heading": "Closing",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Restate interest in a sentence, ask for a conversation, mention availability or relocation only if relevant, thank the reader once and sign off. Common failures: a new claim in the closing; repeated thanks; leftover sign-off names from another application.",
+      "lengthHint": "2-3 sentences",
+      "elements": ["Request for a conversation", "Thanks, once", "Sign-off with the candidate's name"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "requirements-answered",
+      "criterion": "Top requirements answered: two to four of the posting's key requirements each get a specific example with a result.",
+      "levels": [
+        { "score": 4, "descriptor": "The most important requirements are each answered with a concrete example and result." },
+        { "score": 3, "descriptor": "Requirements answered, but one example lacks a result or a top requirement is skipped." },
+        { "score": 2, "descriptor": "Requirements named with general claims, few examples." },
+        { "score": 1, "descriptor": "Does not address the posting's requirements." }
+      ],
+      "appliesTo": ["evidence-of-fit", "opening"]
+    },
+    {
+      "key": "consistent-with-resume",
+      "criterion": "Consistency: every employer, title, date, number and skill matches the resume and the master history.",
+      "levels": [
+        { "score": 3, "descriptor": "Every fact matches the resume and appears in the master." },
+        { "score": 2, "descriptor": "A fact is stated more strongly than the resume supports." },
+        { "score": 1, "descriptor": "A claim contradicts the resume or is absent from the master." }
+      ]
+    },
+    {
+      "key": "employer-specific",
+      "criterion": "Specific to this employer: the reason for applying draws on a linked source and could not be sent to another company unchanged.",
+      "levels": [
+        { "score": 3, "descriptor": "A specific, sourced reason and a clear contribution; correct company, role and addressee throughout." },
+        { "score": 2, "descriptor": "Some specifics, but parts could fit any employer." },
+        { "score": 1, "descriptor": "Generic, or names the wrong company or role." }
+      ],
+      "appliesTo": ["why-this-employer", "opening", "header"]
+    },
+    {
+      "key": "adds-beyond-resume",
+      "criterion": "Adds to the resume: context, motivation and connections a resume cannot carry, rather than restated bullets.",
+      "levels": [
+        { "score": 3, "descriptor": "Each paragraph adds context or motivation; nothing is a restated bullet." },
+        { "score": 2, "descriptor": "Some sentences restate resume lines with nothing added." },
+        { "score": 1, "descriptor": "Largely a prose copy of the resume." }
+      ],
+      "appliesTo": ["evidence-of-fit"]
+    }
+  ],
+  "provenance": {
+    "source": "hand-written (common cover letter practice; steps from docs/workflows-by-document-type.md)",
+    "url": "",
+    "license": "Own text",
+    "retrieved": "2026-10-08"
+  }
+}

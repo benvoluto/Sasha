@@ -1,10 +1,10 @@
 {
   "key": "diataxis-framework",
-  "version": 1,
+  "version": 2,
   "title": "Diátaxis framework",
   "authority": "Diátaxis (Daniele Procida)",
   "jurisdiction": "International",
-  "appliesTo": ["diataxis-how-to", "diataxis-tutorial"],
+  "appliesTo": ["diataxis-how-to", "diataxis-tutorial", "diataxis-reference", "diataxis-explanation"],
   "effective": "",
   "checked": "2026-10-08",
   "provenance": {
@@ -16,6 +16,8 @@
   "items": [
     { "key": "four-types", "kind": "guideline", "title": "Four types on two axes", "text": "Documentation divides into tutorials, how-to guides, reference and explanation, placed on two axes: whether it serves action or cognition, and whether it serves study or work. Tutorials serve action while studying; how-to guides serve action while working; reference serves cognition while working; explanation serves cognition while studying.", "url": "https://diataxis.fr/" },
     { "key": "how-to", "kind": "guideline", "title": "How-to guides", "text": "A how-to guide takes a competent reader through the steps to reach a stated goal. It states prerequisites without teaching them and handles the variations a working reader meets.", "url": "https://diataxis.fr/" },
-    { "key": "tutorial", "kind": "guideline", "title": "Tutorials", "text": "A tutorial takes a beginner from a stated starting point to a stated result along one path, and should work for every learner every time.", "url": "https://diataxis.fr/" }
+    { "key": "tutorial", "kind": "guideline", "title": "Tutorials", "text": "A tutorial takes a beginner from a stated starting point to a stated result along one path, and should work for every learner every time.", "url": "https://diataxis.fr/" },
+    { "key": "reference", "kind": "guideline", "title": "Reference", "text": "Reference describes the machinery (APIs, commands, options, settings) for a reader who consults it while working. It describes and nothing else: accurate, complete, neutral and austere, with no instruction, explanation or opinion beyond brief usage examples and necessary warnings. Its structure mirrors the structure of the product, and its entries follow one consistent pattern so readers find things where they expect them.", "url": "https://diataxis.fr/reference/" },
+    { "key": "explanation", "kind": "guideline", "title": "Explanation", "text": "Explanation deepens understanding for a reader who is studying rather than working: it gives context, background, history, reasons, design decisions, constraints and alternatives, and connects the topic to related ideas. It may hold opinion and perspective, and weighs alternatives openly. It needs a boundary (often framed as \"About <topic>\" or a why question) and leaves step-by-step instruction and technical description to how-to guides and reference.", "url": "https://diataxis.fr/explanation/" }
   ]
 }

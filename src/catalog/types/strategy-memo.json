@@ -1,0 +1,175 @@
+{
+  "key": "strategy-memo",
+  "version": 1,
+  "title": "Strategy Memo",
+  "family": "business",
+  "summary": "A memo that proposes or reviews a strategy for a business, unit or program. It diagnoses the critical challenge from evidence, sets a guiding policy that says what the organization will and will not do, and lays out coordinated actions with owners, resources and timing, with alternatives weighed and the strongest objections answered.",
+  "signals": [
+    "strategy memo",
+    "strategic review",
+    "diagnosis",
+    "guiding policy",
+    "coherent actions",
+    "the core challenge",
+    "we will not",
+    "strategic options",
+    "competitive advantage",
+    "where to play",
+    "trade-offs",
+    "strategic priorities",
+    "leadership team",
+    "recommendation"
+  ],
+  "audience": "Senior leaders, a board or an executive team who must decide whether to adopt the strategy and commit resources, and who know the business well enough to spot generic claims.",
+  "tone": "Plain, analytical and decisive; specific about the challenge and the choices, candid about trade-offs and risks, no buzzwords or slogans.",
+  "preamble": "You are a senior strategy adviser drafting a strategy memo for the leaders who must decide on it. A strategy here has three linked parts: a diagnosis that names the specific, critical challenge and explains it from evidence; a guiding policy, the overall approach chosen to deal with that challenge, which also says what the organization will not do; and a set of coordinated actions that carry the policy out and reinforce each other, each with an owner, resources and timing. Keep the three parts traceable to one another. Do not let goals, targets, mission statements or a list of unrelated initiatives stand in for strategy: a goal says what you want, a strategy says how you will overcome the obstacle in the way. Consider real alternatives, including staying the course, and say why they were rejected. State the strongest objections in their strongest form and answer them, or mark them unanswered. Do not invent market data, financial figures, customer evidence, competitor moves or commitments from named people; where a fact is missing, write a marked placeholder such as [market share, source needed]. The recommendation is the author's to make and the leaders' to adopt; present it as a proposal.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "header",
+      "heading": "Memo header",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "renderer": "static",
+      "guidance": "The routing block: who the memo is for, who it is from, the date, a subject line that names the strategic decision, and when a decision is needed. Mark it as a draft until adopted.",
+      "elements": ["Recipients and author", "Date and decision deadline", "Subject line naming the decision"],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Decision deadline, if any"],
+      "scaffold": "**To:** [Names, titles]\n**From:** [Name, title]\n**Date:** [Date]\n**Subject:** Strategy for [unit or program]: [the decision in a few words]\n**Decision needed by:** [Date]\n**Status:** Draft for discussion"
+    },
+    {
+      "key": "recommendation",
+      "heading": "Recommendation",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Lead with the answer: the strategy in three or four sentences (the challenge, the guiding policy, the few actions that matter most), what adopting it commits (money, people, time) and what it gives up. A reader who stops here should know what they are being asked to approve. Common failures: a recommendation buried at the end; a slogan in place of a policy; no statement of what it costs or what it rules out.",
+      "lengthHint": "One paragraph",
+      "elements": ["The strategy in brief: challenge, guiding policy, key actions", "What adopting it commits", "What it gives up or rules out", "The decision requested"],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Resources requested"]
+    },
+    {
+      "key": "diagnosis",
+      "heading": "Diagnosis",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Name the specific challenge the organization faces and explain why it exists, from evidence: customer, market, competitor, financial or operational facts in the sources. A good diagnosis simplifies a messy situation into the one or two issues that matter most and points toward what to do about them. Separate facts from interpretation and say what is uncertain. Common failures: a list of problems with no priority; a restated goal (\"we need to grow 20%\"); a diagnosis with no evidence; blaming outside forces with no account of the organization's own position.",
+      "lengthHint": "Half a page to one page",
+      "elements": ["The critical challenge named specifically", "Evidence for it from the sources", "Why the challenge exists (causes)", "What is uncertain"],
+      "sourcesNeeded": ["Market and customer research", "Financial and operating results", "Competitor information"],
+      "dataNeeded": ["Key metrics showing the challenge, with dates and sources"]
+    },
+    {
+      "key": "guiding-policy",
+      "heading": "Guiding Policy",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "State the overall approach that answers the diagnosis: where the organization will focus, the advantage it will build or use, and what it will deliberately not do. It should rule things out; a policy compatible with any action is not a policy. Show how it addresses the causes named in the diagnosis. Common failures: values or a vision statement in place of an approach; no trade-offs named; a policy that answers a different challenge from the one diagnosed.",
+      "lengthHint": "Half a page",
+      "elements": ["The approach chosen", "How it answers the diagnosed challenge", "The advantage it relies on", "What the organization will not do"],
+      "sourcesNeeded": ["Evidence of the organization's capabilities or advantages"],
+      "dataNeeded": []
+    },
+    {
+      "key": "coherent-actions",
+      "heading": "Coordinated Actions",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "List the few actions that carry out the policy, each with an owner, the resources it needs, timing and the near-term result that shows it is working. Show how they reinforce each other and which come first. Fewer, coordinated actions beat a long list. Common failures: unrelated initiatives gathered under one heading; actions with no owner or budget; actions that contradict the policy; everything starting at once.",
+      "lengthHint": "Half a page to one page; a table helps",
+      "elements": ["Each action with owner, resources and timing", "How actions support each other and their sequence", "Leading indicator for each action", "Each action traceable to the guiding policy"],
+      "sourcesNeeded": ["Budget and headcount plans"],
+      "dataNeeded": ["Resources per action", "Dates and milestones"]
+    },
+    {
+      "key": "alternatives-considered",
+      "heading": "Alternatives Considered",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Describe at least two real alternatives, one of them staying the course, and compare them with the recommendation on the same terms: how each addresses the diagnosis, cost, risk and what each gives up. Say why each was rejected. Common failures: strawman alternatives; no status quo; alternatives judged on criteria the recommendation was built to win.",
+      "lengthHint": "Half a page",
+      "elements": ["At least two real alternatives, including the status quo", "Comparison on the same criteria", "Reason each was rejected"],
+      "sourcesNeeded": [],
+      "dataNeeded": ["Cost or impact estimates for each alternative"]
+    },
+    {
+      "key": "risks-and-objections",
+      "heading": "Risks and Objections",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "State the three strongest objections in their strongest form, each from a specific stance (a competitor's likely response, a finance view of the trade-offs, an operator's view of execution, a customer's view), with the mechanism by which it would make the strategy fail, then the memo's answer or \"unanswered\". Add the assumptions the strategy most depends on and the evidence that would change the recommendation. Common failures: objections that fit any strategy (\"execution risk\"); weak objections set up to be knocked down; no signal for when to change course.",
+      "lengthHint": "Half a page",
+      "elements": ["Three strongest objections, each with stance and mechanism", "The memo's answer to each, or marked unanswered", "Key assumptions", "Evidence that would change the recommendation"],
+      "sourcesNeeded": ["Competitor analysis", "Customer feedback"],
+      "dataNeeded": []
+    },
+    {
+      "key": "results-review",
+      "heading": "Results Against Predictions",
+      "level": 2,
+      "order": 80,
+      "required": false,
+      "guidance": "Include for a review of a strategy already in use. Set what the strategy predicted (results, milestones, competitor and customer responses) beside what happened, with data, and say whether the diagnosis still holds, the policy still fits and which actions to keep, change or stop. Common failures: results reported without the original predictions; success claimed from metrics the strategy never targeted.",
+      "lengthHint": "Half a page to one page",
+      "elements": ["Original predictions or targets", "Actual results with data", "Whether the diagnosis and policy still hold", "Actions to keep, change or stop"],
+      "sourcesNeeded": ["The original strategy document", "Performance reports"],
+      "dataNeeded": ["Predicted versus actual figures"]
+    }
+  ],
+  "rubric": [
+    {
+      "key": "kernel-coherence",
+      "criterion": "Coherence of the three parts: the diagnosis names a specific challenge, the guiding policy answers it and rules things out, and the actions follow from the policy and support each other.",
+      "levels": [
+        { "score": 4, "descriptor": "Each part traces cleanly to the next; the policy rules out real options; actions reinforce each other and have owners, resources and timing." },
+        { "score": 3, "descriptor": "Coherent overall with one weak link, such as an action loosely tied to the policy." },
+        { "score": 2, "descriptor": "One part is missing or generic: a goal in place of a diagnosis, or a policy that rules nothing out." },
+        { "score": 1, "descriptor": "No identifiable diagnosis or policy; a list of initiatives or targets." }
+      ],
+      "appliesTo": ["diagnosis", "guiding-policy", "coherent-actions", "recommendation"]
+    },
+    {
+      "key": "evidence-based-diagnosis",
+      "criterion": "Diagnosis rests on evidence from the sources and separates fact from interpretation.",
+      "levels": [
+        { "score": 3, "descriptor": "Each key claim cites evidence; uncertainty is stated." },
+        { "score": 2, "descriptor": "Some key claims are asserted without evidence." },
+        { "score": 1, "descriptor": "Diagnosis is opinion or restated goals." }
+      ],
+      "appliesTo": ["diagnosis"]
+    },
+    {
+      "key": "real-alternatives",
+      "criterion": "Alternatives: real options, including the status quo, compared on the same criteria.",
+      "levels": [
+        { "score": 3, "descriptor": "At least two credible alternatives and the status quo, compared fairly, with reasons for rejection." },
+        { "score": 2, "descriptor": "Alternatives present but thin or compared on different criteria." },
+        { "score": 1, "descriptor": "No alternatives, or only strawmen." }
+      ],
+      "appliesTo": ["alternatives-considered"]
+    },
+    {
+      "key": "objections-strength",
+      "criterion": "Objections: specific, in their strongest form, each with a mechanism and an answer or marked unanswered.",
+      "levels": [
+        { "score": 3, "descriptor": "Three strong, specific objections from distinct stances with mechanisms; each answered or honestly marked unanswered." },
+        { "score": 2, "descriptor": "Objections are generic or answered weakly." },
+        { "score": 1, "descriptor": "No objections, or only ones that fit any strategy." }
+      ],
+      "appliesTo": ["risks-and-objections"]
+    }
+  ],
+  "provenance": {
+    "source": "hand-written; the diagnosis, guiding policy and coherent action structure follows the 'kernel' idea in Richard Rumelt, Good Strategy Bad Strategy (2011), described in own words (no text taken from the book)",
+    "url": "",
+    "license": "Own text",
+    "retrieved": "2026-10-08"
+  }
+}

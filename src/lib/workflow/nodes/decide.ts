@@ -48,7 +48,10 @@ export function decideUserPrompt(config: DecideConfig, m: DecideMaterial): strin
   const results = m.results.map((r) =>
     "check" in r
       ? `- ${r.label}${r.itemId ? ` (${r.itemId})` : ""}: ${r.status}. ${clip(r.rationale, 400)}`
-      : `- ${r.label}: ${r.ok === null ? "could not compute" : r.ok ? "ok" : "failed"}; expected ${r.expected}, actual ${r.actual}${r.approximate ? " (estimate)" : ""}. ${clip(r.detail, 300)}`,
+      : r.ok === null && !r.expected && r.actual
+        ? // A figure with nothing to check it against (a count, a ratio): the value itself.
+          `- ${r.label}: ${r.actual}${r.approximate ? " (estimate)" : ""}.`
+        : `- ${r.label}: ${r.ok === null ? "could not compute" : r.ok ? "ok" : "failed"}; expected ${r.expected}, actual ${r.actual}${r.approximate ? " (estimate)" : ""}. ${clip(r.detail, 300)}`,
   );
   if (results.length) out.push(tagBlock("data", defuseAll(results.join("\n")), { role: "results" }));
   const reviews: string[] = [];

@@ -1,0 +1,409 @@
+{
+  "key": "type-diataxis-explanation",
+  "version": 1,
+  "title": "Explanation soundness check",
+  "summary": "Whether the explanation is sound: the question it answers and its boundary, a claim map with each claim marked sourced, common knowledge, opinion or unsupported, a trace of factual claims to the linked sources, a reasoning check, an explain-back by a reader using the text alone, and a type check for instructions and reference tables. A subject expert confirms flagged factual claims when no source supports them.",
+  "kind": "type",
+  "appliesTo": [
+    "diataxis-explanation"
+  ],
+  "outcome": {
+    "label": "Soundness",
+    "values": [
+      {
+        "key": "sound",
+        "label": "Sound"
+      },
+      {
+        "key": "sound_with_gaps",
+        "label": "Sound with gaps"
+      },
+      {
+        "key": "unsound",
+        "label": "Unsound"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Subject expert",
+    "required": false
+  },
+  "requirementSets": [
+    "diataxis-framework"
+  ],
+  "notAssessed": [
+    "Whether the author's opinions are right: the check is that opinion is marked as opinion.",
+    "Claims about systems or history that no linked source covers, until the subject expert confirms them."
+  ],
+  "notes": [
+    "Opinion and perspective belong in explanation; flagged only when presented as fact.",
+    "The subject expert checkpoint opens only when the trace flags claims; otherwise the author accepts or dismisses each finding.",
+    "Offer flagged instructional passages to Restructure to type as the seed of a how-to guide or reference."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "q",
+      "node": "step.extract",
+      "label": "Question and boundary",
+      "config": {
+        "item": "question",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "topic-and-question"
+        ],
+        "maxItems": 1,
+        "instructions": "Take the question the piece answers and the boundary it draws from the title and opening.",
+        "fields": [
+          {
+            "name": "question",
+            "label": "Question",
+            "type": "text",
+            "description": "The why or about question the piece answers",
+            "required": true
+          },
+          {
+            "name": "in_scope",
+            "label": "In scope",
+            "type": "text",
+            "description": "What the piece says it covers"
+          },
+          {
+            "name": "out_of_scope",
+            "label": "Out of scope",
+            "type": "text",
+            "description": "What the piece says it leaves to other pages"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "claims",
+      "node": "step.extract",
+      "label": "Claim map",
+      "config": {
+        "item": "claim",
+        "from": [
+          "document"
+        ],
+        "maxItems": 80,
+        "instructions": "List each substantive claim (facts, history, reasons for decisions, comparisons, judgments) and how the text supports it.",
+        "fields": [
+          {
+            "name": "claim",
+            "label": "Claim",
+            "type": "text",
+            "description": "The claim as written",
+            "required": true
+          },
+          {
+            "name": "support",
+            "label": "Support",
+            "type": "enum",
+            "description": "How the text supports it",
+            "values": [
+              "sourced",
+              "common_knowledge",
+              "stated_opinion",
+              "unsupported"
+            ],
+            "required": true
+          },
+          {
+            "name": "depends_on",
+            "label": "Depends on",
+            "type": "text",
+            "description": "Earlier claims this one rests on, if any"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "tr",
+      "node": "step.trace",
+      "label": "Trace claims",
+      "config": {
+        "against": "sources",
+        "question": "Do the linked sources support this claim as stated? Opinion marked as opinion passes as stated_opinion; mark contradicted when a source says otherwise.",
+        "statuses": [
+          {
+            "key": "supported",
+            "label": "Supported by a source",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "stated_opinion",
+            "label": "Marked as opinion",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "unsupported",
+            "label": "No support found",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "contradicted",
+            "label": "Contradicted by a source",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "no_source",
+            "label": "No sources linked",
+            "ok": false,
+            "severity": "minor"
+          }
+        ],
+        "unverifiedStatus": "no_source"
+      },
+      "in": {
+        "items": "claims.items",
+        "sources": "src.sources",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "reason",
+      "node": "step.check",
+      "label": "Reasoning",
+      "config": {
+        "checklist": [
+          {
+            "key": "bounded",
+            "label": "Bounded topic",
+            "question": "Does the piece state the question it answers and keep to that boundary?",
+            "severity": "minor",
+            "appliesTo": [
+              "topic-and-question"
+            ]
+          },
+          {
+            "key": "conclusions_follow",
+            "label": "Conclusions follow",
+            "question": "Do the conclusions follow from the claims made? Name any step that does not.",
+            "severity": "major"
+          },
+          {
+            "key": "alternatives",
+            "label": "Alternatives and trade-offs",
+            "question": "Are alternatives and trade-offs considered for the main decisions, rather than one design defended alone?",
+            "severity": "major",
+            "appliesTo": [
+              "decisions-and-alternatives"
+            ]
+          },
+          {
+            "key": "opinion_marked",
+            "label": "Opinion marked",
+            "question": "Is opinion marked as opinion, rather than presented as fact?",
+            "severity": "minor"
+          },
+          {
+            "key": "history_sourced",
+            "label": "History sourced",
+            "question": "Are historical statements and dates attributed to a source rather than asserted from memory?",
+            "severity": "minor",
+            "appliesTo": [
+              "context-and-background"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "claims.items"
+      }
+    },
+    {
+      "id": "back",
+      "node": "step.simulate",
+      "label": "Explain-back",
+      "config": {
+        "persona": "an interested reader who knows the product's basics but not this topic, with only the text",
+        "task": "Read the explanation once, then answer each question from the text alone, without outside knowledge.",
+        "records": "answers",
+        "rules": [
+          "answer only from the text",
+          "say \"not answered\" when the text does not give the answer"
+        ],
+        "questions": [
+          "What question does this piece answer, and where does its topic stop?",
+          "Why is the subject designed or done the way it is, according to the text?",
+          "What alternative was considered, and why was it not chosen?",
+          "What trade-off does the current approach accept?",
+          "How does this topic connect to a related concept the text mentions?"
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "q.items"
+      }
+    },
+    {
+      "id": "type",
+      "node": "step.classify",
+      "label": "Type check",
+      "config": {
+        "unit": "paragraph",
+        "instructions": "Classify each passage by its Diátaxis role in an explanation.",
+        "categories": [
+          {
+            "key": "discussion",
+            "label": "Discussion",
+            "description": "Context, reasons, connections, alternatives or perspective",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "illustration",
+            "label": "Illustration",
+            "description": "An analogy, short example or diagram description that supports understanding",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "instruction",
+            "label": "Instruction",
+            "description": "Step-by-step directions for a task",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "a how-to guide"
+          },
+          {
+            "key": "reference",
+            "label": "Reference",
+            "description": "Option lists, parameter tables or facts to look up",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "a reference"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "flagged",
+      "node": "logic.if",
+      "label": "Any claims flagged?",
+      "config": {
+        "operator": "not_empty",
+        "value": ""
+      },
+      "in": {
+        "value": "tr.findings"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "unsound",
+            "when": {
+              "findings": {
+                "kind": [
+                  "contradicted"
+                ],
+                "min": 1
+              }
+            }
+          },
+          {
+            "value": "sound_with_gaps",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "major",
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "findings": {
+                    "kind": [
+                      "unanswered",
+                      "unsupported"
+                    ],
+                    "min": 1
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "fallback": "sound"
+      },
+      "in": {
+        "findings": [
+          "tr.findings",
+          "reason.findings",
+          "back.findings",
+          "type.findings"
+        ],
+        "results": [
+          "reason.results"
+        ],
+        "tables": [
+          "tr.table",
+          "reason.table",
+          "back.table",
+          "type.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Expert confirms flagged claims",
+      "config": {
+        "signsOutcome": false,
+        "allowExclude": true,
+        "editable": "none",
+        "instructions": "Confirm or correct each flagged factual claim that no linked source supports. Leave out any you cannot judge.",
+        "recordFields": [
+          {
+            "key": "signed_name",
+            "label": "Name and area of expertise",
+            "required": true
+          }
+        ]
+      },
+      "in": {
+        "items": "flagged.true",
+        "after": "flagged.true"
+      }
+    }
+  ]
+}

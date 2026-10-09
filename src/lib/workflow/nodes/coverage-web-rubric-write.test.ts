@@ -149,6 +149,24 @@ describe("rubric.score", () => {
     ]);
   });
 
+  it("tells the model which text carries citations, like the Check route (stale ones marked)", async () => {
+    const cite = { type: "citation", attrs: { kind: "passage", passageId: "S1a2b3c4d.P1", sourceId: "gone", dataTableId: null, quote: null, verified: true } };
+    const content = [heading("Summary", "s1", "summary"), { type: "paragraph", content: [{ type: "text", text: "Demand rose 12% last year.", marks: [cite] }] }, heading("Budget", "b1", "budget"), para("Costs.")];
+    const { doc } = await makeDocument({ typeKey: "proposal", content });
+    const D = snapshotDocument(doc, fileTypeByKey("proposal")!, 8000);
+    claudeJson.mockResolvedValue({ data: { scores: [] }, usage: USAGE });
+    await rubricScore({ document: D }, nodeOf("rubric.score", { scope: "document", criteria: [] }), ctxFor(doc.id));
+    const user = claudeJson.mock.calls[0][0].user as string;
+    expect(user).toContain("<citations>");
+    expect(user).toContain("“Demand rose 12% last year.” cites [1] Deleted source (no longer holds)");
+
+    // Drafted scope: only what the drafted sections cite (here Budget, which cites nothing).
+    claudeJson.mockClear();
+    const drafts = [{ sectionId: "b1", specKey: "budget", heading: "Budget", level: 2, markdown: "We request £40,000.", trace: [], unsourced: 0 }];
+    await rubricScore({ document: D, drafts: [drafts] }, nodeOf("rubric.score", { scope: "drafted", criteria: [] }), ctxFor(doc.id));
+    expect(claudeJson.mock.calls[0][0].user as string).not.toContain("<citations>");
+  });
+
   it("scope drafted with no drafts makes no call", async () => {
     const { doc } = await makeDocument({ typeKey: "proposal" });
     const D = snapshotDocument(doc, fileTypeByKey("proposal")!, 8000);

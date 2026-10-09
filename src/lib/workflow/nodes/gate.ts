@@ -10,14 +10,39 @@ import type { EvidenceLink, GateItem, GateReport } from "../contract";
 import type { NodeHandler } from "../context";
 import type { GateInput } from "../node-specs/steps";
 import { GATE_SYSTEM, defuseAll, notesBlock, tagBlock } from "./prompts";
-import { asDoc, asNotes, asSources, asTables, callOpts, clip, contains, EvidenceIndex } from "./util";
+import { asDoc, asNotes, asSources, asTables, callOpts, clip, containsKeyword, EvidenceIndex } from "./util";
 import type { DocSnapshot, NotesView, SourceView, TableView } from "./types";
 
 export type GateMaterial = { doc: DocSnapshot | null; sources: SourceView[]; tables: TableView[]; notes: NotesView | null };
 
 const ev = (kind: EvidenceLink["kind"], ref: string, label: string, quote = "", sourceId: string | null = null): EvidenceLink => ({ kind, ref, label: clip(label, 300), quote, sourceId, page: null, stance: "for", verified: true });
 
-const firstMatch = (texts: Array<string | null | undefined>, words: string[]) => words.find((w) => texts.some((t) => t && contains(t, w)));
+const PLACEHOLDER = /\[[^\]\n]{1,80}\]/g;
+
+/**
+ * Pure: the text without the type's unfilled template lines. A scaffold row
+ * ("Most recent evaluation\t[YYYY-MM-DD]", "**Date:** [Date]") names the
+ * input it asks for, so keywords would find the input in the template itself.
+ * A line goes when it has a [placeholder] and nothing but placeholders and
+ * punctuation after its label (the first cell, or the text before a colon).
+ * Table cells end in a newline in the plain text ("Label\n\t[Value]"), so a
+ * row is joined back onto one line first.
+ */
+export function withoutTemplateLines(text: string): string {
+  return text
+    .replace(/\n+\t/g, "\t")
+    .split("\n")
+    .filter((line) => {
+      if (!line.match(PLACEHOLDER)) return true;
+      const cells = line.split("\t");
+      const colon = line.indexOf(":");
+      const value = cells.length > 1 ? cells.slice(1).join(" ") : colon >= 0 ? line.slice(colon + 1) : line;
+      return /[\p{L}\p{N}]/u.test(value.replace(PLACEHOLDER, ""));
+    })
+    .join("\n");
+}
+
+const firstMatch = (texts: Array<string | null | undefined>, words: string[]) => words.find((w) => texts.some((t) => t && containsKeyword(t, w)));
 
 /** Pure: where keywords find one input, as evidence links (empty: not found). */
 export function keywordEvidence(input: GateInput, m: GateMaterial): EvidenceLink[] {
@@ -67,7 +92,7 @@ export function keywordEvidence(input: GateInput, m: GateMaterial): EvidenceLink
     case "any": {
       const found = [...bySource(), ...(words.length ? byData() : []), ...bySection(), ...byNotes()];
       if (found.length || !words.length || !m.doc) return found;
-      const w = firstMatch([m.doc.text], words);
+      const w = firstMatch([withoutTemplateLines(m.doc.text)], words);
       return w ? [ev("document", "doc", m.doc.title || "Document", w)] : [];
     }
   }
@@ -99,8 +124,8 @@ export function gateUserPrompt(missing: GateInput[], m: GateMaterial): string {
   out.push(tagBlock("sources", sources.join("\n") || "(no sources are linked)"));
   if (m.tables.length) out.push(tagBlock("data", m.tables.map((t) => tagBlock("table", defuseAll(t.columns.map((c) => c.label).join(", ")), { id: t.id, name: t.name })).join("\n")));
   if (m.doc) {
-    const sections = m.doc.sections.map((s) => tagBlock("section", defuseAll(clip(s.text, 300) || "(empty)"), { id: s.sectionId, heading: s.heading }));
-    out.push(tagBlock("document", sections.join("\n") || defuseAll(clip(m.doc.text, 1500) || "(empty)"), { title: m.doc.title || "Untitled" }));
+    const sections = m.doc.sections.map((s) => tagBlock("section", defuseAll(clip(withoutTemplateLines(s.text).trim(), 300) || "(empty)"), { id: s.sectionId, heading: s.heading }));
+    out.push(tagBlock("document", sections.join("\n") || defuseAll(clip(withoutTemplateLines(m.doc.text).trim(), 1500) || "(empty)"), { title: m.doc.title || "Untitled" }));
   }
   out.push(notesBlock(m.notes));
   return out.join("\n\n");

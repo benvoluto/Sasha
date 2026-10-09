@@ -6,8 +6,9 @@
 // CONTRACT (Phase 7): see phase7-spec.md §4. Owned by the export track.
 
 import { z } from "zod";
-import { CITATION_MARK, citationAttrs, citationHref, citationKey, collectCitations, type CitedReference, type ResolvedReference } from "@/lib/citations/contract";
+import { CITATION_MARK, citationAttrs, citationKey, collectCitations, type CitedReference, type ResolvedReference } from "@/lib/citations/contract";
 import type { PMNode } from "@/lib/documents/sections";
+import { markdownToPlain } from "./plain-text";
 
 export const EXPORT_FORMATS = ["md", "docx", "pdf", "html"] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
@@ -137,7 +138,37 @@ export function tableLinkCitation(href: unknown): { sourceId: string; dataTableI
   return sourceId && dataTableId ? { sourceId, dataTableId } : null;
 }
 
-/** Pure: a copy of `doc` where every legacy table link also carries a table citation mark. */
+/**
+ * True for a link into the app's library (`/library…`, relative, or absolute on
+ * `origin` when given). Exports never carry these (Phase 8): a reader outside
+ * the app can't open them.
+ */
+export function isLibraryHref(href: unknown, origin?: string): boolean {
+  if (typeof href !== "string") return false;
+  const h = href.replace(/[\u0000- \u007f]/g, "");
+  let url: URL;
+  try {
+    url = new URL(h, "http://local.invalid");
+  } catch {
+    return false;
+  }
+  const local = url.origin === "http://local.invalid" && !/^[a-z][a-z0-9+.-]*:/i.test(h) && !h.startsWith("//");
+  let same = false;
+  if (origin) {
+    try {
+      same = url.origin === new URL(origin).origin;
+    } catch {
+      same = false;
+    }
+  }
+  return (local || same) && (url.pathname === "/library" || url.pathname.startsWith("/library/"));
+}
+
+/**
+ * Pure: a copy of `doc` where every legacy table link carries a table citation
+ * mark instead, and no link into the library is left (its text stays, as text):
+ * a data table's "Source:" line exports as the table title, source and page.
+ */
 export function withTableLinkCitations(doc: PMNode): PMNode {
   const visit = (n: PMNode): PMNode => {
     let marks = n.marks;
@@ -147,6 +178,7 @@ export function withTableLinkCitations(doc: PMNode): PMNode {
       const has = marks.some((m) => m.type === CITATION_MARK && citationKey(citationAttrs(m.attrs)) === `t:${table.dataTableId}`);
       if (!has) marks = [...marks, { type: CITATION_MARK, attrs: { kind: "table", passageId: null, sourceId: table.sourceId, dataTableId: table.dataTableId, quote: null, verified: false } }];
     }
+    if (marks && link && isLibraryHref(link.attrs?.href)) marks = marks.filter((m) => m !== link);
     return { ...n, ...(marks ? { marks } : {}), ...(n.content ? { content: n.content.map(visit) } : {}) };
   };
   return visit(doc);
@@ -200,25 +232,51 @@ const cut = (s: string, max: number) => {
   return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat;
 };
 
-/** "Q3 Industry Report, p. 4", or for a table "Table “Prices 2025”, Pricing workbook.xlsx". */
-export function referenceLabel(r: ResolvedReference): string {
+/**
+ * A reference as the exports and the rubric check see it: resolveReferences
+ * also gives an uploaded file's name (absent on references built elsewhere).
+ */
+export type ExportReference = ResolvedReference & { fileName?: string | null };
+
+/** A URL source's own address, when it is a plain http(s) URL; never a link into the app. */
+export function sourceAddress(r: Pick<ResolvedReference, "sourceUrl">): string | null {
+  const u = r.sourceUrl?.trim();
+  if (!u || !/^https?:\/\//i.test(u)) return null;
+  try {
+    return new URL(u).href;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * "Q3 Industry Report (q3.pdf), p. 4" for an uploaded file, "Rates explained,
+ * https://example.org/rates" for a URL source, and for a table "Table “Prices
+ * 2025”, Pricing (prices.xlsx)". Never an in-app link.
+ */
+export function referenceLabel(r: ExportReference): string {
   const page = r.page !== null && r.page !== undefined ? `, p. ${r.page}` : "";
   // Titles come from source records and may hold newlines: one line always,
   // so no exporter can have a title end a list item or a link definition.
   const title = flatten(r.sourceTitle);
-  if (r.kind === "table") return `Table “${flatten(r.tableName ?? "") || "Table"}”, ${title}${page}`;
-  return `${title}${page}`;
+  const file = flatten(r.fileName ?? "");
+  const named = file && file !== title ? `${title} (${file})` : title;
+  const address = sourceAddress(r);
+  const at = address && address !== title && r.sourceUrl?.trim() !== title ? `, ${address}` : "";
+  if (r.kind === "table") return `Table “${flatten(r.tableName ?? "") || "Table"}”, ${named}${page}`;
+  return `${named}${page}${at}`;
 }
 
-/** The excerpt printed with a passage reference: the quote relied on, else the passage, cut to `max`. */
+/** The excerpt printed with a passage reference: the quote relied on, else the passage, as plain text cut to `max`. */
 export function referenceExcerpt(r: ResolvedReference, max = 200): string | null {
   if (r.kind === "table") return null;
   const text = r.quote ?? r.excerpt;
-  return text?.trim() ? `“${cut(text, max)}”` : null;
+  const plain = text ? markdownToPlain(text) : "";
+  return plain.trim() ? `“${cut(plain, max)}”` : null;
 }
 
 /** One reference as a line of text: label, then the excerpt. */
-export function referenceLine(r: ResolvedReference, max = 200): string {
+export function referenceLine(r: ExportReference, max = 200): string {
   const excerpt = referenceExcerpt(r, max);
   return excerpt ? `${referenceLabel(r)}. ${excerpt}` : referenceLabel(r);
 }
@@ -243,6 +301,8 @@ export function staleNote(refs: ResolvedReference[]): string | null {
  */
 export function safeHref(href: unknown, origin: string): string | null {
   if (typeof href !== "string") return null;
+  // Links into the app's library are never exported (Phase 8).
+  if (isLibraryHref(href, origin)) return null;
   // Browsers ignore control characters and spaces inside a scheme ("java\tscript:").
   const h = href.replace(/[\u0000- \u007f]/g, "");
   if (!h) return null;
@@ -262,8 +322,12 @@ export function safeHref(href: unknown, origin: string): string | null {
   }
 }
 
-/** Where a reference points: the library (absolute) for a known source, else the source's own URL. */
+/**
+ * Where a reference points: a URL source's own address, else nothing. Never
+ * the in-app library (Phase 8): an uploaded file is cited by its title, file
+ * name and page instead.
+ */
 export function referenceHref(r: ResolvedReference, origin: string): string | null {
-  const href = citationHref(r);
-  return (href ? safeHref(href, origin) : null) ?? safeHref(r.sourceUrl, origin);
+  const address = sourceAddress(r);
+  return address ? safeHref(address, origin) : null;
 }

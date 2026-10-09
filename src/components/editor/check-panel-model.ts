@@ -87,6 +87,33 @@ export function changedSections(fingerprints: Record<string, string>, current: (
     .map(([id]) => id);
 }
 
+/**
+ * Pure: is the stored result still current for the editor? No section in it
+ * changed, and (for the whole document, `sectionIds` the editor's sections)
+ * no section was added since. The panel then shows it without "Checking for
+ * changes…" and refreshes quietly (the server may still find a change the
+ * fingerprints don't cover: the text before the first heading, a citation,
+ * the type).
+ */
+export function storedIsCurrent(fingerprints: Record<string, string>, current: (sectionId: string) => string | null, sectionIds: string[] | null = null): boolean {
+  if (changedSections(fingerprints, current).length) return false;
+  return !sectionIds || sectionIds.every((id) => id in fingerprints);
+}
+
+/** A quiet refresh still running after this long has gone to the model: the panel then says it is checking. */
+export const QUIET_CHECK_GRACE_MS = 2500;
+
+/**
+ * The line shown while the panel works, or null for none: "loading" reads the
+ * stored result, "checking" runs a check, "quiet" refreshes a current result
+ * (nothing shown).
+ */
+export function checkingText(phase: "loading" | "checking" | "quiet" | null, hasResult: boolean): string | null {
+  if (phase === null || phase === "quiet") return null;
+  if (hasResult) return "Checking for changes…";
+  return phase === "loading" ? "Loading…" : "Checking against the rubric… this can take a minute.";
+}
+
 export type ApplyState = { enabled: boolean; reason: string | null };
 
 /** Apply is off with no fix, no fix section, a deleted section, or one being written now. */

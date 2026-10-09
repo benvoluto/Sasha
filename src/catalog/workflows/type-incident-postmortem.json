@@ -1,0 +1,694 @@
+{
+  "key": "type-incident-postmortem",
+  "version": 1,
+  "title": "Postmortem readiness",
+  "summary": "Whether the postmortem is ready to publish: a sourced timeline in order, impact figures that agree across sections, contributing causes each traced to an action item or an accepted risk, action items each with an owner, a due date and a cause, and blameless wording. A responder and a service owner review independently; the incident owner signs off and each action owner accepts their item.",
+  "kind": "type",
+  "appliesTo": [
+    "incident-postmortem"
+  ],
+  "outcome": {
+    "label": "Readiness",
+    "values": [
+      {
+        "key": "ready_to_publish",
+        "label": "Ready to publish"
+      },
+      {
+        "key": "gaps_found",
+        "label": "Gaps found"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Incident owner",
+    "required": true
+  },
+  "requirementSets": [],
+  "notAssessed": [
+    "Whether the stated causes are the true causes: only the responders and the evidence can settle that; disputed causes are shown with both rationales.",
+    "Whether action items get done: track them in the issue tracker."
+  ],
+  "notes": [
+    "Several contributing causes are normal; a single root cause is a warning sign.",
+    "Timeline order is checked in code by date only. Time to detect, mitigate and resolve are not yet recomputed in code (the compute step has no duration check); the responder reviewer checks them against the timeline.",
+    "Keep customer and personal data out of the postmortem."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: timeline source and impact data",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "timeline_source",
+            "label": "A timeline source (alerts, chat log, tickets)",
+            "kind": "any",
+            "match": [
+              "alert",
+              "chat log",
+              "slack",
+              "pager",
+              "ticket",
+              "deploy log"
+            ],
+            "help": "Link the alert history, incident chat export or ticket so the timeline rests on records, not memory."
+          },
+          {
+            "key": "impact_data",
+            "label": "Impact data",
+            "kind": "any",
+            "match": [
+              "dashboard",
+              "metrics",
+              "error rate",
+              "requests",
+              "impact"
+            ],
+            "help": "Link the metrics or dashboard export behind the impact figures."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables"
+      }
+    },
+    {
+      "id": "tl",
+      "node": "step.extract",
+      "label": "Timeline",
+      "config": {
+        "item": "event",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "timeline"
+        ],
+        "maxItems": 60,
+        "instructions": "One row per timeline entry, in the order the document lists them. Give each an id (E1, E2…) and name the entry before it as previous.",
+        "fields": [
+          {
+            "name": "id",
+            "label": "Id",
+            "type": "text",
+            "description": "E1, E2… in document order",
+            "required": true
+          },
+          {
+            "name": "timestamp",
+            "label": "Time",
+            "type": "date",
+            "description": "The entry's date and time as written",
+            "required": true
+          },
+          {
+            "name": "event",
+            "label": "Event",
+            "type": "text",
+            "description": "What happened",
+            "required": true
+          },
+          {
+            "name": "source",
+            "label": "Source",
+            "type": "text",
+            "description": "The record the entry cites"
+          },
+          {
+            "name": "marker",
+            "label": "Marker",
+            "type": "enum",
+            "description": "Whether it marks a key moment",
+            "values": [
+              "impact_start",
+              "detection",
+              "mitigation",
+              "resolution",
+              "other"
+            ]
+          },
+          {
+            "name": "previous",
+            "label": "Previous entry",
+            "type": "text",
+            "description": "The id of the entry listed before it"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "causes",
+      "node": "step.extract",
+      "label": "Contributing causes",
+      "config": {
+        "item": "cause",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "contributing-causes"
+        ],
+        "maxItems": 20,
+        "instructions": "One row per contributing cause the document names.",
+        "fields": [
+          {
+            "name": "cause",
+            "label": "Cause",
+            "type": "text",
+            "description": "The cause as written",
+            "required": true
+          },
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "Trigger or underlying condition",
+            "values": [
+              "trigger",
+              "condition"
+            ]
+          },
+          {
+            "name": "evidence",
+            "label": "Evidence",
+            "type": "text",
+            "description": "The evidence the document cites"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "actions",
+      "node": "step.extract",
+      "label": "Action items",
+      "config": {
+        "item": "action",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "action-items"
+        ],
+        "maxItems": 30,
+        "instructions": "One row per action item or accepted risk. Leave owner or due date empty when the document does not give one.",
+        "fields": [
+          {
+            "name": "action",
+            "label": "Action",
+            "type": "text",
+            "description": "The action as written",
+            "required": true
+          },
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "enum",
+            "description": "Prevent, detect, mitigate, process, or an accepted risk",
+            "values": [
+              "prevent",
+              "detect",
+              "mitigate",
+              "process",
+              "accepted_risk"
+            ]
+          },
+          {
+            "name": "owner",
+            "label": "Owner",
+            "type": "text",
+            "description": "The owner named"
+          },
+          {
+            "name": "due_date",
+            "label": "Due date",
+            "type": "date",
+            "description": "The due date given"
+          },
+          {
+            "name": "cause",
+            "label": "Cause addressed",
+            "type": "text",
+            "description": "The contributing cause the document ties it to"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "comp",
+      "node": "step.compute",
+      "label": "Timeline and figures",
+      "config": {
+        "checks": [
+          {
+            "kind": "date_order",
+            "key": "timeline_order",
+            "label": "Timeline in order",
+            "severity": "major",
+            "dateField": "timestamp",
+            "idField": "id",
+            "dependsOnField": "previous",
+            "labelField": "event"
+          },
+          {
+            "kind": "count",
+            "key": "detection_marked",
+            "label": "Detection marked in the timeline",
+            "severity": "major",
+            "where": {
+              "field": "marker",
+              "equals": "detection"
+            },
+            "min": 1
+          },
+          {
+            "kind": "count",
+            "key": "mitigation_marked",
+            "label": "Mitigation marked in the timeline",
+            "severity": "major",
+            "where": {
+              "field": "marker",
+              "equals": "mitigation"
+            },
+            "min": 1
+          },
+          {
+            "kind": "count",
+            "key": "resolution_marked",
+            "label": "Resolution marked in the timeline",
+            "severity": "minor",
+            "where": {
+              "field": "marker",
+              "equals": "resolution"
+            },
+            "min": 1
+          },
+          {
+            "kind": "numbers_match",
+            "key": "summary_figures",
+            "label": "Figures in the summary appear in the impact and timeline",
+            "severity": "major",
+            "fromSpecKeys": [
+              "summary"
+            ],
+            "toSpecKeys": [
+              "impact",
+              "timeline"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "tl.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "ncause",
+      "node": "step.compute",
+      "label": "More than one cause",
+      "config": {
+        "checks": [
+          {
+            "kind": "count",
+            "key": "several_causes",
+            "label": "Several contributing causes (a single root cause is a warning sign)",
+            "severity": "minor",
+            "min": 2
+          }
+        ]
+      },
+      "in": {
+        "items": "causes.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "tr",
+      "node": "step.trace",
+      "label": "Causes and actions",
+      "config": {
+        "against": "targets",
+        "bothWays": true,
+        "question": "Which contributing cause does this action item (or accepted risk) address? Link it. Causes no action or accepted risk links to are flagged.",
+        "statuses": [
+          {
+            "key": "addresses_cause",
+            "label": "Addresses a named cause",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "loosely_related",
+            "label": "Only loosely related to a cause",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "no_cause",
+            "label": "Tied to no cause",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "unverified",
+            "label": "Could not be checked",
+            "ok": false,
+            "severity": "minor"
+          }
+        ],
+        "unverifiedStatus": "unverified"
+      },
+      "in": {
+        "items": "actions.items",
+        "targets": "causes.items",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "act",
+      "node": "step.check",
+      "label": "Action item check",
+      "config": {
+        "perItem": true,
+        "checklist": [
+          {
+            "key": "has_owner",
+            "label": "Owner named",
+            "question": "Does the action item name an owner?",
+            "severity": "major"
+          },
+          {
+            "key": "has_due_date",
+            "label": "Due date given",
+            "question": "Does the action item give a due date?",
+            "severity": "major"
+          },
+          {
+            "key": "concrete",
+            "label": "Concrete and checkable",
+            "question": "Is it a concrete change someone could verify as done, rather than an exhortation such as \"be more careful\" or \"improve monitoring\"?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "items": "actions.items",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "blame",
+      "node": "step.check",
+      "label": "Blameless check",
+      "config": {
+        "checklist": [
+          {
+            "key": "no_blame",
+            "label": "No blame on individuals",
+            "question": "Does any passage name or blame an individual for the incident, or judge a decision by what was learned later? Quote it.",
+            "severity": "major"
+          },
+          {
+            "key": "human_error_explained",
+            "label": "Human error explained by system factors",
+            "question": "If \"human error\" or a person's mistake is given as a cause, are the system factors that made it possible or likely described?",
+            "severity": "major",
+            "appliesTo": [
+              "contributing-causes"
+            ]
+          },
+          {
+            "key": "timeline_sourced",
+            "label": "Timeline entries sourced",
+            "question": "Does each timeline entry cite a record (alert, chat, log, ticket) rather than memory?",
+            "severity": "major",
+            "appliesTo": [
+              "timeline"
+            ]
+          },
+          {
+            "key": "one_time_zone",
+            "label": "One time zone",
+            "question": "Are all times given in one stated time zone?",
+            "severity": "minor",
+            "appliesTo": [
+              "timeline",
+              "incident-details"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "instructions": "Rate the postmortem from the document and the linked records. Cite the timeline entries, causes and actions you rely on.",
+        "strengthsAndWeaknesses": false,
+        "criteria": [
+          {
+            "key": "timeline_accuracy",
+            "label": "Timeline and what was known when",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "accurate",
+                "gaps",
+                "inaccurate"
+              ]
+            }
+          },
+          {
+            "key": "causes_complete",
+            "label": "Contributing causes complete",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "accurate",
+                "gaps",
+                "inaccurate"
+              ]
+            }
+          },
+          {
+            "key": "actions_effective",
+            "label": "Actions would prevent a repeat or shorten the next one",
+            "scale": {
+              "kind": "enum",
+              "values": [
+                "accurate",
+                "gaps",
+                "inaccurate"
+              ]
+            }
+          }
+        ],
+        "reviewers": [
+          {
+            "key": "responder",
+            "label": "Responder",
+            "brief": "Read as someone who was on call during the incident: check each timeline entry against the linked alerts, chat and tickets, and check that the text records what responders knew at each decision rather than what was learned afterwards."
+          },
+          {
+            "key": "owner",
+            "label": "Service owner",
+            "brief": "Read as the owner of the affected service: would these action items stop this incident happening again, or make the next one shorter and smaller? Flag contributing causes with no action and actions that would not change the system."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "items": "causes.items",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "agree",
+      "node": "step.agree",
+      "label": "Agreement on causes",
+      "config": {
+        "mode": "verdict",
+        "blockingVerdicts": [
+          "inaccurate"
+        ]
+      },
+      "in": {
+        "reviews": "rev.reviews"
+      }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Result",
+      "config": {
+        "values": [
+          "ready_to_publish",
+          "gaps_found"
+        ],
+        "guidance": "Choose ready_to_publish only when the timeline is sourced and in order, the summary's figures match the impact and timeline, every cause has an action or an accepted risk, every action has an owner, a due date and a cause, the text is blameless, and the reviewers agree the causes and actions hold. Otherwise gaps_found. In the rationale, list each gap and every disagreement on causes with both rationales; do not average them."
+      },
+      "in": {
+        "findings": [
+          "comp.findings",
+          "ncause.findings",
+          "tr.findings",
+          "act.findings",
+          "blame.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "comp.results",
+          "ncause.results",
+          "act.results",
+          "blame.results"
+        ],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "gaps_found",
+        "guards": [
+          {
+            "values": [
+              "ready_to_publish"
+            ],
+            "instead": "gaps_found",
+            "when": {
+              "anyOf": [
+                {
+                  "findings": {
+                    "severity": [
+                      "blocking"
+                    ],
+                    "min": 1
+                  }
+                },
+                {
+                  "findings": {
+                    "kind": [
+                      "has_owner",
+                      "has_due_date",
+                      "no_blame",
+                      "untraced_target"
+                    ],
+                    "min": 1
+                  }
+                }
+              ]
+            },
+            "reason": "an action item lacks an owner or due date, a cause has no action or accepted risk, or the text blames an individual."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": [
+          "comp.findings",
+          "ncause.findings",
+          "tr.findings",
+          "act.findings",
+          "blame.findings",
+          "agree.findings"
+        ],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": [
+          "comp.results",
+          "ncause.results"
+        ],
+        "tables": [
+          "tl.table",
+          "tr.table",
+          "act.table",
+          "blame.table",
+          "agree.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Incident owner sign-off",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Review the result, each gap and every disagreement on causes. Sign off as the incident owner, and record that each action item's owner has accepted it.",
+        "recordFields": [
+          {
+            "key": "signed_name",
+            "label": "Incident owner",
+            "required": true
+          },
+          {
+            "key": "action_owners_accepted",
+            "label": "Action owners who have accepted their items",
+            "required": true
+          },
+          {
+            "key": "publish_date",
+            "label": "Publish date",
+            "required": false
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome",
+        "after": "gate.pass"
+      }
+    }
+  ]
+}

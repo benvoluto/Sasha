@@ -17,6 +17,7 @@ import {
   continueBody,
   decidedTargets,
   decidedText,
+  mappingDropped,
   mappingGaps,
   mappingRows,
   pendingSigners,
@@ -280,6 +281,15 @@ function SignatureList({ signatures, pending, bare = false }: { signatures: Chec
   );
 }
 
+/** The headings a restructure removes (they hold no text of their own), shown before anything is applied. */
+export function DroppedWarning({ text }: { text: string }) {
+  return (
+    <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+      {text}
+    </p>
+  );
+}
+
 /** The restructure mapping: each part, where it moves (a select while editing) and why. Scrolls sideways inside its box. */
 export function MappingTable({
   plan,
@@ -296,6 +306,7 @@ export function MappingTable({
 }) {
   const rows = mappingRows(plan, sections, targets);
   const gaps = mappingGaps(plan, sections, targets);
+  const dropped = mappingDropped(plan);
   const heading = new Map(sections.map((s) => [s.key, s.heading]));
   // Keys the plan uses that the type list doesn't know (the catalog hasn't loaded, or the type changed).
   const options = [...sections, ...plan.rows.flatMap((r) => (r.target && !heading.has(r.target) ? [{ key: r.target, heading: r.target }] : []))];
@@ -356,6 +367,7 @@ export function MappingTable({
           Will be added empty: <span className="text-[var(--doc-ink)]">{gaps.join(", ")}</span>
         </p>
       )}
+      {dropped && <DroppedWarning text={dropped} />}
     </div>
   );
 }

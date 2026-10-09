@@ -1,0 +1,239 @@
+{
+  "key": "diataxis-reference",
+  "version": 1,
+  "title": "Reference (Diátaxis)",
+  "family": "technical",
+  "summary": "Technical reference that describes a product's machinery (API endpoints, commands, options, configuration keys, schemas) for a reader who looks things up while working. Each entry follows the same pattern: name, syntax, parameters with types and defaults, return values, errors. It describes and does not instruct or explain. Follows the reference form of the Diátaxis documentation framework.",
+  "signals": [
+    "API reference",
+    "command-line reference",
+    "configuration reference",
+    "parameters table",
+    "type, default, required",
+    "returns",
+    "error codes",
+    "enum values",
+    "deprecated since",
+    "syntax:",
+    "options and flags",
+    "schema reference",
+    "Diátaxis reference",
+    "endpoint, method, path"
+  ],
+  "audience": "Practitioners already using the product who need an exact fact (a parameter, a default, an error code) in the middle of their work, and who read entries rather than the page from start to end.",
+  "tone": "Austere, exact and neutral: short declarative statements, consistent wording, no opinion, marketing or narrative.",
+  "preamble": "You are a technical writer producing reference documentation in the Diátaxis sense: a description of the machinery that a working user consults. Describe and only describe: state what each item is, its syntax, its parameters, types, defaults, allowed values, return values, errors and limits, accurately and completely. Do not give instructions for tasks, explain why the design is the way it is, compare alternatives or offer opinions; where a reader needs those, link to the relevant how-to guide or explanation. Mirror the structure of the product (one entry per endpoint, command, class or setting, grouped the way the product groups them) and give every entry the same pattern and field order so readers find things where they expect them. Brief examples that show usage are welcome; keep them minimal and correct. Use warnings only where misuse causes harm, and state them plainly (\"must not\"). Take every name, type, default, value and code from the source of truth in the material (schema, OpenAPI file, CLI help, code signatures); never invent one, and write a visible placeholder such as \"[default needed]\" where the source is silent.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "overview",
+      "heading": "Overview",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "State in two to four sentences what this reference covers (which API, command set or configuration surface), for which product version, and where its source of truth lives (the schema, specification or code it was generated from or checked against). Name what is out of scope and link to the how-to guides and explanations that cover tasks and concepts. No tutorial content and no marketing.",
+      "lengthHint": "2–4 sentences",
+      "elements": [
+        "What the reference covers",
+        "Product version covered",
+        "Source of truth it reflects",
+        "Out of scope, with links to guides and explanations"
+      ],
+      "sourcesNeeded": [
+        "Specification, schema or code the reference reflects",
+        "Release notes for the version covered"
+      ],
+      "dataNeeded": [
+        "Version number"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "conventions",
+      "heading": "Conventions",
+      "level": 2,
+      "order": 20,
+      "required": false,
+      "guidance": "Define the notation and shared rules every entry relies on, once: how syntax is written (optional and repeated parts, placeholders), data types and formats, units, authentication or common headers, pagination, versioning and how deprecation is marked. Keep it to a short list or table so entries need not repeat it.",
+      "lengthHint": "A short list or table",
+      "elements": [
+        "Syntax notation",
+        "Data types, formats and units",
+        "Shared rules (authentication, pagination, versioning)",
+        "How deprecations are marked"
+      ],
+      "sourcesNeeded": [
+        "Specification or style conventions"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "entries",
+      "heading": "Reference Entries",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Write one entry per item, grouped and ordered as the product groups them, each under a ### heading with the item's exact name. Every entry uses the same fields in the same order: a one-sentence description of what it is or does; syntax or signature; a parameters table (name, type, required, default, allowed values, description); return value or response shape; side effects; errors it can raise; version added and deprecation where relevant; and a minimal example where it helps. State facts in short declarative sentences. Leave out task instructions and design rationale. Common failures: entries that drift into how-to steps; inconsistent field order or naming between entries; defaults and types that disagree with the source; items in the product missing from the reference.",
+      "lengthHint": "One consistent entry per item",
+      "elements": [
+        "One entry per item, grouped as the product groups them",
+        "Same fields in the same order in every entry",
+        "Parameters with type, required, default and allowed values",
+        "Return values or response shape",
+        "Errors and side effects",
+        "Version added and deprecation where relevant",
+        "No task instructions or design rationale"
+      ],
+      "sourcesNeeded": [
+        "OpenAPI file, schema, CLI help output or code signatures",
+        "Changelog or deprecation notices"
+      ],
+      "dataNeeded": [
+        "Every item's name, parameters, types, defaults and errors from the source of truth"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "errors-and-limits",
+      "heading": "Errors and Limits",
+      "level": 2,
+      "order": 40,
+      "required": false,
+      "guidance": "List the errors and limits that apply across entries in a table: code or name, meaning, and the condition that produces it; rate limits, size limits and quotas with their values and units. Describe each; do not give troubleshooting steps (link to the how-to guide instead).",
+      "lengthHint": "A table",
+      "elements": [
+        "Error codes with meaning and condition",
+        "Limits and quotas with values and units"
+      ],
+      "sourcesNeeded": [
+        "Error catalogue",
+        "Service limits documentation"
+      ],
+      "dataNeeded": [
+        "Limit values"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "examples",
+      "heading": "Examples",
+      "level": 2,
+      "order": 50,
+      "required": false,
+      "guidance": "Give a few minimal, complete examples that show typical usage of the items above (a request and its response, a command and its output, a configuration file). Each example is valid against the source of truth and labelled with what it shows. Do not turn examples into a walkthrough; one line of context each is enough.",
+      "lengthHint": "2–5 short code blocks",
+      "elements": [
+        "Minimal examples that are valid against the source",
+        "Each labelled with what it shows",
+        "Expected output or response where relevant"
+      ],
+      "sourcesNeeded": [
+        "Tested example requests or commands"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "related",
+      "heading": "Related",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "Link to the how-to guides, tutorials and explanations that use or discuss these items, each labelled with what the reader will find. Use only links in the material; write \"[link needed]\" where a known page has no URL.",
+      "lengthHint": "2–6 links",
+      "elements": [
+        "How-to guides that use these items",
+        "Explanations of the underlying concepts"
+      ],
+      "sourcesNeeded": [
+        "Documentation index"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "accuracy-to-source",
+      "criterion": "Accurate to the source of truth: every item, parameter, type, default, allowed value and error matches the specification or code, and nothing is missing.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every item in the source appears; names, types, defaults, enums and errors match exactly; deprecations are marked."
+        },
+        {
+          "score": 3,
+          "descriptor": "Matches the source except for one or two minor omissions or stale details."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several items are missing or several details disagree with the source."
+        },
+        {
+          "score": 1,
+          "descriptor": "The reference cannot be relied on: frequent mismatches or large gaps."
+        }
+      ],
+      "appliesTo": [
+        "entries",
+        "errors-and-limits",
+        "examples"
+      ]
+    },
+    {
+      "key": "consistent-structure",
+      "criterion": "Consistent, mirrored structure: entries follow one pattern and field order, names are uniform, and the grouping mirrors the product.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every entry has the same fields in the same order; naming and formatting are uniform; grouping matches the product's own structure."
+        },
+        {
+          "score": 3,
+          "descriptor": "One or two entries deviate from the pattern or naming."
+        },
+        {
+          "score": 2,
+          "descriptor": "Entries vary in fields and order often enough to slow lookup, or grouping ignores the product's structure."
+        },
+        {
+          "score": 1,
+          "descriptor": "No consistent pattern; each entry is written differently."
+        }
+      ],
+      "appliesTo": [
+        "conventions",
+        "entries"
+      ]
+    },
+    {
+      "key": "describe-only",
+      "criterion": "Describes only: no task instructions, explanation of design choices, opinion or marketing inside the reference.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Neutral description throughout; brief examples only; tasks and concepts are linked, not included."
+        },
+        {
+          "score": 3,
+          "descriptor": "Mostly descriptive, with an occasional instruction or rationale that could be a link."
+        },
+        {
+          "score": 2,
+          "descriptor": "Instructions or explanation interrupt entries often."
+        },
+        {
+          "score": 1,
+          "descriptor": "Reads as a guide or essay with reference facts buried inside."
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "Diátaxis documentation framework, \"Reference\" (Daniele Procida, diataxis.fr): principles paraphrased; the section list is own text following common technical-writing practice, not prescribed by Diátaxis",
+    "url": "https://diataxis.fr/reference/",
+    "license": "CC BY-SA 4.0 source (paraphrased, attributed to Daniele Procida, diataxis.fr); section list, guidance and rubric are own text",
+    "retrieved": "2026-10-08"
+  }
+}

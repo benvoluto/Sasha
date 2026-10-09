@@ -1,0 +1,559 @@
+{
+  "key": "type-iep",
+  "version": 1,
+  "title": "Needs-to-goals trace (IEP draft)",
+  "summary": "Checks a draft IEP before the team meets: every need from the evaluation and present levels maps to a measurable annual goal or a stated reason for none, and every goal has a documented need, a baseline on the same measure, a progress method and reporting schedule, and a service with start date, frequency, location and duration. The case manager approves the draft for the meeting; the team, including the parent, adopts or changes it there.",
+  "kind": "type",
+  "appliesTo": [
+    "iep"
+  ],
+  "outcome": {
+    "label": "Draft goal set",
+    "values": [
+      {
+        "key": "ready_for_meeting",
+        "label": "Draft ready for the IEP team meeting"
+      },
+      {
+        "key": "gaps_found",
+        "label": "Gaps found in the draft"
+      }
+    ]
+  },
+  "checkpoint": {
+    "role": "Case manager",
+    "required": true
+  },
+  "requirementSets": [
+    "idea-iep-34cfr"
+  ],
+  "notAssessed": [
+    "Eligibility, placement and the final goals and services: the IEP team, including the parent, decides them at the meeting.",
+    "Whether a goal is ambitious enough for the student: a team judgment the trace cannot make."
+  ],
+  "notes": [
+    "Label every output as a draft. A plan that looks finished before the meeting undercuts the parent's part in the decision.",
+    "Benchmarks or short-term objectives are required for students who take alternate assessments (34 CFR 300.320(a)(2)(ii)); transition goals by the IEP in effect at age 16, earlier in some states (300.320(b)).",
+    "The same trace (need, goal, measure, service) carries over to 504 plans, IFSPs and treatment plans with a different requirement set.",
+    "Student records are protected (FERPA): web lookups for this type use only public regulations and guidance, and carry no student details."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "notes",
+      "node": "doc.notes",
+      "label": "Notes"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source passages"
+    },
+    {
+      "id": "data",
+      "node": "data.list",
+      "label": "Linked data"
+    },
+    {
+      "id": "req",
+      "node": "requirements.read",
+      "label": "Requirements",
+      "config": {
+        "sets": [
+          "idea-iep-34cfr"
+        ]
+      }
+    },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: evaluation and present levels",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "evaluation",
+            "label": "A current evaluation with identified needs",
+            "kind": "any",
+            "match": [
+              "evaluation",
+              "FIE",
+              "evaluation report",
+              "reevaluation"
+            ],
+            "help": "Link the most recent evaluation report (or reevaluation) that identifies the student's needs."
+          },
+          {
+            "key": "present_levels",
+            "label": "Present levels of performance",
+            "kind": "section",
+            "specKeys": [
+              "present-levels"
+            ],
+            "match": [
+              "present levels",
+              "PLAAFP"
+            ],
+            "help": "Draft the present levels from current data before checking goals."
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "data": "data.tables",
+        "notes": "notes.notes"
+      }
+    },
+    {
+      "id": "needs",
+      "node": "step.extract",
+      "label": "Needs",
+      "config": {
+        "item": "need",
+        "from": [
+          "sources",
+          "document"
+        ],
+        "sectionKeys": [
+          "present-levels",
+          "special-factors"
+        ],
+        "maxItems": 40,
+        "instructions": "List each need the evaluation identifies and each need stated in the present levels, with the data behind it. Merge duplicates; keep the evaluation's wording where possible. When the draft states why a need has no annual goal (met through accommodations, services or another goal), give that reason; otherwise leave it empty.",
+        "fields": [
+          {
+            "name": "need",
+            "label": "Need",
+            "type": "text",
+            "description": "The need, as stated",
+            "required": true
+          },
+          {
+            "name": "area",
+            "label": "Area",
+            "type": "text",
+            "description": "Reading, writing, math, communication, behavior, motor, daily living and so on"
+          },
+          {
+            "name": "data",
+            "label": "Present-level data",
+            "type": "text",
+            "description": "The current measure and result behind the need"
+          },
+          {
+            "name": "data_date",
+            "label": "Data date",
+            "type": "date",
+            "description": "The date of that data"
+          },
+          {
+            "name": "source",
+            "label": "Source",
+            "type": "text",
+            "description": "Evaluation, progress report, assessment, teacher or parent input"
+          },
+          {
+            "name": "reason_no_goal",
+            "label": "Reason for no goal",
+            "type": "text",
+            "description": "The reason the draft states for addressing this need without an annual goal; empty when it states none"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "goals",
+      "node": "step.extract",
+      "label": "Goals",
+      "config": {
+        "item": "goal",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "annual-goals",
+          "progress-reporting",
+          "services"
+        ],
+        "maxItems": 30,
+        "instructions": "List each proposed annual goal with its parts, its baseline, how progress is measured and reported, and the service that supports it, as the draft states them. Leave a field empty when the draft does not state it.",
+        "fields": [
+          {
+            "name": "goal",
+            "label": "Goal",
+            "type": "text",
+            "description": "The goal as written",
+            "required": true
+          },
+          {
+            "name": "need",
+            "label": "Need addressed",
+            "type": "text",
+            "description": "The need the goal names"
+          },
+          {
+            "name": "condition",
+            "label": "Condition",
+            "type": "text",
+            "description": "Given what, in what setting"
+          },
+          {
+            "name": "behavior",
+            "label": "Behavior",
+            "type": "text",
+            "description": "The behavior the student will show"
+          },
+          {
+            "name": "criterion",
+            "label": "Criterion",
+            "type": "text",
+            "description": "How well, how often, on what measure"
+          },
+          {
+            "name": "target_date",
+            "label": "Target date",
+            "type": "date",
+            "description": "The date the goal is to be met by"
+          },
+          {
+            "name": "baseline",
+            "label": "Baseline",
+            "type": "text",
+            "description": "Current performance on the goal's measure"
+          },
+          {
+            "name": "progress_method",
+            "label": "Progress measure",
+            "type": "text",
+            "description": "How progress is measured"
+          },
+          {
+            "name": "report_schedule",
+            "label": "Reported to parent",
+            "type": "text",
+            "description": "When progress reports go to the parent"
+          },
+          {
+            "name": "service",
+            "label": "Service",
+            "type": "text",
+            "description": "The service or support behind the goal, with start date, frequency, location and duration if stated"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "trace",
+      "node": "step.trace",
+      "label": "Trace needs and goals",
+      "config": {
+        "against": "targets",
+        "bothWays": true,
+        "exemptField": "reason_no_goal",
+        "question": "Does each goal address a documented need from the evaluation or present levels? Link the need(s) it addresses. Needs no goal links to are flagged unless the draft states a reason for no goal.",
+        "statuses": [
+          {
+            "key": "traced",
+            "label": "Addresses a documented need",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "weak_link",
+            "label": "Need only loosely related",
+            "ok": false,
+            "severity": "minor"
+          },
+          {
+            "key": "no_need",
+            "label": "No documented need",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "unverified",
+            "label": "Could not be checked",
+            "ok": false,
+            "severity": "minor"
+          }
+        ],
+        "unverifiedStatus": "unverified"
+      },
+      "in": {
+        "items": "goals.items",
+        "targets": "needs.items",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "goalchk",
+      "node": "step.check",
+      "label": "Goal check",
+      "config": {
+        "perItem": true,
+        "instructions": "Check each goal in <items> as written.",
+        "checklist": [
+          {
+            "key": "observable_behavior",
+            "label": "Observable behavior",
+            "question": "Does the goal name a behavior someone could see or count (not understand, improve, appreciate)?",
+            "severity": "major"
+          },
+          {
+            "key": "four_parts",
+            "label": "Condition, criterion and date",
+            "question": "Does the goal state a condition, a criterion and a target date within one year?",
+            "severity": "major"
+          },
+          {
+            "key": "baseline_matches",
+            "label": "Baseline on the same measure",
+            "question": "Is there a baseline, on the same measure and unit as the criterion?",
+            "severity": "major"
+          },
+          {
+            "key": "target_above_baseline",
+            "label": "Target above baseline",
+            "question": "Is the target beyond the baseline (not at or below it)?",
+            "severity": "major"
+          },
+          {
+            "key": "not_carried_over",
+            "label": "Not carried over unchanged",
+            "question": "Does the goal appear to be carried over unchanged from an earlier IEP without new data? Mark not_met if so.",
+            "severity": "minor"
+          },
+          {
+            "key": "one_skill",
+            "label": "One skill per goal",
+            "question": "Does the goal measure one skill rather than several bundled together?",
+            "severity": "minor"
+          }
+        ]
+      },
+      "in": {
+        "items": "goals.items",
+        "document": "doc.document",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "prog",
+      "node": "step.check",
+      "label": "Progress check (300.320(a)(3))",
+      "config": {
+        "perItem": true,
+        "checklist": [
+          {
+            "key": "progress_method",
+            "label": "Progress measure stated",
+            "question": "Does the draft say how progress toward this goal will be measured, using the goal's own measure?",
+            "severity": "major",
+            "appliesTo": [
+              "annual-goals",
+              "progress-reporting"
+            ]
+          },
+          {
+            "key": "report_schedule",
+            "label": "Reporting schedule stated",
+            "question": "Does the draft say when progress on this goal is reported to the parent?",
+            "severity": "major",
+            "appliesTo": [
+              "progress-reporting"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "items": "goals.items",
+        "document": "doc.document",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "svc",
+      "node": "step.check",
+      "label": "Service check (300.320(a)(4), (a)(7))",
+      "config": {
+        "perItem": true,
+        "checklist": [
+          {
+            "key": "service_behind_goal",
+            "label": "A service behind the goal",
+            "question": "Is there a service or support in the draft that serves this goal?",
+            "severity": "major",
+            "appliesTo": [
+              "services"
+            ]
+          },
+          {
+            "key": "service_details",
+            "label": "Start date, frequency, location, duration",
+            "question": "Does that service state its projected start date, frequency, location and duration (placeholders count as stated)?",
+            "severity": "major",
+            "appliesTo": [
+              "services"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "items": "goals.items",
+        "document": "doc.document",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "plan",
+      "node": "step.check",
+      "label": "Plan-wide checks",
+      "config": {
+        "checklist": [
+          {
+            "key": "special_factors",
+            "label": "Special factors considered",
+            "question": "Does the draft address each special factor (behavior, limited English proficiency, Braille, communication, assistive technology), even if only to say it is not indicated (34 CFR 300.324(a)(2))?",
+            "severity": "major",
+            "appliesTo": [
+              "special-factors"
+            ]
+          },
+          {
+            "key": "alternate_objectives",
+            "label": "Objectives for alternate assessment",
+            "question": "If the student takes an alternate assessment on alternate standards, do the goals include benchmarks or short-term objectives? Mark not_applicable otherwise.",
+            "severity": "major",
+            "appliesTo": [
+              "annual-goals",
+              "assessment-participation"
+            ]
+          },
+          {
+            "key": "transition_due",
+            "label": "Transition planning when due",
+            "question": "If the IEP will be in effect when the student turns 16 (or earlier where the state requires), does it include measurable postsecondary goals and transition services? Mark not_applicable otherwise.",
+            "severity": "major",
+            "appliesTo": [
+              "transition"
+            ]
+          },
+          {
+            "key": "nonparticipation",
+            "label": "Participation with peers explained",
+            "question": "Does the draft explain the extent, if any, to which the student would not take part with nondisabled peers?",
+            "severity": "major",
+            "appliesTo": [
+              "participation-and-placement"
+            ]
+          },
+          {
+            "key": "draft_wording",
+            "label": "Worded as a draft",
+            "question": "Is the document labelled a draft, with goals, services and placement worded as proposals for the team rather than decisions?",
+            "severity": "major"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "requirements": "req.requirements",
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "gaps_found",
+            "when": {
+              "findings": {
+                "severity": [
+                  "blocking",
+                  "major"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "ready_for_meeting"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": [
+          "trace.findings",
+          "goalchk.findings",
+          "prog.findings",
+          "svc.findings",
+          "plan.findings"
+        ],
+        "results": [
+          "goalchk.results",
+          "prog.results",
+          "svc.results",
+          "plan.results"
+        ],
+        "tables": [
+          "trace.table",
+          "goals.table",
+          "needs.table",
+          "goalchk.table",
+          "prog.table",
+          "svc.table",
+          "plan.table"
+        ]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Case manager approval",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Review the trace and every gap, then approve the draft for the meeting or send it back. Approval means the draft is ready to bring to the IEP team; the team, including the parent, adopts or changes the goals and services there.",
+        "recordFields": [
+          {
+            "key": "signed_name",
+            "label": "Name and role",
+            "required": true
+          },
+          {
+            "key": "meeting_date",
+            "label": "Meeting date",
+            "required": false
+          }
+        ]
+      },
+      "in": {
+        "items": "out.outcome",
+        "after": "gate.pass"
+      }
+    }
+  ]
+}

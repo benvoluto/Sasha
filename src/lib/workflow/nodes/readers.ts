@@ -2,8 +2,10 @@
 // sources (sources.list) and their passages (sources.read), its data tables
 // (data.list) and requirement sets (requirements.read). No model calls; each
 // returns plain JSON plus a delimited text block for the ai.* nodes.
+// Requirement sets resolve from the catalog first, then the team's inferred
+// sets (Phase 8), which are labelled "Inferred from examples, not from the rules".
 
-import { requirementItem, requirementRef, requirementSet, requirementSetsForType } from "@/catalog/workflows";
+import { requirementItem, requirementSet, requirementSetsForType } from "@/catalog/workflows";
 import { rubricFor } from "@/catalog";
 import { sortedSections, type DocumentTypeDefinition } from "@/catalog/schema";
 import type { RequirementSet } from "@/catalog/requirements-schema";
@@ -14,6 +16,8 @@ import type { DocumentRecord } from "@/lib/documents/store";
 import { buildGrounding } from "@/lib/sections/grounding";
 import { passagePrefix } from "@/lib/sources/pages";
 import { listDocumentSources, type LinkedSource } from "@/lib/sources/store";
+import { LEARN_INFERRED_LABEL } from "@/lib/learn/contract";
+import { listTeamRequirementSets, setRef } from "@/lib/learn/store";
 import { NodeError, type NodeContext, type NodeHandler } from "../context";
 import { dataBlock, documentBlock, notesBlock, requirementsBlock, sourcesBlock } from "./prompts";
 import { clip } from "./util";
@@ -177,18 +181,34 @@ export const dataList: NodeHandler = async (_inputs, node, ctx) => {
 
 // --- requirements.read -----------------------------------------------------------------
 
-/** Pure: the requirement sets and items a node reads. Empty `sets` and `items` mean the type's sets. Unknown keys fail. */
-export function readRequirements(sets: string[], items: string[], typeKey: string | null): RequirementsView {
+/**
+ * Pure: the requirement sets and items a node reads. Empty `sets` and `items`
+ * mean the type's sets (the catalog's, then the team's inferred sets for the
+ * type). Keys resolve from the catalog first, then `teamSets`. Unknown keys fail.
+ */
+export function readRequirements(sets: string[], items: string[], typeKey: string | null, teamSets: RequirementSet[] = []): RequirementsView {
+  const findSet = (key: string) => requirementSet(key) ?? teamSets.find((s) => s.key === key) ?? null;
+  const findItem = (ref: string) => {
+    const hit = requirementItem(ref);
+    if (hit) return hit;
+    const hash = ref.indexOf("#");
+    const set = hash > 0 ? teamSets.find((s) => s.key === ref.slice(0, hash)) : undefined;
+    const item = set?.items.find((i) => i.key === ref.slice(hash + 1));
+    return set && item ? { set, item } : null;
+  };
   const chosen: RequirementSet[] = [];
   const add = (s: RequirementSet) => {
     if (!chosen.some((c) => c.key === s.key)) chosen.push(s);
   };
   for (const key of sets) {
-    const s = requirementSet(key);
+    const s = findSet(key);
     if (!s) throw new NodeError(`unknown requirement set “${key}”`);
     add(s);
   }
-  if (!sets.length && !items.length) requirementSetsForType(typeKey).forEach(add);
+  if (!sets.length && !items.length) {
+    requirementSetsForType(typeKey).forEach(add);
+    if (typeKey) teamSets.filter((s) => s.appliesTo.includes(typeKey)).forEach(add);
+  }
   const view = (set: RequirementSet, i: RequirementSet["items"][number]): RequirementItemView => ({
     ref: `${set.key}#${i.key}`,
     title: i.title,
@@ -197,22 +217,24 @@ export function readRequirements(sets: string[], items: string[], typeKey: strin
     value: i.value,
     unit: i.unit,
     appliesTo: i.appliesTo,
-    citation: i.citation,
+    // An inferred item is never presented as a cited rule.
+    citation: set.inferred ? LEARN_INFERRED_LABEL : i.citation,
   });
   const out: RequirementItemView[] = chosen.flatMap((s) => s.items.map((i) => view(s, i)));
   const refSets = [...chosen];
   for (const ref of items) {
-    const found = requirementItem(ref);
+    const found = findItem(ref);
     if (!found) throw new NodeError(`unknown requirement “${ref}”`);
     if (!out.some((o) => o.ref === ref)) out.push(view(found.set, found.item));
     if (!refSets.some((s) => s.key === found.set.key)) refSets.push(found.set);
   }
-  return { sets: refSets.map(requirementRef), items: out };
+  return { sets: refSets.map(setRef), items: out };
 }
 
 export const requirementsRead: NodeHandler = async (_inputs, node, ctx) => {
   const { sets, items } = node.config as { sets: string[]; items: string[] };
-  const requirements = readRequirements(sets, items, (await ctx.document()).type_key);
+  const teamSets = await ctx.memo("team-requirement-sets", () => listTeamRequirementSets(ctx.teamId));
+  const requirements = readRequirements(sets, items, (await ctx.document()).type_key, teamSets);
   return { requirements, text: requirementsBlock(requirements) };
 };
 

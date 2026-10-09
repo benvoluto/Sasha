@@ -132,7 +132,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - Student records are protected (FERPA). Limit web lookups for this type to
     public material such as regulations and test manuals.
 
-### IEP / individualized plan: Candidate
+### IEP / individualized plan: In catalog (`iep`)
 
 - **Outcome:** A draft goal set with a needs-to-goals trace. Each need the
   evaluation identified maps to a measurable annual goal or a stated reason for
@@ -221,7 +221,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
     reviewers from putting applications they review into generative AI tools
     (NOT-OD-23-149).
 
-### NSF Project Description + Broader Impacts + Data Management Plan: Planned
+### NSF Project Description + Broader Impacts + Data Management Plan: In catalog (`nsf-project-description`)
 
 - **Outcome:** A mock panel summary: strengths and weaknesses under Intellectual
   Merit and under Broader Impacts with an overall rating, plus a separate
@@ -265,7 +265,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - Outside this type but required in a full proposal: the one-page Project
     Summary with Overview, Intellectual Merit and Broader Impacts.
 
-### Foundation letter of inquiry / general proposal: Planned
+### Foundation letter of inquiry / general proposal: In catalog (`foundation-letter-of-inquiry`)
 
 - **Outcome:** A fit decision: proceed to a full proposal, proceed with changes,
   or do not proceed. It carries an eligibility result (pass or fail) and, for
@@ -394,7 +394,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - Inputs: linked designs and research. Flag requirements the designs
     contradict.
 
-### Strategy memo / review: Planned
+### Strategy memo / review: In catalog (`strategy-memo`)
 
 - **Outcome:** A recommendation (adopt, revise or reject) with a coherence
   result for the strategy's three parts and the three strongest objections, each
@@ -539,7 +539,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - Failure cases: steps with no stated result; output shown that differs from
     real output; version drift.
 
-### Diátaxis reference: Planned
+### Diátaxis reference: In catalog (`diataxis-reference`)
 
 - **Outcome:** A sync result against the source of truth: in sync or out of
   sync, with a diff of items missing from the reference, items the source lacks,
@@ -564,7 +564,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - Where the reference is generated from the source, the workflow reduces to
     descriptions and examples.
 
-### Diátaxis explanation: Planned
+### Diátaxis explanation: In catalog (`diataxis-explanation`)
 
 - **Outcome:** A soundness result: sound, sound with gaps, or unsound. It lists
   unsupported or incorrect claims, breaks in the reasoning, and instructional
@@ -625,7 +625,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - CONSORT was updated in 2025. Load guideline checklists as dated requirement
     sets.
 
-### Literature review: Candidate
+### Literature review: In catalog (`literature-review`)
 
 - **Outcome:** A coverage and synthesis result for the stated research question:
   adequate or gaps found. It lists likely missing sources with reasons, claims
@@ -717,7 +717,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - Failure cases: a finding that paraphrases a source into a stronger claim; a
     recommendation that arrives from outside the evidence.
 
-### Resume / CV: Planned
+### Resume / CV: In catalog (`resume-cv`)
 
 - **Outcome:** A resume tailored to one target role, with a match score against
   the job description before and after, and a list of requirements the
@@ -749,7 +749,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
   - Save the requirement map with the tailored version so the cover letter
     workflow can reuse it.
 
-### Cover letter: Candidate
+### Cover letter: In catalog (`cover-letter`)
 
 - **Outcome:** A fit and consistency result: ready or revise. It lists the top
   requirements the letter leaves unaddressed and every mismatch with the resume.
@@ -780,7 +780,7 @@ These are already planned for every type (PLAN §6.7). Note any changes.
 
 Add any type not listed above, with the same three prompts.
 
-Suggested candidates, not yet specified:
+Suggested candidates (now specified below and in the catalog):
 
 - **Reevaluation / review of existing evaluation data (clinical):** a decision
   on what additional data, if any, the team needs (34 CFR 300.305(a)).
@@ -793,6 +793,176 @@ Suggested candidates, not yet specified:
   in the award.
 - **Incident postmortem (technical):** agreed contributing causes, and action
   items with owners and dates.
+
+The five entries below specify these candidates. They were drafted by Sasha in
+Phase 8 from the one-line intents above and the shared steps; please review.
+
+### Reevaluation / review of existing evaluation data: In catalog (`reevaluation-review`)
+
+*Drafted by Sasha — please review.*
+
+- **Outcome:** A data decision for the team: no additional data needed, or
+  additional data needed, listed by area with the question each would answer
+  (34 CFR 300.305(a)(2)). It is a proposal for the team, which includes the
+  parent.
+- **Steps / checks:**
+  1. Gate: the existing evaluation data (prior evaluations, current
+     classroom-based and state assessments, teacher and provider observations),
+     parent input, and the date of the last evaluation.
+  2. Extract: each piece of existing data with its date, source, area and what
+     it shows.
+  3. Compute (dates): time since the last evaluation and the three-year due date
+     (300.303(b), unless the parent and agency agree a reevaluation is
+     unnecessary); flag data older than the current IEP.
+  4. Trace: for each of the four questions in 300.305(a)(2) (continued category
+     and needs, present levels, continued need for special education, changes
+     needed to meet the goals), the existing data that answers it, or a gap.
+  5. Independent review: one reviewer argues the existing data suffice, one
+     argues for more assessment; each cites the data it relies on.
+  6. Agreement, then the decision.
+  7. Checkpoint (required): the team decides. Sasha drafts the decision and the
+     reasons and never makes it.
+- **Notes:**
+  - When the team needs no additional data, the parent is told so, with the
+    reasons, and of the right to ask for an assessment anyway (300.305(d)).
+  - New assessments need parent consent (300.300(c)); reviewing existing data
+    does not (300.300(d)(1)(i)).
+  - Treat as sensitive like the FIE: no student details in web queries.
+  - Failure cases: "no additional data" when a new disability is suspected;
+    present levels taken from the last evaluation unchanged; data from another
+    student's file.
+
+### Functional behavior assessment and behavior intervention plan: In catalog (`fba-bip`)
+
+*Drafted by Sasha — please review.*
+
+- **Outcome:** A hypothesis-to-intervention trace: the behavior defined in
+  observable terms, a hypothesized function supported by the data, and each
+  intervention matched to that function. Result: plan matches the hypothesis, or
+  gaps found.
+- **Steps / checks:**
+  1. Gate: the target behavior, data from at least two methods (indirect, such
+     as interviews or rating scales, and direct observation such as
+     antecedent-behavior-consequence records), and the settings observed.
+  2. Extract: the behavior definition, each recorded incident (antecedent,
+     behavior, consequence, setting, time), and the interventions in the plan.
+  3. Compute: frequency or duration per observation, and the share of incidents
+     by antecedent and by consequence, in code.
+  4. Definition check: the behavior is observable and measurable, with no
+     labels such as "defiant" or "angry".
+  5. Trace both ways: the hypothesized function to the data pattern behind it;
+     each intervention (antecedent strategy, replacement behavior, response) to
+     the function it addresses.
+  6. Independent review: a behavior analyst checks the function-based logic; a
+     teacher checks that the plan can be carried out in the setting.
+  7. Agreement, then the result.
+  8. Checkpoint (required): the team, including the parent, adopts or changes
+     the plan.
+- **Notes:**
+  - IDEA requires an FBA and a plan in some discipline cases (34 CFR
+    300.530(d)(1)(ii), as appropriate, during certain removals; and
+    300.530(f)(1), an FBA unless one was already done and a plan, when the
+    conduct is a manifestation); otherwise the IEP team considers positive behavioral
+    interventions when behavior impedes learning (300.324(a)(2)(i)). State rules
+    on restraint and time-out apply on top.
+  - The replacement behavior must serve the same function as the target
+    behavior.
+  - Treat as sensitive like the FIE.
+  - Failure cases: a response that delivers the function (time out for
+    behavior that gets the student out of work); a punishment-only plan; no
+    baseline, so progress cannot be measured.
+
+### Response to reviewers: In catalog (`response-to-reviewers`)
+
+*Drafted by Sasha — please review.*
+
+- **Outcome:** A completeness result: ready or gaps found. Every reviewer
+  comment is answered and mapped to a change in the manuscript or application,
+  with its location, or to a reasoned rebuttal.
+- **Steps / checks:**
+  1. Gate: the reviewer comments (decision letter or summary statement) and the
+     revised text.
+  2. Extract: each comment as an item (reviewer, number, the point, and whether
+     it asks for a change, a clarification or an answer), and each response.
+  3. Trace: comment to response to change. Flag comments with no response and
+     responses that claim a change the revised text does not contain.
+  4. Check: responses that disagree give evidence or reasoning; no comment is
+     answered only with "addressed"; answers to two reviewers do not contradict
+     each other.
+  5. Compute (form): the funder's or journal's length limit for the response
+     (for an NIH resubmission, the one-page Introduction).
+  6. Independent review: one reviewer reads as the original reviewer (was my
+     point answered?), one as the editor or chair (are the disagreements
+     reasonable?).
+  7. Agreement, then the result.
+  8. Checkpoint: the corresponding author or PI approves before submission.
+- **Notes:**
+  - Inputs: the comments, the earlier and revised versions. With both
+    versions, the trace can confirm each claimed change.
+  - Tone: courteous and specific. Thank once, not per comment.
+  - Failure cases: comments merged so one is lost; "we have revised the text"
+    with no location; a change made for one reviewer that undoes another's.
+
+### Funder progress report: In catalog (`funder-progress-report`)
+
+*Drafted by Sasha — please review.*
+
+- **Outcome:** An objectives trace: each objective in the award with its status
+  (met, on track, delayed, changed) and the reported evidence, every reported
+  result tied to an objective, plus a separate compliance result for the
+  funder's required sections.
+- **Steps / checks:**
+  1. Gate: the award's objectives or aims (the funded proposal or award
+     notice), the reporting period, and the funder's report format.
+  2. Extract: objectives and milestones from the award; results, activities,
+     products and changes from the report.
+  3. Trace both ways: objectives with no reported progress; results that tie
+     to no objective.
+  4. Compute: dates inside the reporting period; numbers that agree across
+     sections and with any linked data (participants, spending, products).
+  5. Check: delays and changes are disclosed with a reason and a plan, and
+     changes that may need the funder's prior approval are flagged (2 CFR
+     200.308 for federal awards).
+  6. Independent review: a program officer's view (progress against the aims)
+     and an auditor's view (claims the evidence supports).
+  7. Agreement, then the result.
+  8. Checkpoint: the PI approves; the organization's authorized representative
+     submits.
+- **Notes:**
+  - Federal awards: performance reports compare accomplishments with the
+    objectives and explain goals not met (2 CFR 200.329). NIH uses the RPPR and
+    NSF its annual project report; foundations set their own formats.
+  - Failure cases: activities reported as outcomes; an objective dropped
+    without comment; numbers that disagree with the last report.
+
+### Incident postmortem: In catalog (`incident-postmortem`)
+
+*Drafted by Sasha — please review.*
+
+- **Outcome:** Agreed contributing causes, and action items each with an owner,
+  a due date and the cause it addresses. Result: ready to publish, or gaps
+  found.
+- **Steps / checks:**
+  1. Gate: a timeline source (alerts, chat log, tickets) and the impact data.
+  2. Extract: timeline events with timestamps; impact (duration, users or
+     requests affected); contributing causes; action items.
+  3. Compute: time to detect, mitigate and resolve from the timestamps, in
+     code; the timeline in order; impact figures that agree across sections.
+  4. Trace: each contributing cause to an action item or an explicit accepted
+     risk; each action item to a cause, an owner and a date.
+  5. Blameless check: flag text that blames a person, and "human error" given
+     as a cause with no system factor behind it.
+  6. Independent review: a responder checks the timeline and what was known
+     when; a service owner asks whether the actions would prevent a repeat or
+     shorten the next one.
+  7. Agreement on causes. Disagreements are shown with both rationales, not
+     averaged.
+  8. Checkpoint: the incident owner signs off, and each action item's owner
+     accepts it.
+- **Notes:**
+  - Several causes are normal; a single root cause is a warning sign.
+  - Failure cases: action items such as "be more careful"; items with no owner
+    or date; a timeline rebuilt from memory with no source.
 
 ---
 
@@ -834,3 +1004,43 @@ building.
 - NSF updates on priorities: https://nsf.gov/updates-on-priorities
 - Diátaxis framework: https://diataxis.fr/
 - EQUATOR Network reporting guidelines: https://www.equator-network.org/
+- NSF ENG Data Management and Sharing Plan guidance (Research.gov DMSP tool
+  fields): https://www.nsf.gov/eng/data-management-sharing-plans
+- NSF project reports (annual, final, project outcomes):
+  https://www.nsf.gov/awards/report-your-outcomes
+- Uniform Guidance, 2 CFR 200.308, revision of budget and program plans:
+  https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR8feb98c2e3e5/section-200.308
+- Uniform Guidance, 2 CFR 200.328, financial reporting:
+  https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.328
+- Uniform Guidance, 2 CFR 200.329, monitoring and reporting program
+  performance:
+  https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329
+- NIH Research Performance Progress Report (RPPR):
+  https://grants.nih.gov/grants-process/post-award-monitoring-and-reporting/reporting-requirements/research-performance-progress-report-rppr
+- NIH resubmission applications (Introduction, no markup of changes):
+  https://grants.nih.gov/grants-process/submit/submission-policies/resubmission-applications
+- PRISMA 2020 checklist (CC BY 4.0): https://www.prisma-statement.org/prisma-2020-checklist
+- IDEA parental consent, 34 CFR 300.300:
+  https://www.law.cornell.edu/cfr/text/34/300.300
+- IDEA reevaluations, 34 CFR 300.303:
+  https://www.law.cornell.edu/cfr/text/34/300.303
+- IDEA additional requirements for evaluations and reevaluations, 34 CFR
+  300.305: https://www.law.cornell.edu/cfr/text/34/300.305
+- IDEA IEP team, 34 CFR 300.321:
+  https://www.law.cornell.edu/cfr/text/34/300.321
+- IDEA parent participation, 34 CFR 300.322:
+  https://www.law.cornell.edu/cfr/text/34/300.322
+- IDEA when IEPs must be in effect, 34 CFR 300.323:
+  https://www.law.cornell.edu/cfr/text/34/300.323
+- IDEA development, review and revision of the IEP, 34 CFR 300.324:
+  https://www.law.cornell.edu/cfr/text/34/300.324
+- IDEA authority of school personnel (discipline), 34 CFR 300.530:
+  https://www.law.cornell.edu/cfr/text/34/300.530
+- Texas restraint and time-out, 19 TAC §89.1053:
+  https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1053
+- Texas Register, September 25, 2026, adopted amendment to 19 TAC §89.1040:
+  https://www.sos.state.tx.us/texreg/archive/September252026/Adopted%20Rules/19.EDUCATION.html
+- Diátaxis reference: https://diataxis.fr/reference/
+- Diátaxis explanation: https://diataxis.fr/explanation/
+- NIST SP 800-61 Rev. 3, incident response:
+  https://csrc.nist.gov/pubs/sp/800/61/r3/final

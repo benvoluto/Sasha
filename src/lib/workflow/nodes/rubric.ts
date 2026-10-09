@@ -1,9 +1,11 @@
 // rubric.score: the document (or, with scope "drafted", the drafted sections)
 // scored against the type's rubric plus the universal writing rubric
 // (rubricFor), one level per criterion with document quotes and a fix. Levels
-// 1 and 2 become findings.
+// 1 and 2 become findings. Like the editor's Check, the model is told which
+// text carries citations (and which no longer hold), so cited claims count as
+// attributed.
 
-import { buildScores, rubricCriteria, RubricModelOutput, rubricUserPrompt, scoreRubric } from "@/lib/rubric/check";
+import { buildScores, documentCitationsBlock, rubricCriteria, RubricModelOutput, rubricUserPrompt, scoreRubric } from "@/lib/rubric/check";
 import type { DraftedSection, Finding } from "../contract";
 import { NodeError, type NodeHandler } from "../context";
 import { asDoc, callOpts, type EvidenceIndex, Findings, flat, outcomeTable } from "./util";
@@ -62,6 +64,9 @@ export const rubricScore: NodeHandler = async (inputs, node, ctx) => {
   }
   const criteria = rubricCriteria(d, config.criteria);
   if (!criteria.length) return { scores: [], findings: [], table: rubricTable(id, []) };
-  const { scores, index } = await scoreRubric(d, { criteria, drafted, call: callOpts(ctx) });
+  // What the scored text cites: the whole document, or (drafted) the sections the drafts fill.
+  const record = await ctx.document();
+  const citations = await documentCitationsBlock(ctx.teamId, ctx.documentId, record.content_json, drafted ? [...drafted.keys()] : null);
+  const { scores, index } = await scoreRubric(d, { criteria, drafted, citations, call: callOpts(ctx) });
   return { scores, findings: rubricFindings(id, scores, index), table: rubricTable(id, scores) };
 };

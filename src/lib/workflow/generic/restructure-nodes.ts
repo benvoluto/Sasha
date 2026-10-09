@@ -9,10 +9,10 @@ import { sortedSections, type DocumentTypeDefinition } from "@/catalog/schema";
 import { listSections, nodeText, type PMNode } from "@/lib/documents/sections";
 import { claudeJson, claudeText } from "@/lib/llm/claude";
 import { stripFences } from "@/lib/sections/prompt";
-import { NO_HOME_HEADING, type CheckpointDecision, type DocumentChangeOp, type RestructurePlan, type RestructureRow } from "../contract";
+import { NO_HOME_HEADING, type CheckpointDecision, type DocumentChangeOp, type RestructureDroppedHeading, type RestructurePlan, type RestructureRow } from "../contract";
 import { NodeError, type NodeContext, type NodeHandler } from "../context";
 import { asDoc, callOpts, clip, Findings, flat, outcomeTable } from "../nodes/util";
-import { applyRestructurePlan, blockHashes, restructureChunks, type RestructureChunk } from "../restructure";
+import { applyRestructurePlan, blockHashes, droppedWarning, restructureChunks, type RestructureChunk } from "../restructure";
 import { RESTRUCTURE_PLAN_SYSTEM, RESTRUCTURE_REWRITE_SYSTEM, RestructurePlanReply, REWRITE_CHARS, restructurePlanPrompt, restructureRewritePrompt } from "./prompts";
 import { numbersIn } from "./compute";
 
@@ -60,6 +60,11 @@ export function alreadyInOrder(rows: RestructureRow[], gaps: string[], order: st
   return true;
 }
 
+/** Pure: the parts that are only a heading (Phase 8): left out of the prompt and the rows, removed on apply. */
+export function droppedHeadings(chunks: RestructureChunk[]): RestructureDroppedHeading[] {
+  return chunks.filter((c) => c.headingOnly && c.heading !== null).map((c) => ({ index: c.from, heading: c.heading!, level: c.level ?? 2 }));
+}
+
 export function mappingTable(nodeId: string, plan: RestructurePlan, def: Pick<DocumentTypeDefinition, "sections">) {
   const heading = new Map(def.sections.map((s) => [s.key, s.heading]));
   return outcomeTable(
@@ -84,6 +89,7 @@ export function mappingTable(nodeId: string, plan: RestructurePlan, def: Pick<Do
         status: r.target ? "mapped" : "no_home",
       })),
       ...plan.gaps.map((k) => ({ cells: { id: "", part: "", excerpt: "", target: heading.get(k) ?? k, why: "Will be added empty" }, status: "gap" })),
+      ...(plan.dropped ?? []).map((x) => ({ cells: { id: "", part: x.heading, excerpt: "", target: "Removed", why: "This heading holds no text of its own." }, status: "dropped" })),
     ],
   );
 }
@@ -94,7 +100,9 @@ export const restructurePlanHandler: NodeHandler = async (inputs, node, ctx) => 
   const mode = ctx.run.params.mode ?? (node.config.mode as "merge" | "rewrite");
   const record = await ctx.document();
   const d = asDoc(inputs.document);
-  const chunks = restructureChunks(record.content_json);
+  const all = restructureChunks(record.content_json);
+  const dropped = droppedHeadings(all);
+  const chunks = all.filter((c) => !c.headingOnly);
   const outline = sortedSections(def.sections);
   const keys = new Set(outline.map((s) => s.key));
 
@@ -111,12 +119,25 @@ export const restructurePlanHandler: NodeHandler = async (inputs, node, ctx) => 
   }
   const used = new Set(rows.map((r) => r.target).filter(Boolean));
   const gaps = outline.filter((s) => !used.has(s.key)).map((s) => s.key);
-  const plan: RestructurePlan = { targetType: def.key, targetTitle: def.title, mode, basisUpdatedAt: record.updated_at, blockHashes: blockHashes(record.content_json), rows, gaps };
+  const plan: RestructurePlan = { targetType: def.key, targetTitle: def.title, mode, basisUpdatedAt: record.updated_at, blockHashes: blockHashes(record.content_json), rows, gaps, dropped };
 
   const nodes = record.content_json.content ?? [];
   const headingKeys = rows.map((r) => (r.heading !== null ? ((nodes[r.from]?.attrs?.specKey as string | null | undefined) ?? null) : null));
   const findings = new Findings(id);
-  if (alreadyInOrder(rows, gaps, outline.map((s) => s.key), headingKeys)) {
+  // A dropped heading that already carries a gap section's key is that section, still empty: in order,
+  // not missing. Any other dropped heading goes when applied, so the document is not already in order.
+  const keyAt = (x: RestructureDroppedHeading) => (nodes[x.index]?.attrs?.specKey as string | null | undefined) ?? null;
+  const droppedHeld = dropped.every((x) => gaps.includes(keyAt(x) ?? ""));
+  const heldGaps = gaps.filter((k) => !dropped.some((x) => keyAt(x) === k));
+  if (dropped.length) {
+    findings.add({
+      kind: "dropped_heading",
+      severity: "minor",
+      title: `${dropped.length} heading${dropped.length === 1 ? "" : "s"} with no text of ${dropped.length === 1 ? "its" : "their"} own will be removed`,
+      detail: `${droppedWarning(dropped)} A heading that reads as a section of the ${def.title} outline gives that section its place.`,
+    });
+  }
+  if (droppedHeld && alreadyInOrder(rows, heldGaps, outline.map((s) => s.key), headingKeys)) {
     findings.add({ kind: "no_change", severity: "info", title: `Already in the ${def.title} order`, detail: "Every part already sits in its section, in outline order, and no section is missing." });
   }
   const sectionsById = new Map(listSections(record.content_json).map((s) => [s.index, s]));

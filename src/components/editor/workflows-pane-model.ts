@@ -29,6 +29,7 @@ import {
   type StepProgressItem,
   type WorkflowRunView,
 } from "@/lib/workflow/contract";
+import { droppedWarning } from "@/lib/workflow/restructure";
 
 // --- The list ---------------------------------------------------------------------
 
@@ -428,6 +429,20 @@ export function mappingGaps(plan: RestructurePlan, sections: Array<{ key: string
   if (!sections.length) return plan.gaps;
   const used = new Set(plan.rows.map((r) => (r.id in targets ? targets[r.id] : r.target)).filter((k): k is string => !!k));
   return sections.filter((s) => !used.has(s.key)).map((s) => s.heading);
+}
+
+/**
+ * The headings the plan removes because they hold no text of their own (Phase 8):
+ * "These headings hold no text of their own and will be removed: …", or "" when
+ * none (and for plans stored before Phase 8, which have no `dropped`).
+ */
+export function mappingDropped(plan: Pick<RestructurePlan, "dropped">): string {
+  return droppedWarning(plan.dropped);
+}
+
+/** The removal warnings of a change's restructure ops, shown before it is applied. */
+export function changeWarnings(change: ProposedChange): string[] {
+  return change.ops.flatMap((op) => (op.op === "restructure" && mappingDropped(op.plan) ? [mappingDropped(op.plan)] : []));
 }
 
 // --- Proposed changes ----------------------------------------------------------------------------------

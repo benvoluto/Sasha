@@ -51,7 +51,18 @@ export const RUN_READ_PERMISSION = "workflow:read";
 // The tables live in schema.ts (Phase 6 renames: workflow_version, workflow_run).
 export { WORKFLOW_SCHEMA };
 
-const schema = () => ensureSchema("workflows", WORKFLOW_SCHEMA);
+/**
+ * Phase 8 (PLAN §6.11): a team workflow may be bound to one document type
+ * (a workflow learned with its type). Unbound workflows (applies_to NULL) are
+ * offered on every document, a bound one only on documents of its type
+ * (availability.ts). Kept in step with db/schema.sql; spread into the setup route.
+ */
+export const WORKFLOW_BINDING_SCHEMA = [
+  `ALTER TABLE workflow ADD COLUMN IF NOT EXISTS applies_to TEXT`,
+  `CREATE INDEX IF NOT EXISTS workflow_applies_idx ON workflow (team_id, applies_to)`,
+];
+
+const schema = () => ensureSchema("workflows", [...WORKFLOW_SCHEMA, ...WORKFLOW_BINDING_SCHEMA]);
 
 /** A workflow the canvas can open: one of the team's, or a built-in (read-only). */
 export type WorkflowInfo = {
@@ -59,6 +70,8 @@ export type WorkflowInfo = {
   name: string;
   /** The built-in or team workflow this one was copied from. */
   based_on: string | null;
+  /** The document type a team workflow is bound to (offered only on documents of that type); null for every document. */
+  applies_to: string | null;
   builtIn: boolean;
   created_by: string;
   created_at: string;
@@ -180,7 +193,7 @@ export function normalizeRun(row: Record<string, unknown> | undefined | null): W
 
 // --- In-memory fallback -------------------------------------------------------------
 
-type WorkflowRow = { id: string; team_id: string; name: string; based_on: string | null; created_by: string; created_at: string };
+type WorkflowRow = { id: string; team_id: string; name: string; based_on: string | null; applies_to: string | null; created_by: string; created_at: string };
 type VersionRow = { team_id: string; workflow_id: string; version: number; graph: WorkflowGraph; note: string; created_by: string; created_at: string };
 
 const memory = processMemory("workflows", () => ({
@@ -229,6 +242,7 @@ function builtInInfo(): WorkflowInfo[] {
     id: builtInId(w.key),
     name: w.title,
     based_on: null,
+    applies_to: null,
     builtIn: true,
     created_by: "system",
     created_at: EPOCH,
@@ -247,12 +261,12 @@ export async function listWorkflows(teamId: string, opts: { includeBuiltIns?: bo
       .filter((w) => w.team_id === teamId)
       .map((w) => {
         const last = memory.versions.get(w.id)?.at(-1);
-        return { id: w.id, name: w.name, based_on: w.based_on, builtIn: false, created_by: w.created_by, created_at: w.created_at, latestVersion: last?.version ?? 0, updated_at: last?.created_at ?? w.created_at };
+        return { id: w.id, name: w.name, based_on: w.based_on, applies_to: w.applies_to ?? null, builtIn: false, created_by: w.created_by, created_at: w.created_at, latestVersion: last?.version ?? 0, updated_at: last?.created_at ?? w.created_at };
       });
   } else {
     await schema();
     const { rows } = await sql`
-      SELECT w.id, w.name, w.based_on, w.created_by, w.created_at, COALESCE(MAX(v.version), 0) AS latest, COALESCE(MAX(v.created_at), w.created_at) AS updated_at
+      SELECT w.id, w.name, w.based_on, w.applies_to, w.created_by, w.created_at, COALESCE(MAX(v.version), 0) AS latest, COALESCE(MAX(v.created_at), w.created_at) AS updated_at
         FROM workflow w LEFT JOIN workflow_version v ON v.workflow_id = w.id AND v.team_id = w.team_id
        WHERE w.team_id = ${teamId}
        GROUP BY w.id ORDER BY w.created_at, w.name`;
@@ -260,6 +274,7 @@ export async function listWorkflows(teamId: string, opts: { includeBuiltIns?: bo
       id: r.id,
       name: r.name,
       based_on: r.based_on ?? null,
+      applies_to: r.applies_to ?? null,
       builtIn: false,
       created_by: r.created_by,
       created_at: iso(r.created_at),
@@ -276,8 +291,9 @@ async function workflowRow(teamId: string, id: string): Promise<WorkflowRow | nu
     return w && w.team_id === teamId ? w : null;
   }
   await schema();
-  const { rows } = await sql`SELECT id, team_id, name, based_on, created_by, created_at FROM workflow WHERE id = ${id} AND team_id = ${teamId}`;
-  return rows[0] ? { id: rows[0].id, team_id: rows[0].team_id, name: rows[0].name, based_on: rows[0].based_on ?? null, created_by: rows[0].created_by, created_at: iso(rows[0].created_at) } : null;
+  const { rows } = await sql`SELECT id, team_id, name, based_on, applies_to, created_by, created_at FROM workflow WHERE id = ${id} AND team_id = ${teamId}`;
+  const r = rows[0];
+  return r ? { id: r.id, team_id: r.team_id, name: r.name, based_on: r.based_on ?? null, applies_to: r.applies_to ?? null, created_by: r.created_by, created_at: iso(r.created_at) } : null;
 }
 
 /**
@@ -352,20 +368,51 @@ export async function saveWorkflow(teamId: string, workflowId: string, graph: Wo
   return saved;
 }
 
-/** Create a team workflow, starting from `graph` as its version 1. `basedOn`: the workflow it was copied from. */
-export async function createWorkflow(teamId: string, name: string, graph: WorkflowGraph, auth: Auth, basedOn?: string): Promise<WorkflowInfo> {
+/** createWorkflow's options: the workflow it was copied from, and the document type it is bound to. */
+export type CreateWorkflowOptions = { basedOn?: string; appliesTo?: string; note?: string };
+
+/**
+ * Create a team workflow, starting from `graph` as its version 1. The fifth
+ * argument is the options, or (as before Phase 8) the `basedOn` id alone.
+ */
+export async function createWorkflow(teamId: string, name: string, graph: WorkflowGraph, auth: Auth, options?: string | CreateWorkflowOptions): Promise<WorkflowInfo> {
+  const opts: CreateWorkflowOptions = typeof options === "string" ? { basedOn: options } : (options ?? {});
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "workflow";
   const id = `${slug}-${randomUUID().slice(0, 8)}`;
-  const based_on = basedOn ?? null;
+  const based_on = opts.basedOn ?? null;
+  const applies_to = opts.appliesTo ?? null;
   if (hasDb()) {
     await schema();
-    await sql`INSERT INTO workflow (id, team_id, name, based_on, created_by) VALUES (${id}, ${teamId}, ${name}, ${based_on}, ${auth.agent})`;
+    await sql`INSERT INTO workflow (id, team_id, name, based_on, applies_to, created_by) VALUES (${id}, ${teamId}, ${name}, ${based_on}, ${applies_to}, ${auth.agent})`;
   } else {
-    memory.workflows.set(id, { id, team_id: teamId, name, based_on, created_by: auth.agent, created_at: new Date().toISOString() });
+    memory.workflows.set(id, { id, team_id: teamId, name, based_on, applies_to, created_by: auth.agent, created_at: new Date().toISOString() });
   }
-  await defaultAuditSink().write({ agent: auth.agent, action: "create_workflow", args: { name, based_on }, result: { id }, allowed: true });
-  const first = await saveWorkflow(teamId, id, graph, basedOn ? `Copied from ${basedOn}` : "Created", auth);
-  return { id, name, based_on, builtIn: false, created_by: auth.agent, created_at: first.created_at, latestVersion: first.version, updated_at: first.created_at };
+  let first: SavedWorkflow;
+  try {
+    await defaultAuditSink().write({ agent: auth.agent, action: "create_workflow", args: { name, based_on, applies_to }, result: { id }, allowed: true });
+    first = await saveWorkflow(teamId, id, graph, opts.note ?? (based_on ? `Copied from ${based_on}` : "Created"), auth);
+  } catch (error) {
+    // No row without its version 1 (a bound row with no versions would still be offered for the type).
+    await deleteWorkflow(teamId, id).catch(() => {});
+    throw error;
+  }
+  return { id, name, based_on, applies_to, builtIn: false, created_by: auth.agent, created_at: first.created_at, latestVersion: first.version, updated_at: first.created_at };
+}
+
+/** Delete a team workflow and its versions (a learned save that fails part way). False for a built-in, an unknown id or another team's. */
+export async function deleteWorkflow(teamId: string, id: string): Promise<boolean> {
+  if (parseBuiltInId(id) !== null) return false;
+  if (!hasDb()) {
+    const w = memory.workflows.get(id);
+    if (!w || w.team_id !== teamId) return false;
+    memory.workflows.delete(id);
+    memory.versions.delete(id);
+    return true;
+  }
+  await schema();
+  await sql`DELETE FROM workflow_version WHERE team_id = ${teamId} AND workflow_id = ${id}`;
+  const { rowCount } = await sql`DELETE FROM workflow WHERE id = ${id} AND team_id = ${teamId}`;
+  return !!rowCount;
 }
 
 /** Rename a team workflow. False for a built-in, an unknown id or another team's. */

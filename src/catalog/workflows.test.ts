@@ -3,6 +3,9 @@ import { compileWorkflow } from "@/lib/workflow/compile";
 import { NODE_SPEC_INDEX } from "@/lib/workflow/registry";
 import { RequirementRef } from "@/lib/workflow/node-specs/generic";
 import { validateGraph } from "@/lib/workflow/validate";
+import type { Finding } from "@/lib/workflow/contract";
+import type { OutcomeReportConfig } from "@/lib/workflow/node-specs/core";
+import { evaluateOutcome } from "@/lib/workflow/outcome";
 import { fileTypes } from "./files";
 import { builtInWorkflows, requirementItem, requirementSet, requirementSetsForType, typePolicy, workflowsForType } from "./workflows";
 
@@ -10,9 +13,10 @@ const all = builtInWorkflows();
 const stepsOf = (node: string) => all.flatMap((w) => w.steps.filter((s) => s.node === node).map((s) => ({ w, s, config: compileWorkflow(w).nodes.find((n) => n.id === s.id)!.config })));
 
 describe("built-in workflows", () => {
-  it("ships the three generic workflows and twelve type workflows", () => {
+  it("ships the three generic workflows and one type workflow per catalog type", () => {
     expect(all.filter((w) => w.kind === "generic").map((w) => w.key)).toEqual(["draft-all", "restructure", "source-coverage"]);
-    expect(all.filter((w) => w.kind === "type")).toHaveLength(12);
+    // Counted against the catalog rather than hardcoded, so adding a type and its workflow needs no edit here.
+    expect(all.filter((w) => w.kind === "type")).toHaveLength(fileTypes().length);
     expect(all.filter((w) => w.fallback).map((w) => w.key)).toEqual(["type-general-report"]);
   });
 
@@ -28,7 +32,7 @@ describe("built-in workflows", () => {
   it("names only catalog types, and every in-catalog type resolves to its own type workflow", () => {
     const keys = new Set(fileTypes().map((t) => t.key));
     for (const w of all) for (const k of w.appliesTo) expect(keys.has(k), `${w.key}: ${k}`).toBe(true);
-    expect(keys.size).toBe(12);
+    expect(keys.size).toBeGreaterThanOrEqual(12);
     for (const k of keys) {
       const typed = workflowsForType(k).filter((w) => w.kind === "type");
       expect(typed, k).toHaveLength(1);
@@ -91,6 +95,43 @@ describe("built-in workflows", () => {
     expect(guards("type-fie")).toEqual([[["criteria_met", "criteria_met_no_need"], "insufficient_evidence"]]);
   });
 
+  it("keys hard outcome rules on the findings they are about, not on any blocking finding", () => {
+    const finding = (kind: string, severity: Finding["severity"]): Finding => ({ id: kind, nodeId: "n", kind, severity, status: null, title: kind, detail: "", location: null, evidence: [], reviewer: null, verified: true, fix: "" });
+    const outcome = (key: string, inputs: Record<string, unknown>) =>
+      evaluateOutcome(stepsOf("outcome.report").find(({ w }) => w.key === key)!.config as OutcomeReportConfig, inputs, { workflowId: `builtin:${key}`, steps: {}, checkpoints: {}, labels: {} }).value;
+    // Progress report: an agreed "unsatisfactory" is a gap, not missing sections.
+    expect(outcome("type-funder-progress-report", { findings: [finding("blocking_verdict", "blocking")] })).toBe("gaps_found");
+    expect(outcome("type-funder-progress-report", { findings: [finding("required_sections", "blocking")] })).toBe("sections_missing");
+    // LOI: one reviewer's do_not_proceed is weighed by the decide step; only an eligibility failure forces it.
+    expect(outcome("type-foundation-loi", { value: "proceed", findings: [finding("reviewer_disagreement", "blocking")] })).toBe("proceed");
+    expect(outcome("type-foundation-loi", { value: "proceed", findings: [finding("geography", "blocking")] })).toBe("do_not_proceed");
+    // Diátaxis reference: one unverified item among real mismatches is still out of sync; consistency-only means nothing was compared.
+    expect(outcome("type-diataxis-reference", { findings: [finding("mismatch", "major"), finding("no_source", "minor")] })).toBe("out_of_sync");
+    expect(outcome("type-diataxis-reference", { findings: [finding("no_source", "minor")] })).toBe("consistency_only");
+    // Progress report: a final report's due date is not judged by the annual 90 days.
+    const due = stepsOf("step.compute").find(({ w, s }) => w.key === "type-funder-progress-report" && s.id === "comp")!.config.checks as Array<{ kind: string; byKind?: { requirements: Record<string, string> } }>;
+    expect(due.find((c) => c.kind === "deadline")!.byKind!.requirements).toEqual({
+      annual: "uniform-guidance-reporting#annual-report-due",
+      interim: "uniform-guidance-reporting#interim-report-due",
+      final: "uniform-guidance-reporting#final-report-due",
+    });
+  });
+
+  it("computes the resume match score in code and gives it to the decide step and the outcome", () => {
+    const w = all.find((x) => x.key === "type-resume-cv")!;
+    const step = (id: string) => w.steps.find((s) => s.id === id)!;
+    expect(step("covb").in).toMatchObject({ items: "before.traced" });
+    expect(step("cova").in).toMatchObject({ items: "after.traced" });
+    for (const id of ["decide", "out"]) expect(step(id).in?.results, id).toEqual(expect.arrayContaining(["covb.results", "cova.results"]));
+  });
+
+  it("exempts an IEP need with a stated reason for no goal from the untraced flag", () => {
+    const trace = stepsOf("step.trace").find(({ w, s }) => w.key === "type-iep" && s.id === "trace")!;
+    expect(trace.config).toMatchObject({ bothWays: true, exemptField: "reason_no_goal" });
+    const needs = stepsOf("step.extract").find(({ w, s }) => w.key === "type-iep" && s.id === "needs")!;
+    expect((needs.config.fields as Array<{ name: string }>).map((f) => f.name)).toContain("reason_no_goal");
+  });
+
   it("puts a checkpoint step in each workflow that names one, with its role", () => {
     for (const w of all) {
       const cps = compileWorkflow(w).nodes.filter((n) => n.type === "checkpoint");
@@ -105,10 +146,11 @@ describe("built-in workflows", () => {
   it("resolves every requirement reference and requirement set", () => {
     for (const w of all) for (const k of w.requirementSets) expect(requirementSet(k), `${w.key}: ${k}`).not.toBeNull();
     for (const { w, config } of stepsOf("step.compute")) {
-      for (const c of config.checks as Array<{ requirement?: string | null; requirementSet?: string | null }>) {
-        if (c.requirement) {
-          expect(RequirementRef.safeParse(c.requirement).success).toBe(true);
-          expect(requirementItem(c.requirement), `${w.key}: ${c.requirement}`).not.toBeNull();
+      for (const c of config.checks as Array<{ requirement?: string | null; requirementSet?: string | null; byKind?: { requirements: Record<string, string> } | null }>) {
+        for (const ref of [c.requirement, ...Object.values(c.byKind?.requirements ?? {})]) {
+          if (!ref) continue;
+          expect(RequirementRef.safeParse(ref).success).toBe(true);
+          expect(requirementItem(ref), `${w.key}: ${ref}`).not.toBeNull();
         }
         if (c.requirementSet) expect(requirementSet(c.requirementSet), w.key).not.toBeNull();
       }
@@ -140,7 +182,7 @@ describe("built-in workflows", () => {
 
 describe("requirement sets and policies", () => {
   it("dates every set to the doc's check and keeps the verify note", () => {
-    for (const k of ["tx-19tac-89-1040", "tx-19tac-89-1011", "idea-evaluation-34cfr", "nih-page-limits", "nih-simplified-review", "nih-ai-and-review-policy", "equator-reporting-guidelines", "diataxis-framework"]) {
+    for (const k of ["tx-19tac-89-1040", "tx-19tac-89-1011", "idea-evaluation-34cfr", "idea-iep-34cfr", "idea-discipline-34cfr", "nih-page-limits", "nih-simplified-review", "nih-ai-and-review-policy", "equator-reporting-guidelines", "diataxis-framework"]) {
       const s = requirementSet(k)!;
       expect(s, k).not.toBeNull();
       expect(s.checked).toBe("2026-10-08");
@@ -171,5 +213,48 @@ describe("requirement sets and policies", () => {
     expect(fie.webDomains).toEqual(expect.arrayContaining(["law.cornell.edu", "tea.texas.gov", "ed.gov"]));
     expect(typePolicy("proposal", "business").sensitive).toBe(false);
     expect(typePolicy("some-clinical-type", "clinical").sensitive).toBe(true);
+  });
+
+  it("makes the IEP, reevaluation review and FBA sensitive, searching only public regulation and agency domains", () => {
+    for (const key of ["iep", "reevaluation-review", "fba-bip"]) {
+      const p = typePolicy(key, "clinical");
+      expect(p.sensitive, key).toBe(true);
+      expect(p.webDomains, key).toEqual(expect.arrayContaining(["law.cornell.edu", "ecfr.gov", "ed.gov"]));
+      // Public sources only: no general search engines, social or student-information sites.
+      for (const d of p.webDomains) expect(d, `${key}: ${d}`).toMatch(/(\.gov|cornell\.edu|pbis\.org)$/);
+    }
+  });
+
+  it("gives the Phase 8 clinical types their requirement sets, with the doc's IDEA rules", () => {
+    expect(requirementSetsForType("iep").map((s) => s.key)).toContain("idea-iep-34cfr");
+    expect(requirementSetsForType("fba-bip").map((s) => s.key)).toEqual(expect.arrayContaining(["idea-discipline-34cfr", "idea-iep-34cfr"]));
+    expect(requirementSetsForType("reevaluation-review").map((s) => s.key)).toContain("idea-evaluation-34cfr");
+    expect(requirementSetsForType("diataxis-reference").map((s) => s.key)).toEqual(["diataxis-framework"]);
+    expect(requirementItem("idea-evaluation-34cfr#three-year")!.item).toMatchObject({ kind: "deadline", value: 3, unit: "years", citation: "34 CFR 300.303(b)(2)" });
+    expect(requirementItem("idea-evaluation-34cfr#reed-questions")!.item.citation).toBe("34 CFR 300.305(a)(2)");
+    expect(requirementItem("idea-evaluation-34cfr#review-without-consent")!.item.citation).toBe("34 CFR 300.300(d)(1)(i)");
+    expect(requirementItem("idea-iep-34cfr#service-details")!.item.citation).toBe("34 CFR 300.320(a)(7)");
+    expect(requirementItem("idea-iep-34cfr#initial-iep-meeting")!.item).toMatchObject({ value: 30, unit: "calendar_days" });
+    expect(requirementItem("idea-discipline-34cfr#manifestation-determination")!.item).toMatchObject({ value: 10, unit: "school_days" });
+    expect(requirementItem("idea-discipline-34cfr#fba-bip-when-manifestation")!.item.citation).toBe("34 CFR 300.530(f)(1)");
+    // The Texas criteria stay a swappable set, dated to the 2026 amendment; FIE keeps its category criteria.
+    expect(requirementSet("tx-19tac-89-1040")!.effective).toBe("2026-10-04");
+    expect(requirementSet("tx-19tac-89-1040")!.items.filter((i) => i.kind === "criterion").map((i) => i.key)).toContain("other-health-impairment");
+  });
+
+  it("guards the Phase 8 clinical and technical outcomes in code", () => {
+    const guards = (key: string) => (stepsOf("outcome.report").find(({ w }) => w.key === key)!.config.guards as Array<{ values: string[]; instead: string }>).map((g) => [g.values, g.instead]);
+    expect(guards("type-reevaluation-review")).toEqual([[["no_additional_data"], "additional_data_needed"]]);
+    expect(guards("type-fba-bip")).toEqual([[["plan_matches"], "gaps_found"]]);
+    expect(guards("type-incident-postmortem")).toEqual([[["ready_to_publish"], "gaps_found"]]);
+    // The REED's three-year date is computed in code from its requirement item.
+    const due = stepsOf("step.compute").find(({ w, s }) => w.key === "type-reevaluation-review" && s.id === "due")!;
+    expect((due.config.checks as Array<{ requirement?: string }>)[0].requirement).toBe("idea-evaluation-34cfr#three-year");
+    // Clinical workflows end at a team checkpoint, never at the model's value.
+    for (const key of ["type-iep", "type-reevaluation-review", "type-fba-bip"]) {
+      const w = all.find((x) => x.key === key)!;
+      expect(w.checkpoint?.required, key).toBe(true);
+      expect(w.notes.join(" "), key).toMatch(/no student details/);
+    }
   });
 });

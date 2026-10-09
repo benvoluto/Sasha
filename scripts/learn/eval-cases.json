@@ -1,0 +1,49 @@
+[
+  {
+    "id": "niaid-r01-muir",
+    "family": "grant",
+    "title": "NIAID sample R01 application (Muir, peptide autoinducers of staphylococcal pathogenicity)",
+    "exampleUrl": "https://www.morgan.edu/Documents/ADMINISTRATION/OFFICES/ora/2-R01-AI042783-16A1_Muir_App_Sample.pdf",
+    "sourceUrls": [],
+    "license": "Copyrighted by the PI; NIAID permits unchanged nonprofit educational use with credit. Fetched at run time, not committed.",
+    "nearestType": "nih-specific-aims-research-strategy",
+    "notes": "A university-hosted copy of one of NIAID's sample applications (niaid.nih.gov/grants-contracts/sample-applications blocks scripted downloads). Its cited papers are not fetched, so the application's own text is the source."
+  },
+  {
+    "id": "epa-r4-groundwater-sop",
+    "family": "technical",
+    "title": "EPA Region 4 Groundwater Sampling procedure (LSASDPROC-301)",
+    "exampleUrl": "https://www.epa.gov/sites/production/files/2017-07/documents/groundwater_sampling301_af.r4.pdf",
+    "sourceUrls": [],
+    "license": "Public domain (US government)",
+    "nearestType": "standard-operating-procedure"
+  },
+  {
+    "id": "epa-r1-lowflow-sop",
+    "family": "technical",
+    "title": "EPA Region 1 Low-Stress (Low-Flow) Purging and Sampling Procedure (EQASOP-GW 001)",
+    "exampleUrl": "https://19january2021snapshot.epa.gov/sites/static/files/2017-07/documents/eqasop-gw001.pdf",
+    "sourceUrls": [],
+    "license": "Public domain (US government)",
+    "nearestType": "standard-operating-procedure",
+    "notes": "From the January 2021 snapshot of epa.gov."
+  },
+  {
+    "id": "pep-572",
+    "family": "technical",
+    "title": "PEP 572: Assignment Expressions (Python design proposal)",
+    "exampleUrl": "https://peps.python.org/pep-0572/",
+    "sourceUrls": [],
+    "license": "Public domain (the PEP states it has been placed in the public domain)",
+    "nearestType": "design-doc-rfc"
+  },
+  {
+    "id": "rust-rfc-2094-nll",
+    "family": "technical",
+    "title": "Rust RFC 2094: Non-lexical lifetimes (design RFC)",
+    "exampleUrl": "https://raw.githubusercontent.com/rust-lang/rfcs/master/text/2094-nll.md",
+    "sourceUrls": [],
+    "license": "MIT or Apache-2.0 per the rust-lang/rfcs README (which says licensing is in progress). Fetched at run time, not committed.",
+    "nearestType": "design-doc-rfc"
+  }
+]

@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 import { getType } from "@/catalog";
+import { TEAM_REQUIREMENT_SET_PREFIX } from "@/lib/learn/contract";
+import { listTeamRequirementSets, resolveSet, setRef } from "@/lib/learn/store";
 import type { ModelChoice } from "@/lib/llm/model-choice";
 import { NodeError, type NodeContext, type NodeHandler } from "./context";
 import type { CheckpointDecision, CheckpointEdits, CheckpointSignature, ContinueRequest, RestructurePlan, WorkflowRunRecord } from "./contract";
@@ -45,12 +47,21 @@ export const CORE_HANDLERS: Record<string, NodeHandler> = {
   },
 
   [OUTPUT_NODE_TYPE]: async (inputs, r, ctx) => {
+    const config = r.config as OutcomeReportConfig;
+    // A learned workflow cites its team's inferred sets too (labelled, never as rules).
+    const teamSets = config.requirementSets.some((k) => k.startsWith(TEAM_REQUIREMENT_SET_PREFIX))
+      ? await ctx.memo("team-requirement-sets", () => listTeamRequirementSets(ctx.teamId))
+      : [];
     try {
-      const outcome = evaluateOutcome(r.config as OutcomeReportConfig, inputs, {
+      const outcome = evaluateOutcome(config, inputs, {
         workflowId: ctx.run.workflow_id,
         steps: ctx.run.steps,
         checkpoints: ctx.run.checkpoints,
         labels: nodeLabels(ctx.run),
+        resolveSet: (key) => {
+          const set = resolveSet(key, teamSets);
+          return set ? setRef(set) : null;
+        },
       });
       ctx.run.outcome = outcome;
       return { outcome };

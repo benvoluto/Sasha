@@ -1,0 +1,173 @@
+{
+  "key": "resume-cv",
+  "version": 1,
+  "title": "Resume or CV",
+  "family": "career",
+  "summary": "A resume tailored to one job, or an academic curriculum vitae: contact details, a short profile, experience with measurable results, education, skills and, for a CV, publications, grants and teaching. Every fact comes from the candidate's master resume or work history.",
+  "signals": [
+    "resume",
+    "curriculum vitae",
+    "CV",
+    "professional summary",
+    "work experience",
+    "employment history",
+    "education",
+    "skills",
+    "certifications",
+    "publications",
+    "grants and awards",
+    "teaching experience",
+    "LinkedIn",
+    "references available upon request"
+  ],
+  "audience": "A recruiter or hiring manager scanning in under a minute, often after an applicant tracking system has parsed the text; for a CV, a search or tenure committee reading the record in the field's usual order.",
+  "tone": "Concise, concrete and factual: strong verbs, results with numbers where the source has them, no first person, no clichés or self-praise.",
+  "preamble": "You are a career coach tailoring the candidate's resume (or academic CV) for one target role. The candidate's master resume or work history is the source of truth: never add or change an employer, job title, date, degree, certification, skill, metric or achievement that is not in it, and keep titles and dates exactly as the master states them. Tailoring means choosing, ordering and phrasing: lead with the evidence that matches the job's required qualifications, use the posting's terms where the experience genuinely matches, keep the numbers the source gives, and trim what does not serve this role. Write bullets as action plus result, without first person. Use a single column, standard section headings, real text (no tables, images or text boxes that parsers drop) and one consistent date format. A resume is usually one to two pages depending on the field and seniority; a CV has no length limit and orders publications, grants and teaching the way the field does. Where the role asks for something the history does not show, leave it out and note it as a gap for the cover letter; never imply it. The resume is the candidate's statement: they approve every changed line.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "contact",
+      "heading": "Contact",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "renderer": "static",
+      "guidance": "Name, then city and state (a full street address is not needed), phone, a professional email and one or two relevant links such as LinkedIn or a portfolio. Keep it in the document body, not a header or footer, so parsers read it.",
+      "elements": ["Full name", "City and state", "Phone and professional email", "Relevant profile or portfolio link"],
+      "sourcesNeeded": ["Master resume"],
+      "dataNeeded": [],
+      "scaffold": "**[Full name]**\n[City, State] · [Phone] · [Email] · [LinkedIn or portfolio URL]"
+    },
+    {
+      "key": "profile",
+      "heading": "Summary",
+      "level": 2,
+      "order": 20,
+      "required": false,
+      "guidance": "Two or three lines that position the candidate for this role: field and years of relevant experience, the two or three strengths the posting asks for that the history proves, and one headline result. Write in the posting's terms where they match. Common failures: an objective statement about what the candidate wants; adjectives (\"passionate\", \"results-driven\") with no evidence; claims the experience section does not back.",
+      "lengthHint": "2-3 lines",
+      "elements": ["Field and years of relevant experience", "Strengths matched to the posting", "One headline result"],
+      "sourcesNeeded": ["Job description", "Master resume"],
+      "dataNeeded": []
+    },
+    {
+      "key": "experience",
+      "heading": "Experience",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Reverse chronological. For each role: title, employer, location and dates exactly as in the master, then three to six bullets, most relevant first. Each bullet is an action and its result, with the number the source gives (revenue, time saved, people led, volume handled). Give more space to recent and relevant roles; compress or drop old, unrelated ones. Common failures: duties listed instead of results; metrics invented or inflated; titles changed to match the posting; inconsistent date formats.",
+      "lengthHint": "Most of the page",
+      "elements": ["Title, employer, location and dates for each role, as in the master", "3-6 result-focused bullets per recent role", "Most relevant evidence first", "Numbers kept from the source"],
+      "sourcesNeeded": ["Master resume or work history", "Job description"],
+      "dataNeeded": ["Metrics and achievements from the master"]
+    },
+    {
+      "key": "education",
+      "heading": "Education",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Degree, field, institution and year (or expected year), most recent first, exactly as in the master. Add honors, a thesis title or relevant coursework only when it serves the role. Early-career candidates may place this before Experience; for a CV it usually comes first.",
+      "lengthHint": "A few lines",
+      "elements": ["Degree, field, institution and year for each", "Honors or thesis where relevant"],
+      "sourcesNeeded": ["Master resume"],
+      "dataNeeded": []
+    },
+    {
+      "key": "skills",
+      "heading": "Skills",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Group the skills the history shows (tools, languages, methods, certifications) and put the ones the posting names first, using its spelling. Include only skills the master lists or the experience demonstrates. Common failures: long keyword lists the experience never shows; skill-level bars or graphics that parsers drop; outdated tools crowding out relevant ones.",
+      "lengthHint": "2-4 lines",
+      "elements": ["Skills grouped by kind", "Posting's skills first, where the history shows them", "Certifications with issuer and year"],
+      "sourcesNeeded": ["Master resume", "Job description"],
+      "dataNeeded": []
+    },
+    {
+      "key": "publications",
+      "heading": "Publications",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "CV variant. List publications in the citation style the field uses, grouped as the field expects (peer-reviewed articles, books, chapters, conference papers, preprints), reverse chronological, with the candidate's name highlighted. Mark status accurately (published, in press, under review). Never upgrade a submitted paper to accepted.",
+      "lengthHint": "As long as the record",
+      "elements": ["Full citations in the field's style", "Grouped by kind as the field expects", "Accurate status for each"],
+      "sourcesNeeded": ["Master CV or publication list"],
+      "dataNeeded": []
+    },
+    {
+      "key": "grants-and-awards",
+      "heading": "Grants, Fellowships and Awards",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "CV variant, or a resume section when awards matter for the role. For each: title, funder or awarding body, the candidate's role, amount where customary, and dates, exactly as in the record.",
+      "lengthHint": "As long as the record",
+      "elements": ["Title, funder and dates for each", "Candidate's role and amount where customary"],
+      "sourcesNeeded": ["Master CV or award letters"],
+      "dataNeeded": []
+    },
+    {
+      "key": "teaching-and-service",
+      "heading": "Teaching and Service",
+      "level": 2,
+      "order": 80,
+      "required": false,
+      "guidance": "CV variant. Courses taught (title, level, institution, terms), mentoring, and service to the department, institution and profession (committees, reviewing, editorial roles), in the order the field expects.",
+      "lengthHint": "As long as the record",
+      "elements": ["Courses taught with level and terms", "Mentoring and supervision", "Professional and institutional service"],
+      "sourcesNeeded": ["Master CV"],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "truthful-to-master",
+      "criterion": "Truth to the master: every employer, title, date, degree, skill and number appears in the master resume or work history.",
+      "levels": [
+        { "score": 3, "descriptor": "Every fact traces to the master; titles and dates are unchanged." },
+        { "score": 2, "descriptor": "A fact is reworded so that it says more than the master does." },
+        { "score": 1, "descriptor": "A fact, metric or skill appears that the master does not contain." }
+      ]
+    },
+    {
+      "key": "requirement-match",
+      "criterion": "Match to the posting: required qualifications the history supports are evident early, in the posting's terms.",
+      "levels": [
+        { "score": 4, "descriptor": "Every supported required item is visible in the summary or first bullets of the relevant roles; preferred items follow." },
+        { "score": 3, "descriptor": "Most supported required items are visible; one is buried." },
+        { "score": 2, "descriptor": "Matching evidence exists but is hard to find or phrased in other terms." },
+        { "score": 1, "descriptor": "Untailored; the resume does not address the posting." }
+      ],
+      "appliesTo": ["profile", "experience", "skills"]
+    },
+    {
+      "key": "results-not-duties",
+      "criterion": "Results: bullets state actions and outcomes with the numbers the source gives, not duties.",
+      "levels": [
+        { "score": 3, "descriptor": "Most bullets show a result, quantified where the source allows." },
+        { "score": 2, "descriptor": "A mix of results and duty lists." },
+        { "score": 1, "descriptor": "Duty lists throughout." }
+      ],
+      "appliesTo": ["experience"]
+    },
+    {
+      "key": "parseable-format",
+      "criterion": "Format: single column, standard headings, real text, consistent dates, length suited to the field.",
+      "levels": [
+        { "score": 3, "descriptor": "Parser-friendly layout, consistent dates and a length that fits the field and seniority." },
+        { "score": 2, "descriptor": "Minor format problems, such as mixed date styles or an extra page." },
+        { "score": 1, "descriptor": "Tables, graphics or headers that hide content, or a length far from the field's norm." }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "hand-written (common resume and academic CV practice; steps from docs/workflows-by-document-type.md)",
+    "url": "",
+    "license": "Own text",
+    "retrieved": "2026-10-08"
+  }
+}

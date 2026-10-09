@@ -176,13 +176,15 @@ describe("citations from drafting to export", () => {
     expect(md.startsWith("# River Plan\n\n## Background\n\n")).toBe(true);
     expect(md).toContain("Demand for river transit rose 12% in 2025.[\\[1\\]][1] Fares held steady.[\\[2\\]][2][\\[3\\]][3] Funding beyond 2026 is not yet agreed.");
     expect(md).toContain("- Ridership doubled downtown.[\\[3\\]][3]");
-    expect(md).toMatch(/Budget 2026\]\(https:\/\/sasha\.app\/library\?source=[^)]+\)\[\\\[4\\\]\]\[4\]/);
+    // The table's source line exports as text (no in-app library link), with its table reference.
+    expect(md).toMatch(/Source: Budget 2026\[\\\[4\\\]\]\[4\]/);
+    expect(md).not.toContain("/library");
     const refs = md.slice(md.indexOf("## References"));
     expect(refs).toContain("1. Transit study, p. 4");
     expect(refs).toContain("2. Transit study, p. 5");
     expect(refs).toContain("3. Council minutes");
     expect(refs).toContain("4. Table “Budget 2026”, Budget.csv");
-    expect(refs).toContain(`[1]: https://sasha.app/library?source=`);
+    expect(refs).toContain(`[1]: #references "Transit study`);
     expect(refs).not.toContain("out of date");
 
     // 6. Word: one footnote per citation occurrence (1; 2 and 3; 3; 4), and the References list.

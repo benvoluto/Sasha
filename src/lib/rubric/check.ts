@@ -14,6 +14,8 @@ import { rubricFor, UNIVERSAL_RUBRIC } from "@/catalog";
 import type { RubricCriterion } from "@/catalog/schema";
 import { listSections, type PMNode } from "@/lib/documents/sections";
 import { CITATION_MARK, citationAttrs, citationKey, collectCitations } from "@/lib/citations/contract";
+import { resolveReferences } from "@/lib/citations/references";
+import { referenceLabel } from "@/lib/export/contract";
 import { claudeJson } from "@/lib/llm/claude";
 import { MAX_EVIDENCE } from "@/lib/workflow/contract";
 import { RUBRIC_SYSTEM, defuseAll, documentBlock, tagBlock, topSections } from "@/lib/workflow/nodes/prompts";
@@ -149,6 +151,23 @@ export function citationsBlock(claims: CitedClaim[], labelOf: (n: number) => str
   const lines = claims.slice(0, MAX_CITED_CLAIMS).map((c) => `[${c.sectionId ?? "doc"}] “${clip(c.text, CITED_CLAIM_CHARS)}” cites ${c.refs.map((n) => `[${n}] ${labelOf(n)}`).join("; ")}`);
   if (claims.length > MAX_CITED_CLAIMS) lines.push(`(${claims.length - MAX_CITED_CLAIMS} more cited passages not listed)`);
   return tagBlock("citations", defuseAll(lines.join("\n")));
+}
+
+/**
+ * The <citations> block for what `content` cites in `sectionIds` (null = the
+ * whole document), each reference named by its label and marked "(no longer
+ * holds)" when its source or passage is gone; null when nothing in scope is
+ * cited. Shared by the Check route and the workflow's rubric.score step.
+ */
+export async function documentCitationsBlock(teamId: string, documentId: string, content: PMNode | null | undefined, sectionIds: string[] | null): Promise<string | null> {
+  const claims = citedClaims(content, sectionIds);
+  if (!claims.length) return null;
+  const refs = await resolveReferences(teamId, documentId, collectCitations(content).references);
+  const byNumber = new Map(refs.map((r) => [r.number, r]));
+  return citationsBlock(claims, (n) => {
+    const r = byNumber.get(n);
+    return r ? `${referenceLabel(r)}${r.status === "ok" ? "" : " (no longer holds)"}` : "source";
+  });
 }
 
 /** sha256 over what a check sends: the criteria (keys and levels), the type key and version, and the text checked. */

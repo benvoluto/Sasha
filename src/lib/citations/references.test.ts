@@ -81,8 +81,9 @@ describe("resolveReferences / documentCitations", () => {
       [5, "ok", "Budget workbook"],
       [6, "deleted", "Deleted source"],
     ]);
-    expect(references[0]).toMatchObject({ page: 2, excerpt: "Demand rose 12 percent.", sourceUrl: null });
-    expect(references[4]).toMatchObject({ kind: "table", tableName: "Costs", page: 5 });
+    expect(references[0]).toMatchObject({ page: 2, excerpt: "Demand rose 12 percent.", sourceUrl: null, fileName: null });
+    // An upload's file name, so the exports cite it by title, file name and page rather than link into the app.
+    expect(references[4]).toMatchObject({ kind: "table", tableName: "Costs", page: 5, fileName: "budget.xlsx" });
     expect(problems.map((p) => [p.number, p.status])).toEqual([
       [2, "unlinked"],
       [3, "deleted"],
@@ -106,6 +107,21 @@ describe("resolveReferences / documentCitations", () => {
     ]);
     expect(passageIndex("S1a2b3c4d.P17")).toBe(17);
     expect(passageIndex("nope")).toBeNull();
+  });
+
+  it("gives a URL source's own address and an uploaded file's name", async () => {
+    const d = await createDocument(T, "ann");
+    const web = await createSource(T, "ann", { kind: "url", title: "Rates explained", url: "https://example.org/rates", extracted_text: "Rates rose.", extraction_status: "ready" });
+    const file = await createSource(T, "ann", { kind: "file", title: "Q3 Report", filename: "q3.pdf", mime: "application/pdf", extracted_text: "Demand rose.", extraction_status: "ready" });
+    for (const s of [web, file]) {
+      await replacePassages(T, s.id, [{ id: `${passagePrefix(s.id)}.P0`, idx: 0, page: s === file ? 4 : null, start_offset: 0, end_offset: 5, text: "Text." }]);
+      await linkSource(T, "ann", d.id, s.id);
+    }
+    const refs = await resolveReferences(T, d.id, [web, file].map((s, i) => ({ key: `p:${passagePrefix(s.id)}.P0`, number: i + 1, kind: "passage" as const, passageId: `${passagePrefix(s.id)}.P0`, sourceId: s.id, dataTableId: null, quote: null })));
+    expect(refs.map((r) => [r.sourceTitle, r.sourceUrl, r.fileName, r.page])).toEqual([
+      ["Rates explained", "https://example.org/rates", null, null],
+      ["Q3 Report", null, "q3.pdf", 4],
+    ]);
   });
 
   it("keeps a mark's quote only when the passage it resolves to contains it", async () => {

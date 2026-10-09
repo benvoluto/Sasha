@@ -1,0 +1,173 @@
+{
+  "key": "type-cover-letter",
+  "version": 1,
+  "title": "Cover letter fit and consistency",
+  "summary": "A fit and consistency result: ready or revise. Checks that the letter answers two to four of the top requirements with specific examples and gives a sourced reason for this employer, that every fact matches the resume and master history, that it adds to the resume rather than restating it, and its form: one page, correct company, role and addressee. The candidate approves before sending.",
+  "kind": "type",
+  "appliesTo": ["cover-letter"],
+  "outcome": {
+    "label": "Fit and consistency",
+    "values": [
+      { "key": "ready", "label": "Ready" },
+      { "key": "revise", "label": "Revise" }
+    ]
+  },
+  "checkpoint": { "role": "Candidate", "required": true },
+  "notes": [
+    "Facts about the employer must come from linked sources (the posting, the employer's site); anything else is marked unverified.",
+    "Link the tailored resume and its requirement map from the resume workflow to reuse them.",
+    "The voice check runs only when a writing sample is linked."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "src", "node": "sources.read", "label": "Source passages" },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: job and resume",
+      "config": {
+        "inputs": [
+          { "key": "job", "label": "The job description", "kind": "source", "match": ["job description", "job posting", "posting", "position description", "vacancy", "requisition"], "help": "Link the posting for the role this letter applies to." },
+          { "key": "resume", "label": "The tailored resume", "kind": "source", "match": ["resume", "CV", "curriculum vitae"], "help": "Link the tailored resume (and the master history if you have it) so facts can be checked." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources" }
+    },
+    {
+      "id": "reqs",
+      "node": "step.extract",
+      "label": "Top requirements",
+      "config": {
+        "item": "requirement",
+        "from": ["sources"],
+        "sourceMatch": ["job", "posting", "position", "vacancy", "requisition"],
+        "maxItems": 8,
+        "instructions": "List the posting's most important requirements, most stressed first (no more than eight).",
+        "fields": [
+          { "name": "requirement", "label": "Requirement", "type": "text", "description": "As the posting states it", "required": true }
+        ]
+      },
+      "in": { "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "fit",
+      "node": "step.trace",
+      "label": "Fit",
+      "config": {
+        "against": "document",
+        "statuses": [
+          { "key": "answered_with_example", "label": "Answered with a specific example", "ok": true, "severity": "info" },
+          { "key": "mentioned_only", "label": "Mentioned without an example", "ok": false, "severity": "minor" },
+          { "key": "not_addressed", "label": "Not addressed", "ok": false, "severity": "info" }
+        ],
+        "unverifiedStatus": "not_addressed",
+        "question": "Does the letter answer this requirement with a specific example (situation, action, result)? Quote it."
+      },
+      "in": { "items": "reqs.items", "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "claims",
+      "node": "step.extract",
+      "label": "Claims in the letter",
+      "config": {
+        "item": "claim",
+        "from": ["document"],
+        "maxItems": 40,
+        "instructions": "List each factual claim the letter makes about the candidate (employer, title, date, number, skill, achievement) and about the employer.",
+        "fields": [
+          { "name": "claim", "label": "Claim", "type": "text", "description": "The claim as written", "required": true },
+          { "name": "about", "label": "About", "type": "enum", "values": ["candidate", "employer"], "description": "Whom the claim is about", "required": true }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "cons",
+      "node": "step.trace",
+      "label": "Consistency",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          { "key": "consistent", "label": "Matches the sources", "ok": true, "severity": "info" },
+          { "key": "mismatch", "label": "Contradicts the resume", "ok": false, "severity": "major" },
+          { "key": "not_in_history", "label": "Absent from the resume and master history", "ok": false, "severity": "major" },
+          { "key": "unverified_employer_fact", "label": "Employer fact with no linked source", "ok": false, "severity": "minor" }
+        ],
+        "unverifiedStatus": "not_in_history",
+        "question": "For a claim about the candidate: does it match the resume and master history (employers, titles, dates, numbers, skills)? For a claim about the employer: does a linked source (posting, employer site) support it?"
+      },
+      "in": { "items": "claims.items", "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "overlap",
+      "node": "step.classify",
+      "label": "Overlap with the resume",
+      "config": {
+        "unit": "paragraph",
+        "categories": [
+          { "key": "adds_context", "label": "Adds context", "description": "Gives context, motivation or a story the resume cannot carry", "flag": false, "severity": "info" },
+          { "key": "restates_resume", "label": "Restates the resume", "description": "Repeats resume lines and adds nothing", "flag": true, "severity": "minor", "suggestion": "Replace with the context behind the result, or cut." },
+          { "key": "generic", "label": "Generic", "description": "Could be sent to any employer unchanged", "flag": true, "severity": "minor", "suggestion": "Tie it to this employer using a linked source." }
+        ],
+        "instructions": "Compare each paragraph with the linked resume."
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "len",
+      "node": "step.compute",
+      "label": "One page",
+      "config": {
+        "checks": [
+          { "kind": "length", "key": "one_page", "label": "Fits on one page", "severity": "major", "unit": "pages", "limit": 1 }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "form",
+      "node": "step.check",
+      "label": "Form and voice",
+      "config": {
+        "checklist": [
+          { "key": "company_role", "label": "Correct company and role", "question": "Do the company name and role match the posting everywhere in the letter?", "severity": "blocking", "appliesTo": ["header", "opening", "why-this-employer", "closing"] },
+          { "key": "addressee", "label": "Correct addressee", "question": "Is the addressee the person or team the posting or sources name, or a neutral greeting?", "severity": "major", "appliesTo": ["header"] },
+          { "key": "no_leftovers", "label": "No leftover names", "question": "Is the letter free of any company, person or role from another application?", "severity": "blocking" },
+          { "key": "employer_reason", "label": "Sourced reason for this employer", "question": "Does the letter give a specific reason for this employer drawn from a linked source?", "severity": "major", "appliesTo": ["why-this-employer"] },
+          { "key": "two_to_four", "label": "Two to four requirements answered", "question": "Does the letter answer two to four of the top requirements with specific examples?", "severity": "major", "appliesTo": ["evidence-of-fit"] },
+          { "key": "voice", "label": "Matches the writing sample", "question": "If a writing sample is linked, which passages depart from the candidate's voice? Answer not_applicable when there is no sample.", "severity": "minor" }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          { "value": "revise", "when": { "anyOf": [{ "findings": { "severity": ["blocking", "major"], "min": 1 } }, { "computeFailed": { "min": 1 } }] } }
+        ],
+        "fallback": "ready"
+      },
+      "in": {
+        "blocked": "gate.blocked",
+        "findings": ["fit.findings", "cons.findings", "overlap.findings", "len.findings", "form.findings"],
+        "results": "len.results",
+        "tables": ["fit.table", "cons.table", "overlap.table", "form.table"]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Candidate approval",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Approve the letter before sending. Check the company, role and addressee once more yourself."
+      },
+      "in": { "items": "out.outcome" }
+    }
+  ]
+}

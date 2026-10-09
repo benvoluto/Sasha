@@ -25,7 +25,14 @@ export const passageIndex = (passageId: string): number | null => {
   return m ? Number(m[1]) : null;
 };
 
-export async function resolveReferences(teamId: string, documentId: string, refs: CitedReference[]): Promise<ResolvedReference[]> {
+/**
+ * A resolved reference with the uploaded file's name (null for a URL source or
+ * when gone), so the exports can cite an upload by title, file name and page
+ * rather than link into the app (Phase 8).
+ */
+export type ResolvedReferenceWithFile = ResolvedReference & { fileName: string | null };
+
+export async function resolveReferences(teamId: string, documentId: string, refs: CitedReference[]): Promise<ResolvedReferenceWithFile[]> {
   const linked = (await listDocumentSources(teamId, documentId)) ?? [];
   const linkedIds = new Set(linked.map((s) => s.id));
   const byPrefix = new Map(linked.map((s) => [passagePrefix(s.id), s.id]));
@@ -35,12 +42,12 @@ export async function resolveReferences(teamId: string, documentId: string, refs
     return passageCache.get(sourceId)!;
   };
 
-  const out: ResolvedReference[] = [];
+  const out: ResolvedReferenceWithFile[] = [];
   for (const ref of refs) {
     // The mark's quote is stored content anyone on the team can edit or paste, so
     // it is kept only once checked against the passage it resolves to (below);
     // otherwise the exports would print it as the source's words.
-    const base: ResolvedReference = { ...ref, quote: null, status: "deleted", sourceTitle: "Deleted source", sourceUrl: null, page: null, excerpt: null, tableName: null };
+    const base: ResolvedReferenceWithFile = { ...ref, quote: null, status: "deleted", sourceTitle: "Deleted source", sourceUrl: null, page: null, excerpt: null, tableName: null, fileName: null };
     if (ref.kind === "table") {
       const table = ref.dataTableId ? await getTable(teamId, ref.dataTableId) : null;
       if (!table) {
@@ -48,7 +55,8 @@ export async function resolveReferences(teamId: string, documentId: string, refs
         continue;
       }
       const sourceTitle = table.source.title || table.source.filename || "Untitled source";
-      out.push({ ...base, sourceId: table.source_id, sourceTitle, page: table.page, tableName: table.name || "Table", status: linkedIds.has(table.source_id) ? "ok" : "unlinked" });
+      const fileName = table.source.filename || null;
+      out.push({ ...base, sourceId: table.source_id, sourceTitle, fileName, page: table.page, tableName: table.name || "Table", status: linkedIds.has(table.source_id) ? "ok" : "unlinked" });
       continue;
     }
     const passageId = ref.passageId ?? "";
@@ -66,6 +74,7 @@ export async function resolveReferences(teamId: string, documentId: string, refs
       sourceId: source.id,
       sourceTitle,
       sourceUrl: source.kind === "url" ? source.url : null,
+      fileName: source.kind === "url" ? null : source.filename || null,
       page: passage?.page ?? null,
       excerpt: passage ? excerpt(passage.text) : null,
       quote: passage && quoteKey(ref.quote) && quoteMatches(ref.quote!, passage.text) ? ref.quote : null,

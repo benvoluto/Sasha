@@ -1,26 +1,40 @@
 {
-  "recorded_at": "2026-10-08T17:43:01.833Z",
+  "recorded_at": "2026-10-09T01:13:04.091Z",
   "model": "claude-haiku-5-5",
   "keys": [
     "business-plan",
+    "cover-letter",
     "design-doc-rfc",
+    "diataxis-explanation",
     "diataxis-how-to",
+    "diataxis-reference",
     "diataxis-tutorial",
+    "fba-bip",
     "fie",
+    "foundation-letter-of-inquiry",
+    "funder-progress-report",
     "general-report",
+    "iep",
+    "incident-postmortem",
+    "literature-review",
     "nih-specific-aims-research-strategy",
+    "nsf-project-description",
     "policy-decision-memo",
     "product-requirements",
     "proposal",
+    "reevaluation-review",
     "research-report-imrad",
-    "standard-operating-procedure"
+    "response-to-reviewers",
+    "resume-cv",
+    "standard-operating-procedure",
+    "strategy-memo"
   ],
   "data": {
     "candidates": [
       {
         "key": "proposal",
-        "confidence": 0.93,
-        "why": "The draft says 'We propose that the Parks Committee approve' a project and asks for funding, with objectives, approach, timeline, budget and success criteria as the cue sections."
+        "confidence": 0.9,
+        "why": "The title and opening 'We propose that the Parks Committee approve a twelve-month project' ask an internal decision-maker to approve work, with objectives, timeline, budget and success criteria."
       }
     ],
     "freeform": false

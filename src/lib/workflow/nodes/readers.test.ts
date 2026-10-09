@@ -5,7 +5,10 @@ import { linkTable, listTables, replaceSourceTables } from "@/lib/data/store";
 import { putSectionNotes } from "@/lib/documents/section-store";
 import { createSource } from "@/lib/sources/store";
 import { NodeError } from "../context";
-import { dataList, docNotes, docRead, readRequirements, sourcesList, sourcesRead } from "./readers";
+import { dataList, docNotes, docRead, readRequirements, requirementsRead, sourcesList, sourcesRead } from "./readers";
+import { RequirementSet } from "@/catalog/requirements-schema";
+import { LEARN_INFERRED_LABEL } from "@/lib/learn/contract";
+import { insertTeamRequirementSets } from "@/lib/learn/store";
 import { AGENT, ctxFor, heading, makeDocument, nodeOf, para, resetStores, TEAM } from "./test-fixtures";
 import type { DocSnapshot, SourcesSnapshot, TableView } from "./types";
 
@@ -127,5 +130,43 @@ describe("requirements.read", () => {
     expect(() => readRequirements(["no-such-set"], [], null)).toThrow(NodeError);
     expect(() => readRequirements([], ["no-such-set#x"], null)).toThrow(/unknown requirement/);
     expect(readRequirements([], [], "no-such-type")).toEqual({ sets: [], items: [] });
+  });
+
+  const inferred = (key = "team-approvals", appliesTo = ["equipment-request"]) =>
+    RequirementSet.parse({
+      key,
+      version: 1,
+      title: "Approvals",
+      authority: "Inferred from the team's examples",
+      jurisdiction: "Team",
+      appliesTo,
+      effective: "",
+      checked: "2026-10-08",
+      inferred: true,
+      provenance: { source: "Learned from 2 examples", url: "", license: "Team" },
+      items: [{ key: "head_signs", kind: "checklist", title: "Head signs", text: "The department head signs.", citation: "Never shown" }],
+    });
+
+  it("resolves the team's inferred sets after the catalog's, labelled and never cited as a rule", () => {
+    const team = [inferred(), inferred("team-other", ["other-type"])];
+    const byKey = readRequirements(["team-approvals"], [], null, team);
+    expect(byKey.sets).toEqual([expect.objectContaining({ key: "team-approvals", url: "", verifyNote: expect.stringMatching(new RegExp(`^${LEARN_INFERRED_LABEL}`)) })]);
+    expect(byKey.items).toEqual([expect.objectContaining({ ref: "team-approvals#head_signs", citation: LEARN_INFERRED_LABEL })]);
+    // The type's sets: the team set for the type, not another type's.
+    expect(readRequirements([], [], "equipment-request", team).sets.map((s) => s.key)).toEqual(["team-approvals"]);
+    expect(readRequirements([], ["team-approvals#head_signs"], null, team).items.map((i) => i.ref)).toEqual(["team-approvals#head_signs"]);
+    expect(() => readRequirements([], ["team-approvals#nope"], null, team)).toThrow(/unknown requirement/);
+    // A catalog set wins over a team set with the same key.
+    const shadow = { ...inferred("nih-page-limits"), title: "Team copy" };
+    expect(readRequirements(["nih-page-limits"], [], null, [shadow]).sets[0].title).not.toBe("Team copy");
+  });
+
+  it("reads the team's sets in the node, scoped to the run's team", async () => {
+    await insertTeamRequirementSets(TEAM, AGENT, [inferred()]);
+    await insertTeamRequirementSets("org:other", AGENT, [inferred("team-elsewhere")]);
+    const { doc } = await makeDocument({ typeKey: null, content: body });
+    const out = (await requirementsRead({}, nodeOf("requirements.read", { sets: ["team-approvals"], items: [] }), ctxFor(doc.id))) as { requirements: { sets: Array<{ key: string }> }; text: string };
+    expect(out.requirements.sets.map((s) => s.key)).toEqual(["team-approvals"]);
+    await expect(requirementsRead({}, nodeOf("requirements.read", { sets: ["team-elsewhere"], items: [] }), ctxFor(doc.id))).rejects.toThrow(/unknown requirement set/);
   });
 });

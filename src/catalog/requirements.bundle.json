@@ -1,13 +1,15 @@
 [
   {
     "key": "diataxis-framework",
-    "version": 1,
+    "version": 2,
     "title": "Diátaxis framework",
     "authority": "Diátaxis (Daniele Procida)",
     "jurisdiction": "International",
     "appliesTo": [
       "diataxis-how-to",
-      "diataxis-tutorial"
+      "diataxis-tutorial",
+      "diataxis-reference",
+      "diataxis-explanation"
     ],
     "effective": "",
     "checked": "2026-10-08",
@@ -18,6 +20,7 @@
       "url": "https://diataxis.fr/",
       "license": "Paraphrased; Diátaxis is CC BY-SA 4.0, attribution to diataxis.fr"
     },
+    "inferred": false,
     "verifyNote": "Verify before relying: a paraphrase of the framework. See diataxis.fr for the full text.",
     "items": [
       {
@@ -40,6 +43,20 @@
         "title": "Tutorials",
         "text": "A tutorial takes a beginner from a stated starting point to a stated result along one path, and should work for every learner every time.",
         "url": "https://diataxis.fr/"
+      },
+      {
+        "key": "reference",
+        "kind": "guideline",
+        "title": "Reference",
+        "text": "Reference describes the machinery (APIs, commands, options, settings) for a reader who consults it while working. It describes and nothing else: accurate, complete, neutral and austere, with no instruction, explanation or opinion beyond brief usage examples and necessary warnings. Its structure mirrors the structure of the product, and its entries follow one consistent pattern so readers find things where they expect them.",
+        "url": "https://diataxis.fr/reference/"
+      },
+      {
+        "key": "explanation",
+        "kind": "guideline",
+        "title": "Explanation",
+        "text": "Explanation deepens understanding for a reader who is studying rather than working: it gives context, background, history, reasons, design decisions, constraints and alternatives, and connects the topic to related ideas. It may hold opinion and perspective, and weighs alternatives openly. It needs a boundary (often framed as \"About <topic>\" or a why question) and leaves step-by-step instruction and technical description to how-to guides and reference.",
+        "url": "https://diataxis.fr/explanation/"
       }
     ]
   },
@@ -50,7 +67,8 @@
     "authority": "EQUATOR Network",
     "jurisdiction": "International",
     "appliesTo": [
-      "research-report-imrad"
+      "research-report-imrad",
+      "literature-review"
     ],
     "effective": "",
     "checked": "2026-10-08",
@@ -61,6 +79,7 @@
       "url": "https://www.equator-network.org/",
       "license": "Pointer only; checklist text not reproduced"
     },
+    "inferred": false,
     "verifyNote": "Verify before relying: these are pointers only. Use the official checklist for the guideline the design calls for.",
     "items": [
       {
@@ -81,53 +100,172 @@
         "key": "prisma-2020",
         "kind": "guideline",
         "title": "PRISMA 2020",
-        "text": "For systematic reviews. Checklist items are not reproduced here; use the official checklist.",
-        "url": "https://www.equator-network.org/"
+        "text": "For systematic reviews: report the search strategy, the screening flow from records found to studies included, and the appraisal of study quality and risk of bias. The 27-item checklist (Page et al., BMJ 2021; CC BY 4.0) is not reproduced here; use the official checklist. Narrative and scoping reviews are not held to it.",
+        "url": "https://www.prisma-statement.org/prisma-2020-checklist"
       }
     ]
   },
   {
-    "key": "idea-evaluation-34cfr",
+    "key": "idea-discipline-34cfr",
     "version": 1,
-    "title": "IDEA evaluation and eligibility (34 CFR 300.304, 300.306)",
+    "title": "IDEA discipline and behavior (34 CFR 300.530, 300.324(a)(2)(i))",
     "authority": "U.S. Department of Education",
     "jurisdiction": "United States (federal)",
     "appliesTo": [
-      "fie"
+      "fba-bip"
     ],
     "effective": "",
     "checked": "2026-10-08",
     "supersedes": null,
     "status": "current",
     "provenance": {
-      "source": "34 CFR 300.304 and 300.306 (summarized in docs/workflows-by-document-type.md)",
+      "source": "34 CFR 300.530 (authority of school personnel) and 300.324(a)(2)(i) (positive behavioral interventions)",
+      "url": "https://www.law.cornell.edu/cfr/text/34/300.530",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "inferred": false,
+    "verifyNote": "Verify before relying: agency rules change, and state rules (for example on restraint and time-out) apply on top. Check the source for the current version.",
+    "items": [
+      {
+        "key": "positive-behavior-consideration",
+        "kind": "checklist",
+        "title": "Positive behavioral interventions",
+        "text": "When a student's behavior impedes the student's learning or that of others, the IEP team considers positive behavioral interventions and supports, and other strategies, to address that behavior.",
+        "citation": "34 CFR 300.324(a)(2)(i)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.324"
+      },
+      {
+        "key": "removal-up-to-ten",
+        "kind": "limit",
+        "title": "Removals of up to 10 school days",
+        "text": "School personnel may remove a student with a disability who violates a code of conduct for up to 10 consecutive school days, to the extent those options apply to students without disabilities, and for further removals of up to 10 days for separate incidents that do not amount to a change of placement.",
+        "value": 10,
+        "unit": "school_days",
+        "citation": "34 CFR 300.530(b)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.530"
+      },
+      {
+        "key": "services-after-ten",
+        "kind": "policy",
+        "title": "Services after 10 days of removal",
+        "text": "After a student has been removed for 10 school days in the same school year, services are provided during later removals so the student can keep taking part in the general curriculum, in another setting, and progress toward the IEP goals.",
+        "citation": "34 CFR 300.530(b)(2), (d)(1)(i)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.530"
+      },
+      {
+        "key": "fba-during-removal",
+        "kind": "checklist",
+        "title": "FBA and behavioral intervention during removal",
+        "text": "A student removed under the change-of-placement or special-circumstances provisions receives, as appropriate, a functional behavioral assessment and behavioral intervention services and modifications designed to address the behavior so it does not recur.",
+        "citation": "34 CFR 300.530(d)(1)(ii)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.530"
+      },
+      {
+        "key": "manifestation-determination",
+        "kind": "deadline",
+        "title": "Manifestation determination",
+        "text": "Within 10 school days of any decision to change the placement of a student with a disability because of a code-of-conduct violation, the agency, the parent and relevant members of the IEP team review the relevant information and decide whether the conduct was caused by, or had a direct and substantial relationship to, the disability, or was the direct result of the agency's failure to implement the IEP.",
+        "value": 10,
+        "unit": "school_days",
+        "citation": "34 CFR 300.530(e)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.530"
+      },
+      {
+        "key": "fba-bip-when-manifestation",
+        "kind": "checklist",
+        "title": "FBA and plan when the conduct is a manifestation",
+        "text": "When the conduct is found to be a manifestation of the disability, the IEP team conducts a functional behavioral assessment (unless one was done before the behavior that led to the change of placement) and implements a behavioral intervention plan, or, when a plan already exists, reviews it and modifies it as needed to address the behavior.",
+        "citation": "34 CFR 300.530(f)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.530"
+      },
+      {
+        "key": "return-to-placement",
+        "kind": "policy",
+        "title": "Return to placement",
+        "text": "Except in the special circumstances, a student whose conduct was a manifestation returns to the placement from which the student was removed, unless the parent and the agency agree to a change as part of modifying the behavioral intervention plan.",
+        "citation": "34 CFR 300.530(f)(2)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.530"
+      },
+      {
+        "key": "special-circumstances",
+        "kind": "limit",
+        "title": "Special circumstances",
+        "text": "For weapons, illegal drugs or controlled substances, or serious bodily injury at school, on school premises or at a school function, school personnel may remove the student to an interim alternative educational setting for up to 45 school days whether or not the behavior is a manifestation.",
+        "value": 45,
+        "unit": "school_days",
+        "citation": "34 CFR 300.530(g)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.530"
+      },
+      {
+        "key": "state-rules",
+        "kind": "policy",
+        "title": "State rules apply on top",
+        "text": "States set their own rules on restraint, time-out and related notices to parents, which apply in addition to these federal rules. See the state's rules (in Texas, 19 TAC §89.1053).",
+        "citation": "19 TAC §89.1053 (Texas example)",
+        "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1053"
+      }
+    ]
+  },
+  {
+    "key": "idea-evaluation-34cfr",
+    "version": 2,
+    "title": "IDEA evaluation, reevaluation and eligibility (34 CFR 300.300, 300.303–300.306)",
+    "authority": "U.S. Department of Education",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "fie",
+      "reevaluation-review"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "34 CFR 300.300(c)–(d), 300.303, 300.304, 300.305 and 300.306 (summarized in docs/workflows-by-document-type.md)",
       "url": "https://www.law.cornell.edu/cfr/text/34/300.304",
       "license": "Paraphrased summary (source: public domain US government)"
     },
+    "inferred": false,
     "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
     "items": [
       {
         "key": "all-areas",
         "kind": "checklist",
         "title": "All areas assessed",
-        "text": "Every area related to the suspected disability is assessed.",
-        "citation": "34 CFR 300.304",
+        "text": "Every area related to the suspected disability is assessed, including where appropriate health, vision, hearing, social and emotional status, general intelligence, academic performance, communicative status and motor abilities.",
+        "citation": "34 CFR 300.304(c)(4)",
         "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
       },
       {
         "key": "variety-of-sources",
         "kind": "checklist",
         "title": "A variety of sources",
-        "text": "The evaluation uses a variety of assessment sources.",
-        "citation": "34 CFR 300.304",
+        "text": "The evaluation uses a variety of assessment tools and strategies to gather functional, developmental and academic information, including information from the parent.",
+        "citation": "34 CFR 300.304(b)(1)",
         "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
       },
       {
         "key": "no-single-measure",
         "kind": "checklist",
         "title": "No single measure decides",
-        "text": "No single measure or assessment is the sole basis for deciding whether the student has a disability.",
-        "citation": "34 CFR 300.304",
+        "text": "No single measure or assessment is the sole basis for deciding whether the student has a disability or for designing the educational program.",
+        "citation": "34 CFR 300.304(b)(2)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
+      },
+      {
+        "key": "valid-administration",
+        "kind": "checklist",
+        "title": "Valid, unbiased administration",
+        "text": "Assessments are chosen and given without racial or cultural bias, in the student's language and form of communication most likely to yield accurate information, used only for purposes for which they are valid and reliable, given by trained personnel, and given as the publisher directs.",
+        "citation": "34 CFR 300.304(c)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
+      },
+      {
+        "key": "all-needs",
+        "kind": "checklist",
+        "title": "All needs identified",
+        "text": "The evaluation is comprehensive enough to identify all of the student's special education and related service needs, whether or not they are commonly linked to the suspected category.",
+        "citation": "34 CFR 300.304(c)(6)",
         "url": "https://www.law.cornell.edu/cfr/text/34/300.304"
       },
       {
@@ -137,6 +275,328 @@
         "text": "A student is not found eligible when the determinant factor is lack of appropriate instruction in reading or math, or limited English proficiency.",
         "citation": "34 CFR 300.306(b)",
         "url": "https://www.law.cornell.edu/cfr/text/34/300.306"
+      },
+      {
+        "key": "reevaluation-triggers",
+        "kind": "policy",
+        "title": "When a reevaluation happens",
+        "text": "A student with a disability is reevaluated when the agency decides the student's educational or related services needs, including academic achievement and functional performance, call for it, or when the parent or a teacher asks for one.",
+        "citation": "34 CFR 300.303(a)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.303"
+      },
+      {
+        "key": "reevaluation-once-a-year",
+        "kind": "policy",
+        "title": "Not more than once a year",
+        "text": "A reevaluation happens no more than once a year unless the parent and the agency agree otherwise.",
+        "citation": "34 CFR 300.303(b)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.303"
+      },
+      {
+        "key": "three-year",
+        "kind": "deadline",
+        "title": "Reevaluation at least every three years",
+        "text": "A reevaluation happens at least once every three years unless the parent and the agency agree it is unnecessary.",
+        "value": 3,
+        "unit": "years",
+        "citation": "34 CFR 300.303(b)(2)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.303"
+      },
+      {
+        "key": "reed-existing-data",
+        "kind": "checklist",
+        "title": "Review of existing evaluation data",
+        "text": "As part of any reevaluation, the IEP team and other qualified professionals review the existing data: evaluations and information from the parent; current classroom-based, local or state assessments and classroom-based observations; and observations by teachers and related services providers.",
+        "citation": "34 CFR 300.305(a)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.305"
+      },
+      {
+        "key": "reed-questions",
+        "kind": "checklist",
+        "title": "What additional data, if any, is needed",
+        "text": "From that review and the parent's input, the group identifies what additional data, if any, it needs to decide: whether the student continues to have a disability and what the student's educational needs are; the present levels of academic achievement and related developmental needs; whether the student continues to need special education and related services; and whether additions or changes to the services are needed for the student to meet the IEP's annual goals and take part, as appropriate, in the general curriculum.",
+        "citation": "34 CFR 300.305(a)(2)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.305"
+      },
+      {
+        "key": "reed-without-meeting",
+        "kind": "policy",
+        "title": "Review may be held without a meeting",
+        "text": "The group may review the existing data without holding a meeting.",
+        "citation": "34 CFR 300.305(b)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.305"
+      },
+      {
+        "key": "reed-gather-data",
+        "kind": "policy",
+        "title": "Assessments to produce the data",
+        "text": "The agency gives the assessments and other measures needed to produce the additional data the group identified.",
+        "citation": "34 CFR 300.305(c)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.305"
+      },
+      {
+        "key": "no-additional-data-notice",
+        "kind": "checklist",
+        "title": "Notice when no additional data is needed",
+        "text": "When the group decides no additional data is needed to decide continued eligibility and educational needs, the agency tells the parent of that decision and the reasons for it, and of the parent's right to ask for an assessment anyway. The agency need not assess unless the parent asks.",
+        "citation": "34 CFR 300.305(d)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.305"
+      },
+      {
+        "key": "evaluate-before-exit",
+        "kind": "policy",
+        "title": "Evaluation before ending eligibility",
+        "text": "Before deciding a student no longer has a disability, the agency evaluates the student, except when eligibility ends through graduation with a regular diploma or by aging out; in those cases the student receives a summary of academic achievement and functional performance with recommendations for postsecondary goals.",
+        "citation": "34 CFR 300.305(e)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.305"
+      },
+      {
+        "key": "reevaluation-consent",
+        "kind": "policy",
+        "title": "Consent for reevaluation",
+        "text": "The agency obtains informed parental consent before reevaluating, unless it can show it made reasonable efforts to obtain consent and the parent did not respond. If the parent refuses, the agency may, but need not, pursue the reevaluation through the consent override procedures.",
+        "citation": "34 CFR 300.300(c)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.300"
+      },
+      {
+        "key": "review-without-consent",
+        "kind": "policy",
+        "title": "Reviewing existing data needs no consent",
+        "text": "Parental consent is not required before reviewing existing data as part of an evaluation or reevaluation.",
+        "citation": "34 CFR 300.300(d)(1)(i)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.300"
+      }
+    ]
+  },
+  {
+    "key": "idea-iep-34cfr",
+    "version": 1,
+    "title": "IDEA individualized education program (34 CFR 300.320–300.324)",
+    "authority": "U.S. Department of Education",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "iep",
+      "fba-bip"
+    ],
+    "effective": "",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "34 CFR 300.320 (IEP contents), 300.321 (IEP team), 300.322 (parent participation), 300.323 (when IEPs must be in effect), 300.324 (development, review and revision)",
+      "url": "https://www.law.cornell.edu/cfr/text/34/300.320",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "inferred": false,
+    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "items": [
+      {
+        "key": "present-levels",
+        "kind": "checklist",
+        "title": "Present levels of performance",
+        "text": "The IEP states the student's present levels of academic achievement and functional performance, including how the disability affects involvement and progress in the general education curriculum (for a preschool child, participation in appropriate activities).",
+        "appliesTo": {
+          "sections": [
+            "present-levels"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "annual-goals",
+        "kind": "checklist",
+        "title": "Measurable annual goals",
+        "text": "The IEP states measurable annual goals, academic and functional, that meet the needs resulting from the disability so the student can be involved in and progress in the general curriculum, and that meet each of the student's other disability-related educational needs.",
+        "appliesTo": {
+          "sections": [
+            "annual-goals"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(2)(i)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "short-term-objectives",
+        "kind": "checklist",
+        "title": "Benchmarks for alternate assessment",
+        "text": "For a student who takes alternate assessments aligned to alternate achievement standards, the IEP also describes benchmarks or short-term objectives.",
+        "appliesTo": {
+          "sections": [
+            "annual-goals"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(2)(ii)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "progress-measurement",
+        "kind": "checklist",
+        "title": "How and when progress is reported",
+        "text": "The IEP describes how progress toward each annual goal will be measured and when periodic reports on that progress will be given (for example quarterly, or with report cards).",
+        "appliesTo": {
+          "sections": [
+            "progress-reporting"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(3)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "services",
+        "kind": "checklist",
+        "title": "Services, aids and supports",
+        "text": "The IEP states the special education and related services and supplementary aids and services, based on peer-reviewed research to the extent practicable, and the program modifications or supports for school personnel, that will let the student advance toward the goals, progress in the general curriculum, take part in extracurricular and nonacademic activities, and be educated with other students with and without disabilities.",
+        "appliesTo": {
+          "sections": [
+            "services"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(4)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "service-details",
+        "kind": "checklist",
+        "title": "Start date, frequency, location and duration",
+        "text": "For each service and modification, the IEP gives the projected start date and the anticipated frequency, location and duration.",
+        "appliesTo": {
+          "sections": [
+            "services"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(7)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "nonparticipation",
+        "kind": "checklist",
+        "title": "Participation with nondisabled peers",
+        "text": "The IEP explains the extent, if any, to which the student will not take part with nondisabled students in the regular class and in extracurricular and nonacademic activities.",
+        "appliesTo": {
+          "sections": [
+            "participation-and-placement"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(5)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "assessment-participation",
+        "kind": "checklist",
+        "title": "State and district assessments",
+        "text": "The IEP lists individual accommodations needed on state and districtwide assessments; when the team decides on an alternate assessment, it states why the student cannot take the regular assessment and why the chosen alternate assessment is appropriate.",
+        "appliesTo": {
+          "sections": [
+            "assessment-participation"
+          ]
+        },
+        "citation": "34 CFR 300.320(a)(6)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "transition",
+        "kind": "checklist",
+        "title": "Transition services",
+        "text": "Beginning not later than the first IEP in effect when the student turns 16 (younger if the team decides), and updated each year, the IEP includes measurable postsecondary goals based on age-appropriate transition assessments for training, education, employment and, where appropriate, independent living, and the transition services, including courses of study, needed to reach them. States may set an earlier age.",
+        "appliesTo": {
+          "sections": [
+            "transition"
+          ]
+        },
+        "citation": "34 CFR 300.320(b)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "transfer-of-rights",
+        "kind": "checklist",
+        "title": "Transfer of rights at the age of majority",
+        "text": "Beginning at least one year before the student reaches the state's age of majority, the IEP states that the student has been told of the rights that will transfer at that age.",
+        "appliesTo": {
+          "sections": [
+            "transition"
+          ]
+        },
+        "citation": "34 CFR 300.320(c)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.320"
+      },
+      {
+        "key": "team-members",
+        "kind": "checklist",
+        "title": "IEP team",
+        "text": "The team includes the parents; at least one regular education teacher if the student is or may be in the regular environment; at least one special education teacher or provider; an agency representative who can provide or supervise specially designed instruction and knows the curriculum and resources; someone who can interpret the instructional implications of evaluation results; others with knowledge of the student at the parent's or agency's discretion; and the student when appropriate (always invited when transition is discussed).",
+        "citation": "34 CFR 300.321",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.321"
+      },
+      {
+        "key": "parent-participation",
+        "kind": "policy",
+        "title": "Parent participation",
+        "text": "The agency takes steps so that one or both parents attend or have the opportunity to take part: notice early enough, a mutually agreed time and place, other ways to take part when they cannot attend, an interpreter when needed, and a copy of the IEP at no cost. A meeting held without a parent requires records of the attempts to arrange one.",
+        "citation": "34 CFR 300.322",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.322"
+      },
+      {
+        "key": "initial-iep-meeting",
+        "kind": "deadline",
+        "title": "Initial IEP meeting",
+        "text": "The meeting to develop the initial IEP is held within 30 days of the determination that the student needs special education and related services; services are made available as soon as possible after the IEP is developed.",
+        "value": 30,
+        "unit": "calendar_days",
+        "citation": "34 CFR 300.323(c)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.323"
+      },
+      {
+        "key": "accessible-to-staff",
+        "kind": "policy",
+        "title": "IEP accessible to those who carry it out",
+        "text": "Each teacher and provider responsible for carrying out the IEP can see it and is told of their specific responsibilities and the specific accommodations, modifications and supports it requires.",
+        "citation": "34 CFR 300.323(d)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.323"
+      },
+      {
+        "key": "development-factors",
+        "kind": "checklist",
+        "title": "What the team considers",
+        "text": "In developing the IEP the team considers the student's strengths, the parents' concerns for enhancing the student's education, the results of the initial or most recent evaluation, and the student's academic, developmental and functional needs.",
+        "appliesTo": {
+          "sections": [
+            "present-levels"
+          ]
+        },
+        "citation": "34 CFR 300.324(a)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.324"
+      },
+      {
+        "key": "special-factors",
+        "kind": "checklist",
+        "title": "Special factors",
+        "text": "The team considers positive behavioral interventions and supports when behavior impedes the student's learning or that of others; the language needs of a student with limited English proficiency; Braille instruction for a student who is blind or visually impaired unless the evaluation shows it is not appropriate; the communication needs of every student, including language and communication mode for a student who is deaf or hard of hearing; and whether the student needs assistive technology devices and services.",
+        "appliesTo": {
+          "sections": [
+            "special-factors"
+          ]
+        },
+        "citation": "34 CFR 300.324(a)(2)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.324"
+      },
+      {
+        "key": "annual-review",
+        "kind": "deadline",
+        "title": "Annual review",
+        "text": "The team reviews the IEP periodically, and at least once a year, to decide whether the annual goals are being achieved, and revises it to address lack of expected progress, reevaluation results, information from or to the parents, anticipated needs or other matters.",
+        "value": 1,
+        "unit": "years",
+        "citation": "34 CFR 300.324(b)(1)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.324"
+      },
+      {
+        "key": "amendments",
+        "kind": "policy",
+        "title": "Amending without a meeting",
+        "text": "After the annual meeting, the parent and the agency may agree to change the IEP by a written amendment instead of a meeting; the team is told of the change and the parent receives a revised copy on request.",
+        "citation": "34 CFR 300.324(a)(4), (a)(6)",
+        "url": "https://www.law.cornell.edu/cfr/text/34/300.324"
       }
     ]
   },
@@ -147,7 +607,8 @@
     "authority": "National Institutes of Health",
     "jurisdiction": "United States (federal)",
     "appliesTo": [
-      "nih-specific-aims-research-strategy"
+      "nih-specific-aims-research-strategy",
+      "response-to-reviewers"
     ],
     "effective": "",
     "checked": "2026-10-08",
@@ -158,6 +619,7 @@
       "url": "https://grants.nih.gov/grants/guide/notice-files/NOT-OD-25-132.html",
       "license": "Paraphrased summary (source: public domain US government)"
     },
+    "inferred": false,
     "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
     "items": [
       {
@@ -192,7 +654,8 @@
     "authority": "National Institutes of Health",
     "jurisdiction": "United States (federal)",
     "appliesTo": [
-      "nih-specific-aims-research-strategy"
+      "nih-specific-aims-research-strategy",
+      "response-to-reviewers"
     ],
     "effective": "",
     "checked": "2026-10-08",
@@ -203,6 +666,7 @@
       "url": "https://grants.nih.gov/grants-process/write-application/how-to-apply-application-guide/page-limits",
       "license": "Paraphrased summary (source: public domain US government)"
     },
+    "inferred": false,
     "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
     "items": [
       {
@@ -260,6 +724,25 @@
         }
       },
       {
+        "key": "resubmission-introduction",
+        "kind": "limit",
+        "title": "Introduction to a resubmission or revision",
+        "text": "The Introduction to a resubmission or revision application is limited to 1 page for all activity codes; resubmissions of institutional training and related programs (T, D43, D71, U2R, K12, KL2, R25, UE5, R38, DP7) allow 3 pages. It summarizes substantial additions, deletions and changes and responds to the issues and criticism in the summary statement. Changes are outlined only in the Introduction, not marked up in the application.",
+        "value": 1,
+        "unit": "pages",
+        "appliesTo": {
+          "sections": [
+            "summary-of-changes",
+            "reviewer-1",
+            "reviewer-2",
+            "reviewer-3",
+            "editor-or-chair",
+            "other-changes"
+          ]
+        },
+        "url": "https://grants.nih.gov/grants-process/submit/submission-policies/resubmission-applications"
+      },
+      {
         "key": "nofo-overrides",
         "kind": "policy",
         "title": "The NOFO governs",
@@ -285,6 +768,7 @@
       "url": "https://www.grants.nih.gov/policy-and-compliance/policy-topics/peer-review/simplifying-review/framework",
       "license": "Paraphrased summary (source: public domain US government)"
     },
+    "inferred": false,
     "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
     "items": [
       {
@@ -315,25 +799,316 @@
     ]
   },
   {
-    "key": "tx-19tac-89-1011",
+    "key": "nsf-pappg",
     "version": 1,
+    "title": "NSF PAPPG 24-1 (with Supplement 2): Project Description, merit review and DMSP",
+    "authority": "U.S. National Science Foundation",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "nsf-project-description"
+    ],
+    "effective": "2026-01-22",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "NSF PAPPG 24-1 Ch. II.D.2 and Ch. III.A; PAPPG 24-1 Supplement 2 (NSF 26-202, effective January 22, 2026); NSF ENG DMSP guidance; NSF updates on priorities",
+      "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "inferred": false,
+    "verifyNote": "Verify before relying: NSF has deferred a new PAPPG and issues changes by supplemental notice. The solicitation governs where it differs from the PAPPG.",
+    "items": [
+      {
+        "key": "solicitation-governs",
+        "kind": "policy",
+        "title": "The solicitation governs",
+        "text": "A program solicitation's instructions take precedence over the PAPPG where the two differ, including page limits and DMSP requirements. Supplement 2 (NSF 26-202) takes precedence over the PAPPG 24-1 base text where they conflict.",
+        "citation": "PAPPG 24-1 Supplement 2 (NSF 26-202)",
+        "url": "https://www.nsf.gov/policies/document/pappg24-1-supplement-2"
+      },
+      {
+        "key": "project-description-15",
+        "kind": "limit",
+        "title": "Project Description page limit",
+        "text": "The Project Description, including Results from Prior NSF Support, may not exceed 15 pages. Charts, graphs, maps and photographs count toward the limit. Going over needs a deviation authorized in advance.",
+        "value": 15,
+        "unit": "pages",
+        "appliesTo": {
+          "sections": [
+            "overview-and-objectives",
+            "relation-to-current-knowledge",
+            "research-plan",
+            "assessing-success-and-timeline",
+            "broader-impacts",
+            "project-team-and-management",
+            "results-from-prior-nsf-support"
+          ]
+        },
+        "citation": "PAPPG 24-1 II.D.2.d(ii)",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "no-urls",
+        "kind": "policy",
+        "title": "Self-contained, no URLs",
+        "text": "The Project Description must be self-contained and must not use URLs.",
+        "citation": "PAPPG 24-1 II.D.2.d(ii)",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "broader-impacts-heading",
+        "kind": "checklist",
+        "title": "Broader Impacts section heading",
+        "text": "The Project Description must contain a separate section with \"Broader Impacts\" as a heading on its own line. Broader impacts may come from the research itself, from activities tied directly to the research, or from complementary activities the project supports.",
+        "appliesTo": {
+          "sections": [
+            "broader-impacts"
+          ]
+        },
+        "citation": "PAPPG 24-1 II.D.2.d(i)",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "project-description-content",
+        "kind": "checklist",
+        "title": "What the Project Description states",
+        "text": "The objectives for the period of the award and their expected significance; how the work relates to the current state of knowledge and to the PI's work under other support; the general plan of work, including the broad design and, where appropriate, methods and procedures; and, in brief, what the project will do, why, how, how success will be known and what benefits could follow.",
+        "citation": "PAPPG 24-1 II.D.2.d(i)",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "prior-support-when",
+        "kind": "policy",
+        "title": "When Results from Prior NSF Support are required",
+        "text": "Each PI and co-PI who has an NSF award that ended in the past five years, or any current NSF funding (including no-cost extensions and salary support), reports on one award: the one most closely related to the proposal.",
+        "appliesTo": {
+          "sections": [
+            "results-from-prior-nsf-support"
+          ]
+        },
+        "citation": "PAPPG 24-1 II.D.2.d(iii)",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "prior-support-5",
+        "kind": "limit",
+        "title": "Results from Prior NSF Support page limit",
+        "text": "Results from Prior NSF Support may take up to five pages, which count toward the 15-page Project Description.",
+        "value": 5,
+        "unit": "pages",
+        "appliesTo": {
+          "sections": [
+            "results-from-prior-nsf-support"
+          ]
+        },
+        "citation": "PAPPG 24-1 II.D.2.d(iii)",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "prior-support-content",
+        "kind": "checklist",
+        "title": "What Results from Prior NSF Support contain",
+        "text": "The award number, amount and period of support; the project title; a summary of results with Intellectual Merit and Broader Impacts under two separate headings; the publications from the award (or a statement that there were none); evidence of research products and their availability as described in the data plan; and, for a renewal, how the completed work relates to the proposed work. A recent award with no results yet describes its major goals and broader impacts instead.",
+        "appliesTo": {
+          "sections": [
+            "results-from-prior-nsf-support"
+          ]
+        },
+        "citation": "PAPPG 24-1 II.D.2.d(iii)(a)-(f)",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "project-summary",
+        "kind": "limit",
+        "title": "Project Summary (outside the Project Description)",
+        "text": "A full proposal also needs a Project Summary of no more than one page in three parts: Overview, Intellectual Merit and Broader Impacts. It is not an abstract and should be understandable to a broad scientific audience.",
+        "value": 1,
+        "unit": "pages",
+        "citation": "PAPPG 24-1 II.D.2.b",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-2-proposal-preparation"
+      },
+      {
+        "key": "intellectual-merit",
+        "kind": "criterion",
+        "title": "Merit review criterion: Intellectual Merit",
+        "text": "The potential to advance knowledge.",
+        "citation": "PAPPG 24-1 III.A.2",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-3-proposal-processing-review"
+      },
+      {
+        "key": "broader-impacts",
+        "kind": "criterion",
+        "title": "Merit review criterion: Broader Impacts",
+        "text": "The potential to benefit society and contribute to specific, desired societal outcomes.",
+        "citation": "PAPPG 24-1 III.A.2",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-3-proposal-processing-review"
+      },
+      {
+        "key": "element-potential",
+        "kind": "criterion",
+        "title": "Review element 1: potential",
+        "text": "Applied to both criteria: the potential of the activity to advance knowledge within or across fields (Intellectual Merit) and to benefit society or advance desired societal outcomes (Broader Impacts).",
+        "citation": "PAPPG 24-1 III.A.2",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-3-proposal-processing-review"
+      },
+      {
+        "key": "element-creativity",
+        "kind": "criterion",
+        "title": "Review element 2: creative and original concepts",
+        "text": "How far the activities suggest and explore creative, original or potentially transformative concepts.",
+        "citation": "PAPPG 24-1 III.A.2",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-3-proposal-processing-review"
+      },
+      {
+        "key": "element-plan",
+        "kind": "criterion",
+        "title": "Review element 3: a sound plan with a way to assess success",
+        "text": "Whether the plan is well reasoned, well organized and based on a sound rationale, and includes a mechanism to assess success.",
+        "citation": "PAPPG 24-1 III.A.2",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-3-proposal-processing-review"
+      },
+      {
+        "key": "element-qualifications",
+        "kind": "criterion",
+        "title": "Review element 4: qualifications",
+        "text": "How well qualified the individual, team or organization is to carry out the activities.",
+        "citation": "PAPPG 24-1 III.A.2",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-3-proposal-processing-review"
+      },
+      {
+        "key": "element-resources",
+        "kind": "criterion",
+        "title": "Review element 5: resources",
+        "text": "Whether adequate resources are available to the PI, at the home organization or through collaborations, to carry out the activities.",
+        "citation": "PAPPG 24-1 III.A.2",
+        "url": "https://www.nsf.gov/policies/pappg/24-1/ch-3-proposal-processing-review"
+      },
+      {
+        "key": "dmsp-research-gov",
+        "kind": "policy",
+        "title": "DMSP built in the Research.gov tool",
+        "text": "Proposals must include a Data Management and Sharing Plan (DMSP) created with the Research.gov tool, released April 27, 2026; proposals submitted before that date used a PDF upload. Check the tool and the solicitation for any length limit: NSF 26-202 and NSF Engineering's guidance still refer to a two-page limit, and a solicitation may set its own requirements or exceptions. The DMSP is not part of the 15-page Project Description; data management material that does not fit in the plan may use part of the 15-page Project Description, but the DMSP must not be used to get around the Project Description page limit. Proposals without a DMSP are returned without review.",
+        "citation": "PAPPG 24-1 Ch. II.D.2 as revised by NSF 26-202",
+        "url": "https://www.nsf.gov/policies/document/pappg24-1-supplement-2"
+      },
+      {
+        "key": "dmsp-fields",
+        "kind": "checklist",
+        "title": "DMSP tool fields",
+        "text": "For each data or research product category, the tool asks for: data or research product category; access policies and limitations; data standards and metadata; data or research product provenance; public archiving; timeline for public accessibility; data availability; and accountability (the senior personnel responsible for the plan). Listed in NSF Engineering's guidance (updated July 2026); the prompts may vary by directorate, so check the live form.",
+        "appliesTo": {
+          "sections": [
+            "data-management-and-sharing-plan"
+          ]
+        },
+        "citation": "NSF ENG DMSP guidance",
+        "url": "https://www.nsf.gov/eng/data-management-sharing-plans"
+      },
+      {
+        "key": "dmsp-publication-data",
+        "kind": "policy",
+        "title": "Data behind publications shared at publication",
+        "text": "Recipients share all data supporting NSF-funded publications at the time of publication. Any exception must be described and justified in the DMSP at the original submission.",
+        "appliesTo": {
+          "sections": [
+            "data-management-and-sharing-plan"
+          ]
+        },
+        "citation": "NSF 26-202",
+        "url": "https://www.nsf.gov/policies/document/pappg24-1-supplement-2"
+      },
+      {
+        "key": "dmsp-collaborative",
+        "kind": "policy",
+        "title": "One DMSP for a collaborative proposal",
+        "text": "Simultaneously submitted collaborative proposals, and proposals with subawards, carry one combined DMSP.",
+        "appliesTo": {
+          "sections": [
+            "data-management-and-sharing-plan"
+          ]
+        },
+        "citation": "NSF 26-202",
+        "url": "https://www.nsf.gov/policies/document/pappg24-1-supplement-2"
+      },
+      {
+        "key": "dmsp-no-plan",
+        "kind": "policy",
+        "title": "No detailed plan needs a justification",
+        "text": "A DMSP may say that no detailed plan is needed, but only with a clear justification.",
+        "appliesTo": {
+          "sections": [
+            "data-management-and-sharing-plan"
+          ]
+        },
+        "citation": "NSF 26-202",
+        "url": "https://www.nsf.gov/policies/document/pappg24-1-supplement-2"
+      },
+      {
+        "key": "dmsp-reviewed",
+        "kind": "policy",
+        "title": "The DMSP is reviewed",
+        "text": "The DMSP is reviewed as part of the proposal under Intellectual Merit, Broader Impacts or both. Directorate or program-specific DMSP requirements apply where they exist.",
+        "appliesTo": {
+          "sections": [
+            "data-management-and-sharing-plan"
+          ]
+        },
+        "citation": "NSF 26-202",
+        "url": "https://www.nsf.gov/policies/document/pappg24-1-supplement-2"
+      },
+      {
+        "key": "open-to-all",
+        "kind": "policy",
+        "title": "Participation activities open to all",
+        "text": "NSF's priorities statement (April 18, 2025) says broadening participation and outreach activities, including Broader Impacts work, must be open and available to all Americans and must not preference or exclude people on the basis of protected characteristics, directly or indirectly.",
+        "appliesTo": {
+          "sections": [
+            "broader-impacts"
+          ]
+        },
+        "citation": "NSF updates on priorities (April 18, 2025)",
+        "url": "https://nsf.gov/updates-on-priorities"
+      }
+    ]
+  },
+  {
+    "key": "tx-19tac-89-1011",
+    "version": 2,
     "title": "Texas FIE timelines (19 TAC §89.1011)",
     "authority": "Texas Education Agency (Commissioner's rules)",
     "jurisdiction": "Texas",
     "appliesTo": [
       "fie"
     ],
-    "effective": "",
+    "effective": "2024-07-30",
     "checked": "2026-10-08",
     "supersedes": null,
     "status": "current",
     "provenance": {
-      "source": "19 TAC §89.1011, Full Individual and Initial Evaluation (summarized in docs/workflows-by-document-type.md)",
+      "source": "19 TAC §89.1011, Full Individual and Initial Evaluation, as amended effective July 30, 2024 (49 TexReg 5515); no later amendment found on 2026-10-08. Summarized in docs/workflows-by-document-type.md",
       "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1011",
       "license": "Paraphrased summary (source: Texas Administrative Code, public law)"
     },
+    "inferred": false,
     "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
     "items": [
+      {
+        "key": "referral",
+        "kind": "policy",
+        "title": "Referral",
+        "text": "Referral for an initial evaluation is part of the district's multi-tiered system of supports. A district may not require a set period of intervention before referral, refers when difficulties continue or a disability is suspected, and keeps providing supports while the evaluation is under way.",
+        "citation": "19 TAC §89.1011(a)"
+      },
+      {
+        "key": "parent-request",
+        "kind": "deadline",
+        "title": "Response to a parent's written request",
+        "text": "Not later than the 15th school day after receiving a parent's written request for an evaluation, the district gives prior written notice of the proposed evaluation with the procedural safeguards notice, the agency's parent overview and an opportunity to consent, or prior written notice of its refusal with the same notices.",
+        "value": 15,
+        "unit": "school_days",
+        "citation": "19 TAC §89.1011(b)"
+      },
       {
         "key": "fie-report",
         "kind": "deadline",
@@ -344,10 +1119,17 @@
         "citation": "19 TAC §89.1011(d)(1)"
       },
       {
+        "key": "end-of-year",
+        "kind": "policy",
+        "title": "End-of-year exceptions",
+        "text": "When consent is received at least 35 but fewer than 45 school days before the last instructional day of the school year, the report goes to the parent by June 30 (unless the student is absent three or more days in that period, when the usual timeline applies). When consent is received fewer than 35 school days before the last instructional day, the usual timeline applies. See source for the details.",
+        "citation": "19 TAC §89.1011(e)"
+      },
+      {
         "key": "ard-decision",
         "kind": "deadline",
         "title": "ARD committee decision",
-        "text": "The ARD committee makes its eligibility decision within 30 calendar days of the date the written report is completed.",
+        "text": "The ARD committee makes its eligibility decision within 30 calendar days of the date the written report is completed. If that day falls in the summer, the committee meets by the 15th school day of the next school year, or sooner when the report shows a need for extended school year services.",
         "value": 30,
         "unit": "calendar_days",
         "citation": "19 TAC §89.1011(g)"
@@ -356,45 +1138,66 @@
         "key": "parent-copy",
         "kind": "deadline",
         "title": "Parent copy of the report",
-        "text": "The parent receives a copy of the report at least five school days before the initial ARD meeting.",
+        "text": "The parent receives a copy of the report as soon as possible after it is completed and at least five school days before the initial ARD meeting (by June 30 under the end-of-year exception).",
         "value": 5,
         "unit": "school_days",
         "citation": "19 TAC §89.1011(h)"
       },
       {
-        "key": "end-of-year",
+        "key": "school-days",
         "kind": "policy",
-        "title": "End-of-year exceptions",
-        "text": "Different deadlines apply when consent is received near the end of the school year. See source for the rules.",
-        "citation": "19 TAC §89.1011(e)"
+        "title": "What counts as a school day",
+        "text": "For these timelines, school days do not include days between the last instructional day of the spring term and the first instructional day of the fall term.",
+        "citation": "19 TAC §89.1011(i)"
       }
     ]
   },
   {
     "key": "tx-19tac-89-1040",
-    "version": 1,
+    "version": 2,
     "title": "Texas eligibility criteria (19 TAC §89.1040)",
     "authority": "Texas Education Agency (Commissioner's rules)",
     "jurisdiction": "Texas",
     "appliesTo": [
-      "fie"
+      "fie",
+      "reevaluation-review"
     ],
-    "effective": "",
+    "effective": "2026-10-04",
     "checked": "2026-10-08",
     "supersedes": null,
     "status": "current",
     "provenance": {
-      "source": "19 TAC §89.1040, Eligibility Criteria (summarized in docs/workflows-by-document-type.md)",
-      "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1040",
+      "source": "19 TAC §89.1040, Eligibility Criteria, as amended effective October 4, 2026 (adopted 51 TexReg, September 25, 2026 issue; earlier text at Cornell LII). Summarized in docs/workflows-by-document-type.md",
+      "url": "https://www.sos.state.tx.us/texreg/archive/September252026/Adopted%20Rules/19.EDUCATION.html",
       "license": "Paraphrased summary (source: Texas Administrative Code, public law)"
     },
-    "verifyNote": "Verify before relying: agency rules change. Check the source for the current version.",
+    "inferred": false,
+    "verifyNote": "Verify before relying: the 2026 amendments changed the intellectual disability and developmental delay criteria and added a validity requirement. Check the current rule text, and swap this set for your state's criteria outside Texas.",
     "items": [
+      {
+        "key": "ard-decides",
+        "kind": "policy",
+        "title": "Who decides",
+        "text": "The student's ARD committee decides eligibility, after an evaluation that follows 34 CFR 300.301–300.306. The evaluation group includes a school psychologist, an educational diagnostician or another appropriately certified or licensed practitioner with experience and training in the area of the disability, or a licensed or certified professional for the specific category.",
+        "citation": "19 TAC §89.1040(b)"
+      },
+      {
+        "key": "validity-factors",
+        "kind": "checklist",
+        "title": "Factors affecting validity",
+        "text": "The evaluation report includes any situations, conditions or circumstances that might affect the validity of the instruments or assessments used (added in 2026).",
+        "appliesTo": {
+          "sections": [
+            "assessment_procedures"
+          ]
+        },
+        "citation": "19 TAC §89.1040(b)"
+      },
       {
         "key": "autism",
         "kind": "criterion",
         "title": "Autism",
-        "text": "Autism is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "The student meets the federal definition of autism (34 CFR 300.8(c)(1)). A medical or psychological diagnosis is not required, and the absence of some associated characteristics does not rule it out. The evaluation report includes recommendations on communication, social interaction and positive behavioral interventions and supports. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Autism"
@@ -406,7 +1209,7 @@
         "key": "deaf-blindness",
         "kind": "criterion",
         "title": "Deaf-blindness",
-        "text": "Deaf-blindness is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "Based on the hearing and vision evaluations, the student meets both the deaf or hard of hearing and the visual impairment criteria; or meets the visual impairment criteria with a suspected hearing loss that cannot be shown conclusively and no speech at the age speech would normally be expected; or has losses that together adversely affect educational performance; or has a documented progressive medical condition that will result in both. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Deaf-blindness"
@@ -418,7 +1221,7 @@
         "key": "deaf-or-hard-of-hearing",
         "kind": "criterion",
         "title": "Deaf or hard of hearing",
-        "text": "Deaf or hard of hearing is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "The student meets the federal criteria for deafness or hearing impairment. The data include an audiological evaluation by a licensed audiologist, a communication assessment, and a description of how the hearing loss affects hearing in different situations with or without amplification. See source for the full criteria and the rules for children under three.",
         "appliesTo": {
           "categories": [
             "Deaf or hard of hearing"
@@ -430,7 +1233,7 @@
         "key": "emotional-disability",
         "kind": "criterion",
         "title": "Emotional disability",
-        "text": "Emotional disability is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "The student meets the federal criteria for emotional disturbance (34 CFR 300.8(c)(4)). The evaluation report includes recommendations for positive behavioral supports and interventions. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Emotional disability"
@@ -442,7 +1245,7 @@
         "key": "intellectual-disability",
         "kind": "criterion",
         "title": "Intellectual disability",
-        "text": "Intellectual disability is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "Significantly subaverage intellectual functioning, shown either by an overall score at least two standard deviations below the mean on a standardized, individually administered cognitive test (allowing for the standard error of measurement), or, after a cognitive test was attempted or completed and the team explains why standardized cognitive measures are invalid, inaccessible or inappropriate, by a convergence of evidence from multiple direct and indirect sources; and, concurrently, deficits in at least two areas of adaptive behavior. See source for the full criteria (amended 2026).",
         "appliesTo": {
           "categories": [
             "Intellectual disability"
@@ -454,7 +1257,7 @@
         "key": "multiple-disabilities",
         "kind": "criterion",
         "title": "Multiple disabilities",
-        "text": "Multiple disabilities is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "A combination of disabilities under this section, expected to continue indefinitely, that severely impairs performance in at least two of: psychomotor skills, self-care, communication, social and emotional development, or cognition. A student with more than one disability who does not meet this is not reported as having multiple disabilities, and deaf-blindness is excluded. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Multiple disabilities"
@@ -466,7 +1269,7 @@
         "key": "orthopedic-impairment",
         "kind": "criterion",
         "title": "Orthopedic impairment",
-        "text": "Orthopedic impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "The student meets the federal criteria for orthopedic impairment, and the eligibility determination includes a medical diagnosis by a licensed physician. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Orthopedic impairment"
@@ -478,7 +1281,7 @@
         "key": "other-health-impairment",
         "kind": "criterion",
         "title": "Other health impairment",
-        "text": "A licensed physician, a physician assistant or an advanced practice registered nurse must identify or confirm the student's chronic or acute health problem. See source for the full criteria.",
+        "text": "The student meets the federal criteria for other health impairment (a chronic or acute health problem that limits strength, vitality or alertness and adversely affects educational performance), and a licensed physician, a physician assistant or an advanced practice registered nurse with delegated authority identifies or confirms the health problem. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Other health impairment"
@@ -490,7 +1293,7 @@
         "key": "specific-learning-disability",
         "kind": "criterion",
         "title": "Specific learning disability",
-        "text": "The student must be observed in the learning environment, including the general education classroom, and the team considers data showing the student received appropriate instruction in reading or math from qualified staff, with repeated assessments of achievement at reasonable intervals shared with the parents. See source for the full criteria.",
+        "text": "Determined with a variety of assessment tools; the student does not achieve adequately for age or grade level in one or more of oral expression, listening comprehension, written expression, basic reading skill, reading fluency, reading comprehension, math calculation or math problem solving, shown by multiple measures, despite appropriate instruction; and either does not make sufficient progress with scientific, research-based intervention or shows a pattern of strengths and weaknesses relevant to the disability. A significant variance among specific areas of cognitive function, or between cognitive function and achievement, is not required. The team considers data showing appropriate instruction in reading or math by qualified staff and repeated assessments of achievement at reasonable intervals shared with the parents, and the student is observed in the learning environment, including the general education classroom. See source for the full criteria, team membership, and the dyslexia and dysgraphia provisions.",
         "appliesTo": {
           "categories": [
             "Specific learning disability"
@@ -514,7 +1317,7 @@
         "key": "speech-impairment",
         "kind": "criterion",
         "title": "Speech impairment",
-        "text": "Speech impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "The student meets the federal criteria for speech or language impairment, and the multidisciplinary team includes a certified speech and hearing therapist, a certified speech and language therapist or a licensed speech-language pathologist. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Speech impairment"
@@ -526,7 +1329,7 @@
         "key": "traumatic-brain-injury",
         "kind": "criterion",
         "title": "Traumatic brain injury",
-        "text": "Traumatic brain injury is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "The student meets the federal criteria for traumatic brain injury, and the eligibility determination includes a medical diagnosis by a licensed physician. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Traumatic brain injury"
@@ -538,7 +1341,7 @@
         "key": "visual-impairment",
         "kind": "criterion",
         "title": "Visual impairment",
-        "text": "Visual impairment is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "The student meets the federal criteria for visual impairment. The data include a medical report from a licensed ophthalmologist or optometrist with visual acuity and field measurements, a functional vision evaluation, a learning media assessment by a certified teacher of students with visual impairments, and, for the initial evaluation, an orientation and mobility evaluation; a certified orientation and mobility specialist takes part in eligibility decisions. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Visual impairment"
@@ -550,25 +1353,174 @@
         "key": "developmental-delay",
         "kind": "criterion",
         "title": "Developmental delay",
-        "text": "Developmental delay (for young children; see source for the ages) is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "For a student aged three through nine evaluated for at least one other category, with evidence of a suspected disability that cannot yet be confirmed: a delay in physical, cognitive, communication, social or emotional, or adaptive development, shown by multiple converging sources (including an Early Childhood Intervention evaluation where applicable) as at least two standard deviations below the mean in one area, at least 1.5 standard deviations below the mean in two or more areas, or a documented history and pattern of atypical development. Districts are not required to use this category. See source for the full criteria.",
         "appliesTo": {
           "categories": [
             "Developmental delay"
           ]
         },
-        "citation": "19 TAC §89.1040(c)(13)"
+        "citation": "19 TAC §89.1040(c)(13), (d)"
       },
       {
         "key": "noncategorical-early-childhood",
         "kind": "criterion",
         "title": "Noncategorical early childhood",
-        "text": "Noncategorical eligibility (for young children; see source for the ages) is one of the eligibility categories in 19 TAC §89.1040(c). See source for the criteria.",
+        "text": "Students aged three through five evaluated as having intellectual disability, emotional disability, specific learning disability or autism could be described as noncategorical early childhood; districts may no longer use this description for new identifications from the 2025–2026 school year. See source for the transition rules.",
         "appliesTo": {
           "categories": [
             "Noncategorical early childhood"
           ]
         },
-        "citation": "19 TAC §89.1040(c)(14)"
+        "citation": "19 TAC §89.1040(c)(14), (d)(3)"
+      }
+    ]
+  },
+  {
+    "key": "uniform-guidance-reporting",
+    "version": 1,
+    "title": "Federal award reporting: 2 CFR 200 performance reports, prior approvals and agency report formats",
+    "authority": "Office of Management and Budget (2 CFR Part 200); NIH; NSF",
+    "jurisdiction": "United States (federal)",
+    "appliesTo": [
+      "funder-progress-report"
+    ],
+    "effective": "2024-10-01",
+    "checked": "2026-10-08",
+    "supersedes": null,
+    "status": "current",
+    "provenance": {
+      "source": "2 CFR 200.308, 200.328 and 200.329 (eCFR, current as of 2026-10-07; sections last amended 2024-10-01); NIH RPPR reporting requirements; NSF project reporting",
+      "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329",
+      "license": "Paraphrased summary (source: public domain US government)"
+    },
+    "inferred": false,
+    "verifyNote": "Verify before relying: the award's terms and conditions set the report format and due dates and override these defaults. Foundations set their own formats.",
+    "items": [
+      {
+        "key": "compare-to-objectives",
+        "kind": "checklist",
+        "title": "Accomplishments compared with the award's objectives",
+        "text": "As applicable, a performance report compares accomplishments with the objectives the award set for the reporting period, explains why established goals or objectives were not met, and explains cost overruns or higher-than-expected unit costs.",
+        "citation": "2 CFR 200.329(c)(2)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329"
+      },
+      {
+        "key": "relate-financial-data",
+        "kind": "policy",
+        "title": "Relate financial data and accomplishments to the goals",
+        "text": "When reporting performance, the recipient relates financial data and accomplishments to the performance goals and objectives of the award, and gives cost information (such as unit costs) when the award's terms require it. For discretionary research awards this may be limited to technical performance reports. Agencies use OMB-approved common forms such as the Research Performance Progress Report (RPPR).",
+        "citation": "2 CFR 200.329(b)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329"
+      },
+      {
+        "key": "report-frequency",
+        "kind": "policy",
+        "title": "How often performance reports are due",
+        "text": "Performance reports are due as the award requires, no less often than annually and no more often than quarterly unless specific conditions apply.",
+        "citation": "2 CFR 200.329(c)(1)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329"
+      },
+      {
+        "key": "annual-report-due",
+        "kind": "deadline",
+        "title": "Annual performance report: federal default",
+        "text": "An annual report is due no later than 90 calendar days after the reporting period, unless the agency requires annual reports before the anniversary dates of a multi-year award (as NIH and NSF do).",
+        "value": 90,
+        "unit": "calendar_days",
+        "citation": "2 CFR 200.329(c)(1)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329"
+      },
+      {
+        "key": "interim-report-due",
+        "kind": "deadline",
+        "title": "Quarterly or semiannual performance report",
+        "text": "A quarterly or semiannual report is due no later than 30 calendar days after the reporting period.",
+        "value": 30,
+        "unit": "calendar_days",
+        "citation": "2 CFR 200.329(c)(1)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329"
+      },
+      {
+        "key": "final-report-due",
+        "kind": "deadline",
+        "title": "Final performance report",
+        "text": "The recipient's final performance report is due no later than 120 calendar days after the period of performance ends (90 days for a subrecipient reporting to a pass-through entity). The agency may extend a due date with justification.",
+        "value": 120,
+        "unit": "calendar_days",
+        "citation": "2 CFR 200.329(c)(1)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329"
+      },
+      {
+        "key": "significant-developments",
+        "kind": "policy",
+        "title": "Significant developments between reports",
+        "text": "Problems, delays or adverse conditions that will affect milestones or objectives, and developments that allow meeting them sooner, at lower cost or with different beneficial results, are reported to the agency when they occur. A negative development comes with a corrective action plan and any help needed.",
+        "citation": "2 CFR 200.329(e)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.329"
+      },
+      {
+        "key": "financial-reports",
+        "kind": "policy",
+        "title": "Financial reports",
+        "text": "Financial reporting uses OMB-approved data elements (currently the SF-425), at least annually and at most quarterly. Annual financial reports are due within 90 calendar days of the period, quarterly or semiannual within 30, and the final within 120 days of the end of the period of performance. Numbers in the performance report should agree with them.",
+        "citation": "2 CFR 200.328",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR86b76dde0e1e/section-200.328"
+      },
+      {
+        "key": "report-deviations",
+        "kind": "policy",
+        "title": "Deviations reported, prior approval requested",
+        "text": "Deviations from the approved budget, scope or objectives are reported in the performance report, and the revisions that need prior approval are requested from the agency or pass-through entity.",
+        "citation": "2 CFR 200.308(b)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR8feb98c2e3e5/section-200.308"
+      },
+      {
+        "key": "prior-approval-scope",
+        "kind": "policy",
+        "title": "Prior approval: change in scope or objective",
+        "text": "A change in the scope or objective of the project needs prior written approval, even with no budget change.",
+        "citation": "2 CFR 200.308(f)(1)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR8feb98c2e3e5/section-200.308"
+      },
+      {
+        "key": "prior-approval-key-personnel",
+        "kind": "policy",
+        "title": "Prior approval: key personnel and PI effort",
+        "text": "A change in key personnel named in the award needs prior written approval, as does the PI's disengagement for more than three months or a 25 percent reduction in the PI's time and effort over the period of performance.",
+        "citation": "2 CFR 200.308(f)(2)-(3)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR8feb98c2e3e5/section-200.308"
+      },
+      {
+        "key": "prior-approval-budget",
+        "kind": "policy",
+        "title": "Prior approval: budget changes",
+        "text": "Prior written approval is also needed to move participant support funds to other categories, to add subaward work not in the approved application, to change the approved cost-sharing amount, for additional federal funds, and to move funds between construction and non-construction work. Agencies may restrict transfers among direct cost categories over 10 percent of the total budget on awards above the simplified acquisition threshold.",
+        "citation": "2 CFR 200.308(f)(5)-(9), (i)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR8feb98c2e3e5/section-200.308"
+      },
+      {
+        "key": "no-cost-extension",
+        "kind": "policy",
+        "title": "No-cost extensions",
+        "text": "Where the award allows, a recipient may start a one-time extension of up to 12 months by notifying the agency in writing at least 10 calendar days before the period ends; it needs prior approval when the terms prohibit it, it needs more federal funds, or it changes the approved scope. Other no-cost extensions need prior approval, requested at least 10 calendar days before the end.",
+        "citation": "2 CFR 200.308(f)(10), (g)(2), (h)",
+        "url": "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200/subpart-D/subject-group-ECFR8feb98c2e3e5/section-200.308"
+      },
+      {
+        "key": "nih-rppr",
+        "kind": "policy",
+        "title": "NIH: Research Performance Progress Report",
+        "text": "NIH uses the RPPR. Annual SNAP RPPRs are due about 45 days before the next budget period starts, non-SNAP about 60 days before, and multi-year funded RPPRs annually on or before the anniversary; the final RPPR is due 120 days after the end of the period of performance. Check exact dates in eRA Commons.",
+        "citation": "NIH RPPR reporting requirements",
+        "url": "https://grants.nih.gov/grants-process/post-award-monitoring-and-reporting/reporting-requirements/research-performance-progress-report-rppr"
+      },
+      {
+        "key": "nsf-project-reports",
+        "kind": "policy",
+        "title": "NSF: annual, final and project outcomes reports",
+        "text": "NSF annual project reports are due no later than 90 days before the end of the current budget period and are submitted in Research.gov. The final annual report covers only the last year and is due within 120 days of the award's end date, as is the Project Outcomes Report: no more than 800 words, for a public audience, posted as submitted.",
+        "citation": "NSF Report Your Progress and Outcomes",
+        "url": "https://www.nsf.gov/awards/report-your-outcomes"
       }
     ]
   }

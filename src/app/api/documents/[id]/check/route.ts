@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { getType } from "@/catalog";
-import { collectCitations } from "@/lib/citations/contract";
-import { resolveReferences } from "@/lib/citations/references";
 import { getDocument, isUuid } from "@/lib/documents/store";
-import { referenceLabel } from "@/lib/export/contract";
 import { requireTeam } from "@/lib/documents/team";
 import { claudeConfigured, ModelDeadlineError, ModelRefusalError, ModelTruncatedError } from "@/lib/llm/claude";
 import { PERMISSIONS } from "@/lib/ontology/permissions";
 import { processMemory } from "@/lib/process-memory";
-import { citationsBlock, citedClaims, inputsHash, rubricCriteriaFor, scopeSnapshot, scoreRubric, sectionFingerprints } from "@/lib/rubric/check";
+import { documentCitationsBlock, inputsHash, rubricCriteriaFor, scopeSnapshot, scoreRubric, sectionFingerprints } from "@/lib/rubric/check";
 import { MAX_CHECK_CHARS, RubricCheckRequest, textFingerprint, type RubricCheckError, type RubricCheckResponse } from "@/lib/rubric/contract";
 import { checkScopeKey, getStoredCheck, reserveModelCheck, saveCheck } from "@/lib/rubric/store";
 import { SectionId } from "@/lib/sections/contract";
@@ -65,16 +62,7 @@ export async function POST(req: Request, { params }: Ctx) {
   const fingerprints = sectionFingerprints(doc.content_json, sectionId);
   // What the text in scope cites, so the model counts cited claims as
   // attributed. Part of the inputs: adding or removing a citation re-checks.
-  const claims = citedClaims(doc.content_json, sectionId ? [sectionId] : null);
-  let citations: string | null = null;
-  if (claims.length) {
-    const refs = await resolveReferences(caller.teamId, id, collectCitations(doc.content_json).references);
-    const byNumber = new Map(refs.map((r) => [r.number, r]));
-    citations = citationsBlock(claims, (n) => {
-      const r = byNumber.get(n);
-      return r ? `${referenceLabel(r)}${r.status === "ok" ? "" : " (no longer holds)"}` : "source";
-    });
-  }
+  const citations = await documentCitationsBlock(caller.teamId, id, doc.content_json, sectionId ? [sectionId] : null);
   const scopeText = [documentBlock(checked), JSON.stringify(fingerprints), section ? "" : textFingerprint(d.text), citations ?? ""].join("\n");
   const hash = inputsHash(criteria, d.typeKey, d.type?.version ?? null, scopeText);
   const scopeKey = checkScopeKey(sectionId);

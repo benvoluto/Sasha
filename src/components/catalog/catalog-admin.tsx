@@ -3,12 +3,15 @@
 // The document-type catalog at /catalog. Everyone on the team can browse the
 // types; team admins (settings:write) can also enable or disable them, edit
 // them (an edit of a catalog type is the team's override, revertible), create
-// team types and delete them. Confirmations are in-page AlertDialogs.
+// team types and delete them. Confirmations are in-page AlertDialogs. Any
+// member can learn a team type (and its workflow) from example documents
+// (Phase 8, "Learn from example").
 
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileText, Loader2, Pencil, Plus, RefreshCw, Search, Trash2 } from "@/components/icons";
+import { FileText, Loader2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "@/components/icons";
+import { LearnDialog } from "@/components/learn/learn-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +61,7 @@ export function CatalogAdmin() {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [learning, setLearning] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -225,6 +229,9 @@ export function CatalogAdmin() {
               className="w-full rounded-md border border-[var(--doc-line)] bg-transparent py-1.5 pl-8 pr-2.5 text-sm outline-none focus:border-[var(--doc-accent)]"
             />
           </label>
+          <button type="button" className={quiet} onClick={() => setLearning(true)}>
+            <Sparkles className="h-4 w-4" /> Learn from example
+          </button>
           {admin && (
             <button
               type="button"
@@ -358,6 +365,15 @@ export function CatalogAdmin() {
           )}
         </SheetContent>
       </Sheet>
+
+      <LearnDialog
+        open={learning}
+        onOpenChange={setLearning}
+        onSaved={(r) => {
+          setNotice(`Learned ${r.type.title}${r.workflow ? ` and its workflow “${r.workflow.name}”` : ""}.`);
+          void load();
+        }}
+      />
 
       <AlertDialog open={!!confirm} onOpenChange={(open) => !open && setConfirm(null)}>
         <AlertDialogContent>

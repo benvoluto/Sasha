@@ -7,6 +7,8 @@ import { CATALOG_SCHEMA } from "@/catalog/store";
 import { SUGGESTION_SCHEMA } from "@/lib/suggestions/schema";
 import { DATA_SCHEMA } from "@/lib/data/schema";
 import { RUBRIC_CHECK_SCHEMA } from "@/lib/rubric/store";
+import { WORKFLOW_BINDING_SCHEMA } from "@/lib/workflow/store";
+import { LEARN_SCHEMA } from "@/lib/learn/store";
 
 export const runtime = "nodejs";
 
@@ -26,6 +28,8 @@ const STATEMENTS = [
   // first use). Renames the organizer's determination_workflow and
   // agent_determination_run in place on older databases.
   ...WORKFLOW_SCHEMA,
+  // A team workflow's bound type (Phase 8, src/lib/workflow/store.ts).
+  ...WORKFLOW_BINDING_SCHEMA,
   ...DOCUMENT_SCHEMA,
   // The sources library (after the documents: links reference document).
   ...SOURCE_SCHEMA,
@@ -37,6 +41,8 @@ const STATEMENTS = [
   ...SUGGESTION_SCHEMA,
   // Rubric check results and the check's rate gate (after the documents: rows reference document).
   ...RUBRIC_CHECK_SCHEMA,
+  // Teams' inferred requirement sets and the learn rate gate (src/lib/learn/store.ts).
+  ...LEARN_SCHEMA,
   `ALTER TABLE document_section ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`,
 ];
 
@@ -63,6 +69,8 @@ const EXPECTED_TABLES = [
   "suggestion_run",
   "rubric_check",
   "rubric_check_call",
+  "requirement_set",
+  "learn_call",
 ];
 
 /**
@@ -99,6 +107,7 @@ async function inspectSchema() {
     "document.doc_folder_id": !!columns.document?.includes("doc_folder_id"),
     "document.classifier_state": !!columns.document?.includes("classifier_state"),
     "suggestion.data_table_id": !!columns.suggestion?.includes("data_table_id"),
+    "workflow.applies_to": !!columns.workflow?.includes("applies_to"),
   };
   return {
     ok: missingTables.length === 0 && Object.values(migrations).every(Boolean),

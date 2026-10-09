@@ -1,61 +1,86 @@
 {
   "key": "fie",
-  "version": 1,
+  "version": 2,
   "title": "Full and Individual Evaluation",
   "family": "clinical",
-  "summary": "A school psychoeducational evaluation report, written for a multidisciplinary team, that brings together a student's background, the reason for referral, the assessments given, and the cognitive, academic and social-emotional results. It reviews the exclusionary factors and sets out the evidence the team will weigh when it decides special education eligibility, without stating that decision itself. Also called a psychoeducational evaluation or initial/re-evaluation report under IDEA.",
+  "summary": "A school psychoeducational evaluation report for a multidisciplinary team: background, reason for referral, the assessments given, and results across every area related to the suspected disability, with the exclusionary factors and the evidence the team weighs when it decides eligibility, without stating that decision. Initial or re-evaluation under IDEA.",
   "signals": [
     "Full and Individual Evaluation",
-    "FIE",
+    "FIE / FIIE",
     "psychoeducational evaluation",
-    "initial evaluation",
-    "re-evaluation",
+    "initial evaluation or re-evaluation",
     "reason for referral",
-    "referral concerns",
+    "suspected disability",
     "assessment procedures",
-    "cognitive functioning",
-    "academic achievement",
-    "standard score",
-    "percentile rank",
-    "confidence interval",
-    "WISC",
-    "WJ IV",
-    "rating scales",
+    "cognitive and academic functioning",
+    "composite and subtest scores",
+    "standard score, percentile rank",
+    "WISC-V, WJ IV, BASC-3",
     "classroom observation",
+    "adaptive behavior",
+    "speech-language and motor findings",
     "exclusionary factors",
-    "eligibility determination",
-    "ARD committee",
-    "IEP team",
-    "specific learning disability",
-    "IDEA"
+    "eligibility categories considered",
+    "ARD committee or IEP team"
   ],
-  "audience": "The multidisciplinary evaluation team and the student's parents or guardians (school psychologist or diagnostician, teachers, special education staff, administrators), who need an accurate, readable account of the evaluation to make an eligibility decision together.",
-  "tone": "Professional, neutral and objective: plain language a parent can follow, person-first wording, strengths described alongside needs, and results reported without speculation or advocacy.",
-  "preamble": "You are drafting a section of a Full and Individual Evaluation (FIE) report for a school multidisciplinary team, writing as the evaluation professional who conducted or compiled it. Write in professional, neutral prose that a parent without clinical training can follow; when you use a technical term (standard score, percentile, confidence interval, descriptive range), explain it briefly the first time. Use person-first language and refer to the student by first name or as \"the student\" consistently. Report only what the records, scores, observations and interviews in the material show; attribute each finding to its source (instrument, rater, observer or record) and date where known. Do not diagnose beyond what the material states, and do not state a final eligibility determination or disability classification: that is the team's decision. When you report several numeric scores, present them in a Markdown table (index or subtest, standard or scaled score, percentile, descriptive range, and confidence interval with its confidence level, such as 90% or 95%, where given) and interpret the pattern in prose around it, naming relative strengths and weaknesses. Never invent or round scores, and never convert between score types unless the material gives the conversion. If a score, date or instrument is missing, write a placeholder such as \"[score needed]\" rather than estimating. Keep student identifiers to those already in the material.",
+  "audience": "The multidisciplinary evaluation team and the student's parents or guardians (school psychologist or diagnostician, speech-language pathologist and other evaluators, teachers, special education staff, administrators), who need an accurate, readable account of the evaluation to make an eligibility decision together.",
+  "tone": "Professional, neutral and objective: plain language a parent can follow, short paragraphs and lists, person-first wording, strengths described alongside needs, and results reported without speculation or advocacy.",
+  "preamble": "You are drafting a section of a Full and Individual Evaluation (FIE) report for a school multidisciplinary team, writing as the evaluation professional who conducted or compiled it. This is a draft for the team, which includes the parent; the team decides eligibility. Write in professional, neutral prose that a parent without clinical training can follow, in short paragraphs and lists; when you use a technical term (standard score, scaled score, T-score, percentile, confidence interval, descriptive range), explain it briefly the first time. Use person-first language and refer to the student as \"[Student]\" or by the first name already in the material, consistently. Report only what the records, scores, observations and interviews in the material show; attribute each finding to its source (instrument, rater, observer or record) and date where known. Do not diagnose, and do not state an eligibility determination or disability classification: that is the team's decision. Use the federal (IDEA) terms in the text; state-specific criteria and committee names come from the requirement set the team uses. Lay out scores in separate Markdown tables for composite or index scores, subtest scores, and other reported scores (rating scales, curriculum-based measures), each headed \"| Measure | Score | Percentile | Range |\" with the score type in the Score cell (for example \"SS 85\", \"ScS 7\", \"T 68\"), adding a confidence interval column with its level (such as 90% or 95%) only when the material gives one; interpret the pattern in prose around the tables, naming relative strengths and weaknesses. Never invent or round scores, and never convert between score types unless the material gives the conversion. If a score, date or instrument is missing, write a placeholder such as \"[score needed]\" rather than estimating. Add no identifying details beyond those already in the material.",
   "aliases": [
     "fie_basic"
   ],
   "sections": [
     {
-      "key": "student_background",
-      "heading": "Student Background",
+      "key": "front_matter",
+      "heading": "Identifying Information",
       "level": 2,
       "order": 10,
       "required": true,
-      "guidance": "Summarize the background: identifying information, history, and relevant context present in the sources. Neutral, factual. Cover the student's age and grade, school and educational history (attendance, retentions, school changes, prior services or plans), relevant developmental, medical and health history including vision and hearing screening results and any motor or communication concerns, language background and the language(s) used at home and school, and family context only as it bears on learning. Note the student's strengths and interests as well as concerns. Attribute information to its source (parent interview, cumulative record, health record).",
-      "lengthHint": "2–4 paragraphs",
+      "guidance": "Front matter the evaluator fills in by hand: student identifiers, dates, the evaluation type, the suspected disability categories, and the evaluators with their roles and the areas each assessed. Keep identifiers to what the district requires; the placeholders stay until a person replaces them. Not drafted by the model.",
+      "elements": [
+        "Student identifiers (name, ID) as the district requires",
+        "Date of birth, age at evaluation and grade",
+        "Evaluation type (initial or re-evaluation)",
+        "Referral, consent, evaluation and report dates",
+        "Suspected disability categories",
+        "Evaluators with role, credential and areas assessed"
+      ],
+      "sourcesNeeded": [
+        "Referral form",
+        "Signed consent for evaluation"
+      ],
+      "dataNeeded": [
+        "Referral, consent and testing dates"
+      ],
+      "renderer": "static",
+      "scaffold": "**DRAFT for the evaluation team**\n\n| Field | Entry |\n|---|---|\n| Student | [Student name] |\n| Student ID | [ID] |\n| Date of birth | [YYYY-MM-DD] |\n| Age at evaluation | [years-months] |\n| Grade | [Grade] |\n| School | [School] |\n| Evaluation type | [Initial / Re-evaluation] |\n| Referral date | [YYYY-MM-DD] |\n| Consent received | [YYYY-MM-DD] |\n| Evaluation dates | [YYYY-MM-DD to YYYY-MM-DD] |\n| Report date | [YYYY-MM-DD] |\n| Language(s) of the home and of the student | [Language(s)] |\n| Suspected disability categories | [Categories under consideration] |\n\n**Evaluators**\n\n| Name | Role and credential | Areas assessed |\n|---|---|---|\n| [Name] | [Role, credential] | [Areas] |"
+    },
+    {
+      "key": "student_background",
+      "heading": "Student Background",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Summarize the background in the sources: history and context, neutral and factual, in short paragraphs. Cover school and educational history (attendance, retentions, school changes, prior evaluations, services or plans), developmental history, language background and the language(s) used at home and school, and family context only as it bears on learning. Then, under short ### sub-headings, report health, vision, hearing and motor status separately: health and medical history and any diagnosis a medical provider has given (attributed to that provider, never restated as your own); the most recent vision and hearing screening or evaluation with dates and results; and fine and gross motor history or any occupational or physical therapy findings. These feed the exclusionary factors, so say plainly when a screening is missing or out of date. Note the student's strengths and interests as well as concerns. Attribute information to its source (parent interview, cumulative record, health record). Common failures: a medical diagnosis stated as the evaluator's own finding; screening results with no date; family details that do not bear on learning.",
+      "lengthHint": "2–4 short paragraphs plus brief health, vision, hearing and motor sub-sections",
       "elements": [
         "Age, grade and current school placement",
-        "Educational history (attendance, school changes, retentions, prior services)",
-        "Developmental and health history, including vision and hearing screening and any motor or communication concerns",
+        "Educational history (attendance, school changes, retentions, prior evaluations and services)",
+        "Developmental history",
         "Home and dominant language background",
+        "Health and medical history, with any provider's diagnosis attributed to that provider",
+        "Vision screening or evaluation with date and result",
+        "Hearing screening or evaluation with date and result",
+        "Fine and gross motor status, and any occupational or physical therapy findings",
         "Student strengths and interests",
         "Source of each piece of background information"
       ],
       "sourcesNeeded": [
         "Parent or guardian interview or developmental history form",
         "Cumulative school record",
-        "Health and nurse records",
+        "Health and nurse records, and any medical provider's statement",
+        "Vision and hearing screening or audiological and eye reports",
+        "Occupational or physical therapy reports, where available",
         "Home language survey"
       ],
       "dataNeeded": [
@@ -69,23 +94,26 @@
       "key": "reason_for_referral",
       "heading": "Reason for Referral",
       "level": 2,
-      "order": 20,
+      "order": 30,
       "required": true,
-      "guidance": "State who requested the evaluation and why, the presenting concerns, prior interventions and their outcome, and the questions the evaluation will consider. Say whether this is an initial evaluation or a re-evaluation and give the referral and consent dates where the sources have them. Describe the general education interventions tried (type, frequency, duration, who delivered them) and the progress-monitoring results collected at regular intervals, including whether those results were shared with the parents. End with the specific referral questions, phrased as areas the evaluation will assess so later sections can address them with evidence (for example \"What are the student's reading skills relative to grade-level expectations?\"), not as yes/no questions about eligibility.",
-      "lengthHint": "1–3 paragraphs",
+      "guidance": "State who requested the evaluation and why, the presenting concerns, prior interventions and their outcome, and the questions the evaluation will consider. Say whether this is an initial evaluation or a re-evaluation and give the referral and consent dates where the sources have them. Describe the general education interventions tried (type, frequency, duration, who delivered them) and the progress-monitoring results collected at regular intervals, including whether those results were shared with the parents. Name the suspected disability categories, and for each list the data the team's criteria call for and whether the sources hold it, so gaps show early. Typical examples: a medical professional's identification or confirmation of the health problem for other health impairment; an observation in the general education classroom and data on appropriate instruction for specific learning disability; an individual cognitive measure and an adaptive behavior measure for intellectual disability; an assessment by a speech-language pathologist for speech or language impairment; an audiological evaluation for a hearing loss; an eye report, functional vision evaluation and learning media assessment for visual impairment; a physician's diagnosis for orthopedic impairment or traumatic brain injury. Take the exact requirements from the state criteria in the requirement set. End with the specific referral questions, phrased as areas the evaluation will assess so later sections can address them with evidence (for example \"What are the student's reading skills relative to grade-level expectations?\"), not as yes/no questions about eligibility.",
+      "lengthHint": "1–3 paragraphs plus a short list of suspected categories",
       "elements": [
         "Who referred the student and when",
         "Initial evaluation or re-evaluation, with consent date",
         "Presenting concerns in specific, observable terms",
         "Prior interventions with frequency, duration, provider and outcome",
         "Progress-monitoring results at regular intervals and whether they were shared with parents",
+        "Suspected disability categories named",
+        "For each suspected category, the data its criteria call for (such as medical confirmation for other health impairment or a classroom observation for specific learning disability) and whether it is on file",
         "Explicit referral questions, framed as areas to assess rather than yes/no eligibility questions"
       ],
       "sourcesNeeded": [
         "Referral form",
         "Signed consent for evaluation",
         "Intervention (RTI/MTSS) records",
-        "Teacher and parent concern statements"
+        "Teacher and parent concern statements",
+        "State eligibility criteria for each suspected category"
       ],
       "dataNeeded": [
         "Referral and consent dates",
@@ -97,9 +125,9 @@
       "key": "assessment_procedures",
       "heading": "Assessment Procedures",
       "level": 2,
-      "order": 30,
+      "order": 40,
       "required": true,
-      "guidance": "List the instruments and procedures used and the records reviewed, as found in the sources. For each instrument give its full name, the date given and the examiner's role; include observations, interviews and rating scales with the rater. Note which areas of suspected disability each procedure covers (for example cognitive, academic, communication, motor, social-emotional, adaptive). State the language and mode of administration and any accommodations or deviations from standard procedure. Close with a short statement on whether the results are considered a valid estimate of the student's current functioning, and why, based only on what the sources report about effort, rapport and conditions.",
+      "guidance": "List the instruments and procedures used and the records reviewed, as found in the sources, as a list or a table (instrument, date, examiner role, areas covered). For each instrument give its full name, the date given and the examiner's role; include observations, interviews and rating scales with the rater. Note which areas of suspected disability each procedure covers (cognitive, academic, communication, motor, social-emotional, adaptive, health, vision, hearing), so a reader can see that every area related to each suspected category was assessed. State the language and mode of administration and any accommodations or deviations from standard procedure. Close with a short statement on validity: any situations, conditions or circumstances that might affect the validity of the results (effort, rapport, attention, testing conditions, language, sensory or motor limits), based only on what the sources report.",
       "lengthHint": "A list or table plus a short validity paragraph",
       "elements": [
         "Each standardized instrument with full name, date and examiner role",
@@ -107,7 +135,7 @@
         "Records reviewed",
         "Areas of suspected disability each procedure addresses",
         "Language and mode of administration, and any accommodations",
-        "Validity statement on effort, rapport and testing conditions"
+        "Validity statement naming any circumstance that might affect the results"
       ],
       "sourcesNeeded": [
         "Test protocols or score reports",
@@ -125,13 +153,14 @@
       "key": "cognitive_functioning",
       "heading": "Cognitive Functioning",
       "level": 2,
-      "order": 40,
+      "order": 50,
       "required": true,
-      "guidance": "Describe cognitive results grounded in the reported scores; interpret in plain language. Name the instrument, then present the composite and index scores in a table with percentiles, descriptive ranges and confidence intervals where given. Explain the overall pattern: relative strengths and weaknesses, and whether significant differences between indexes make an overall score less meaningful. Include relevant processing measures (for example phonological processing, memory, processing speed) and connect the findings to the referral questions and the classroom concerns.",
-      "lengthHint": "Score table plus 2–4 paragraphs",
+      "guidance": "Describe cognitive results grounded in the reported scores; interpret in plain language. Name the instrument and date, then give a table of composite and index scores (\"| Measure | Score | Percentile | Range |\") and, separately, a table of subtest scores when the sources report them; put any score whose level the sources do not make clear under \"Other reported scores\" rather than guessing. Do not mix composites and subtests in one table. Explain the overall pattern in short paragraphs: relative strengths and weaknesses, and whether significant differences between indexes make an overall score less meaningful. Include relevant processing measures (for example phonological processing, memory, processing speed) and connect the findings to the referral questions and the classroom concerns. If the evaluator judged a standardized cognitive measure invalid or inappropriate for this student, report that judgment and its stated reasons.",
+      "lengthHint": "One or two score tables plus 2–4 short paragraphs",
       "elements": [
         "Instrument named with date of administration",
-        "Score table with composite and index scores, percentiles and descriptive ranges",
+        "Composite and index score table with percentiles and descriptive ranges",
+        "Subtest score table kept separate from the composites",
         "Plain-language explanation of the score scale",
         "Relative cognitive strengths and weaknesses",
         "Note on index variability and how to interpret the overall score",
@@ -152,13 +181,13 @@
       "key": "academic_functioning",
       "heading": "Academic Functioning",
       "level": 2,
-      "order": 50,
+      "order": 60,
       "required": true,
-      "guidance": "Describe academic achievement results (reading, writing, math) grounded in the reported scores. Present standardized achievement scores in a table by area and subtest, then interpret each area in prose: what the student can do, where skills break down, and how that matches classroom performance. Bring in curriculum-based measures, state or district assessment results, grades and work samples where the sources have them, so the standardized scores are seen alongside everyday performance. Cover oral language when it was assessed. When a specific learning disability is being considered, include the observation of the student's academic performance in the regular classroom (date, setting, observer, what was seen) and how the observed behavior relates to academic functioning.",
-      "lengthHint": "Score table plus a paragraph per academic area",
+      "guidance": "Describe academic achievement results (reading, writing, math) grounded in the reported scores. Give a composite table and a separate subtest table (\"| Measure | Score | Percentile | Range |\"), then interpret each area in a short paragraph or list: what the student can do, where skills break down, and how that matches classroom performance. Bring in curriculum-based measures, state or district assessment results, grades and work samples where the sources have them, as \"Other reported scores\", so the standardized scores are seen alongside everyday performance. When a specific learning disability is being considered, include the observation of the student's academic performance in the regular classroom (date, setting, observer, what was seen) and how the observed behavior relates to academic functioning.",
+      "lengthHint": "Score tables plus a short paragraph per academic area",
       "elements": [
         "Achievement instrument named with date",
-        "Score table for reading, writing and math with percentiles and descriptive ranges",
+        "Composite and subtest score tables for reading, writing and math with percentiles and descriptive ranges",
         "Interpretation of each academic area, including specific skill strengths and gaps",
         "Classroom performance evidence (grades, curriculum-based measures, work samples)",
         "State or district assessment results where available",
@@ -169,7 +198,8 @@
         "Achievement test score report (for example WIAT-4, WJ IV ACH, KTEA-3)",
         "Report cards and grades",
         "Curriculum-based measurement or benchmark reports",
-        "Teacher input and work samples"
+        "Teacher input and work samples",
+        "Classroom observation record"
       ],
       "dataNeeded": [
         "Achievement composite and subtest scores",
@@ -179,13 +209,38 @@
       "renderer": "narrative"
     },
     {
+      "key": "communication_language",
+      "heading": "Communication and Speech-Language",
+      "level": 2,
+      "order": 70,
+      "required": false,
+      "guidance": "Report communicative status from the speech-language evaluation or screening in the sources: receptive and expressive language, articulation, fluency, voice, and pragmatic or social communication, as assessed. Name the examiner's role (speech-language pathologist) and the instruments and dates. Give standardized scores in the same table pattern and describe language samples or observations in plain terms. When the student is learning English, say how language proficiency was considered and which language(s) were used for testing. When communication was screened but not fully assessed, say so in one sentence. Leave out this section only when communication is not related to any suspected category, and say in Assessment Procedures why it was not assessed.",
+      "lengthHint": "A score table plus 1–3 short paragraphs",
+      "elements": [
+        "Examiner role, instruments and dates",
+        "Receptive and expressive language results",
+        "Articulation, fluency and voice results where assessed",
+        "Pragmatic or social communication observations",
+        "Language of testing and how English proficiency was considered"
+      ],
+      "sourcesNeeded": [
+        "Speech-language evaluation report",
+        "Language samples or observation notes",
+        "English language proficiency assessment, where applicable"
+      ],
+      "dataNeeded": [
+        "Language and articulation standard scores"
+      ],
+      "renderer": "narrative"
+    },
+    {
       "key": "social_emotional_behavioral",
       "heading": "Social, Emotional & Behavioral",
       "level": 2,
-      "order": 60,
+      "order": 80,
       "required": true,
-      "guidance": "Describe social, emotional and behavioral findings (rating scales, observations, interviews) present in the sources. For rating scales, name each rater (parent, teacher, student) and report elevated or at-risk scales in a table with T-scores and classification ranges, noting where raters agree or differ. Summarize direct observations with setting, date, duration and what was observed in behavioral terms. Include the student's own perspective from interview, and describe adaptive or social strengths as well as concerns.",
-      "lengthHint": "Score table plus 2–4 paragraphs",
+      "guidance": "Describe social, emotional and behavioral findings (rating scales, observations, interviews) present in the sources. For rating scales, name each rater (parent, teacher, student) and report elevated or at-risk scales in a table (\"| Measure | Score | Percentile | Range |\", score as T-score, range as the scale's classification), noting where raters agree or differ. Summarize direct observations with setting, date, duration and what was observed in behavioral terms, not labels. Include the student's own perspective from interview, and describe social strengths as well as concerns.",
+      "lengthHint": "Score table plus 2–4 short paragraphs",
       "elements": [
         "Rating scales named with each rater",
         "Table of clinically significant and at-risk scales with T-scores",
@@ -207,12 +262,35 @@
       "renderer": "narrative"
     },
     {
+      "key": "adaptive_behavior",
+      "heading": "Adaptive Behavior",
+      "level": 2,
+      "order": 90,
+      "required": false,
+      "guidance": "Report adaptive behavior results when they were assessed (always when intellectual disability is suspected, often for autism or developmental delay): the instrument, each rater and setting, and the composite and domain scores (conceptual, social, practical, or communication, daily living and socialization, depending on the instrument) in the table pattern. Describe what the student does independently at home and at school, where support is needed, and where raters differ. Keep the description practical and respectful. When adaptive behavior was not assessed, say so in one sentence and give the reason from the sources.",
+      "lengthHint": "A score table plus 1–2 short paragraphs",
+      "elements": [
+        "Adaptive behavior instrument with each rater and setting",
+        "Composite and domain scores in a table",
+        "Everyday skills the student shows independently, and where support is needed",
+        "Agreement or disagreement between raters"
+      ],
+      "sourcesNeeded": [
+        "Adaptive behavior rating report (for example Vineland-3, ABAS-3)",
+        "Parent and teacher interview notes"
+      ],
+      "dataNeeded": [
+        "Adaptive composite and domain scores by rater"
+      ],
+      "renderer": "narrative"
+    },
+    {
       "key": "exclusionary_factors",
       "heading": "Consideration of Exclusionary Factors",
       "level": 2,
-      "order": 70,
+      "order": 100,
       "required": true,
-      "guidance": "Describe the other factors the sources show were considered as possible explanations for the concerns, and what the sources say about each. Address each factor by name: lack of appropriate instruction in reading (including its essential components) and math, delivered by qualified staff; limited English proficiency; visual, hearing or motor impairment; cultural factors; environmental or economic disadvantage; and attendance, plus any others the sources raise. When a specific learning disability is being considered, also address whether intellectual disability or emotional disturbance could account for the concerns, citing the relevant findings. For each, cite the evidence reviewed (screenings, attendance, language data, instructional history). Report what the evidence shows; do not conclude whether a factor is or is not the primary cause, since that is the team's judgment.",
+      "guidance": "Describe the other factors the sources show were considered as possible explanations for the concerns, and what the sources say about each. Address each factor by name: lack of appropriate instruction in reading (including its essential components) and math, delivered by qualified staff; limited English proficiency; visual, hearing or motor impairment; cultural factors; environmental or economic disadvantage; and attendance, plus any others the sources raise. When a specific learning disability is being considered, also address whether intellectual disability or emotional disturbance could account for the concerns, citing the relevant findings. For each, cite the evidence reviewed (screenings, attendance, language data, instructional history), as a short paragraph or a table row. Report what the evidence shows; do not conclude whether a factor is or is not the primary cause, since that is the team's judgment.",
       "lengthHint": "One short paragraph or table row per factor",
       "elements": [
         "Appropriate instruction in reading and math by qualified staff, with evidence reviewed",
@@ -240,14 +318,15 @@
       "key": "eligibility_determination",
       "heading": "Eligibility Determination",
       "level": 2,
-      "order": 80,
+      "order": 110,
       "required": true,
-      "guidance": "Summarize the evidence the team will weigh. Present it as a draft basis for the team's discussion; do not state a conclusion. Organize the summary around the eligibility criteria the team is considering and the referral questions, pointing back to the relevant findings in earlier sections, including evidence that cuts both ways. Address both parts of the team's question as the sources inform them: whether the criteria for a disability condition appear to be met, and the evidence about educational need for specially designed instruction. For a specific learning disability, note which evidence bears on the pattern-of-strengths-and-weaknesses or response-to-intervention criteria the state uses, without applying them. Leave the determination itself to the team and say so in a closing sentence.",
-      "lengthHint": "2–4 paragraphs",
+      "guidance": "Summarize the evidence the team will weigh. Present it as a draft basis for the team's discussion; do not state a conclusion. List every category considered (each suspected category, plus any the evaluation raised), and under each, briefly, the criteria the team will apply and the findings that bear on each criterion, pointing back to the earlier section, including evidence that cuts both ways and any required data still missing. Address both parts of the team's question as the sources inform them: whether the criteria for a disability condition appear to be met, and the evidence about educational need for specially designed instruction. For a specific learning disability, note which evidence bears on the pattern-of-strengths-and-weaknesses or response-to-intervention criteria the state uses, without applying them. Use short paragraphs or a list per category. Leave the determination itself to the team and say so in a closing sentence.",
+      "lengthHint": "A short list or paragraph per category considered",
       "elements": [
-        "Eligibility categories or criteria under consideration",
+        "Each category considered, listed by name",
         "Summary of findings mapped to each criterion",
         "Evidence bearing on each referral question, citing the earlier section (no conclusion)",
+        "Required data still missing for any category",
         "Evidence on educational need for specially designed instruction",
         "Evidence that does not support eligibility, stated fairly",
         "Explicit statement that the determination rests with the team"
@@ -265,9 +344,9 @@
       "key": "recommendations",
       "heading": "Recommendations",
       "level": 2,
-      "order": 90,
+      "order": 120,
       "required": true,
-      "guidance": "Recommended next steps and supports for the team to consider, grounded in the findings. Framed as recommendations, not decisions. Tie each recommendation to a specific finding, and group them by area (instruction, accommodations, behavior and social-emotional support, home, further evaluation). Make each one concrete enough to act on, and keep them appropriate regardless of the eligibility outcome, since the team has not yet decided.",
+      "guidance": "Recommended next steps and supports for the team to consider, grounded in the findings. Framed as recommendations, not decisions. Tie each recommendation to a specific finding, and group them by area under short headings (instruction, accommodations, communication, behavior and social-emotional support, home, further evaluation). Make each one concrete enough to act on, and keep them appropriate regardless of the eligibility outcome, since the team has not yet decided.",
       "lengthHint": "A grouped list of 5–15 items",
       "elements": [
         "Each recommendation linked to a specific finding",
@@ -288,15 +367,15 @@
   "rubric": [
     {
       "key": "score_accuracy",
-      "criterion": "Score reporting: scores are reported exactly as in the sources, with the right score type, percentile, descriptive range and confidence interval, tabulated and interpreted.",
+      "criterion": "Score reporting: scores are reported exactly as in the sources, with the right score type, percentile and descriptive range, in separate composite, subtest and other-score tables, and interpreted.",
       "levels": [
         {
           "score": 4,
-          "descriptor": "Every score matches the source protocol or report; each table names the instrument and score type and includes percentiles, descriptive ranges and confidence intervals with their confidence level where available; the prose interprets the pattern in plain language without contradicting the table."
+          "descriptor": "Every score matches the source protocol or report; composites, subtests and other scores sit in separate tables that name the instrument and score type and include percentiles, descriptive ranges and (where given) confidence intervals with their level; the prose interprets the pattern in plain language without contradicting the tables."
         },
         {
           "score": 3,
-          "descriptor": "Scores match the sources and are tabulated, but some tables omit percentiles, ranges or confidence intervals, or the interpretation of the pattern is thin."
+          "descriptor": "Scores match the sources and are tabulated, but some tables omit percentiles or ranges, mix composites with subtests, or the interpretation of the pattern is thin."
         },
         {
           "score": 2,
@@ -310,7 +389,9 @@
       "appliesTo": [
         "cognitive_functioning",
         "academic_functioning",
-        "social_emotional_behavioral"
+        "communication_language",
+        "social_emotional_behavioral",
+        "adaptive_behavior"
       ]
     },
     {
@@ -319,7 +400,7 @@
       "levels": [
         {
           "score": 4,
-          "descriptor": "No section states or implies a final eligibility decision, classification or causal conclusion; evidence for and against is presented evenly; the team's role in deciding is explicit."
+          "descriptor": "No section states or implies a final eligibility decision, classification or causal conclusion; evidence for and against is presented evenly for every category considered; the team's role in deciding is explicit."
         },
         {
           "score": 3,
@@ -342,11 +423,11 @@
     },
     {
       "key": "referral_linkage",
-      "criterion": "Addresses the referral questions: the findings, eligibility summary and recommendations trace back to the stated referral concerns.",
+      "criterion": "Addresses the referral questions: the findings, eligibility summary and recommendations trace back to the stated referral concerns and suspected categories.",
       "levels": [
         {
           "score": 4,
-          "descriptor": "Each referral question is stated explicitly, addressed by named findings, addressed with evidence in the eligibility summary, and reflected in at least one recommendation tied to a finding."
+          "descriptor": "Each referral question and suspected category is stated explicitly, addressed by named findings, addressed with evidence in the eligibility summary, and reflected in at least one recommendation tied to a finding."
         },
         {
           "score": 3,
@@ -354,7 +435,7 @@
         },
         {
           "score": 2,
-          "descriptor": "The referral questions are vague or are not revisited later; recommendations are generic rather than drawn from this student's results."
+          "descriptor": "The referral questions or suspected categories are vague or are not revisited later; recommendations are generic rather than drawn from this student's results."
         },
         {
           "score": 1,
@@ -365,6 +446,34 @@
         "reason_for_referral",
         "eligibility_determination",
         "recommendations"
+      ]
+    },
+    {
+      "key": "area_coverage",
+      "criterion": "Areas and required data: every area related to each suspected category is reported, and the data each category's criteria call for is present or named as missing.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Each suspected category has its required data reported (for example medical confirmation, classroom observation, adaptive measure, speech-language assessment) and every related area (health, vision, hearing, communication, motor, cognitive, academic, social-emotional, adaptive) is reported or its omission explained."
+        },
+        {
+          "score": 3,
+          "descriptor": "Required data is present for each category, but one related area is covered only briefly or its omission is not explained."
+        },
+        {
+          "score": 2,
+          "descriptor": "Required data is missing for a suspected category without being named as missing, or several related areas are absent."
+        },
+        {
+          "score": 1,
+          "descriptor": "Suspected categories are not named, or the report covers only cognitive and academic results."
+        }
+      ],
+      "appliesTo": [
+        "student_background",
+        "reason_for_referral",
+        "assessment_procedures",
+        "eligibility_determination"
       ]
     },
     {
@@ -398,11 +507,11 @@
       "levels": [
         {
           "score": 4,
-          "descriptor": "Technical terms and score scales are explained on first use; person-first, non-deficit language throughout; strengths appear alongside needs in every findings section."
+          "descriptor": "Technical terms and score scales are explained on first use; short paragraphs and lists; person-first, non-deficit language throughout; strengths appear alongside needs in every findings section."
         },
         {
           "score": 3,
-          "descriptor": "Mostly accessible and respectful; a few terms go unexplained, or strengths are mentioned only in passing."
+          "descriptor": "Mostly accessible and respectful; a few terms go unexplained, paragraphs run long, or strengths are mentioned only in passing."
         },
         {
           "score": 2,
@@ -416,9 +525,9 @@
     }
   ],
   "provenance": {
-    "source": "Ported from the organizer's FIE_TEMPLATE (src/lib/ontology/report/template.ts, key fie_basic); sections follow IDEA Part B evaluation requirements (34 CFR 300.304-300.311), expanded by hand",
-    "url": "https://www.ecfr.gov/current/title-34/subtitle-B/chapter-III/part-300/subpart-D",
+    "source": "Ported from the organizer's FIE_TEMPLATE (src/lib/ontology/report/template.ts, key fie_basic) and its score-table layout (report service); sections follow IDEA Part B evaluation requirements (34 CFR 300.304-300.311), expanded by hand; state criteria live in requirement sets",
+    "url": "https://www.law.cornell.edu/cfr/text/34/300.304",
     "license": "Own text (structure from 34 CFR Part 300, public domain US government)",
-    "retrieved": "2026-10-07"
+    "retrieved": "2026-10-08"
   }
 }

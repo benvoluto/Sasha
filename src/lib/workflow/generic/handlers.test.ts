@@ -112,8 +112,46 @@ describe("restructure.plan", () => {
     expect((out.findings as Finding[]).map((f) => f.kind)).toEqual(["no_change"]);
   });
 
+  it("leaves heading-only parts out of the prompt and rows, records them as dropped, and warns before apply", async () => {
+    // An earlier restructure: level-2 headings with nothing of their own over kept level-3 headings.
+    const again = [heading("Summary", "h1", "summary"), heading("Background", "h2", null, 3), para("Why we are here."), heading("Old part", "h3"), heading("Money", "h4", null, 3), para("It costs $40,000.")];
+    const { doc } = await makeDocument({ content: again });
+    claudeJson.mockResolvedValue({ data: { rows: [{ id: "R1", target: "summary", reason: "Background" }, { id: "R2", target: "budget", reason: "Costs" }] }, usage: USAGE });
+    const out = (await restructurePlanHandler({ document: await snapshot(doc.id) }, nodeOf("restructure.plan", {}, "plan"), ctxWith(doc.id, { targetType: "proposal" }))) as Out;
+    const plan = out.plan as RestructurePlan;
+    expect(plan.rows.map((r) => [r.id, r.heading, r.target])).toEqual([
+      ["R1", "Background", "summary"],
+      ["R2", "Money", "budget"],
+    ]);
+    expect(plan.dropped).toEqual([
+      { index: 0, heading: "Summary", level: 2 },
+      { index: 3, heading: "Old part", level: 2 },
+    ]);
+    const user = claudeJson.mock.calls[0][0].user as string;
+    expect(user).not.toContain('heading="Summary"');
+    expect(user).not.toContain("Old part");
+    const warn = (out.findings as Finding[]).filter((f) => f.kind === "dropped_heading");
+    expect(warn).toHaveLength(1);
+    expect(warn[0].detail).toContain("These headings hold no text of their own and will be removed: “Summary”, “Old part”.");
+    expect((out.findings as Finding[]).some((f) => f.kind === "no_change")).toBe(false);
+    expect((out.table as OutcomeTable).rows.filter((r) => r.status === "dropped").map((r) => r.cells.part)).toEqual(["Summary", "Old part"]);
+    // The apply step keeps `dropped` on the plan it hands the editor.
+    const applied = (await restructureApplyHandler({ plan, approved: [1] }, nodeOf("restructure.apply"), ctxWith(doc.id))) as Out;
+    expect((applied.op as Extract<DocumentChangeOp, { op: "restructure" }>).plan.dropped).toEqual(plan.dropped);
+  });
+
+  it("still reports no_change when the only heading-only parts are the type's own empty sections", async () => {
+    const outline = sortedSections(proposal.sections);
+    const content = outline.flatMap((s, i) => (i === 1 ? [heading(s.heading, `k${i}`, s.key)] : [heading(s.heading, `k${i}`, s.key), para(`Text for ${s.heading}.`)]));
+    const { doc } = await makeDocument({ content, typeKey: "proposal" });
+    claudeJson.mockResolvedValue({ data: { rows: outline.filter((_, i) => i !== 1).map((s, i) => ({ id: `R${i + 1}`, target: s.key, reason: "Already there" })) }, usage: USAGE });
+    const out = (await restructurePlanHandler({ document: await snapshot(doc.id) }, nodeOf("restructure.plan"), ctxWith(doc.id, { targetType: "proposal" }))) as Out;
+    expect((out.plan as RestructurePlan).dropped).toEqual([{ index: 2, heading: outline[1].heading, level: 2 }]);
+    expect((out.findings as Finding[]).map((f) => f.kind)).toContain("no_change");
+  });
+
   it("is pure where it can be: planRows and alreadyInOrder", () => {
-    const chunks = [{ from: 0, to: 1, heading: "A", level: 2, text: "", excerpt: "" }];
+    const chunks = [{ from: 0, to: 1, heading: "A", level: 2, text: "", excerpt: "", headingOnly: false }];
     expect(planRows(chunks, { rows: [{ id: " r1 ", target: " summary ", reason: "x" }] }, new Set(["summary"]))[0].target).toBe("summary");
     const row = (target: string | null, heading: string | null = "H") => ({ id: "R", from: 0, to: 0, heading, excerpt: "", target, reason: "" });
     expect(alreadyInOrder([row(null, null), row("a"), row("b")], [], ["a", "b"], [null, "a", "b"])).toBe(true);

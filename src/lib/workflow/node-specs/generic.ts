@@ -49,8 +49,20 @@ export const ComputeCheck = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("percent_of"), ...base, partField: field, wholeField: field, percentField: field, tolerance: z.number().min(0).default(0.5) }),
   /** Dates run in order: each item's date comes after the date of the item its dependency field names. */
   z.object({ kind: z.literal("date_order"), ...base, dateField: field, idField: field, dependsOnField: field, labelField: field }),
-  /** How many items (optionally where a field equals a value), against min and max. */
-  z.object({ kind: z.literal("count"), ...base, where: where.nullable().default(null), min: z.number().int().min(0).nullable().default(null), max: z.number().int().min(0).nullable().default(null) }),
+  /**
+   * How many items (optionally where a field equals a value), against min and
+   * max. With `status` (traced items from step.trace): only items whose trace
+   * status is one of these count, reported as "n of m", m being the items where
+   * `where` holds (required items met before and after tailoring).
+   */
+  z.object({
+    kind: z.literal("count"),
+    ...base,
+    where: where.nullable().default(null),
+    status: z.array(ConfigKey).min(1).max(10).nullable().default(null),
+    min: z.number().int().min(0).nullable().default(null),
+    max: z.number().int().min(0).nullable().default(null),
+  }),
   /** Every number in the `from` sections (summary, abstract) also appears in the `to` sections (empty: the rest of the document). */
   z.object({ kind: z.literal("numbers_match"), ...base, fromSpecKeys: z.array(z.string().max(80)).min(1).max(10), toSpecKeys: z.array(z.string().max(80)).max(20).default([]) }),
   /** Each item's value appears in the document next to its label (scores in the narrative match the evidence table). */
@@ -60,7 +72,17 @@ export const ComputeCheck = z.discriminatedUnion("kind", [
     kind: z.literal("deadline"),
     ...base,
     startField: field,
-    requirement: RequirementRef,
+    /** The requirement item that gives the period; null with `byKind`. */
+    requirement: RequirementRef.nullable().default(null),
+    /**
+     * Picks the requirement item by the start item's kind field (annual, interim
+     * or final report). A kind with no entry, or none stated, is not assessed:
+     * the result says `notAssessed` instead of applying another kind's period.
+     */
+    byKind: z
+      .object({ field, requirements: z.record(z.string().regex(/^[a-z][a-z0-9_]{0,39}$/), RequirementRef), notAssessed: z.string().trim().max(300).default("") })
+      .nullable()
+      .default(null),
     /** Days to add (absences): added only when the value is at least `extendWhenAtLeast` (Texas: three or more school days absent). */
     extendByField: field.nullable().default(null),
     extendWhenAtLeast: z.number().int().min(0).default(0),

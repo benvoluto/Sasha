@@ -128,6 +128,8 @@ export function buildWorkflowData(input: WorkflowBuildInput, typeKeys: Set<strin
     return r.ok ? { ok: true, value: r.set } : r;
   }, errors);
   for (const { file, value } of sets) {
+    // Inferred sets come only from learning from an example and live with the team (PLAN §6.11).
+    if (value.inferred) errors.push(`${file}: inferred: catalog requirement sets are read from the rules, never inferred`);
     value.appliesTo.forEach((k, i) => {
       if (!typeKeys.has(k)) errors.push(`${file}: appliesTo.${i}: "${k}" is not a catalog type`);
     });

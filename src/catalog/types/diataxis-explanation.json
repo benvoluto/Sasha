@@ -1,0 +1,259 @@
+{
+  "key": "diataxis-explanation",
+  "version": 1,
+  "title": "Explanation (Diátaxis)",
+  "family": "technical",
+  "summary": "A discursive piece that deepens understanding of a topic: why something is the way it is, its context and history, the design decisions and trade-offs behind it, the alternatives considered, and how it connects to related ideas. Read away from the keyboard rather than while doing a task; it contains no step-by-step instructions or reference tables. Follows the explanation form of the Diátaxis documentation framework.",
+  "signals": [
+    "About …",
+    "background",
+    "why we chose",
+    "design rationale",
+    "trade-offs",
+    "alternatives considered",
+    "history of",
+    "how it works under the hood",
+    "conceptual overview",
+    "discussion",
+    "in our view",
+    "Diátaxis explanation",
+    "understanding <topic>",
+    "the reason for this is"
+  ],
+  "audience": "Readers who already use or are learning the product and want to understand it more deeply, reading in study mode rather than in the middle of a task.",
+  "tone": "Thoughtful and discursive, but clear: reasoned prose, analogies where they help, opinion marked as opinion, no marketing.",
+  "preamble": "You are a technical writer producing an explanation in the Diátaxis sense: a discussion that helps the reader understand a topic, not a set of instructions or a reference. Answer a \"why\" or \"about\" question within a stated boundary. Give context, background and history, the reasons behind design decisions, the constraints that shaped them, the alternatives and trade-offs, and connections to related concepts, including ones outside the immediate topic. Perspective and opinion are allowed: say whose view it is and mark it as opinion, and weigh other views fairly. Leave out step-by-step instructions and exhaustive option lists; link to the how-to guides and reference instead. Ground factual and historical claims in the sources or the writer's notes and attribute them; never assert history, dates, figures or design reasons from memory, and write \"[source needed]\" where a claim has no support in the material.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "topic-and-question",
+      "heading": "About This Topic",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Open by naming the topic and the question the piece answers (often \"why\" or \"what is the thinking behind\"), and draw its boundary: what is in, what is deliberately left to other pages. Say who it is for and what they will understand afterwards. The title should read \"About <topic>\" or similar. Keep it to a short paragraph.",
+      "lengthHint": "1 short paragraph",
+      "elements": [
+        "Topic named and title framed as \"About <topic>\"",
+        "The question the piece answers",
+        "Boundary: what is in and what is left out",
+        "What the reader will understand afterwards"
+      ],
+      "sourcesNeeded": [
+        "Design documents or decision records"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "context-and-background",
+      "heading": "Context and Background",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Give the context the reader needs: the problem the subject addresses, how things were before, and the history that shaped it, with dates and events taken from the sources and attributed. Keep history to what helps understanding now. Common failure: history asserted from memory with no source.",
+      "lengthHint": "1–3 paragraphs",
+      "elements": [
+        "The problem or need the subject addresses",
+        "Relevant history, sourced and dated",
+        "What changed and why it matters now"
+      ],
+      "sourcesNeeded": [
+        "Decision records, changelogs or historical accounts",
+        "Original design documents"
+      ],
+      "dataNeeded": [
+        "Dates of key events"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "how-it-works",
+      "heading": "How It Works",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Explain the central ideas and mechanisms in prose, showing how the parts relate and how the internals account for the behavior users see. Use an analogy or a diagram description where it clarifies, and connect the topic to neighbouring concepts. Describe the ideas, not the procedure: no numbered steps and no full option tables (link to reference).",
+      "lengthHint": "2–4 paragraphs",
+      "elements": [
+        "Central concepts and how they relate",
+        "How the internals explain visible behavior",
+        "Connections to related concepts",
+        "No step-by-step instructions or reference tables"
+      ],
+      "sourcesNeeded": [
+        "Architecture documents",
+        "Reference documentation for accuracy"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "decisions-and-alternatives",
+      "heading": "Design Decisions and Alternatives",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Discuss the main decisions: what was chosen, the reasons and constraints behind it, the alternatives considered (at least one real alternative for each decision) and what each would have traded off. Present opinion as opinion and give the strongest version of other views. Note where the decision might be revisited and what would change it. Common failure: one design defended with no alternative discussed.",
+      "lengthHint": "A paragraph per decision",
+      "elements": [
+        "Each main decision with its reasons and constraints",
+        "At least one real alternative per decision",
+        "Trade-offs of each option",
+        "Opinion marked as opinion, other views stated fairly"
+      ],
+      "sourcesNeeded": [
+        "Decision records or RFCs",
+        "Discussion threads or meeting notes"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "implications",
+      "heading": "Implications",
+      "level": 2,
+      "order": 50,
+      "required": false,
+      "guidance": "Draw out what the understanding means in practice: consequences for how the product is used, designed or extended, common misconceptions it clears up, and open questions. Keep it reflective; link to how-to guides for the actions that follow.",
+      "lengthHint": "1–2 paragraphs",
+      "elements": [
+        "Practical consequences of the ideas",
+        "Misconceptions cleared up",
+        "Open questions"
+      ],
+      "sourcesNeeded": [
+        "Support questions or user feedback"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "further-reading",
+      "heading": "Further Reading",
+      "level": 2,
+      "order": 60,
+      "required": false,
+      "guidance": "Point to the sources behind the explanation and to related explanations, reference and how-to guides, each labelled with what it offers. Use only links in the material; write \"[link needed]\" where a known page has no URL.",
+      "lengthHint": "2–6 links",
+      "elements": [
+        "Sources the explanation relies on",
+        "Related reference and how-to guides"
+      ],
+      "sourcesNeeded": [
+        "Documentation index"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "deepens-understanding",
+      "criterion": "Deepens understanding: the piece answers a bounded why or about question, connecting ideas so the reader understands more than the facts.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "A clear question and boundary; reasons, context and connections build a coherent picture a reader could explain back."
+        },
+        {
+          "score": 3,
+          "descriptor": "Answers its question, but connections are thin or the boundary drifts."
+        },
+        {
+          "score": 2,
+          "descriptor": "Mostly restates facts; the why is asserted rather than explained."
+        },
+        {
+          "score": 1,
+          "descriptor": "No identifiable question; a loose collection of statements."
+        }
+      ],
+      "appliesTo": [
+        "topic-and-question",
+        "how-it-works",
+        "implications"
+      ]
+    },
+    {
+      "key": "sound-claims",
+      "criterion": "Sound and supported: factual and historical claims are sourced, the reasoning holds, and opinion is marked.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every factual or historical claim is attributed to a source; conclusions follow from the claims; opinion is labelled as such."
+        },
+        {
+          "score": 3,
+          "descriptor": "Mostly supported; one or two claims lack a source or a step in the reasoning is implicit."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several unsupported claims or a gap in the reasoning; opinion presented as fact."
+        },
+        {
+          "score": 1,
+          "descriptor": "History or reasons asserted from memory; claims contradict the sources."
+        }
+      ],
+      "appliesTo": [
+        "context-and-background",
+        "how-it-works",
+        "decisions-and-alternatives"
+      ]
+    },
+    {
+      "key": "alternatives-weighed",
+      "criterion": "Alternatives weighed: decisions are discussed with real alternatives and their trade-offs.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Each main decision has at least one real alternative with trade-offs; other views are stated fairly."
+        },
+        {
+          "score": 3,
+          "descriptor": "Alternatives appear, but trade-offs are one-sided."
+        },
+        {
+          "score": 2,
+          "descriptor": "Alternatives are mentioned only in passing or as strawmen."
+        },
+        {
+          "score": 1,
+          "descriptor": "One design is defended with no alternative discussed."
+        }
+      ],
+      "appliesTo": [
+        "decisions-and-alternatives"
+      ]
+    },
+    {
+      "key": "explanation-not-instruction",
+      "criterion": "Explanation, not instruction: no step-by-step procedures or reference tables inside the piece.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Discursive throughout; procedures and option lists are linked, not included."
+        },
+        {
+          "score": 3,
+          "descriptor": "An occasional instruction or table that could be a link."
+        },
+        {
+          "score": 2,
+          "descriptor": "Instructions or reference material take up a noticeable share of the piece."
+        },
+        {
+          "score": 1,
+          "descriptor": "A how-to or reference under an explanation title."
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "Diátaxis documentation framework, \"Explanation\" (Daniele Procida, diataxis.fr): principles paraphrased; the section list is own text following common technical-writing practice, not prescribed by Diátaxis",
+    "url": "https://diataxis.fr/explanation/",
+    "license": "CC BY-SA 4.0 source (paraphrased, attributed to Daniele Procida, diataxis.fr); section list, guidance and rubric are own text",
+    "retrieved": "2026-10-08"
+  }
+}

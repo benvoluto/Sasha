@@ -51,6 +51,8 @@ export type OutcomeRunState = {
   checkpoints: Record<string, CheckpointDecision>;
   /** Display labels of nodes, by id (for the incomplete list). */
   labels: Record<string, string>;
+  /** Resolves a requirement-set key the catalog lacks (a team's inferred set); omitted, those keys are left out. */
+  resolveSet?: (key: string) => RequirementRef | null;
 };
 
 /** Thrown when a decide step returns a value that is not one of the outcome's values. */
@@ -127,11 +129,12 @@ export function conditionHolds(c: OutcomeCondition, facts: RuleFacts): boolean {
   return true;
 }
 
-/** The requirement sets an outcome cites; unknown keys are left out. */
-export function resolveRequirementSets(keys: string[]): RequirementRef[] {
+/** The requirement sets an outcome cites: the catalog's, then `fallback` (team sets); unknown keys are left out. */
+export function resolveRequirementSets(keys: string[], fallback?: (key: string) => RequirementRef | null): RequirementRef[] {
   return keys.flatMap((k) => {
     const set = requirementSet(k);
-    return set ? [requirementRef(set)] : [];
+    const ref = set ? requirementRef(set) : (fallback?.(k) ?? null);
+    return ref ? [ref] : [];
   });
 }
 
@@ -206,7 +209,7 @@ export function evaluateOutcome(config: OutcomeReportConfig, inputs: OutcomeInpu
     tables,
     notAssessed: config.notAssessed,
     notes: config.notes,
-    requirementSets: resolveRequirementSets(config.requirementSets),
+    requirementSets: resolveRequirementSets(config.requirementSets, run.resolveSet),
     verdict: null,
     signedBy: null,
     signedAt: null,

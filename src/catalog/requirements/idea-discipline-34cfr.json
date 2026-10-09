@@ -1,0 +1,27 @@
+{
+  "key": "idea-discipline-34cfr",
+  "version": 1,
+  "title": "IDEA discipline and behavior (34 CFR 300.530, 300.324(a)(2)(i))",
+  "authority": "U.S. Department of Education",
+  "jurisdiction": "United States (federal)",
+  "appliesTo": ["fba-bip"],
+  "effective": "",
+  "checked": "2026-10-08",
+  "provenance": {
+    "source": "34 CFR 300.530 (authority of school personnel) and 300.324(a)(2)(i) (positive behavioral interventions)",
+    "url": "https://www.law.cornell.edu/cfr/text/34/300.530",
+    "license": "Paraphrased summary (source: public domain US government)"
+  },
+  "verifyNote": "Verify before relying: agency rules change, and state rules (for example on restraint and time-out) apply on top. Check the source for the current version.",
+  "items": [
+    { "key": "positive-behavior-consideration", "kind": "checklist", "title": "Positive behavioral interventions", "text": "When a student's behavior impedes the student's learning or that of others, the IEP team considers positive behavioral interventions and supports, and other strategies, to address that behavior.", "citation": "34 CFR 300.324(a)(2)(i)", "url": "https://www.law.cornell.edu/cfr/text/34/300.324" },
+    { "key": "removal-up-to-ten", "kind": "limit", "title": "Removals of up to 10 school days", "text": "School personnel may remove a student with a disability who violates a code of conduct for up to 10 consecutive school days, to the extent those options apply to students without disabilities, and for further removals of up to 10 days for separate incidents that do not amount to a change of placement.", "value": 10, "unit": "school_days", "citation": "34 CFR 300.530(b)(1)", "url": "https://www.law.cornell.edu/cfr/text/34/300.530" },
+    { "key": "services-after-ten", "kind": "policy", "title": "Services after 10 days of removal", "text": "After a student has been removed for 10 school days in the same school year, services are provided during later removals so the student can keep taking part in the general curriculum, in another setting, and progress toward the IEP goals.", "citation": "34 CFR 300.530(b)(2), (d)(1)(i)", "url": "https://www.law.cornell.edu/cfr/text/34/300.530" },
+    { "key": "fba-during-removal", "kind": "checklist", "title": "FBA and behavioral intervention during removal", "text": "A student removed under the change-of-placement or special-circumstances provisions receives, as appropriate, a functional behavioral assessment and behavioral intervention services and modifications designed to address the behavior so it does not recur.", "citation": "34 CFR 300.530(d)(1)(ii)", "url": "https://www.law.cornell.edu/cfr/text/34/300.530" },
+    { "key": "manifestation-determination", "kind": "deadline", "title": "Manifestation determination", "text": "Within 10 school days of any decision to change the placement of a student with a disability because of a code-of-conduct violation, the agency, the parent and relevant members of the IEP team review the relevant information and decide whether the conduct was caused by, or had a direct and substantial relationship to, the disability, or was the direct result of the agency's failure to implement the IEP.", "value": 10, "unit": "school_days", "citation": "34 CFR 300.530(e)", "url": "https://www.law.cornell.edu/cfr/text/34/300.530" },
+    { "key": "fba-bip-when-manifestation", "kind": "checklist", "title": "FBA and plan when the conduct is a manifestation", "text": "When the conduct is found to be a manifestation of the disability, the IEP team conducts a functional behavioral assessment (unless one was done before the behavior that led to the change of placement) and implements a behavioral intervention plan, or, when a plan already exists, reviews it and modifies it as needed to address the behavior.", "citation": "34 CFR 300.530(f)(1)", "url": "https://www.law.cornell.edu/cfr/text/34/300.530" },
+    { "key": "return-to-placement", "kind": "policy", "title": "Return to placement", "text": "Except in the special circumstances, a student whose conduct was a manifestation returns to the placement from which the student was removed, unless the parent and the agency agree to a change as part of modifying the behavioral intervention plan.", "citation": "34 CFR 300.530(f)(2)", "url": "https://www.law.cornell.edu/cfr/text/34/300.530" },
+    { "key": "special-circumstances", "kind": "limit", "title": "Special circumstances", "text": "For weapons, illegal drugs or controlled substances, or serious bodily injury at school, on school premises or at a school function, school personnel may remove the student to an interim alternative educational setting for up to 45 school days whether or not the behavior is a manifestation.", "value": 45, "unit": "school_days", "citation": "34 CFR 300.530(g)", "url": "https://www.law.cornell.edu/cfr/text/34/300.530" },
+    { "key": "state-rules", "kind": "policy", "title": "State rules apply on top", "text": "States set their own rules on restraint, time-out and related notices to parents, which apply in addition to these federal rules. See the state's rules (in Texas, 19 TAC §89.1053).", "citation": "19 TAC §89.1053 (Texas example)", "url": "https://www.law.cornell.edu/regulations/texas/19-Tex-Admin-Code-SS-89-1053" }
+  ]
+}

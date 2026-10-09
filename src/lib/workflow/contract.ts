@@ -362,6 +362,22 @@ export type RestructurePlan = {
   rows: RestructureRow[];
   /** Target sections nothing maps to (added empty). */
   gaps: string[];
+  /**
+   * Headings that hold no content of their own (Phase 8, user decision 2026-10-08): typically
+   * the level-2 headings left by an earlier restructure, whose text sits under kept level-3
+   * headings. They are not sent to the model, are left out of `rows`, and are removed when
+   * the plan is applied; the mapping checkpoint lists them as a warning before anything is
+   * applied. Optional so plans stored before Phase 8 still read (treated as []).
+   */
+  dropped?: RestructureDroppedHeading[];
+};
+
+/** A heading the restructure drops because nothing but the heading itself sits in its run. */
+export type RestructureDroppedHeading = {
+  /** Top-level node index of the heading in the document as read. */
+  index: number;
+  heading: string;
+  level: number;
 };
 
 export const NO_HOME_HEADING = "Content to place";

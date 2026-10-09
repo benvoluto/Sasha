@@ -1,0 +1,298 @@
+{
+  "key": "reevaluation-review",
+  "version": 1,
+  "title": "Review of Existing Evaluation Data (Reevaluation)",
+  "family": "clinical",
+  "summary": "A review of existing evaluation data (REED) for a student with a disability who is due for or has requested a reevaluation. It summarizes the existing data, sets it against the questions the team must answer about continued eligibility, present levels, continued need and changes to services, and proposes whether additional assessment is needed and in which areas, for the team, including the parent, to decide.",
+  "signals": [
+    "Review of Existing Evaluation Data",
+    "REED",
+    "reevaluation",
+    "three-year reevaluation",
+    "existing evaluation data",
+    "no additional data needed",
+    "additional assessment needed",
+    "continued eligibility",
+    "continues to need special education",
+    "date of last evaluation",
+    "parent input on reevaluation",
+    "consent for reevaluation",
+    "classroom-based assessments",
+    "teacher and provider observations"
+  ],
+  "audience": "The IEP team and other qualified professionals reviewing the data, including the parent, and the evaluation staff who will carry out any additional assessment.",
+  "tone": "Neutral, concise and factual: each piece of data dated and sourced, plain language a parent can follow, and the proposal stated as a proposal.",
+  "preamble": "You are helping an evaluation professional draft a review of existing evaluation data for a student's reevaluation. This is a DRAFT for the team, which includes the parent; the team decides what additional data, if any, it needs, and nothing in the draft decides continued eligibility, needs or services. Do not diagnose and do not state whether the student continues to have a disability; set out what the existing data shows and where it is missing, out of date or conflicting. Use federal (IDEA) terms; state forms and criteria come from the requirement set the team uses. Date and source every piece of data (who, what instrument or record, when), and say plainly when data is older than the current IEP or the last evaluation. Never carry present levels over from the last evaluation unchanged; never invent scores or dates; write \"[date needed]\" or \"[data needed]\" where the material is silent. Refer to the student as \"[Student]\" or by the first name already in the material, and add no identifying details beyond those already there.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "review-information",
+      "heading": "Review Information",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Front matter the evaluator fills in: student placeholders, current eligibility from the last evaluation, the date of that evaluation and the three-year date, why the review is happening, and who took part. Marks the document as a draft. Not drafted by the model.",
+      "elements": [
+        "Draft status stated",
+        "Current eligibility category(ies) and date of the last evaluation",
+        "Three-year reevaluation date",
+        "Reason for the review (three-year, parent or teacher request, change in needs)",
+        "Participants by role, including the parent, and whether a meeting was held"
+      ],
+      "sourcesNeeded": [
+        "Last evaluation report",
+        "Current IEP"
+      ],
+      "dataNeeded": [
+        "Date of the last evaluation"
+      ],
+      "renderer": "static",
+      "scaffold": "**DRAFT for the team: a proposal, not a decision**\n\n| Field | Entry |\n|---|---|\n| Student | [Student name] |\n| Date of birth | [YYYY-MM-DD] |\n| Grade | [Grade] |\n| Current eligibility category(ies) | [Category] |\n| Date of last evaluation | [YYYY-MM-DD] |\n| Three-year reevaluation date | [YYYY-MM-DD] |\n| Current IEP dates | [YYYY-MM-DD to YYYY-MM-DD] |\n| Reason for review | [Three-year / Parent request / Teacher request / Change in needs] |\n| Review held | [In a meeting / Without a meeting] on [YYYY-MM-DD] |\n\n**Participants**\n\n| Role | Name |\n|---|---|\n| Parent or guardian | [Name] |\n| Teacher(s) | [Name] |\n| Evaluation staff | [Name, role] |\n| Related service providers | [Name, role] |"
+    },
+    {
+      "key": "reason-for-review",
+      "heading": "Reason for Review",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "State why the reevaluation is happening now: the three-year requirement, a request from the parent or a teacher (who and when), or a change in the student's needs or performance that the agency has noticed. Give the date of the last evaluation and what it covered, and note any new concern since then, especially one that might point to a need or disability not previously identified. Keep it short and factual.",
+      "lengthHint": "1–2 short paragraphs",
+      "elements": [
+        "What triggered the review, with who and when",
+        "Date and scope of the last evaluation",
+        "New concerns since the last evaluation, including any that suggest a new area of need"
+      ],
+      "sourcesNeeded": [
+        "Last evaluation report",
+        "Parent or teacher request, if any"
+      ],
+      "dataNeeded": [
+        "Date of the last evaluation",
+        "Date of any request"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "existing-data",
+      "heading": "Existing Evaluation Data",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Summarize the existing data by source in a table (data, source, date, area, what it shows): prior evaluations and information from the parent; current classroom-based, local and state assessments and classroom-based observations; and observations by teachers and related service providers, plus progress on the current IEP goals, attendance, discipline and health, vision and hearing information where relevant. Keep each entry to what the data shows, with its date, and flag any that predates the current IEP. Follow the table with a few sentences on overall currency and gaps. Common failures: data from the last evaluation presented as current; entries with no date; a summary that skips areas related to the disability.",
+      "lengthHint": "A data table plus a short paragraph",
+      "elements": [
+        "Prior evaluations and parent-provided information, dated",
+        "Current classroom-based, local and state assessment results, dated",
+        "Classroom-based observations and observations by teachers and providers, dated",
+        "Progress on current IEP goals",
+        "Data older than the current IEP flagged"
+      ],
+      "sourcesNeeded": [
+        "Prior evaluation reports",
+        "State and district assessment results",
+        "Progress reports on IEP goals",
+        "Teacher and related service provider observations",
+        "Health, vision and hearing records"
+      ],
+      "dataNeeded": [
+        "Dates and results of each existing measure"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "parent-input",
+      "heading": "Parent Input",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Record the parent's information and concerns for this review in their own terms: how the student is doing at home and school, changes they have noticed, questions they want the reevaluation to look at, and any outside evaluations or medical information they have shared. Say how and when the input was gathered. If input was sought but not received, say so and when it was sought.",
+      "lengthHint": "1 short paragraph or a short list",
+      "elements": [
+        "Parent's concerns and observations, attributed",
+        "Questions the parent wants addressed",
+        "Outside evaluations or information the parent provided",
+        "How and when input was gathered, or that it was sought and not received"
+      ],
+      "sourcesNeeded": [
+        "Parent input form or interview notes"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "review-by-question",
+      "heading": "Review of the Data by Question",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Take the four questions the review must address one at a time, under short sub-headings: (1) whether the student continues to have a disability and what the student's educational needs are; (2) the student's present levels of academic achievement and related developmental needs; (3) whether the student continues to need special education and related services; (4) whether any additions or changes to services are needed to meet the IEP goals and take part in the general curriculum. Under each, cite the existing data that bears on it and say whether that data is sufficient, out of date, conflicting or missing. Do not answer the eligibility question; state what the data covers and where it falls short. Common failures: \"no additional data\" when a new area of concern has come up; present levels taken from the last evaluation unchanged.",
+      "lengthHint": "A short paragraph per question",
+      "elements": [
+        "Continued disability and educational needs: data cited and its sufficiency",
+        "Present levels and developmental needs: data cited and its sufficiency",
+        "Continued need for special education and related services: data cited and its sufficiency",
+        "Changes to services needed to meet goals: data cited and its sufficiency",
+        "Gaps, outdated or conflicting data named for each question"
+      ],
+      "sourcesNeeded": [
+        "Existing data summarized above",
+        "Current IEP goals and services"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "additional-data",
+      "heading": "Proposed Additional Data",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Propose, for the team's decision, either that no additional data is needed, with the reasons drawn from the review above, or the additional data needed, listed by area (for example cognitive, academic, communication, social-emotional, adaptive, motor, health, vision, hearing) with the question each would answer and the kind of assessment or information that would provide it, in a short table. Include any area of newly suspected need. Keep both options open in the wording: this is a proposal, and the team, including the parent, decides.",
+      "lengthHint": "A short table or 1–2 paragraphs",
+      "elements": [
+        "Proposal: no additional data needed, or additional data needed",
+        "Reasons, citing the review by question",
+        "Each proposed area with the question it would answer",
+        "Kind of assessment or information proposed for each area",
+        "Any newly suspected area of need included"
+      ],
+      "sourcesNeeded": [
+        "Review by question above"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "notice-and-consent",
+      "heading": "Parent Notice and Consent",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "Describe the next step the proposal would lead to, in plain language for the parent. If additional assessment is proposed, note that the parent's informed written consent is needed before it begins (reviewing existing data needs none). If no additional data is proposed and the team agrees, note that the parent will be told of that decision and the reasons, and of the right to ask for an assessment anyway. Mention the timeline the team's state rules set for completing a reevaluation, taken from the requirement set, without computing dates here.",
+      "lengthHint": "1 short paragraph",
+      "elements": [
+        "Consent needed before any new assessment",
+        "Notice of a no-additional-data decision, with reasons and the right to request an assessment",
+        "Next steps and who is responsible"
+      ],
+      "sourcesNeeded": [
+        "Procedural safeguards notice",
+        "State reevaluation timelines"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "data-currency",
+      "criterion": "Current, sourced data: every piece of existing data is dated and attributed, and outdated data is flagged.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every entry names its source and date; data older than the current IEP is flagged; present levels rest on current data, not the last evaluation."
+        },
+        {
+          "score": 3,
+          "descriptor": "Nearly all entries are dated and sourced; one older item is not flagged."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several entries lack dates or sources, or the last evaluation is treated as current."
+        },
+        {
+          "score": 1,
+          "descriptor": "Data is described in general terms with no dates or sources."
+        }
+      ],
+      "appliesTo": [
+        "existing-data",
+        "review-by-question"
+      ]
+    },
+    {
+      "key": "question-coverage",
+      "criterion": "All four questions: the review addresses continued disability and needs, present levels, continued need for services, and changes to services, each with data or a named gap.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Each of the four questions has its own treatment, cites specific data, and names any gap, conflict or outdated data."
+        },
+        {
+          "score": 3,
+          "descriptor": "All four are addressed, but one rests on general statements."
+        },
+        {
+          "score": 2,
+          "descriptor": "One or more questions is missing or merged so it cannot be checked."
+        },
+        {
+          "score": 1,
+          "descriptor": "The questions are not addressed; the review is a list of data."
+        }
+      ],
+      "appliesTo": [
+        "review-by-question",
+        "additional-data"
+      ]
+    },
+    {
+      "key": "proposal-grounding",
+      "criterion": "Grounded proposal: the additional-data proposal follows from the gaps found and covers any newly suspected need.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Each proposed area answers a named gap; a no-additional-data proposal gives reasons tied to the review; newly suspected needs are included."
+        },
+        {
+          "score": 3,
+          "descriptor": "The proposal follows from the review, but one area or reason is thin."
+        },
+        {
+          "score": 2,
+          "descriptor": "Proposed assessments do not match the gaps, or \"no additional data\" is proposed despite a new concern."
+        },
+        {
+          "score": 1,
+          "descriptor": "No proposal, or a blanket battery with no link to the review."
+        }
+      ],
+      "appliesTo": [
+        "additional-data"
+      ]
+    },
+    {
+      "key": "team-and-parent",
+      "criterion": "The team decides: the draft leaves the decision to the team, includes the parent's input, and states the parent's consent and notice rights.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Labelled a draft; worded as a proposal; parent input is recorded; consent for new assessment and notice of a no-data decision are both stated."
+        },
+        {
+          "score": 3,
+          "descriptor": "Proposal wording and parent input are present, but one right is missing."
+        },
+        {
+          "score": 2,
+          "descriptor": "Reads as decided, or parent input is absent."
+        },
+        {
+          "score": 1,
+          "descriptor": "States continued eligibility or the data decision as settled, with no parent role."
+        }
+      ],
+      "appliesTo": [
+        "parent-input",
+        "additional-data",
+        "notice-and-consent"
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "IDEA Part B reevaluation requirements, 34 CFR 300.303 (reevaluations), 300.305 (review of existing evaluation data) and 300.300(c)–(d) (consent); section list and guidance are own text",
+    "url": "https://www.law.cornell.edu/cfr/text/34/300.305",
+    "license": "Own text (structure from 34 CFR Part 300, public domain US government)",
+    "retrieved": "2026-10-08"
+  }
+}

@@ -1,0 +1,324 @@
+{
+  "key": "incident-postmortem",
+  "version": 1,
+  "title": "Incident Postmortem",
+  "family": "technical",
+  "summary": "A blameless review written after a service incident: what happened and its impact, a sourced timeline with detection, mitigation and resolution times, the contributing causes in the system and process, how detection and response went, and action items each with an owner, a due date and the cause it addresses. Written to learn and prevent recurrence, not to assign blame.",
+  "signals": [
+    "postmortem",
+    "post-incident review",
+    "incident report",
+    "blameless",
+    "incident timeline",
+    "time to detect",
+    "time to mitigate",
+    "time to resolve",
+    "customer impact",
+    "contributing factors",
+    "root cause",
+    "action items with owners",
+    "severity (SEV1, SEV2)",
+    "lessons learned"
+  ],
+  "audience": "Engineers, on-call responders, service owners and engineering leadership, and sometimes affected customers or other teams, who need an accurate account of the incident and confidence that the follow-up will reduce the chance or cost of a repeat.",
+  "tone": "Factual, blameless and specific: systems and decisions rather than people at fault, precise times and numbers, no defensiveness or minimizing.",
+  "preamble": "You are helping an incident owner draft a blameless postmortem. Describe what happened in terms of systems, signals, decisions and the information available at the time, not individual fault: name roles (\"the on-call engineer\") rather than people, and never give \"human error\" as a cause without the system factors that made the error possible or likely. Expect several contributing causes; treat a single root cause as a prompt to look further. Take every timestamp, duration and impact figure from the sources (alerts, chat logs, tickets, dashboards), give times in one stated time zone, and say which source each timeline entry comes from; never reconstruct times or numbers from memory, and write \"[time needed]\" or \"[figure needed]\" where the material is silent. Detection, mitigation and resolution durations are computed from the timestamps. Action items must be specific, owned and dated; avoid items such as \"be more careful\" or \"improve monitoring\" with no concrete change. Keep customer and personal data out of the document.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "incident-details",
+      "heading": "Incident Details",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "Front matter the incident owner fills in: identifiers, dates, severity, status, people by role, and the document's review status. Not drafted by the model.",
+      "elements": [
+        "Incident identifier, date and severity",
+        "Services affected",
+        "Incident owner, authors and reviewers",
+        "Document status (draft, in review, published)"
+      ],
+      "sourcesNeeded": [
+        "Incident ticket"
+      ],
+      "dataNeeded": [
+        "Incident start and end times"
+      ],
+      "renderer": "static",
+      "scaffold": "**Status: DRAFT (blameless review)**\n\n| Field | Entry |\n|---|---|\n| Incident | [ID] |\n| Date | [YYYY-MM-DD] |\n| Severity | [Severity] |\n| Services affected | [Services] |\n| Incident owner | [Name] |\n| Authors | [Names] |\n| Reviewers | [Names] |\n| Time zone used | [UTC] |\n| Ticket and channel | [Links] |"
+    },
+    {
+      "key": "summary",
+      "heading": "Summary",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "In one short paragraph: what failed, when, for how long, who or what was affected and how badly, how it was mitigated, and the main contributing causes. Use the same figures as the Impact and Timeline sections. A reader who stops here should know the essentials.",
+      "lengthHint": "3–5 sentences",
+      "elements": [
+        "What failed and when",
+        "Duration and impact, matching the later sections",
+        "How it was mitigated",
+        "Main contributing causes in one line"
+      ],
+      "sourcesNeeded": [
+        "Incident ticket and timeline"
+      ],
+      "dataNeeded": [
+        "Start, mitigation and resolution times",
+        "Headline impact figures"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "impact",
+      "heading": "Impact",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "Quantify the impact from the sources: duration, users, customers or requests affected (count or share), errors or latency, data loss or corruption, service-level objectives breached and error budget used, revenue or support load where known, and any commitments affected. Give each figure with its source and the window it covers. Say what was not affected, and what is still unknown.",
+      "lengthHint": "A short list or table",
+      "elements": [
+        "Duration of user-facing impact",
+        "Users, customers or requests affected, with source",
+        "Data loss or integrity effects",
+        "Service-level objectives breached",
+        "What was not affected, and unknowns"
+      ],
+      "sourcesNeeded": [
+        "Dashboards and metrics exports",
+        "Support ticket counts"
+      ],
+      "dataNeeded": [
+        "Error rates, affected request counts, duration"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "timeline",
+      "heading": "Timeline",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Give the events in time order in a table (time, event, source), in one stated time zone, from the first contributing change through detection, escalation, mitigation and resolution to the all-clear. Mark the moments of impact start, detection, mitigation and resolution, and state time to detect, mitigate and resolve as computed from them. Record what responders knew and decided at each point, not what was learned later. Each entry cites its source (alert, chat message, deploy log, ticket). Common failures: a timeline rebuilt from memory; mixed time zones; hindsight written into the entries.",
+      "lengthHint": "A table of 8–30 rows plus the three durations",
+      "elements": [
+        "Events in time order with timestamps in one time zone",
+        "Source cited for each entry",
+        "Impact start, detection, mitigation and resolution marked",
+        "Time to detect, mitigate and resolve",
+        "What responders knew at each decision point"
+      ],
+      "sourcesNeeded": [
+        "Alert history",
+        "Incident chat log",
+        "Deploy and change logs",
+        "Incident ticket"
+      ],
+      "dataNeeded": [
+        "Timestamps for each event"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "contributing-causes",
+      "heading": "Contributing Causes",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Describe each contributing cause separately: the trigger and the conditions that let it cause harm (latent defects, missing safeguards, gaps in testing, monitoring, process, documentation or capacity). For each, give the evidence and how it contributed. Where a person's action was involved, describe the system factors that made it possible or likely (tooling, alerts, defaults, time pressure, missing guardrails). Several causes are normal. Mark any cause the team has not agreed on as disputed rather than settling it in the text.",
+      "lengthHint": "A short paragraph per cause",
+      "elements": [
+        "The trigger",
+        "Each underlying condition or missing safeguard",
+        "Evidence for each cause",
+        "System factors behind any human action",
+        "Disputed causes marked as such"
+      ],
+      "sourcesNeeded": [
+        "Code changes, configuration diffs",
+        "Logs and traces",
+        "Responder notes"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "detection-and-response",
+      "heading": "Detection and Response",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Assess how the incident was found and handled: how it was detected (alert, customer report, chance) and how that compares with how it should have been; what helped the response (tools, runbooks, people with the right access); what slowed it (missing alerts, unclear ownership, slow rollback, access gaps, communication); and any factor that limited the damage by chance rather than design. Keep it blameless and specific.",
+      "lengthHint": "Three short lists",
+      "elements": [
+        "How the incident was detected, and how it should have been",
+        "What helped the response",
+        "What slowed the response",
+        "Factors that limited damage by chance"
+      ],
+      "sourcesNeeded": [
+        "Incident chat log",
+        "Responder interviews or notes"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    },
+    {
+      "key": "action-items",
+      "heading": "Action Items",
+      "level": 2,
+      "order": 70,
+      "required": true,
+      "guidance": "List the follow-up work in a table: action, kind (prevent, detect, mitigate, process), owner (a named role or person who has accepted it), due date, the contributing cause it addresses, and a tracking link. Each action is a concrete, checkable change. Every contributing cause has at least one action or an explicit, owned decision to accept the risk. Prefer fewer items that will be done over many that will not. Common failures: \"be more careful\"; items with no owner or date; actions unrelated to any cause.",
+      "lengthHint": "A table of 3–12 rows",
+      "elements": [
+        "Concrete, checkable action",
+        "Kind: prevent, detect, mitigate or process",
+        "Owner who has accepted it",
+        "Due date",
+        "Contributing cause addressed",
+        "Accepted risks recorded with an owner",
+        "Tracking link"
+      ],
+      "sourcesNeeded": [
+        "Issue tracker"
+      ],
+      "dataNeeded": [
+        "Owners and due dates"
+      ],
+      "renderer": "narrative"
+    },
+    {
+      "key": "lessons",
+      "heading": "Lessons and Supporting Information",
+      "level": 2,
+      "order": 80,
+      "required": false,
+      "guidance": "Note broader lessons that go beyond this incident (patterns seen in earlier incidents, assumptions that proved wrong) and link supporting material: graphs, logs, related postmortems. Keep it short.",
+      "lengthHint": "A few bullets and links",
+      "elements": [
+        "Lessons beyond this incident",
+        "Related incidents",
+        "Links to supporting graphs and logs"
+      ],
+      "sourcesNeeded": [
+        "Earlier postmortems"
+      ],
+      "dataNeeded": [],
+      "renderer": "narrative"
+    }
+  ],
+  "rubric": [
+    {
+      "key": "sourced-timeline",
+      "criterion": "Sourced timeline: events are in order, timestamped in one time zone, each tied to a source, with detection, mitigation and resolution times that match the timestamps.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Every entry has a timestamp and source; one time zone; key moments marked; the three durations agree with the timestamps and the summary."
+        },
+        {
+          "score": 3,
+          "descriptor": "Ordered and sourced, but a few entries lack sources or one duration is missing."
+        },
+        {
+          "score": 2,
+          "descriptor": "Gaps, mixed time zones, or durations that disagree with the timestamps."
+        },
+        {
+          "score": 1,
+          "descriptor": "A narrative from memory with no times or sources."
+        }
+      ],
+      "appliesTo": [
+        "summary",
+        "timeline",
+        "impact"
+      ]
+    },
+    {
+      "key": "systemic-causes",
+      "criterion": "Systemic causes: several contributing causes are identified with evidence, at the level of systems and processes.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Trigger and underlying conditions are distinguished; each cause has evidence; human actions are explained by system factors."
+        },
+        {
+          "score": 3,
+          "descriptor": "Causes are systemic and evidenced, but an underlying condition is missed."
+        },
+        {
+          "score": 2,
+          "descriptor": "A single root cause, or causes stated without evidence."
+        },
+        {
+          "score": 1,
+          "descriptor": "\"Human error\" or a person named as the cause."
+        }
+      ],
+      "appliesTo": [
+        "contributing-causes"
+      ]
+    },
+    {
+      "key": "blameless",
+      "criterion": "Blameless: the text describes roles, systems and the information available at the time, without blame or hindsight bias.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Roles rather than names; decisions judged by what was known then; no blaming language anywhere."
+        },
+        {
+          "score": 3,
+          "descriptor": "Blameless overall, with one hindsight judgment (\"should have known\")."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several passages imply individual fault."
+        },
+        {
+          "score": 1,
+          "descriptor": "Names or blames individuals."
+        }
+      ],
+      "appliesTo": [
+        "timeline",
+        "contributing-causes",
+        "detection-and-response"
+      ]
+    },
+    {
+      "key": "actionable-follow-up",
+      "criterion": "Actionable follow-up: every action is concrete, owned, dated and tied to a cause, and every cause has an action or an accepted risk.",
+      "levels": [
+        {
+          "score": 4,
+          "descriptor": "Each action is a checkable change with owner, due date and cause; each cause is covered by an action or an owned risk acceptance."
+        },
+        {
+          "score": 3,
+          "descriptor": "Actions are concrete, but one lacks an owner or date, or one cause is uncovered."
+        },
+        {
+          "score": 2,
+          "descriptor": "Several vague actions (\"improve monitoring\") or several without owners or dates."
+        },
+        {
+          "score": 1,
+          "descriptor": "No action items, or only exhortations."
+        }
+      ],
+      "appliesTo": [
+        "action-items"
+      ]
+    }
+  ],
+  "provenance": {
+    "source": "Hand-written from common incident-review practice; the improvement step it supports follows NIST SP 800-61 Rev. 3 (Incident Response Recommendations, CSF 2.0 Improve function). No text from licensed postmortem guides is used",
+    "url": "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
+    "license": "Own text (NIST SP 800-61r3 consulted: public domain US government)",
+    "retrieved": "2026-10-08"
+  }
+}

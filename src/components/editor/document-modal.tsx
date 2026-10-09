@@ -12,8 +12,13 @@
 // (phase6-spec.md §8.1) to the workflows-ui track. "Add" on a suggestion hands
 // over to Sources or Data with a prefill; a workflow's evidence and missing
 // inputs hand over to Sources, focused on the source when there is one.
+// Phase 8: the Sources tab offers "Learn a type from these examples" (the
+// learn track), preselecting the linked sources that have finished reading.
 
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { Sparkles } from "@/components/icons";
+import { LearnDialog } from "@/components/learn/learn-dialog";
+import type { LearnExampleRef } from "@/lib/learn/contract";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { LinkedSource } from "@/components/sources/shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,6 +53,7 @@ export function DocumentModal({
   onJumpToSection,
   workflowsPrefill = null,
   onWorkflowsPrefillDone,
+  onLearnedType,
 }: {
   /** The open tab, or null when the dialog is closed. */
   tab: DocumentModalTab | null;
@@ -76,6 +82,8 @@ export function DocumentModal({
   /** Opened from the classifier chip's "Restructure…": that workflow with its target type chosen. */
   workflowsPrefill?: WorkflowsPrefill | null;
   onWorkflowsPrefillDone?: () => void;
+  /** After "Learn a type from these examples" saves: use the new type for this document (the editor sets type_key). */
+  onLearnedType?: (typeKey: string) => void;
 }) {
   const open = tab !== null;
   // "Add" on a source suggestion hands over to the Sources tab with this.
@@ -90,6 +98,10 @@ export function DocumentModal({
   // were. Unlike the hand-overs they outlast a close, but not the document.
   const [workflowsView, setWorkflowsView] = useState<WorkflowsView>({ kind: "list" });
   const [checkpointDrafts, setCheckpointDrafts] = useState<Record<string, CheckpointDraft>>({});
+  // The Sources tab's linked sources, for "Learn a type from these examples".
+  const [linked, setLinked] = useState<LinkedSource[]>([]);
+  const [learnOpen, setLearnOpen] = useState(false);
+  const learnPreselect: LearnExampleRef[] = linked.filter((s) => s.extraction_status === "ready" || s.extraction_status === "partial").map((s) => ({ kind: "source", sourceId: s.id }));
   const [workflowsDoc, setWorkflowsDoc] = useState(documentId);
   if (workflowsDoc !== documentId) {
     setWorkflowsDoc(documentId);
@@ -187,6 +199,17 @@ export function DocumentModal({
               {tab === "notes" && <NotesPane controlRef={notesPane} notes={notes} onChange={onNotesChange} saveStatus={saveStatus} saveError={saveError} />}
             </TabsContent>
             <TabsContent value="sources" className="flex min-h-0 min-w-0 flex-col">
+              {tab === "sources" && documentId && (
+                <div className="mb-2 flex shrink-0 justify-end px-4 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => setLearnOpen(true)}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1 text-sm text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)] sm:min-h-8"
+                  >
+                    <Sparkles className="h-4 w-4" /> Learn a type from these examples
+                  </button>
+                </div>
+              )}
               {tab === "sources" && (
                 <SourcesPanel
                   bare
@@ -196,7 +219,10 @@ export function DocumentModal({
                   onClose={close}
                   prefill={prefill}
                   onPrefillDone={() => setPrefill(null)}
-                  onSourcesChange={onSourcesChange}
+                  onSourcesChange={(sources) => {
+                    setLinked(sources);
+                    onSourcesChange?.(sources);
+                  }}
                   onShowData={() => onTabChange("data")}
                   focusSourceId={sourceFocus}
                 />
@@ -269,6 +295,15 @@ export function DocumentModal({
           </Tabs>
         )}
       </DialogContent>
+      <LearnDialog
+        open={learnOpen}
+        onOpenChange={setLearnOpen}
+        linkedSources={linked}
+        currentDocument={documentId ? { id: documentId, title: documentTitle } : null}
+        preselect={learnPreselect.length ? learnPreselect : documentId ? [{ kind: "document", documentId }] : []}
+        documentId={documentId}
+        onUseType={onLearnedType}
+      />
     </Dialog>
   );
 }

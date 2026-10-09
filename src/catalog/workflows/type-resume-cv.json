@@ -1,0 +1,232 @@
+{
+  "key": "type-resume-cv",
+  "version": 1,
+  "title": "Resume tailoring check",
+  "summary": "A fit result for one target role: each job requirement mapped to the master history (direct, adjacent or none) and to the tailored resume, before and after, with the requirements the history does not meet. A truth check confirms every line traces to the master resume; a format check covers parsing and length. The candidate tailors the resume; Sasha maps, scores and checks it, and the candidate approves the result.",
+  "kind": "type",
+  "appliesTo": ["resume-cv"],
+  "outcome": {
+    "label": "Fit for the target role",
+    "values": [
+      { "key": "strong_fit", "label": "Strong fit: required items met" },
+      { "key": "partial_fit", "label": "Partial fit: some required items are gaps" },
+      { "key": "weak_fit", "label": "Weak fit: most required items are gaps" },
+      { "key": "fact_mismatch", "label": "Fix first: a line does not trace to the master" }
+    ]
+  },
+  "checkpoint": { "role": "Candidate", "required": true },
+  "notAssessed": ["How a particular employer's applicant tracking system scores the resume", "Tailoring itself (spec step 4): the workflow does not rewrite or propose lines; it checks a resume the candidate has already tailored"],
+  "notes": [
+    "Departure from the spec: there is no Tailor step yet. The candidate tailors the open resume; Sasha maps the master history (before), scores the open resume (after), and checks truth and format. The checkpoint approves the resume and its flags, not a list of changed lines.",
+    "The fit is Sasha's estimate for comparing versions; employers screen differently.",
+    "Report gaps plainly and handle them in the cover letter; the requirement map is saved with the run for the cover letter workflow.",
+    "CV variant: no length limit; publications, grants and teaching follow the field's usual order."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "src", "node": "sources.read", "label": "Source passages" },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: job and master history",
+      "config": {
+        "inputs": [
+          { "key": "job", "label": "The job description", "kind": "source", "match": ["job description", "job posting", "posting", "position description", "vacancy", "careers", "requisition"], "help": "Link the posting for the one role this resume targets." },
+          { "key": "master", "label": "Master resume or work history", "kind": "source", "match": ["master resume", "resume", "CV", "curriculum vitae", "work history", "LinkedIn"], "help": "Link the master resume or full work history; it is the source of truth for every fact." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources" }
+    },
+    {
+      "id": "reqs",
+      "node": "step.extract",
+      "label": "Role requirements",
+      "config": {
+        "item": "requirement",
+        "from": ["sources"],
+        "sourceMatch": ["job", "posting", "position", "vacancy", "requisition", "careers"],
+        "maxItems": 40,
+        "instructions": "List each qualification, responsibility, skill and seniority signal in the posting, marked required or preferred as the posting says.",
+        "fields": [
+          { "name": "requirement", "label": "Requirement", "type": "text", "description": "As the posting states it", "required": true },
+          { "name": "priority", "label": "Priority", "type": "enum", "values": ["required", "preferred"], "description": "Required or preferred, as the posting says", "required": true },
+          { "name": "kind", "label": "Kind", "type": "enum", "values": ["qualification", "responsibility", "skill", "seniority"], "description": "What sort of requirement it is" }
+        ]
+      },
+      "in": { "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "before",
+      "node": "step.trace",
+      "label": "Before: master history",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          { "key": "direct", "label": "Direct evidence", "ok": true, "severity": "info" },
+          { "key": "adjacent", "label": "Adjacent evidence", "ok": false, "severity": "minor" },
+          { "key": "none", "label": "No evidence (gap)", "ok": false, "severity": "info" }
+        ],
+        "unverifiedStatus": "none",
+        "question": "Does the master resume or work history show this requirement directly, show something adjacent, or not at all? Quote the evidence. Use only the master history, not the posting.",
+        "instructions": "This maps the candidate's history to the role. A requirement the history cannot meet is a gap to report, not a fault in the resume."
+      },
+      "in": { "items": "reqs.items", "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "after",
+      "node": "step.trace",
+      "label": "After: tailored resume",
+      "config": {
+        "against": "document",
+        "statuses": [
+          { "key": "met", "label": "Met and visible", "ok": true, "severity": "info" },
+          { "key": "partly_met", "label": "Partly met or buried", "ok": false, "severity": "minor" },
+          { "key": "gap", "label": "Gap", "ok": false, "severity": "minor" }
+        ],
+        "unverifiedStatus": "gap",
+        "question": "Does the tailored resume show this requirement, early and in the posting's terms where the experience matches? Quote the line."
+      },
+      "in": { "items": "reqs.items", "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "facts",
+      "node": "step.extract",
+      "label": "Facts in the resume",
+      "config": {
+        "item": "fact",
+        "from": ["document"],
+        "maxItems": 120,
+        "instructions": "List each employer, job title, date range, degree, certification, skill and number (metric, count, amount) the resume states, with the line it appears in.",
+        "fields": [
+          { "name": "fact", "label": "Fact", "type": "text", "description": "The fact as written", "required": true },
+          { "name": "kind", "label": "Kind", "type": "enum", "values": ["employer", "title", "dates", "degree", "certification", "skill", "number", "achievement"], "description": "What sort of fact it is", "required": true }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "truth",
+      "node": "step.trace",
+      "label": "Truth check",
+      "config": {
+        "against": "sources",
+        "statuses": [
+          { "key": "in_master", "label": "Matches the master", "ok": true, "severity": "info" },
+          { "key": "overstated", "label": "Says more than the master", "ok": false, "severity": "blocking" },
+          { "key": "not_in_master", "label": "Not in the master", "ok": false, "severity": "blocking" }
+        ],
+        "unverifiedStatus": "not_in_master",
+        "question": "Does the master resume or work history contain this fact exactly (titles and dates unchanged, numbers the same)? Compare against the master, never the posting."
+      },
+      "in": { "items": "facts.items", "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "covb",
+      "node": "step.compute",
+      "label": "Match score before",
+      "config": {
+        "checks": [
+          { "kind": "count", "key": "required_direct", "label": "Before: required items with direct evidence", "severity": "info", "where": { "field": "priority", "equals": "required" }, "status": ["direct"] },
+          { "kind": "count", "key": "required_adjacent", "label": "Before: required items with adjacent evidence", "severity": "info", "where": { "field": "priority", "equals": "required" }, "status": ["adjacent"] },
+          { "kind": "count", "key": "required_none", "label": "Before: required items with no evidence (gaps)", "severity": "info", "where": { "field": "priority", "equals": "required" }, "status": ["none"] },
+          { "kind": "count", "key": "preferred_direct", "label": "Before: preferred items with direct evidence", "severity": "info", "where": { "field": "priority", "equals": "preferred" }, "status": ["direct"] }
+        ]
+      },
+      "in": { "items": "before.traced", "after": "gate.pass" }
+    },
+    {
+      "id": "cova",
+      "node": "step.compute",
+      "label": "Match score after",
+      "config": {
+        "checks": [
+          { "kind": "count", "key": "required_met", "label": "After: required items met", "severity": "info", "where": { "field": "priority", "equals": "required" }, "status": ["met"] },
+          { "kind": "count", "key": "required_partly_met", "label": "After: required items partly met", "severity": "info", "where": { "field": "priority", "equals": "required" }, "status": ["partly_met"] },
+          { "kind": "count", "key": "required_gap", "label": "After: required items that are gaps", "severity": "info", "where": { "field": "priority", "equals": "required" }, "status": ["gap"] },
+          { "kind": "count", "key": "preferred_met", "label": "After: preferred items met", "severity": "info", "where": { "field": "priority", "equals": "preferred" }, "status": ["met"] }
+        ]
+      },
+      "in": { "items": "after.traced", "after": "gate.pass" }
+    },
+    {
+      "id": "len",
+      "node": "step.compute",
+      "label": "Length",
+      "config": {
+        "checks": [
+          { "kind": "length", "key": "pages", "label": "Estimated pages (compare with the field's norm; a CV has no limit)", "severity": "minor", "unit": "pages" }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "fmt",
+      "node": "step.check",
+      "label": "Format",
+      "config": {
+        "checklist": [
+          { "key": "single_column", "label": "Single column, real text", "question": "Is the content in a single column of real text, with nothing essential in tables, images, text boxes, headers or footers?", "severity": "major" },
+          { "key": "standard_headings", "label": "Standard headings", "question": "Are the section headings standard (Experience, Education, Skills and so on)?", "severity": "minor" },
+          { "key": "consistent_dates", "label": "Consistent dates", "question": "Are dates in one consistent format, with no unexplained overlaps?", "severity": "minor", "appliesTo": ["experience", "education"] },
+          { "key": "length_suits", "label": "Length suits the field", "question": "Is the length suited to the field and seniority (usually one to two pages for a resume; a CV has no limit)?", "severity": "minor" },
+          { "key": "results_bullets", "label": "Results, not duties", "question": "Do the experience bullets state actions and results, keeping the numbers the master gives?", "severity": "minor", "appliesTo": ["experience"] }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Fit",
+      "config": {
+        "values": ["strong_fit", "partial_fit", "weak_fit", "fact_mismatch"],
+        "guidance": "Give the match score as the computed counts state it (do not recount): required items met, partly met and gaps, and preferred items met, before (master history) and after (tailored resume). Judge the fit on the after counts: strong_fit when no required item is a gap; partial_fit when some are; weak_fit when more than half are. fact_mismatch when any fact does not trace to the master. List the gaps plainly and suggest handling them in the cover letter."
+      },
+      "in": {
+        "findings": ["before.findings", "after.findings", "truth.findings", "len.findings", "fmt.findings"],
+        "results": ["covb.results", "cova.results", "fmt.results", "len.results"],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "partial_fit",
+        "guards": [
+          {
+            "values": ["strong_fit", "partial_fit", "weak_fit"],
+            "when": { "findings": { "severity": ["blocking"], "min": 1 } },
+            "instead": "fact_mismatch",
+            "reason": "a line that does not trace to the master resume must be fixed before the resume is used."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": ["before.findings", "after.findings", "truth.findings", "len.findings", "fmt.findings"],
+        "results": ["covb.results", "cova.results", "len.results"],
+        "tables": ["covb.table", "cova.table", "before.table", "after.table", "truth.table", "fmt.table"]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Candidate approval",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "The resume is your statement. Read it against the requirement map and approve it, and fix or remove any line the truth check flagged before using it.",
+        "recordFields": [
+          { "key": "target_role", "label": "Target role and employer", "required": true }
+        ]
+      },
+      "in": { "items": "out.outcome" }
+    }
+  ]
+}

@@ -95,6 +95,23 @@ export function contains(haystack: string, needle: string): boolean {
   return !!n && norm(haystack).includes(n);
 }
 
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Does `haystack` contain the keyword `needle` at the start of a word? Gate
+ * cues are word starts ("evaluation" finds "evaluations", not
+ * "reevaluation"); an acronym ("FIE", "CV", "NoA") must also end the word, so
+ * "FIE" finds neither "identified" nor "Field" (a trailing "s" is allowed).
+ */
+export function containsKeyword(haystack: string, needle: string): boolean {
+  const raw = needle.replace(/…$/, "").trim();
+  const n = norm(raw);
+  if (!n) return false;
+  const acronym = /^[A-Za-z0-9]{2,8}$/.test(raw) && (raw.match(/[A-Z]/g)?.length ?? 0) >= 2;
+  const end = acronym ? "s?(?![\\p{L}\\p{N}])" : "";
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(n)}${end}`, "u").test(norm(haystack));
+}
+
 /** A field value as display text. */
 export function fieldText(v: unknown): string {
   if (v === null || v === undefined) return "";

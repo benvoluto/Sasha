@@ -4,7 +4,7 @@
   "title": "NIH policies on AI and award decisions",
   "authority": "National Institutes of Health",
   "jurisdiction": "United States (federal)",
-  "appliesTo": ["nih-specific-aims-research-strategy"],
+  "appliesTo": ["nih-specific-aims-research-strategy", "response-to-reviewers"],
   "effective": "",
   "checked": "2026-10-08",
   "provenance": {

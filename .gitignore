@@ -45,3 +45,6 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Phase 8: evaluation harness downloads and reports (fetched at run time, never committed)
+/.cache/

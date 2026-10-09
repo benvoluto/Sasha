@@ -1,0 +1,149 @@
+{
+  "key": "literature-review",
+  "version": 1,
+  "title": "Literature Review",
+  "family": "academic",
+  "summary": "A review that synthesizes published research on a stated question: narrative, scoping or systematic. It defines the question and scope, explains how sources were found and chosen, organizes the evidence by theme or argument, names agreements, contradictions and gaps, and draws conclusions the cited sources support. Systematic reviews also report search, screening and appraisal (PRISMA 2020).",
+  "signals": [
+    "literature review",
+    "systematic review",
+    "scoping review",
+    "narrative review",
+    "review of the literature",
+    "search strategy",
+    "inclusion and exclusion criteria",
+    "PRISMA",
+    "databases searched",
+    "previous studies have shown",
+    "gap in the literature",
+    "synthesis",
+    "risk of bias",
+    "future research"
+  ],
+  "audience": "Researchers, graduate committees, journal editors and reviewers who know the field and check that the review is complete, accurate to its sources and more than a summary of papers.",
+  "tone": "Scholarly, precise and balanced; claims hedged to match the strength of the evidence, sources compared rather than listed, no overstatement.",
+  "preamble": "You are an experienced researcher drafting a literature review on the stated research question. Every empirical claim needs a citation to a source the author has linked or named, and each cited source must actually say what it is cited for; never invent a citation, author, year, journal, finding or statistic, and never cite a source you cannot see for a specific claim. Where a claim needs a source that is not in the linked material, write [citation needed] and leave it for the author. Organize by theme, debate or argument tied to the question, not source by source: compare studies, name where they agree and contradict each other and why (methods, samples, settings), include disconfirming evidence, and say how strong the evidence is. State the scope (years, fields, languages, kinds of study) and how sources were found. For a systematic review, report the search strategy, screening flow and quality appraisal as PRISMA 2020 asks; narrative and scoping reviews say plainly what they did instead. Conclusions and gaps must follow from the sources reviewed, and coverage is limited to what was searched: say so. Sasha proposes candidate sources but never inserts a citation the author has not accepted.",
+  "aliases": [],
+  "sections": [
+    {
+      "key": "introduction",
+      "heading": "Introduction",
+      "level": 2,
+      "order": 10,
+      "required": true,
+      "guidance": "State the research question or aim, why it matters now, and the kind of review (narrative, scoping or systematic). Define key terms and the boundaries of the topic, and preview how the review is organized. Common failures: a broad topic with no question; no statement of the review type; background that becomes the review itself.",
+      "lengthHint": "About 5-10% of the review",
+      "elements": ["Research question or aim stated", "Why the question matters now", "Kind of review: narrative, scoping or systematic", "Key terms defined", "Preview of the organization"],
+      "sourcesNeeded": ["Key papers framing the question", "Earlier reviews on the topic"],
+      "dataNeeded": []
+    },
+    {
+      "key": "methods",
+      "heading": "Scope and Methods",
+      "level": 2,
+      "order": 20,
+      "required": true,
+      "guidance": "Say how sources were found and chosen: databases and other sources searched, search terms, date range, languages, inclusion and exclusion criteria, and how studies were screened and appraised. For a systematic review, report these fully enough to repeat (PRISMA 2020: search strategy, screening flow with counts at each stage, risk-of-bias or quality appraisal), and give the protocol registration if any. A narrative review still states its scope and how sources were located. Common failures: no date of search; criteria applied silently; a systematic label on a review with no reported search.",
+      "lengthHint": "About 10% of the review; longer for systematic reviews",
+      "elements": ["Sources searched and search terms", "Date range and date of the search", "Inclusion and exclusion criteria", "Screening and appraisal method", "Screening counts (systematic reviews)"],
+      "sourcesNeeded": ["Search log or protocol", "PRISMA 2020 checklist (systematic reviews)"],
+      "dataNeeded": ["Records found, screened, excluded and included, with reasons (systematic reviews)"]
+    },
+    {
+      "key": "thematic-synthesis",
+      "heading": "Synthesis of the Literature",
+      "level": 2,
+      "order": 30,
+      "required": true,
+      "guidance": "The body of the review. Use level-3 sub-headings for themes, debates or strands of argument, each tied back to the question. Within each, compare studies: what they found, where they agree and conflict, and what explains the differences (design, sample, setting, measures). Weigh evidence by quality rather than counting papers, include work that cuts against the main view, and flag where the evidence is thin or dated. Common failures: one paragraph per paper; citations for claims the papers do not make; themes unrelated to the question; recent work missing.",
+      "lengthHint": "About 60-70% of the review",
+      "elements": ["Themes or arguments, each tied to the question", "Studies compared, not summarized one by one", "Agreements and contradictions named, with reasons", "Disconfirming evidence included", "Strength and quality of the evidence assessed"],
+      "sourcesNeeded": ["The included studies", "Highly cited and recent work on each theme"],
+      "dataNeeded": ["Study characteristics (design, sample, setting) for comparison"]
+    },
+    {
+      "key": "gaps-and-limitations",
+      "heading": "Gaps and Limitations",
+      "level": 2,
+      "order": 40,
+      "required": true,
+      "guidance": "Name what the literature does not yet answer, why (no studies, weak designs, narrow samples, conflicting results) and which gaps matter most for the question. Then state the review's own limitations: what was not searched, language or date limits, and how they might bias the picture. Common failures: \"more research is needed\" with no specifics; gaps that are really gaps in the search; no limitations of the review itself.",
+      "lengthHint": "About 10% of the review",
+      "elements": ["Specific gaps in the evidence and why they exist", "Gaps ranked by importance to the question", "Limitations of the review's own search and methods"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    },
+    {
+      "key": "conclusion",
+      "heading": "Conclusion",
+      "level": 2,
+      "order": 50,
+      "required": true,
+      "guidance": "Answer the research question as far as the evidence allows, with the confidence it deserves, and give the implications for research, practice or policy and the most useful next studies. Add no new evidence here. Common failures: conclusions stronger than the synthesis supports; a restated summary with no answer; recommendations unconnected to the gaps.",
+      "lengthHint": "About 5-10% of the review",
+      "elements": ["Answer to the research question, with stated confidence", "Implications for research, practice or policy", "Priority directions for future research"],
+      "sourcesNeeded": [],
+      "dataNeeded": []
+    },
+    {
+      "key": "references",
+      "heading": "References",
+      "level": 2,
+      "order": 60,
+      "required": true,
+      "guidance": "Full references for every source cited, in the required style, and nothing that is not cited. Each entry must resolve to a real source (a DOI or stable link where one exists). Do not add sources the author has not accepted.",
+      "elements": ["Every cited source listed in the required style", "No uncited entries", "DOI or stable link where available"],
+      "sourcesNeeded": ["The author's reference library"],
+      "dataNeeded": []
+    }
+  ],
+  "rubric": [
+    {
+      "key": "synthesis-not-summary",
+      "criterion": "Synthesis: evidence organized by theme or argument tied to the question, with studies compared and contradictions explained.",
+      "levels": [
+        { "score": 4, "descriptor": "Every theme answers part of the question; studies are compared, conflicts explained and evidence weighed by quality." },
+        { "score": 3, "descriptor": "Mostly thematic with some paper-by-paper passages." },
+        { "score": 2, "descriptor": "Grouped by topic but largely sequential summaries." },
+        { "score": 1, "descriptor": "An annotated list of papers." }
+      ],
+      "appliesTo": ["thematic-synthesis"]
+    },
+    {
+      "key": "citation-integrity",
+      "criterion": "Citation integrity: every empirical claim is cited, and each source says what it is cited for.",
+      "levels": [
+        { "score": 3, "descriptor": "All empirical claims are cited and the cited sources support them." },
+        { "score": 2, "descriptor": "Some claims uncited, or a source stretched beyond what it says." },
+        { "score": 1, "descriptor": "Many uncited claims or sources cited for things they do not say." }
+      ],
+      "appliesTo": ["introduction", "thematic-synthesis", "gaps-and-limitations", "conclusion"]
+    },
+    {
+      "key": "transparent-scope",
+      "criterion": "Transparent scope and methods: how sources were found and chosen is stated, and for systematic reviews reported as PRISMA 2020 asks.",
+      "levels": [
+        { "score": 3, "descriptor": "Sources, terms, dates, criteria and screening are stated; a systematic review reports search, flow and appraisal." },
+        { "score": 2, "descriptor": "Scope stated, but the search or criteria are vague." },
+        { "score": 1, "descriptor": "No account of how sources were found." }
+      ],
+      "appliesTo": ["methods"]
+    },
+    {
+      "key": "balanced-coverage",
+      "criterion": "Coverage and balance: key, recent and disconfirming work is included, and gaps are specific.",
+      "levels": [
+        { "score": 3, "descriptor": "Includes the heavily cited and recent work and studies that disagree; gaps are specific and ranked." },
+        { "score": 2, "descriptor": "Some key or recent work missing, or opposing evidence thin." },
+        { "score": 1, "descriptor": "One-sided or out of date; gaps generic." }
+      ],
+      "appliesTo": ["thematic-synthesis", "gaps-and-limitations"]
+    }
+  ],
+  "provenance": {
+    "source": "hand-written; systematic-review reporting points follow PRISMA 2020 (Page et al., BMJ 2021), cited as a guideline and paraphrased, checklist not reproduced",
+    "url": "https://www.prisma-statement.org/prisma-2020-checklist",
+    "license": "Own text (PRISMA 2020 checklist is CC BY 4.0; cited, not copied)",
+    "retrieved": "2026-10-08"
+  }
+}

@@ -29,6 +29,27 @@
     ]
   },
   {
+    "key": "cover-letter",
+    "version": 1,
+    "title": "Cover Letter",
+    "family": "career",
+    "summary": "A one-page letter that accompanies a resume for one specific job. It says which role the candidate is applying for, answers two to four of the employer's top requirements with specific examples from the candidate's history, gives a real reason for wanting this employer, and closes with a request to talk.",
+    "signals": [
+      "cover letter",
+      "Dear Hiring Manager",
+      "I am writing to apply",
+      "I am excited to apply",
+      "position of",
+      "your job posting",
+      "my resume",
+      "attached resume",
+      "I would welcome the opportunity",
+      "thank you for your consideration",
+      "Sincerely",
+      "hiring committee"
+    ]
+  },
+  {
     "key": "design-doc-rfc",
     "version": 2,
     "title": "Design Doc / RFC",
@@ -58,6 +79,29 @@
     ]
   },
   {
+    "key": "diataxis-explanation",
+    "version": 1,
+    "title": "Explanation (Diátaxis)",
+    "family": "technical",
+    "summary": "A discursive piece that deepens understanding of a topic: why something is the way it is, its context and history, the design decisions and trade-offs behind it, the alternatives considered, and how it connects to related ideas. Read away from the keyboard rather than while doing a task; it contains no step-by-step instructions or reference tables. Follows the explanation form of the Diátaxis documentation framework.",
+    "signals": [
+      "About …",
+      "background",
+      "why we chose",
+      "design rationale",
+      "trade-offs",
+      "alternatives considered",
+      "history of",
+      "how it works under the hood",
+      "conceptual overview",
+      "discussion",
+      "in our view",
+      "Diátaxis explanation",
+      "understanding <topic>",
+      "the reason for this is"
+    ]
+  },
+  {
     "key": "diataxis-how-to",
     "version": 1,
     "title": "How-to guide (Diátaxis)",
@@ -79,6 +123,29 @@
       "task-oriented documentation",
       "this guide shows how to",
       "to <do something>, run …"
+    ]
+  },
+  {
+    "key": "diataxis-reference",
+    "version": 1,
+    "title": "Reference (Diátaxis)",
+    "family": "technical",
+    "summary": "Technical reference that describes a product's machinery (API endpoints, commands, options, configuration keys, schemas) for a reader who looks things up while working. Each entry follows the same pattern: name, syntax, parameters with types and defaults, return values, errors. It describes and does not instruct or explain. Follows the reference form of the Diátaxis documentation framework.",
+    "signals": [
+      "API reference",
+      "command-line reference",
+      "configuration reference",
+      "parameters table",
+      "type, default, required",
+      "returns",
+      "error codes",
+      "enum values",
+      "deprecated since",
+      "syntax:",
+      "options and flags",
+      "schema reference",
+      "Diátaxis reference",
+      "endpoint, method, path"
     ]
   },
   {
@@ -109,35 +176,98 @@
     ]
   },
   {
-    "key": "fie",
+    "key": "fba-bip",
     "version": 1,
+    "title": "Functional Behavior Assessment and Behavior Intervention Plan",
+    "family": "clinical",
+    "summary": "A functional behavior assessment and the behavior intervention plan built on it, for a school team: the target behavior defined in observable terms, indirect and direct data such as antecedent-behavior-consequence records, a hypothesized function supported by that data, and interventions matched to the function (antecedent strategies, a replacement behavior, responses), with a baseline and a progress-monitoring plan. Drafted for the team, including the parent.",
+    "signals": [
+      "functional behavior assessment",
+      "FBA",
+      "behavior intervention plan",
+      "BIP",
+      "target behavior operational definition",
+      "antecedent-behavior-consequence (ABC)",
+      "hypothesized function of behavior",
+      "escape, attention, tangible, sensory",
+      "replacement behavior",
+      "antecedent strategies",
+      "setting events",
+      "frequency and duration data",
+      "positive behavioral interventions",
+      "manifestation determination"
+    ]
+  },
+  {
+    "key": "fie",
+    "version": 2,
     "title": "Full and Individual Evaluation",
     "family": "clinical",
-    "summary": "A school psychoeducational evaluation report, written for a multidisciplinary team, that brings together a student's background, the reason for referral, the assessments given, and the cognitive, academic and social-emotional results. It reviews the exclusionary factors and sets out the evidence the team will weigh when it decides special education eligibility, without stating that decision itself. Also called a psychoeducational evaluation or initial/re-evaluation report under IDEA.",
+    "summary": "A school psychoeducational evaluation report for a multidisciplinary team: background, reason for referral, the assessments given, and results across every area related to the suspected disability, with the exclusionary factors and the evidence the team weighs when it decides eligibility, without stating that decision. Initial or re-evaluation under IDEA.",
     "signals": [
       "Full and Individual Evaluation",
-      "FIE",
+      "FIE / FIIE",
       "psychoeducational evaluation",
-      "initial evaluation",
-      "re-evaluation",
+      "initial evaluation or re-evaluation",
       "reason for referral",
-      "referral concerns",
+      "suspected disability",
       "assessment procedures",
-      "cognitive functioning",
-      "academic achievement",
-      "standard score",
-      "percentile rank",
-      "confidence interval",
-      "WISC",
-      "WJ IV",
-      "rating scales",
+      "cognitive and academic functioning",
+      "composite and subtest scores",
+      "standard score, percentile rank",
+      "WISC-V, WJ IV, BASC-3",
       "classroom observation",
+      "adaptive behavior",
+      "speech-language and motor findings",
       "exclusionary factors",
-      "eligibility determination",
-      "ARD committee",
-      "IEP team",
-      "specific learning disability",
-      "IDEA"
+      "eligibility categories considered",
+      "ARD committee or IEP team"
+    ]
+  },
+  {
+    "key": "foundation-letter-of-inquiry",
+    "version": 1,
+    "title": "Foundation Letter of Inquiry",
+    "family": "grant",
+    "summary": "A short letter of inquiry (LOI), or the general proposal that follows it, asking a private or community foundation to consider funding a project. It states the ask up front, the need, the project, the expected outcomes, the timeline and why the organization is the right one, matched to the funder's published priorities and eligibility rules.",
+    "signals": [
+      "letter of inquiry",
+      "LOI",
+      "letter of intent",
+      "foundation",
+      "Dear Program Officer",
+      "we respectfully request",
+      "grant request of",
+      "funding priorities",
+      "our mission",
+      "501(c)(3)",
+      "fiscal sponsor",
+      "invitation to submit a full proposal",
+      "general operating support",
+      "program officer"
+    ]
+  },
+  {
+    "key": "funder-progress-report",
+    "version": 1,
+    "title": "Funder Progress Report",
+    "family": "grant",
+    "summary": "An annual, interim or final progress report to a funder on an awarded grant: accomplishments compared with the award's objectives, products, participants, impact, and changes or problems with their reasons and plans. Federal awards follow 2 CFR 200.329 and the agency's form, such as the NIH or NSF RPPR; foundations set their own formats.",
+    "signals": [
+      "progress report",
+      "annual report",
+      "final report",
+      "RPPR",
+      "reporting period",
+      "accomplishments",
+      "objectives of the award",
+      "products",
+      "participants",
+      "changes/problems",
+      "no-cost extension",
+      "budget period",
+      "project outcomes report",
+      "grant number"
     ]
   },
   {
@@ -159,6 +289,77 @@
       "key findings",
       "we recommend",
       "next steps"
+    ]
+  },
+  {
+    "key": "iep",
+    "version": 1,
+    "title": "Individualized Education Program (IEP) draft",
+    "family": "clinical",
+    "summary": "A draft individualized education program prepared for the IEP team meeting: present levels of performance, measurable annual goals with baselines, how progress is measured and reported, services with start date, frequency, location and duration, participation with peers, assessment accommodations and, where due, transition planning. The team, including the parent, adopts or changes it.",
+    "signals": [
+      "Individualized Education Program",
+      "IEP draft",
+      "present levels of academic achievement",
+      "PLAAFP / PLEP",
+      "measurable annual goal",
+      "baseline and criterion",
+      "short-term objectives or benchmarks",
+      "progress reports to parents",
+      "special education and related services",
+      "frequency, location and duration",
+      "supplementary aids and services",
+      "least restrictive environment",
+      "state assessment accommodations",
+      "postsecondary transition goals",
+      "annual IEP review",
+      "ARD or IEP meeting"
+    ]
+  },
+  {
+    "key": "incident-postmortem",
+    "version": 1,
+    "title": "Incident Postmortem",
+    "family": "technical",
+    "summary": "A blameless review written after a service incident: what happened and its impact, a sourced timeline with detection, mitigation and resolution times, the contributing causes in the system and process, how detection and response went, and action items each with an owner, a due date and the cause it addresses. Written to learn and prevent recurrence, not to assign blame.",
+    "signals": [
+      "postmortem",
+      "post-incident review",
+      "incident report",
+      "blameless",
+      "incident timeline",
+      "time to detect",
+      "time to mitigate",
+      "time to resolve",
+      "customer impact",
+      "contributing factors",
+      "root cause",
+      "action items with owners",
+      "severity (SEV1, SEV2)",
+      "lessons learned"
+    ]
+  },
+  {
+    "key": "literature-review",
+    "version": 1,
+    "title": "Literature Review",
+    "family": "academic",
+    "summary": "A review that synthesizes published research on a stated question: narrative, scoping or systematic. It defines the question and scope, explains how sources were found and chosen, organizes the evidence by theme or argument, names agreements, contradictions and gaps, and draws conclusions the cited sources support. Systematic reviews also report search, screening and appraisal (PRISMA 2020).",
+    "signals": [
+      "literature review",
+      "systematic review",
+      "scoping review",
+      "narrative review",
+      "review of the literature",
+      "search strategy",
+      "inclusion and exclusion criteria",
+      "PRISMA",
+      "databases searched",
+      "previous studies have shown",
+      "gap in the literature",
+      "synthesis",
+      "risk of bias",
+      "future research"
     ]
   },
   {
@@ -188,6 +389,29 @@
       "NIH",
       "NOFO",
       "study section"
+    ]
+  },
+  {
+    "key": "nsf-project-description",
+    "version": 1,
+    "title": "NSF Project Description, Broader Impacts and Data Management and Sharing Plan",
+    "family": "grant",
+    "summary": "The core of a U.S. National Science Foundation proposal: a Project Description of 15 pages or fewer with objectives, relation to current knowledge, the plan of work, a separate Broader Impacts section and, when required, Results from Prior NSF Support, plus the Data Management and Sharing Plan (DMSP) built in Research.gov. Reviewers judge it on Intellectual Merit and Broader Impacts.",
+    "signals": [
+      "Project Description",
+      "Intellectual Merit",
+      "Broader Impacts",
+      "Results from Prior NSF Support",
+      "Data Management and Sharing Plan",
+      "DMSP",
+      "National Science Foundation",
+      "NSF",
+      "PAPPG",
+      "program solicitation",
+      "CAREER",
+      "Research.gov",
+      "transformative",
+      "PI and co-PI"
     ]
   },
   {
@@ -268,6 +492,29 @@
     ]
   },
   {
+    "key": "reevaluation-review",
+    "version": 1,
+    "title": "Review of Existing Evaluation Data (Reevaluation)",
+    "family": "clinical",
+    "summary": "A review of existing evaluation data (REED) for a student with a disability who is due for or has requested a reevaluation. It summarizes the existing data, sets it against the questions the team must answer about continued eligibility, present levels, continued need and changes to services, and proposes whether additional assessment is needed and in which areas, for the team, including the parent, to decide.",
+    "signals": [
+      "Review of Existing Evaluation Data",
+      "REED",
+      "reevaluation",
+      "three-year reevaluation",
+      "existing evaluation data",
+      "no additional data needed",
+      "additional assessment needed",
+      "continued eligibility",
+      "continues to need special education",
+      "date of last evaluation",
+      "parent input on reevaluation",
+      "consent for reevaluation",
+      "classroom-based assessments",
+      "teacher and provider observations"
+    ]
+  },
+  {
     "key": "research-report-imrad",
     "version": 1,
     "title": "Research Report (IMRaD)",
@@ -297,6 +544,52 @@
     ]
   },
   {
+    "key": "response-to-reviewers",
+    "version": 1,
+    "title": "Response to Reviewers",
+    "family": "academic",
+    "summary": "A point-by-point response to peer review of a manuscript, or the Introduction to a resubmitted grant application. It summarizes the main changes, then answers every reviewer and editor comment with the change made and where, or a reasoned, evidence-based rebuttal.",
+    "signals": [
+      "response to reviewers",
+      "rebuttal letter",
+      "Reviewer 1",
+      "Reviewer 2",
+      "Comment 1",
+      "Response:",
+      "we thank the reviewer",
+      "we have revised",
+      "revised manuscript",
+      "summary statement",
+      "Introduction to Resubmission",
+      "decision letter",
+      "point-by-point",
+      "line numbers"
+    ]
+  },
+  {
+    "key": "resume-cv",
+    "version": 1,
+    "title": "Resume or CV",
+    "family": "career",
+    "summary": "A resume tailored to one job, or an academic curriculum vitae: contact details, a short profile, experience with measurable results, education, skills and, for a CV, publications, grants and teaching. Every fact comes from the candidate's master resume or work history.",
+    "signals": [
+      "resume",
+      "curriculum vitae",
+      "CV",
+      "professional summary",
+      "work experience",
+      "employment history",
+      "education",
+      "skills",
+      "certifications",
+      "publications",
+      "grants and awards",
+      "teaching experience",
+      "LinkedIn",
+      "references available upon request"
+    ]
+  },
+  {
     "key": "standard-operating-procedure",
     "version": 1,
     "title": "Standard Operating Procedure (SOP)",
@@ -323,6 +616,29 @@
       "quality control",
       "QA/QC",
       "step-by-step procedure"
+    ]
+  },
+  {
+    "key": "strategy-memo",
+    "version": 1,
+    "title": "Strategy Memo",
+    "family": "business",
+    "summary": "A memo that proposes or reviews a strategy for a business, unit or program. It diagnoses the critical challenge from evidence, sets a guiding policy that says what the organization will and will not do, and lays out coordinated actions with owners, resources and timing, with alternatives weighed and the strongest objections answered.",
+    "signals": [
+      "strategy memo",
+      "strategic review",
+      "diagnosis",
+      "guiding policy",
+      "coherent actions",
+      "the core challenge",
+      "we will not",
+      "strategic options",
+      "competitive advantage",
+      "where to play",
+      "trade-offs",
+      "strategic priorities",
+      "leadership team",
+      "recommendation"
     ]
   }
 ]

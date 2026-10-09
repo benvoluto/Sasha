@@ -1,0 +1,413 @@
+{
+  "key": "type-diataxis-reference",
+  "version": 1,
+  "title": "Reference sync check",
+  "summary": "Compares the reference with its source of truth (an OpenAPI file, schema, CLI help output or code signatures): an inventory from each side, a diff of items missing from the reference, items the source lacks, and mismatches, with defaults checked in code. Without a source it checks internal consistency only and says so. A type check flags instructions, explanation and opinion.",
+  "kind": "type",
+  "appliesTo": [
+    "diataxis-reference"
+  ],
+  "outcome": {
+    "label": "Sync result",
+    "values": [
+      {
+        "key": "in_sync",
+        "label": "In sync with the source of truth"
+      },
+      {
+        "key": "out_of_sync",
+        "label": "Out of sync (see the diff)"
+      },
+      {
+        "key": "consistency_only",
+        "label": "No source of truth linked: internal consistency only"
+      }
+    ]
+  },
+  "checkpoint": null,
+  "requirementSets": [
+    "diataxis-framework"
+  ],
+  "notAssessed": [
+    "Which side is wrong when they differ: the owner decides whether to fix the doc or the source.",
+    "Whether examples run: they are checked against the source by reading, not executed."
+  ],
+  "notes": [
+    "Link the source of truth (OpenAPI file, schema, CLI help output, code signatures) as a source; without it the check covers internal consistency only.",
+    "Best run when the source changes, as well as on demand.",
+    "Where the reference is generated from the source, the check reduces to descriptions and examples.",
+    "Offer flagged passages to Restructure to type as the seed of a how-to guide or explanation."
+  ],
+  "provenance": {
+    "source": "docs/workflows-by-document-type.md",
+    "checked": "2026-10-08"
+  },
+  "steps": [
+    {
+      "id": "doc",
+      "node": "doc.read",
+      "label": "Document"
+    },
+    {
+      "id": "src",
+      "node": "sources.read",
+      "label": "Source of truth",
+      "config": {
+        "focus": "API, schema, command and configuration definitions: names, parameters, types, defaults, enums, errors",
+        "budget": 60000,
+        "nameContains": ""
+      }
+    },
+    {
+      "id": "refinv",
+      "node": "step.extract",
+      "label": "Reference inventory",
+      "config": {
+        "item": "entry",
+        "from": [
+          "document"
+        ],
+        "sectionKeys": [
+          "entries",
+          "errors-and-limits",
+          "conventions"
+        ],
+        "maxItems": 200,
+        "instructions": "One row per documented item or parameter (an endpoint, command, option, field, setting or error), exactly as the reference states it.",
+        "fields": [
+          {
+            "name": "name",
+            "label": "Name",
+            "type": "text",
+            "description": "The item's full name or path (for example GET /users/{id}, --timeout, user.email)",
+            "required": true
+          },
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "text",
+            "description": "Endpoint, command, option, parameter, field, setting, error"
+          },
+          {
+            "name": "type",
+            "label": "Type",
+            "type": "text",
+            "description": "Data type as documented"
+          },
+          {
+            "name": "default",
+            "label": "Default",
+            "type": "text",
+            "description": "Default value as documented"
+          },
+          {
+            "name": "required",
+            "label": "Required",
+            "type": "text",
+            "description": "Whether it is required, as documented"
+          },
+          {
+            "name": "allowed",
+            "label": "Allowed values",
+            "type": "text",
+            "description": "Enum or range, as documented"
+          },
+          {
+            "name": "deprecated",
+            "label": "Deprecated",
+            "type": "text",
+            "description": "Deprecation as documented"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "srcinv",
+      "node": "step.extract",
+      "label": "Source inventory",
+      "config": {
+        "item": "definition",
+        "from": [
+          "sources"
+        ],
+        "maxItems": 200,
+        "instructions": "One row per item or parameter the source of truth defines, in the same shape as the reference inventory. Take values only from the source.",
+        "fields": [
+          {
+            "name": "name",
+            "label": "Name",
+            "type": "text",
+            "description": "The item's full name or path",
+            "required": true
+          },
+          {
+            "name": "kind",
+            "label": "Kind",
+            "type": "text",
+            "description": "Endpoint, command, option, parameter, field, setting, error"
+          },
+          {
+            "name": "type",
+            "label": "Type",
+            "type": "text",
+            "description": "Data type in the source"
+          },
+          {
+            "name": "default",
+            "label": "Default",
+            "type": "text",
+            "description": "Default value in the source"
+          },
+          {
+            "name": "required",
+            "label": "Required",
+            "type": "text",
+            "description": "Whether the source marks it required"
+          },
+          {
+            "name": "allowed",
+            "label": "Allowed values",
+            "type": "text",
+            "description": "Enum or range in the source"
+          },
+          {
+            "name": "deprecated",
+            "label": "Deprecated",
+            "type": "text",
+            "description": "Deprecation in the source"
+          }
+        ]
+      },
+      "in": {
+        "sources": "src.sources"
+      }
+    },
+    {
+      "id": "diff",
+      "node": "step.trace",
+      "label": "Diff against the source",
+      "config": {
+        "against": "targets",
+        "bothWays": true,
+        "question": "Match each documented item to the source item with the same name. Does the source define it, and do type, default, required, allowed values and deprecation agree? Source items no documented item links to are missing from the reference.",
+        "instructions": "Compare field by field; name every field that differs, with both values, in the rationale.",
+        "statuses": [
+          {
+            "key": "matches",
+            "label": "Matches the source",
+            "ok": true,
+            "severity": "info"
+          },
+          {
+            "key": "mismatch",
+            "label": "Differs from the source",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "not_in_source",
+            "label": "Not in the source (stale or undocumented in the source)",
+            "ok": false,
+            "severity": "major"
+          },
+          {
+            "key": "no_source",
+            "label": "No source of truth to compare",
+            "ok": false,
+            "severity": "minor"
+          }
+        ],
+        "unverifiedStatus": "no_source"
+      },
+      "in": {
+        "items": "refinv.items",
+        "targets": "srcinv.items",
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "defaults",
+      "node": "step.compute",
+      "label": "Defaults in the text",
+      "config": {
+        "checks": [
+          {
+            "kind": "values_in_text",
+            "key": "source_defaults_in_text",
+            "label": "Source defaults appear beside their names",
+            "severity": "major",
+            "labelField": "name",
+            "valueField": "default",
+            "specKeys": [
+              "entries"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "items": "srcinv.items"
+      }
+    },
+    {
+      "id": "cons",
+      "node": "step.check",
+      "label": "Consistency",
+      "config": {
+        "checklist": [
+          {
+            "key": "one_pattern",
+            "label": "One entry pattern",
+            "question": "Does every entry use the same fields in the same order? Name entries that deviate.",
+            "severity": "major",
+            "appliesTo": [
+              "entries"
+            ]
+          },
+          {
+            "key": "uniform_names",
+            "label": "Uniform naming",
+            "question": "Are names, casing and formatting uniform across entries?",
+            "severity": "minor",
+            "appliesTo": [
+              "entries",
+              "conventions"
+            ]
+          },
+          {
+            "key": "mirrors_product",
+            "label": "Mirrors the product",
+            "question": "Is the grouping and order the same as the product's own structure?",
+            "severity": "minor",
+            "appliesTo": [
+              "entries"
+            ]
+          },
+          {
+            "key": "examples_valid",
+            "label": "Examples agree with the entries",
+            "question": "Does each example use only names, parameters and values the entries (and the source, if linked) define? Name any that do not.",
+            "severity": "major",
+            "appliesTo": [
+              "examples",
+              "entries"
+            ]
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document",
+        "sources": "src.sources"
+      }
+    },
+    {
+      "id": "type",
+      "node": "step.classify",
+      "label": "Type check",
+      "config": {
+        "unit": "paragraph",
+        "instructions": "Classify each passage by its Diátaxis role in a reference page.",
+        "categories": [
+          {
+            "key": "description",
+            "label": "Description",
+            "description": "Neutral description of an item, its fields, values or behavior",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "example",
+            "label": "Brief example",
+            "description": "A short usage example of an item",
+            "flag": false,
+            "severity": "info"
+          },
+          {
+            "key": "instruction",
+            "label": "Instruction",
+            "description": "Steps for accomplishing a task",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "a how-to guide"
+          },
+          {
+            "key": "explanation",
+            "label": "Explanation",
+            "description": "Why the design is so, background or alternatives",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "an explanation"
+          },
+          {
+            "key": "opinion",
+            "label": "Opinion or marketing",
+            "description": "Judgments, recommendations or promotional language",
+            "flag": true,
+            "severity": "minor",
+            "suggestion": "remove, or move to an explanation"
+          }
+        ]
+      },
+      "in": {
+        "document": "doc.document"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [
+          {
+            "value": "out_of_sync",
+            "when": {
+              "findings": {
+                "kind": [
+                  "mismatch",
+                  "not_in_source",
+                  "untraced_target",
+                  "value_mismatch"
+                ],
+                "min": 1
+              }
+            }
+          },
+          {
+            "value": "consistency_only",
+            "when": {
+              "findings": {
+                "kind": [
+                  "no_source"
+                ],
+                "min": 1
+              }
+            }
+          }
+        ],
+        "fallback": "in_sync"
+      },
+      "in": {
+        "findings": [
+          "diff.findings",
+          "defaults.findings",
+          "cons.findings",
+          "type.findings"
+        ],
+        "results": [
+          "defaults.results",
+          "cons.results"
+        ],
+        "tables": [
+          "diff.table",
+          "refinv.table",
+          "srcinv.table",
+          "cons.table",
+          "type.table"
+        ]
+      }
+    }
+  ]
+}

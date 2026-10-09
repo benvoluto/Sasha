@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "catalog:build": "vite-node scripts/catalog/build.ts"
+    "catalog:build": "vite-node scripts/catalog/build.ts",
+    "catalog:import": "vite-node --config vitest.config.ts scripts/catalog/import-clawhub.ts",
+    "learn:eval": "vite-node --config vitest.config.ts scripts/learn/evaluate.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",

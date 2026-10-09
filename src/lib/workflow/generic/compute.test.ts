@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ExtractedItem } from "../contract";
 import { ComputeCheck } from "../node-specs/generic";
 import type { DocSnapshot, SectionView, TableView } from "../nodes/types";
-import { addDays, dependencyItem, numbersIn, runComputeChecks, toNumber } from "./compute";
+import { addDays, addYears, dependencyItem, numbersIn, runComputeChecks, toNumber } from "./compute";
 
 const check = (c: Record<string, unknown>) => ComputeCheck.parse({ key: "k", label: "Check", ...c });
 const item = (id: string, fields: ExtractedItem["fields"]): ExtractedItem => ({ id, fields, location: null, evidence: [] });
@@ -148,6 +148,17 @@ describe("date_order and count", () => {
     expect(run({ kind: "count", max: 3 }, { items }).results[0].ok).toBe(true);
     expect(run({ kind: "count" }, { items }).results[0].ok).toBeNull();
   });
+
+  it("counts traced items by trace status within the where filter, as n of m", () => {
+    const traced = (id: string, priority: string, status: string) => ({ ...item(id, { priority }), status, rationale: "", linkedTargets: [] });
+    const items = [traced("A", "required", "direct"), traced("B", "required", "adjacent"), traced("C", "required", "none"), traced("D", "preferred", "direct")];
+    const met = run({ kind: "count", where: { field: "priority", equals: "required" }, status: ["direct"] }, { items }).results[0];
+    expect(met).toMatchObject({ ok: null, actual: "1 of 3" });
+    expect(run({ kind: "count", where: { field: "priority", equals: "required" }, status: ["direct", "adjacent"], min: 3 }, { items }).results[0]).toMatchObject({ ok: false, actual: "2 of 3" });
+    expect(run({ kind: "count", status: ["direct"] }, { items }).results[0].actual).toBe("2 of 4");
+    // Plain extracted items have no status, so none count.
+    expect(run({ kind: "count", status: ["direct"] }, { items: [item("X", {})] }).results[0].actual).toBe("0 of 1");
+  });
 });
 
 describe("numbers_match and values_in_text", () => {
@@ -199,6 +210,42 @@ describe("deadline", () => {
 
   it("gives ok null without a start date", () => {
     expect(run(c, { items: [item("I1", { absences: 3 })] }).results[0].ok).toBeNull();
+  });
+  it("adds whole calendar years, failing a stated date after the due date", () => {
+    const three = { kind: "deadline", startField: "last_evaluation_date", requirement: "idea-evaluation-34cfr#three-year", endField: "review_date" };
+    const late = run(three, { items: [item("I1", { last_evaluation_date: "2023-10-02", review_date: "2026-10-05" })] });
+    expect(late.results[0]).toMatchObject({ ok: false, expected: "by 2026-10-02 (3 year(s) from 2023-10-02)", actual: "stated 2026-10-05" });
+    const open = run(three, { items: [item("I1", { last_evaluation_date: "2023-10-02" })] });
+    expect(open.results[0]).toMatchObject({ ok: null, expected: "by 2026-10-02 (3 year(s) from 2023-10-02)" });
+  });
+
+  it("picks the period by report kind and does not assess an unmapped kind", () => {
+    const byKind = {
+      kind: "deadline",
+      startField: "period_end",
+      endField: "submitted",
+      byKind: {
+        field: "report_kind",
+        requirements: { annual: "uniform-guidance-reporting#annual-report-due", interim: "uniform-guidance-reporting#interim-report-due", final: "uniform-guidance-reporting#final-report-due" },
+        notAssessed: "NIH and NSF annual reports are due before the budget period ends",
+      },
+    };
+    const period = (report_kind: string, submitted: string) => ({ items: [item("P", { kind: "period", period_end: "2026-06-30", submitted, report_kind })] });
+    // Day 100: inside the final report's 120 days, past the annual 90.
+    expect(run(byKind, period("Final", "2026-10-08")).results[0]).toMatchObject({ ok: true, expected: "by 2026-10-28 (120 calendar days from 2026-06-30)" });
+    expect(run(byKind, period("annual", "2026-10-08")).results[0]).toMatchObject({ ok: false, expected: "by 2026-09-28 (90 calendar days from 2026-06-30)" });
+    // Day 60: past the interim report's 30 days.
+    expect(run(byKind, period("interim", "2026-08-29")).results[0]).toMatchObject({ ok: false, expected: "by 2026-07-30 (30 calendar days from 2026-06-30)" });
+    const agency = run(byKind, period("agency_dated", "2026-07-30"));
+    expect(agency.results[0]).toMatchObject({ ok: null, detail: "Not assessed: NIH and NSF annual reports are due before the budget period ends." });
+    expect(agency.findings).toHaveLength(0);
+    expect(run(byKind, period("", "2026-07-30")).results[0]).toMatchObject({ ok: null, actual: "no report kind stated" });
+  });
+
+  it("moves 29 February back to 28 February in a common year", () => {
+    expect(addYears("2028-02-29", 3)).toBe("2031-02-28");
+    expect(addYears("2028-02-29", 4)).toBe("2032-02-29");
+    expect(addYears("2026-12-31", 1)).toBe("2027-12-31");
   });
 });
 

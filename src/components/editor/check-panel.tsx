@@ -10,12 +10,15 @@
 //
 // On open, and whenever the target or its nonce changes, the panel saves, shows
 // the stored result for the scope at once (GET), then asks for a check (POST
-// without force, so unchanged text comes back cached). "Check again" forces a
-// new one. Pure logic lives in check-panel-model.ts.
+// without force, so unchanged text comes back cached). When the stored result
+// is still current for the editor's text, that request runs quietly (no
+// "Checking for changes…" unless it turns out to need the model). "Check
+// again" forces a new one. Pure logic lives in check-panel-model.ts.
 
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronRight, Loader2, RefreshCw } from "@/components/icons";
+import { listSections, type PMNode } from "@/lib/documents/sections";
 import { RubricCheckResponseShape, textFingerprint, type CheckEvidence, type RubricCheckResponse, type RubricCheckResult } from "@/lib/rubric/contract";
 import {
   applyState,
@@ -23,11 +26,14 @@ import {
   changedSections,
   checkedText,
   checkErrorText,
+  checkingText,
   dismissKey,
   findQuote,
   focusAfterDismiss,
   groupResults,
   levelDescriptor,
+  QUIET_CHECK_GRACE_MS,
+  storedIsCurrent,
   levelPips,
   levelText,
   loadDismissed,
@@ -83,8 +89,8 @@ const primaryButton =
 
 export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSection, onClose }: CheckPanelProps) {
   const [result, setResult] = useState<RubricCheckResponse | null>(null);
-  /** "loading": reading the stored result; "checking": the check itself is running. */
-  const [phase, setPhase] = useState<"loading" | "checking" | null>("loading");
+  /** "loading": reading the stored result; "checking": the check itself is running; "quiet": refreshing a result that is still current. */
+  const [phase, setPhase] = useState<"loading" | "checking" | "quiet" | null>("loading");
   const [error, setError] = useState<string | null>(null);
   /** A soft message shown above a result that is still useful (a 429 after a cached result). */
   const [notice, setNotice] = useState<string | null>(null);
@@ -100,8 +106,8 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
   const sectionId = target.scope === "section" ? target.sectionId : null;
   // The latest props for the request runner, so the effect re-runs only on a new target.
   // (Every check saves first, so the stored document matches the editor; documentId isn't needed.)
-  const latest = useRef({ ensureSaved, target });
-  latest.current = { ensureSaved, target };
+  const latest = useRef({ ensureSaved, target, editor });
+  latest.current = { ensureSaved, target, editor };
   const resultRef = useRef(result);
   resultRef.current = result;
   const seq = useRef(0);
@@ -144,11 +150,12 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
 
   const check = useCallback(async (force: boolean, readStored: boolean) => {
     const my = ++seq.current;
-    const { ensureSaved: save, target: t } = latest.current;
+    const { ensureSaved: save, target: t, editor: ed } = latest.current;
     setError(null);
     setNotice(null);
     setPhase(readStored ? "loading" : "checking");
     const stale = () => my !== seq.current;
+    let grace: ReturnType<typeof setTimeout> | null = null;
     try {
       const id = await save();
       if (stale()) return;
@@ -162,7 +169,12 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
         const parsed = res?.ok ? RubricCheckResponseShape.safeParse(await res.json().catch(() => null)) : null;
         if (stale()) return;
         if (parsed?.success) setResult(parsed.data);
-        setPhase("checking");
+        // The stored result still matches the text (it was just saved): refresh it quietly,
+        // saying "Checking for changes…" only if the request runs long enough to be a new check.
+        const ids = t.scope === "document" && !ed.isDestroyed ? listSections(ed.getJSON() as PMNode, { own: true }).map((x) => x.sectionId).filter(Boolean) : null;
+        const current = !force && !!parsed?.success && storedIsCurrent(parsed.data.sectionFingerprints, (sid) => editorFingerprint(ed, sid), ids);
+        setPhase(current ? "quiet" : "checking");
+        if (current) grace = setTimeout(() => !stale() && setPhase("checking"), QUIET_CHECK_GRACE_MS);
       }
       const body = t.scope === "section" ? { scope: "section", sectionId: t.sectionId, force } : { scope: "document", force };
       let res: Response;
@@ -190,6 +202,7 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
       setApplied(new Set());
       setConfirming(null);
     } finally {
+      if (grace) clearTimeout(grace);
       if (!stale()) setPhase(null);
     }
   }, []);
@@ -212,7 +225,8 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
   const changed = result ? changedSections(result.sectionFingerprints, fingerprint) : [];
   const stale = !!result && (changed.length > 0 || applied.size > 0);
   const headingNow = sectionId ? (sectionBodyRange(editor.state.doc, sectionId)?.heading ?? null) : null;
-  const checking = phase !== null;
+  const checking = phase !== null && phase !== "quiet";
+  const working = checkingText(phase, !!result);
 
   const dismissedKeys = new Set(dismissed);
   const isDismissed = (r: RubricCheckResult) => !!result && dismissedKeys.has(dismissKey(result.inputsHash, r.criterion));
@@ -284,10 +298,10 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
         </div>
 
         <div aria-live="polite" className="space-y-2 empty:hidden">
-          {checking && (
+          {working && (
             <p className="flex items-center gap-2 text-sm text-[var(--doc-muted)]">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              {result ? "Checking for changes…" : phase === "loading" ? "Loading…" : "Checking against the rubric… this can take a minute."}
+              {working}
             </p>
           )}
           {notice && <p className="rounded-md bg-[var(--doc-accent-soft)] px-2.5 py-2 text-sm">{notice}</p>}

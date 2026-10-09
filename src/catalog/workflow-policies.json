@@ -3,6 +3,18 @@
     "sensitive": true,
     "webDomains": ["law.cornell.edu", "tea.texas.gov", "ed.gov", "sites.ed.gov", "texreg.sos.state.tx.us"]
   },
+  "iep": {
+    "sensitive": true,
+    "webDomains": ["law.cornell.edu", "ecfr.gov", "ed.gov", "sites.ed.gov", "tea.texas.gov"]
+  },
+  "reevaluation-review": {
+    "sensitive": true,
+    "webDomains": ["law.cornell.edu", "ecfr.gov", "ed.gov", "sites.ed.gov", "tea.texas.gov"]
+  },
+  "fba-bip": {
+    "sensitive": true,
+    "webDomains": ["law.cornell.edu", "ecfr.gov", "ed.gov", "sites.ed.gov", "tea.texas.gov", "pbis.org"]
+  },
   "nih-specific-aims-research-strategy": {
     "draftAll": {
       "enabled": false,

@@ -30,7 +30,7 @@ export type RestructureFn = (
   plan: RestructurePlan,
   sections: SectionSummary[],
   newId: () => string,
-) => { doc: PMNode; drift: boolean; moved?: unknown; added?: unknown; noHome?: unknown };
+) => { doc: PMNode; drift: boolean; moved?: unknown; added?: unknown; noHome?: unknown; removed?: unknown };
 
 export type ChangeDeps = {
   /** The target type's sections in outline order, or null when the type isn't available. */
@@ -51,6 +51,8 @@ export type PlannedChange =
       skipped: string[];
       /** Unsourced sentences highlighted. */
       marked: number;
+      /** Headings a restructure removed because they held no text of their own (the plan's `dropped`). */
+      removed?: string[];
     }
   | { ok: false; error: string };
 
@@ -182,6 +184,7 @@ export function planWorkflowChange(doc: PMNode, change: Pick<ProposedChange, "op
   let applied = 0;
   let marked = 0;
   const skipped: string[] = [];
+  const removed: string[] = [];
   for (const op of change.ops) {
     if (op.op === "restructure") {
       const sections = deps.sectionsFor(op.plan.targetType);
@@ -189,6 +192,7 @@ export function planWorkflowChange(doc: PMNode, change: Pick<ProposedChange, "op
       const r = deps.restructure(current, op.plan, sections, deps.newId);
       if (r.drift) return { ok: false, error: DRIFT_ERROR };
       current = r.doc;
+      if (typeof r.removed === "number" && r.removed > 0) removed.push(...(op.plan.dropped ?? []).map((d) => d.heading));
       typeKey = op.plan.targetType;
       applied++;
       continue;
@@ -212,7 +216,7 @@ export function planWorkflowChange(doc: PMNode, change: Pick<ProposedChange, "op
     current = { ...current, content: [...nodes.slice(0, index + 1), ...blocks, ...nodes.slice(bodyEnd(nodes, index))] };
     applied++;
   }
-  return { ok: true, doc: current, typeKey, applied, skipped, marked };
+  return { ok: true, doc: current, typeKey, applied, skipped, marked, ...(removed.length ? { removed } : {}) };
 }
 
 /** What happened, for the notice and the `changes` POST. result null: refused (nothing changed, nothing to record). */
@@ -221,6 +225,7 @@ export type AppliedChange = { result: "applied" | "skipped" | null; detail: stri
 /** One line for the notice and the change record. */
 export function changeDetail(p: Extract<PlannedChange, { ok: true }>): string {
   const parts = [p.applied ? `${p.applied} change${p.applied === 1 ? "" : "s"} made.` : "Nothing was changed."];
+  if (p.removed?.length) parts.push(`Removed ${p.removed.length} heading${p.removed.length === 1 ? "" : "s"} with no text of ${p.removed.length === 1 ? "its" : "their"} own: ${p.removed.map((h) => `“${h}”`).join(", ")}.`);
   if (p.marked) parts.push(`${p.marked} unsourced sentence${p.marked === 1 ? " is" : "s are"} highlighted.`);
   parts.push(...p.skipped);
   return parts.join(" ");

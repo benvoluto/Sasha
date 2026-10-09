@@ -4,7 +4,7 @@
   "title": "NIH page limits: Specific Aims and Research Strategy",
   "authority": "National Institutes of Health",
   "jurisdiction": "United States (federal)",
-  "appliesTo": ["nih-specific-aims-research-strategy"],
+  "appliesTo": ["nih-specific-aims-research-strategy", "response-to-reviewers"],
   "effective": "",
   "checked": "2026-10-08",
   "provenance": {
@@ -16,6 +16,7 @@
     { "key": "specific-aims", "kind": "limit", "title": "Specific Aims", "text": "Specific Aims is limited to 1 page.", "value": 1, "unit": "pages", "appliesTo": { "sections": ["specific-aims"] } },
     { "key": "research-strategy-12", "kind": "limit", "title": "Research Strategy (R01, R15, U01)", "text": "Research Strategy is limited to 12 pages for R01, R15 and U01 applications.", "value": 12, "unit": "pages", "appliesTo": { "sections": ["research-strategy", "significance", "innovation", "approach"], "activityCodes": ["R01", "R15", "U01"] } },
     { "key": "research-strategy-6", "kind": "limit", "title": "Research Strategy (R03, R21)", "text": "Research Strategy is limited to 6 pages for R03 and R21 applications.", "value": 6, "unit": "pages", "appliesTo": { "sections": ["research-strategy", "significance", "innovation", "approach"], "activityCodes": ["R03", "R21"] } },
+    { "key": "resubmission-introduction", "kind": "limit", "title": "Introduction to a resubmission or revision", "text": "The Introduction to a resubmission or revision application is limited to 1 page for all activity codes; resubmissions of institutional training and related programs (T, D43, D71, U2R, K12, KL2, R25, UE5, R38, DP7) allow 3 pages. It summarizes substantial additions, deletions and changes and responds to the issues and criticism in the summary statement. Changes are outlined only in the Introduction, not marked up in the application.", "value": 1, "unit": "pages", "appliesTo": { "sections": ["summary-of-changes", "reviewer-1", "reviewer-2", "reviewer-3", "editor-or-chair", "other-changes"] }, "url": "https://grants.nih.gov/grants-process/submit/submission-policies/resubmission-applications" },
     { "key": "nofo-overrides", "kind": "policy", "title": "The NOFO governs", "text": "These limits apply unless the funding opportunity (NOFO) says otherwise." }
   ]
 }

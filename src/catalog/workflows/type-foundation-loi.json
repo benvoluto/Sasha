@@ -1,0 +1,233 @@
+{
+  "key": "type-foundation-loi",
+  "version": 1,
+  "title": "Foundation fit decision",
+  "summary": "A fit decision: proceed to a full proposal, proceed with changes, or do not proceed. Checks eligibility first (pass or fail), sets each funder priority beside what the letter says, checks the ask against the budget and the funder's range, and checks format. The executive director or development lead confirms.",
+  "kind": "type",
+  "appliesTo": ["foundation-letter-of-inquiry"],
+  "outcome": {
+    "label": "Fit decision",
+    "values": [
+      { "key": "proceed", "label": "Proceed to a full proposal" },
+      { "key": "proceed_with_changes", "label": "Proceed with changes" },
+      { "key": "do_not_proceed", "label": "Do not proceed" }
+    ]
+  },
+  "checkpoint": { "role": "Executive director or development lead", "required": true },
+  "notAssessed": ["Prior contact with a program officer (outside the documents; record it in the notes)"],
+  "notes": [
+    "Where the funder publishes a scoring rubric or out-of-scope screens, link them: the fit check uses them in place of inferred priorities.",
+    "Past grants in the funder's Form 990-PF show real priorities and typical award size; the source coverage review can propose it as a source.",
+    "An eligibility failure means do not proceed, however strong the fit.",
+    "The budget and timeline checks apply to the general proposal variant and to letters that include them."
+  ],
+  "provenance": { "source": "docs/workflows-by-document-type.md", "checked": "2026-10-08" },
+  "steps": [
+    { "id": "doc", "node": "doc.read", "label": "Document" },
+    { "id": "notes", "node": "doc.notes", "label": "Notes" },
+    { "id": "src", "node": "sources.read", "label": "Source passages" },
+    { "id": "data", "node": "data.list", "label": "Linked data" },
+    {
+      "id": "gate",
+      "node": "step.gate",
+      "label": "Gate: funder guidelines",
+      "config": {
+        "useModel": true,
+        "inputs": [
+          {
+            "key": "guidelines",
+            "label": "The funder's guidelines",
+            "kind": "source",
+            "match": ["guidelines", "call for proposals", "RFP", "priorities", "letter of inquiry", "LOI", "how to apply", "eligibility", "grantmaking"],
+            "help": "Link the funder's current guidelines or call: priorities, eligibility, geography, grant range, deadlines and LOI format."
+          }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "notes": "notes.notes" }
+    },
+    {
+      "id": "elig",
+      "node": "step.check",
+      "label": "Eligibility (pass or fail)",
+      "config": {
+        "instructions": "Check eligibility first, against the funder's guidelines in the sources. Mark not_met only where the guidelines state a rule the organization or project fails; mark partly_met where the documents do not show it either way.",
+        "checklist": [
+          { "key": "tax_status", "label": "Tax status or fiscal sponsor", "question": "Does the organization's tax status (or fiscal sponsor) meet the funder's requirement?", "severity": "blocking", "appliesTo": ["organization"] },
+          { "key": "geography", "label": "Geography", "question": "Is the project in a place the funder serves?", "severity": "blocking" },
+          { "key": "population", "label": "Population served", "question": "Does the project serve a population the funder funds?", "severity": "blocking" },
+          { "key": "excluded_uses", "label": "No excluded uses", "question": "Does the request avoid the uses the funder excludes (e.g. capital, endowment, individuals, lobbying)?", "severity": "blocking" },
+          { "key": "unsolicited", "label": "Accepts unsolicited requests", "question": "Does the funder accept unsolicited inquiries, or was this one invited?", "severity": "blocking" }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "prio",
+      "node": "step.extract",
+      "label": "Funder priorities",
+      "config": {
+        "item": "funder priority",
+        "from": ["sources"],
+        "sourceMatch": ["guidelines", "priorities", "call", "RFP", "rubric", "strategy"],
+        "maxItems": 15,
+        "instructions": "List each priority, focus area or scoring criterion the funder states, quoting its wording. If the funder publishes a scoring rubric, list its criteria instead.",
+        "fields": [
+          { "name": "priority", "label": "Priority", "type": "text", "description": "The priority as the funder states it (quote)", "required": true },
+          { "name": "source_kind", "label": "From", "type": "enum", "values": ["guidelines", "rubric", "past_grants", "other"], "description": "Where the priority comes from" }
+        ]
+      },
+      "in": { "sources": "src.sources", "after": "gate.pass" }
+    },
+    {
+      "id": "fit",
+      "node": "step.trace",
+      "label": "Fit: priority beside letter",
+      "config": {
+        "against": "document",
+        "statuses": [
+          { "key": "evidenced", "label": "Evidenced by an activity or result", "ok": true, "severity": "info" },
+          { "key": "echoed_only", "label": "Funder wording repeated, no matching activity", "ok": false, "severity": "major" },
+          { "key": "not_addressed", "label": "Not addressed", "ok": false, "severity": "minor" }
+        ],
+        "unverifiedStatus": "not_addressed",
+        "question": "Quote the passage of the letter that answers this priority, quote against quote. Is it backed by a concrete activity or result, or does it only repeat the funder's wording?"
+      },
+      "in": { "items": "prio.items", "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "askx",
+      "node": "step.extract",
+      "label": "The ask",
+      "config": {
+        "item": "amount",
+        "from": ["document", "sources", "data"],
+        "maxItems": 30,
+        "instructions": "List the amount requested as stated in the letter, the request line and other lines of the project budget, and the funder's stated grant range or typical award where the sources give it.",
+        "fields": [
+          { "name": "kind", "label": "Kind", "type": "enum", "values": ["ask_in_letter", "budget_request", "budget_line", "budget_total", "funder_range_min", "funder_range_max", "typical_award"], "description": "What the amount is", "required": true },
+          { "name": "label", "label": "Label", "type": "text", "description": "The line or statement as written", "required": true },
+          { "name": "amount", "label": "Amount", "type": "number", "description": "The amount in dollars" }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "data": "data.tables", "after": "gate.pass" }
+    },
+    {
+      "id": "comp",
+      "node": "step.compute",
+      "label": "Ask and budget arithmetic",
+      "config": {
+        "checks": [
+          { "kind": "sum", "key": "ask_matches_budget", "label": "Ask in the letter equals the budget's request", "severity": "major", "valueField": "amount", "partWhere": { "field": "kind", "equals": "ask_in_letter" }, "totalWhere": { "field": "kind", "equals": "budget_request" } },
+          { "kind": "sum", "key": "lines_sum_to_total", "label": "Budget lines sum to the total", "severity": "major", "valueField": "amount", "partWhere": { "field": "kind", "equals": "budget_line" }, "totalWhere": { "field": "kind", "equals": "budget_total" } },
+          { "kind": "length", "key": "letter_words", "label": "Length of the letter (compare with the funder's limit)", "severity": "minor", "unit": "words" }
+        ]
+      },
+      "in": { "document": "doc.document", "items": "askx.items", "data": "data.tables", "after": "gate.pass" }
+    },
+    {
+      "id": "form",
+      "node": "step.check",
+      "label": "Ask and format",
+      "config": {
+        "checklist": [
+          { "key": "ask_in_opening", "label": "Ask in the opening paragraph", "question": "Does the amount requested appear in the opening paragraph?", "severity": "major", "appliesTo": ["opening-and-request"] },
+          { "key": "ask_in_range", "label": "Ask within the funder's range", "question": "Using the extracted amounts, is the ask within the funder's stated range or typical award? Answer partly_met when the sources give no range.", "severity": "major" },
+          { "key": "required_elements", "label": "Required elements", "question": "Are the need, project, outcomes, amount, timeline and organization all present, plus any element the funder's format requires?", "severity": "major" },
+          { "key": "length_limit", "label": "Within the funder's length limit", "question": "Is the letter within the funder's length limit, if the guidelines state one?", "severity": "major" },
+          { "key": "no_other_funder", "label": "No other funder's name", "question": "Is the letter free of any other funder's name, priorities or wording left over from reuse?", "severity": "major" }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "items": "askx.items", "after": "gate.pass" }
+    },
+    {
+      "id": "plan",
+      "node": "step.check",
+      "label": "Budget and timeline (general proposal)",
+      "config": {
+        "instructions": "Answer not_applicable to every item when the document has no budget or timeline and the guidelines do not ask for them.",
+        "checklist": [
+          { "key": "other_funding", "label": "Other funding shown", "question": "Are other secured and pending funding sources stated?", "severity": "minor", "appliesTo": ["budget-and-timeline"] },
+          { "key": "milestones", "label": "Timeline with milestones", "question": "Does the timeline give start and end dates and milestones that match the activities described?", "severity": "major", "appliesTo": ["budget-and-timeline", "project-description"] },
+          { "key": "budget_matches_activities", "label": "Budget matches the activities", "question": "Does each budget category pay for an activity the letter describes, and is every major activity costed?", "severity": "major", "appliesTo": ["budget-and-timeline", "project-description"] }
+        ]
+      },
+      "in": { "document": "doc.document", "after": "gate.pass" }
+    },
+    {
+      "id": "rev",
+      "node": "step.review",
+      "label": "Independent review",
+      "config": {
+        "criteria": [
+          { "key": "fit", "label": "Fit with the funder's priorities", "guidance": "strong when each priority cited is backed by a concrete activity or result.", "scale": { "kind": "enum", "values": ["strong", "partial", "weak"] } },
+          { "key": "recommendation", "label": "Recommendation", "scale": { "kind": "enum", "values": ["proceed", "proceed_with_changes", "do_not_proceed"] } }
+        ],
+        "instructions": "Read the letter against the funder's guidelines in the sources. Tie each strength and weakness to a passage.",
+        "reviewers": [
+          { "key": "program_officer", "label": "Funder's program officer", "brief": "Read as the foundation's program officer screening inquiries: would you invite a full proposal? Judge fit with the stated priorities, clarity of the ask, and whether the outcomes are believable for the amount." },
+          { "key": "skeptic", "label": "Skeptical development reviewer", "brief": "Look for reasons to stop: eligibility doubts, an ask outside the funder's range, priorities echoed without matching activities, signs the letter was reused from another funder, and claims the organization cannot back." }
+        ]
+      },
+      "in": { "document": "doc.document", "sources": "src.sources", "after": "gate.pass" }
+    },
+    { "id": "agree", "node": "step.agree", "label": "Agreement", "config": { "mode": "verdict", "blockingVerdicts": ["do_not_proceed"] }, "in": { "reviews": "rev.reviews" } },
+    {
+      "id": "decide",
+      "node": "step.decide",
+      "label": "Fit decision",
+      "config": {
+        "values": ["proceed", "proceed_with_changes", "do_not_proceed"],
+        "guidance": "Start the rationale with the eligibility result (pass or fail). Any eligibility failure means do_not_proceed, however strong the fit. Otherwise proceed when the fit is evidenced and the ask and format are sound; proceed_with_changes when fixes are needed (list them); do_not_proceed when the project does not fit the funder's priorities. For each priority, give the evidence of fit."
+      },
+      "in": {
+        "findings": ["elig.findings", "fit.findings", "comp.findings", "form.findings", "plan.findings", "rev.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": ["elig.results", "form.results", "comp.results"],
+        "after": "gate.pass"
+      }
+    },
+    {
+      "id": "out",
+      "node": "outcome.report",
+      "label": "Outcome",
+      "config": {
+        "rules": [],
+        "fallback": "proceed_with_changes",
+        "guards": [
+          {
+            "values": ["proceed", "proceed_with_changes"],
+            "when": { "findings": { "kind": ["tax_status", "geography", "population", "excluded_uses", "unsolicited"], "severity": ["blocking"], "min": 1 } },
+            "instead": "do_not_proceed",
+            "reason": "an eligibility failure means do not proceed, however strong the fit."
+          }
+        ]
+      },
+      "in": {
+        "value": "decide.value",
+        "rationale": "decide.rationale",
+        "blocked": "gate.blocked",
+        "findings": ["elig.findings", "fit.findings", "comp.findings", "form.findings", "plan.findings", "rev.findings", "agree.findings"],
+        "agreed": "agree.agreed",
+        "disagreements": "agree.disagreements",
+        "results": "comp.results",
+        "tables": ["elig.table", "fit.table", "askx.table", "form.table", "plan.table", "agree.table"]
+      }
+    },
+    {
+      "id": "cp",
+      "node": "checkpoint",
+      "label": "Confirm the decision",
+      "config": {
+        "signsOutcome": true,
+        "editable": "outcome",
+        "instructions": "Confirm, change or reject the fit decision. Proceeding commits staff time and a funder relationship. Record any contact with the program officer.",
+        "recordFields": [
+          { "key": "program_officer_contact", "label": "Contact with the program officer, if any", "required": false },
+          { "key": "conditions", "label": "Changes required before submitting", "required": false }
+        ]
+      },
+      "in": { "items": "out.outcome" }
+    }
+  ]
+}

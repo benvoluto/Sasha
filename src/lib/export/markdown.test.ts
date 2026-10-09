@@ -49,10 +49,11 @@ describe("tiptapToMarkdown", () => {
   it("numbers citations by first appearance and writes them in number order after the run", () => {
     const out = tiptapToMarkdown(sampleInput().doc, sampleInput());
     expect(out).toContain("Demand rose 12% in 2025.[\\[1\\]][1] Prices held steady.[\\[2\\]][2][\\[3\\]][3] Costs fell.[\\[1\\]][1]");
-    expect(out).toContain("[Prices 2025](https://sasha.app/library?source=");
-    expect(out).toMatch(/\[\\\[4\\\]\]\[4\]/);
-    expect(out).toContain("[1]: https://sasha.app/library?source=1a2b3c4d-1111-4111-8111-111111111111&passage=S1a2b3c4d.P7 \"Q3 Industry Report, p. 4\"");
-    expect(out).toContain('"Price watch \\"weekly\\""');
+    // No in-app library links (Phase 8): the table's source line is text, an upload's reference names it, a URL source links to its own address.
+    expect(out).toContain("Source: Prices 2025[\\[4\\]][4] — Pricing workbook.xlsx");
+    expect(out).not.toContain("/library");
+    expect(out).toContain('[1]: #references "Q3 Industry Report, p. 4"');
+    expect(out).toContain('[2]: https://news.example/prices "Price watch \\"weekly\\", https://news.example/prices"');
     expect(out).toContain("_Some references may be out of date: 3, the source was re-read");
   });
 

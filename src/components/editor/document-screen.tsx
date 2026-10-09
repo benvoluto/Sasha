@@ -736,6 +736,11 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         onJumpToSection={jumpToSection}
         workflowsPrefill={workflowsPrefill}
         onWorkflowsPrefillDone={() => setWorkflowsPrefill(null)}
+        onLearnedType={async (key) => {
+          // The type was just saved: load it into the picker before choosing it.
+          await catalog.reload();
+          change({ type_key: key, type_source: "user" });
+        }}
       />
 
       <span role="status" aria-live="polite" className="sr-only">
