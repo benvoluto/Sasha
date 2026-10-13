@@ -1,10 +1,11 @@
 "use client";
 
-// The classifier's suggestion (PLAN §6.3), shown in the Document Gallery's
-// top block (redesign2-spec.md §3.2): "Looks like a <Type>." with the reason,
-// Apply, Not now, and the alternatives. The header's Document Gallery button
-// shows a dot while a suggestion waits, and document-screen keeps the polite
-// live region that announces it (suggestionAnnouncement).
+// The classifier's suggestion (PLAN §6.3), shown in the Doc Gallery's top
+// block (redesign2-spec.md §3.2): "Looks like a <Type>." with the reason,
+// Apply, Not now, and the alternatives. The Outline card shows it too, as a
+// one-line "Sasha suggests <Type>" hint under its type select
+// (outline-panel.tsx), and document-screen keeps the polite live region that
+// announces it (suggestionAnnouncement).
 //
 // "Restructure…" (phase6-spec.md §8.3), beside Apply and on each alternative,
 // maps the existing text onto the type's outline with the restructure
@@ -21,7 +22,7 @@ export function article(title: string): string {
 /** What the screen's live region says when a suggestion arrives. */
 export function suggestionAnnouncement(suggestion: ChipSuggestion | null): string {
   if (!suggestion) return "";
-  return `Sasha suggests ${article(suggestion.title)} ${suggestion.title} outline. Open the Document Gallery to apply it.`;
+  return `Sasha suggests ${article(suggestion.title)} ${suggestion.title} outline. Open the Outline to use it.`;
 }
 
 const button =

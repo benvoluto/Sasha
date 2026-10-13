@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Explanation (Diátaxis)",
   "family": "technical",
+  "icon": "lightbulb",
+  "color": "amber",
   "summary": "A discursive piece that deepens understanding of a topic: why something is the way it is, its context and history, the design decisions and trade-offs behind it, the alternatives considered, and how it connects to related ideas. Read away from the keyboard rather than while doing a task; it contains no step-by-step instructions or reference tables. Follows the explanation form of the Diátaxis documentation framework.",
   "signals": [
     "About …",

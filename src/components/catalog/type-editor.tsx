@@ -1,13 +1,15 @@
 "use client";
 
 // Editing one document type on the /catalog page (team admins): a form for the
-// fields people usually change, and "Advanced: edit JSON" for everything else.
+// fields people usually change (including the card icon and its colour), and
+// "Advanced: edit JSON" for everything else.
 // The server validates; its issues are shown inline under the form. Also the
 // "New type" JSON editor (POST).
 
 import { useState } from "react";
 import { Loader2 } from "@/components/icons";
-import { parseDefinition, type DocumentTypeDefinition, type DocumentTypeInput } from "@/catalog/schema";
+import { TypeIcon } from "@/components/type-icon";
+import { parseDefinition, TYPE_COLORS, TYPE_ICONS, typeLook, type DocumentTypeDefinition, type DocumentTypeInput, type TypeColor, type TypeIcon as TypeIconName } from "@/catalog/schema";
 import { cleanDefinition } from "./catalog-api";
 
 const field = "w-full rounded-md border border-[var(--doc-field-line)] bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-[var(--doc-accent)] focus-visible:ring-2 focus-visible:ring-[var(--doc-accent)]";
@@ -125,6 +127,35 @@ export function TypeEditor({ initial, busy, error, issues, onSave, onCancel, ini
         <>
           <Field id={id("title")} label="Title" value={draft.title} onChange={(v) => set("title", v)} />
           <Field id={id("summary")} label="Summary" value={draft.summary} onChange={(v) => set("summary", v)} rows={3} />
+          <div className="flex flex-wrap items-end gap-3">
+            <TypeIcon {...typeLook(draft)} className="mb-1.5 h-8 w-8" />
+            <div className="min-w-40 flex-1 space-y-1">
+              <label htmlFor={id("icon")} className={labelCls}>
+                Icon
+              </label>
+              <select id={id("icon")} value={draft.icon ?? ""} onChange={(e) => set("icon", (e.target.value || undefined) as TypeIconName | undefined)} className={field}>
+                <option value="">Family default</option>
+                {TYPE_ICONS.map((i) => (
+                  <option key={i} value={i}>
+                    {i.replace(/-/g, " ")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-40 flex-1 space-y-1">
+              <label htmlFor={id("color")} className={labelCls}>
+                Colour
+              </label>
+              <select id={id("color")} value={draft.color ?? ""} onChange={(e) => set("color", (e.target.value || undefined) as TypeColor | undefined)} className={field}>
+                <option value="">Family default</option>
+                {TYPE_COLORS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id={id("audience")} label="Audience" value={draft.audience} onChange={(v) => set("audience", v)} rows={2} />
             <Field id={id("tone")} label="Tone" value={draft.tone} onChange={(v) => set("tone", v)} rows={2} />

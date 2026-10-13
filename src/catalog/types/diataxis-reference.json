@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Reference (Diátaxis)",
   "family": "technical",
+  "icon": "book-marked",
+  "color": "slate",
   "summary": "Technical reference that describes a product's machinery (API endpoints, commands, options, configuration keys, schemas) for a reader who looks things up while working. Each entry follows the same pattern: name, syntax, parameters with types and defaults, return values, errors. It describes and does not instruct or explain. Follows the reference form of the Diátaxis documentation framework.",
   "signals": [
     "API reference",

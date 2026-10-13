@@ -576,7 +576,6 @@ export function WorkflowCanvas() {
   return (
     <Tabs value={tab} onValueChange={changeTab} className="gap-3">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Workflows</h1>
         <TabsList>
           <TabsTrigger value="editor">
             <Workflow /> Editor

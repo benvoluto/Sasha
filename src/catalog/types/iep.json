@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Individualized Education Program (IEP) draft",
   "family": "clinical",
+  "icon": "backpack",
+  "color": "orange",
   "summary": "A draft individualized education program prepared for the IEP team meeting: present levels of performance, measurable annual goals with baselines, how progress is measured and reported, services with start date, frequency, location and duration, participation with peers, assessment accommodations and, where due, transition planning. The team, including the parent, adopts or changes it.",
   "signals": [
     "Individualized Education Program",

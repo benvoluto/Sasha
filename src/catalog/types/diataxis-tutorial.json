@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Tutorial (Diátaxis)",
   "family": "technical",
+  "icon": "graduation-cap",
+  "color": "violet",
   "summary": "A learning-oriented lesson in which a beginner, guided step by step, builds or does something concrete and gains skill and confidence through the doing rather than through explanation. Every step produces a visible result, the route is fixed and known to work, and explanation is kept to a minimum with links for later. Follows the tutorial form of the Diátaxis documentation framework.",
   "signals": [
     "tutorial",

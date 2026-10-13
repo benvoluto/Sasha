@@ -15,8 +15,10 @@ const eslintConfig = [
     ignores: [
       "node_modules/**",
       ".next/**",
-      // Phase 9: the e2e server's build output and Playwright reports.
+      // Phase 9: the e2e servers' build output (.next-e2e, or .next-e2e-<port>
+      // on another PLAYWRIGHT_PORT) and Playwright reports.
       ".next-e2e/**",
+      ".next-e2e-*/**",
       "test-results/**",
       "playwright-report/**",
       "blob-report/**",

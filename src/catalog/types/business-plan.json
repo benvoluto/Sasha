@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Business Plan",
   "family": "business",
+  "icon": "chart-line",
+  "color": "green",
   "summary": "A traditional business plan that describes a company, its market, its products or services, how it will sell them, who runs it and how it will be financed, ending in financial projections. It follows the U.S. Small Business Administration's traditional plan structure and is written for lenders, investors, partners and the owners themselves.",
   "signals": [
     "business plan",

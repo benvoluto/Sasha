@@ -1,11 +1,15 @@
-// The Tools card's rules, kept pure so they are tested on their own
-// (redesign2-spec.md §4.2–4.3): what "Rewrite as…" acts on, the line that says
-// so, and whether the Draft row can run.
+// The Agents card's rules, kept pure so they are tested on their own
+// (redesign2-spec.md §4.2–4.3, redesign3-spec.md §14): what "Rewrite as…"
+// acts on, the line that says so, whether the Draft row can run, and the
+// "Run workflow…" picker (its option groups, what choosing one does, and the
+// progress block of a run it started).
 
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { EditorState } from "@tiptap/pm/state";
 import type { SectionSummary } from "@/catalog/schema";
+import type { AvailableWorkflow, RunStatus, WorkflowRunView } from "@/lib/workflow/contract";
 import { sectionBodyRange } from "./tracked-range";
+import { briefText, groupAvailable, needsForm, pollDelay, runStatusText, stepRows, stepsDoneText, type StartForm } from "./workflows-pane-model";
 
 /**
  * What a rewrite acts on. "selection" and "block" are a document range that
@@ -118,4 +122,61 @@ export function draftRow(doc: PMNode, sections: SectionSummary[] | null | undefi
 /** Words in the document, for the card's footer. */
 export function wordCount(doc: PMNode): number {
   return doc.textBetween(0, doc.content.size, " ", " ").trim().match(/\S+/g)?.length ?? 0;
+}
+
+// --- "Run workflow…" ---------------------------------------------------------------------
+
+/** The start form a workflow without params runs with (the Workflows tab's defaults). */
+export const DEFAULT_START_FORM: StartForm = { targetType: "", mode: "merge", acknowledged: false };
+
+const OPTGROUP_LABEL: Record<AvailableWorkflow["kind"], (typeTitle: string | null) => string> = {
+  type: (t) => (t ? `For ${t}` : "For this type"),
+  generic: () => "General",
+  team: () => "Team",
+};
+
+/** The select's <optgroup>s: "For <Type>", "General" and "Team", in the Workflows tab's order. */
+export function workflowOptionGroups(available: AvailableWorkflow[], typeTitle: string | null): Array<{ label: string; items: AvailableWorkflow[] }> {
+  return groupAvailable(available).map((g) => ({ label: OPTGROUP_LABEL[g.kind](typeTitle), items: g.items }));
+}
+
+/**
+ * What choosing a workflow does: "start" posts it straight away; "form" opens
+ * the Workflows tab on its form (params to choose, or a notice to acknowledge);
+ * "unavailable" can't run here (the option is disabled and says why).
+ */
+export function workflowChoice(w: Pick<AvailableWorkflow, "params" | "enabled" | "acknowledge">): "start" | "form" | "unavailable" {
+  if (needsForm(w)) return "form";
+  return w.enabled ? "start" : "unavailable";
+}
+
+/** An option's text: the title, with the reason when it can't run. */
+export function workflowOptionText(w: Pick<AvailableWorkflow, "title" | "params" | "enabled" | "acknowledge" | "disabledReason">): string {
+  return workflowChoice(w) === "unavailable" ? `${w.title} (${w.disabledReason ?? "unavailable"})` : w.title;
+}
+
+/** The progress block of a run started from the card (role="status"). */
+export type RunProgress = {
+  name: string;
+  /** "Running", "Waiting for your review", or the outcome once it is complete. */
+  statusLine: string;
+  /** "4 of 9 steps done". */
+  stepsLine: string;
+  /** "Review" while it waits for a person, else "Open run". */
+  action: "Review" | "Open run";
+  /** Polling has stopped (complete, failed, paused, replaced): the block can be dismissed. */
+  finished: boolean;
+};
+
+const waiting = (status: RunStatus) => status === "awaiting_review";
+
+export function runProgress(run: Pick<WorkflowRunView, "workflow_name" | "status" | "graph" | "steps" | "outcome">): RunProgress {
+  const finished = pollDelay(run.status) === null;
+  const o = run.outcome;
+  const statusLine = waiting(run.status)
+    ? "Waiting for your review"
+    : run.status === "complete" && o
+      ? briefText({ status: run.status, outcome: o })
+      : runStatusText(run.status);
+  return { name: run.workflow_name, statusLine, stepsLine: stepsDoneText(stepRows(run)), action: waiting(run.status) ? "Review" : "Open run", finished };
 }

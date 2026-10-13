@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Policy decision memo",
   "family": "policy",
+  "icon": "scale",
+  "color": "slate",
   "summary": "A short internal memo that asks a senior decision-maker to make one specific decision, or to approve a recommendation. It puts the decision and the recommendation first, then gives the background, the problem, two to four options with their trade-offs, and the next steps. It is written in plain language so a busy reader can act on the first paragraph alone.",
   "signals": [
     "decision memo",

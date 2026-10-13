@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Functional Behavior Assessment and Behavior Intervention Plan",
   "family": "clinical",
+  "icon": "heart",
+  "color": "rose",
   "summary": "A functional behavior assessment and the behavior intervention plan built on it, for a school team: the target behavior defined in observable terms, indirect and direct data such as antecedent-behavior-consequence records, a hypothesized function supported by that data, and interventions matched to the function (antecedent strategies, a replacement behavior, responses), with a baseline and a progress-monitoring plan. Drafted for the team, including the parent.",
   "signals": [
     "functional behavior assessment",

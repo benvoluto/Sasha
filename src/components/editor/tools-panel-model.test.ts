@@ -2,7 +2,20 @@ import { describe, expect, it } from "vitest";
 import { Schema, type Node as PMNode } from "@tiptap/pm/model";
 import { EditorState, TextSelection } from "@tiptap/pm/state";
 import type { SectionSummary } from "@/catalog/schema";
-import { draftRow, rewriteInsertion, rewriteTarget, rewriteTargetLine, wordCount } from "./tools-panel-model";
+import type { AvailableWorkflow, Outcome, WorkflowRunView } from "@/lib/workflow/contract";
+import {
+  DEFAULT_START_FORM,
+  draftRow,
+  rewriteInsertion,
+  rewriteTarget,
+  rewriteTargetLine,
+  runProgress,
+  wordCount,
+  workflowChoice,
+  workflowOptionGroups,
+  workflowOptionText,
+} from "./tools-panel-model";
+import { startRequest } from "./workflows-pane-model";
 
 const schema = new Schema({
   nodes: {
@@ -138,5 +151,88 @@ describe("rewriteInsertion", () => {
   it("leaves a range that starts or ends inside a block as it is", () => {
     expect(rewriteInsertion(doc, { from: 3, to: 22 }, [para("x")])).toEqual({ from: 3, to: 22, content: [{ type: "text", text: "x" }] });
     expect(rewriteInsertion(doc, { from: 1, to: 12 }, [para("x")])).toEqual({ from: 1, to: 12, content: [{ type: "text", text: "x" }] });
+  });
+});
+
+// --- "Run workflow…" -----------------------------------------------------------------------
+
+const wf = (over: Partial<AvailableWorkflow>): AvailableWorkflow => ({
+  id: "builtin:x",
+  key: "x",
+  title: "X",
+  summary: "",
+  kind: "generic",
+  version: 1,
+  outcome: { label: "Result", values: [] },
+  checkpoint: null,
+  params: [],
+  enabled: true,
+  disabledReason: null,
+  acknowledge: null,
+  requirementSets: [],
+  latestRun: null,
+  ...over,
+});
+
+const node = (id: string, type = "step.trace") => ({ id, type, position: { x: 0, y: 0 }, config: {}, loop: false, expanded: false });
+
+const run = (over: Partial<WorkflowRunView> = {}) =>
+  ({
+    workflow_name: "Readiness check",
+    status: "running",
+    graph: { format: "graph-v1", nodes: [node("a"), node("b"), node("c")], edges: [] },
+    steps: { a: { status: "done" } },
+    outcome: null,
+    ...over,
+  }) as unknown as WorkflowRunView;
+
+describe("the workflow picker", () => {
+  it("groups the options as For <Type>, General and Team", () => {
+    const groups = workflowOptionGroups([wf({ id: "t", kind: "team" }), wf({ id: "g", kind: "generic" }), wf({ id: "y", kind: "type" })], "Proposal");
+    expect(groups.map((g) => [g.label, g.items.map((w) => w.id)])).toEqual([
+      ["For Proposal", ["y"]],
+      ["General", ["g"]],
+      ["Team", ["t"]],
+    ]);
+    expect(workflowOptionGroups([wf({ kind: "type" })], null)[0].label).toBe("For this type");
+    expect(workflowOptionGroups([], "Proposal")).toEqual([]);
+  });
+
+  it("starts a workflow with no params straight away, and sends one that needs a form to the Workflows tab", () => {
+    expect(workflowChoice(wf({}))).toBe("start");
+    expect(workflowChoice(wf({ params: ["targetType", "mode"] }))).toBe("form");
+    // Turned off, but runnable once acknowledged: the tab has the checkbox.
+    expect(workflowChoice(wf({ enabled: false, acknowledge: { key: "k", text: "t" } }))).toBe("form");
+    expect(workflowChoice(wf({ enabled: false, disabledReason: "Choose a type first." }))).toBe("unavailable");
+  });
+
+  it("says why an option can't run", () => {
+    expect(workflowOptionText(wf({ title: "Draft all" }))).toBe("Draft all");
+    expect(workflowOptionText(wf({ title: "Draft all", enabled: false, disabledReason: "Turned off for NIH." }))).toBe("Draft all (Turned off for NIH.)");
+  });
+
+  it("starts with the tab's default form, so a no-param run has no params", () => {
+    expect(startRequest(wf({ id: "builtin:check", version: 3 }), DEFAULT_START_FORM)).toEqual({ workflowId: "builtin:check", version: 3 });
+  });
+});
+
+describe("runProgress", () => {
+  it("shows the name, status and steps while running", () => {
+    expect(runProgress(run())).toEqual({ name: "Readiness check", statusLine: "Running", stepsLine: "1 of 3 steps done", action: "Open run", finished: false });
+  });
+
+  it("asks for a review while a checkpoint waits", () => {
+    const p = runProgress(run({ status: "awaiting_review" }));
+    expect(p.statusLine).toBe("Waiting for your review");
+    expect(p.action).toBe("Review");
+    expect(p.finished).toBe(false);
+  });
+
+  it("shows the outcome once complete, and can be dismissed", () => {
+    const outcome = { value: "ready", valueLabel: "Ready", advisory: true, verdict: null, signedBy: null, signedAt: null } as unknown as Outcome;
+    const p = runProgress(run({ status: "complete", outcome, steps: { a: { status: "done" }, b: { status: "done" }, c: { status: "skipped" } } as WorkflowRunView["steps"] }));
+    expect(p).toMatchObject({ statusLine: "Ready · Advisory", stepsLine: "3 of 3 steps done", action: "Open run", finished: true });
+    expect(runProgress(run({ status: "failed" }))).toMatchObject({ statusLine: "Failed", finished: true });
+    expect(runProgress(run({ status: "complete" })).statusLine).toBe("Complete");
   });
 });

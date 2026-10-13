@@ -3,6 +3,8 @@
   "version": 1,
   "title": "How-to guide (Diátaxis)",
   "family": "technical",
+  "icon": "wrench",
+  "color": "teal",
   "summary": "A goal-oriented guide that walks an already-competent reader through the steps needed to get a specific real-world task done, such as configuring, deploying or troubleshooting something. It contains actions, not lessons: explanation and full reference detail are linked rather than included. Follows the how-to guide form of the Diátaxis documentation framework.",
   "signals": [
     "How to …",

@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Review of Existing Evaluation Data (Reevaluation)",
   "family": "clinical",
+  "icon": "refresh-cw",
+  "color": "violet",
   "summary": "A review of existing evaluation data (REED) for a student with a disability who is due for or has requested a reevaluation. It summarizes the existing data, sets it against the questions the team must answer about continued eligibility, present levels, continued need and changes to services, and proposes whether additional assessment is needed and in which areas, for the team, including the parent, to decide.",
   "signals": [
     "Review of Existing Evaluation Data",

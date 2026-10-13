@@ -7,11 +7,10 @@
 // member can learn a team type (and its workflow) from example documents
 // (Phase 8, "Learn from example").
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "@/components/icons";
 import { LearnDialog } from "@/components/learn/learn-dialog";
-import { AccountButton } from "@/components/shell/account-button";
+import { PageHeader } from "@/components/shell/page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -188,32 +187,11 @@ export function CatalogAdmin() {
   const meta = detail?.meta;
   return (
     <div className="doc-screen min-h-screen bg-[var(--doc-bg)] text-[var(--doc-ink)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 pb-6 pt-6 sm:px-10 sm:pt-8">
-        <div className="flex min-w-0 items-center gap-5">
-          <Link href="/" className="text-[22px] font-semibold tracking-tight">
-            Sasha
-          </Link>
-          <nav aria-label="Sections" className="flex items-center gap-1 text-[15px] font-medium">
-            <Link href="/" className="rounded-full px-3 py-1.5 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]">
-              Write
-            </Link>
-            <Link href="/library" className="rounded-full px-3 py-1.5 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]">
-              Sources
-            </Link>
-            <span aria-current="page" className="rounded-full bg-[var(--doc-surface)] px-3 py-1.5 text-[var(--doc-accent)] shadow-sm">
-              Document types
-            </span>
-          </nav>
-        </div>
-        <div className="grid h-11 w-11 place-items-center">
-          <AccountButton />
-        </div>
-      </header>
+      <PageHeader title="Document types" />
 
       <main id="main-content" tabIndex={-1} className="mx-2 mb-10 min-h-[75vh] outline-none overflow-hidden rounded-2xl bg-[var(--doc-surface)] shadow-[0_1px_3px_rgba(16,24,40,0.06),0_8px_24px_rgba(16,24,40,0.05)] sm:mx-10">
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--doc-line)] px-4 py-4 sm:px-6">
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold">Document types</h1>
             <p className="text-sm text-[var(--doc-muted)]">
               {admin ? "Choose which types your team can pick, and edit them to fit how you write." : "Ask a team admin to change document types."}
             </p>

@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Response to Reviewers",
   "family": "academic",
+  "icon": "messages-square",
+  "color": "blue",
   "summary": "A point-by-point response to peer review of a manuscript, or the Introduction to a resubmitted grant application. It summarizes the main changes, then answers every reviewer and editor comment with the change made and where, or a reasoned, evidence-based rebuttal.",
   "signals": [
     "response to reviewers",

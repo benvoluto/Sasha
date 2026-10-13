@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Incident Postmortem",
   "family": "technical",
+  "icon": "siren",
+  "color": "rose",
   "summary": "A blameless review written after a service incident: what happened and its impact, a sourced timeline with detection, mitigation and resolution times, the contributing causes in the system and process, how detection and response went, and action items each with an owner, a due date and the cause it addresses. Written to learn and prevent recurrence, not to assign blame.",
   "signals": [
     "postmortem",

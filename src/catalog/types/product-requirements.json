@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Product Requirements Document (PRD)",
   "family": "business",
+  "icon": "list-checks",
+  "color": "blue",
   "summary": "A product requirements document defines a problem worth solving, who has it, and what a product or feature must do to solve it, before design and engineering commit to a solution. It sets goals and non-goals, prioritised functional and non-functional requirements, success metrics and a release scope, so product, design, engineering and stakeholders can agree on what will be built and how success will be judged.",
   "signals": [
     "PRD",

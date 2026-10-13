@@ -6,6 +6,7 @@
 // form's checks, the restructure mapping table, and a replace_lines change's
 // line-by-line choices (the resume Tailor step, tailor-spec.md §6.2). Client-safe.
 
+import { OPEN_RUN_PARAM } from "@/lib/documents/card-text";
 import { CHECKPOINT_NODE_TYPE, configFor, NODE_SPEC_INDEX } from "@/lib/workflow/registry";
 import type { CheckpointConfig } from "@/lib/workflow/node-specs/core";
 import {
@@ -159,6 +160,20 @@ export function pollDelay(status: RunStatus, failures = 0): number | null {
 /** Continue on its own: a run paused at the time budget, at most AUTO_CONTINUE_MAX times. A person's pause waits for the Continue button. */
 export function shouldAutoContinue(run: Pick<WorkflowRunView, "status" | "pause_reason">, continuedSoFar: number): boolean {
   return run.status === "paused" && run.pause_reason === "budget" && continuedSoFar < AUTO_CONTINUE_MAX;
+}
+
+/**
+ * Whether the run view may act on the run (decide checkpoints, apply changes, continue, respond to findings).
+ * Not from history, not a superseded run, and only in its own document: a hand-edited ?run= link can open
+ * another document's run here, and its changes must not land in this editor.
+ */
+export function runInteractive(run: Pick<WorkflowRunView, "status" | "document_id">, documentId: string | null, readOnly: boolean): boolean {
+  return !readOnly && run.document_id === documentId && run.status !== "superseded";
+}
+
+/** The run's own document with the run open (the ?run= deep link), for a run opened in another document. */
+export function runHomeHref(run: Pick<WorkflowRunView, "id" | "document_id">): string {
+  return `/d/${encodeURIComponent(run.document_id)}?${OPEN_RUN_PARAM}=${encodeURIComponent(run.id)}`;
 }
 
 /**

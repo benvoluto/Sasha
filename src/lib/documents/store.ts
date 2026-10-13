@@ -12,6 +12,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "@vercel/postgres";
 import { ensureSchema } from "@/lib/ontology/ensure-schema";
+import { leadText } from "./card-text";
 import { docText, EMPTY_DOC, type PMNode } from "./sections";
 import { processMemory } from "@/lib/process-memory";
 import { DOC_FOLDER_ROOT, type BulkDocumentsBody } from "./folders-contract";
@@ -100,7 +101,7 @@ export type DocumentRecord = {
   updated_at: string;
 };
 
-export type DocumentSummary = Omit<DocumentRecord, "content_json" | "content_text" | "notes" | "classifier_state"> & { excerpt: string };
+export type DocumentSummary = Omit<DocumentRecord, "content_json" | "content_text" | "notes" | "classifier_state"> & { excerpt: string; lead: string };
 
 export type VersionRecord = { id: number; document_id: string; title: string; reason: string; created_by: string; created_at: string };
 
@@ -133,7 +134,7 @@ function summarize(d: DocumentRecord): DocumentSummary {
   void _c;
   void _n;
   void _s;
-  return { ...rest, excerpt: content_text.slice(0, 200) };
+  return { ...rest, excerpt: content_text.slice(0, 200), lead: leadText(d.content_json) };
 }
 
 // --- In-memory fallback -------------------------------------------------------
@@ -211,7 +212,12 @@ export async function listDocuments(teamId: string, opts: ListDocumentsOptions =
   const like = `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
   const { rows } = await sql`
     SELECT id, team_id, title, type_key, type_source, type_confidence, last_classified_at, archived, doc_folder_id, created_by, updated_by, created_at, updated_at,
-           LEFT(content_text, 200) AS excerpt
+           LEFT(content_text, 200) AS excerpt,
+           -- leadText (card-text.ts) in SQL: the first non-heading top-level
+           -- block with text, then its first block with text children.
+           LEFT((SELECT string_agg(t #>> '{}', '') FROM jsonb_array_elements(jsonb_path_query_array(
+             jsonb_path_query_first(content_json, 'strict $.content[*] ? (@.type != "heading" && exists(@.**.text)).** ? (exists(@.content[*].text))'),
+             'lax $.content[*].text')) t), 200) AS lead
       FROM document
      WHERE team_id = ${teamId} AND archived = ${archived}
        AND (${q} = '' OR title ILIKE ${like} OR content_text ILIKE ${like})
@@ -222,8 +228,49 @@ export async function listDocuments(teamId: string, opts: ListDocumentsOptions =
      LIMIT ${limit}`;
   return rows.map((r) => {
     const rec = rowToRecord({ ...r, content_json: EMPTY_DOC, content_text: "" });
-    return summarize({ ...rec, content_text: String(r.excerpt ?? "") });
+    return { ...summarize({ ...rec, content_text: String(r.excerpt ?? "") }), lead: String(r.lead ?? "") };
   });
+}
+
+/** A document's notes as the Notes tab lists them (redesign3-spec.md §7). */
+export type DocumentNotesSummary = { id: string; title: string; type_key: string | null; notes: string; updated_at: string };
+
+/** How much of a document's notes the Notes tab gets (enough for a title line and an excerpt). */
+export const DOCUMENT_NOTES_PREVIEW = 2000;
+
+/**
+ * Non-archived documents whose notes aren't blank, newest first. `query`
+ * matches the notes or the title, ignoring case. `notes` is cut to
+ * DOCUMENT_NOTES_PREVIEW characters.
+ */
+export async function listDocumentNotes(teamId: string, opts: { query?: string; limit?: number } = {}): Promise<DocumentNotesSummary[]> {
+  const q = opts.query?.trim() ?? "";
+  const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500);
+  if (!hasDb()) {
+    const needle = q.toLowerCase();
+    return [...memory.docs.values()]
+      .filter((d) => d.team_id === teamId && !d.archived && d.notes.trim() !== "")
+      .filter((d) => !needle || d.title.toLowerCase().includes(needle) || d.notes.toLowerCase().includes(needle))
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+      .slice(0, limit)
+      .map((d) => ({ id: d.id, title: d.title, type_key: d.type_key, notes: d.notes.slice(0, DOCUMENT_NOTES_PREVIEW), updated_at: d.updated_at }));
+  }
+  await schema();
+  const like = `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+  const { rows } = await sql`
+    SELECT id, title, type_key, LEFT(notes, ${DOCUMENT_NOTES_PREVIEW}) AS notes, updated_at
+      FROM document
+     WHERE team_id = ${teamId} AND archived = false AND btrim(notes) <> ''
+       AND (${q} = '' OR title ILIKE ${like} OR notes ILIKE ${like})
+     ORDER BY updated_at DESC
+     LIMIT ${limit}`;
+  return rows.map((r) => ({
+    id: String(r.id),
+    title: String(r.title ?? ""),
+    type_key: (r.type_key as string | null) ?? null,
+    notes: String(r.notes ?? ""),
+    updated_at: iso(r.updated_at),
+  }));
 }
 
 export async function getDocument(teamId: string, id: string): Promise<DocumentRecord | null> {
@@ -237,7 +284,13 @@ export async function getDocument(teamId: string, id: string): Promise<DocumentR
   return rows[0] ? rowToRecord(rows[0]) : null;
 }
 
-export type DocumentInit = { title?: string; type_key?: string | null; content_json?: PMNode };
+export type DocumentInit = {
+  title?: string;
+  type_key?: string | null;
+  content_json?: PMNode;
+  /** The scratchpad to start with (a standalone note turned into a document). */
+  notes?: string;
+};
 
 export async function createDocument(teamId: string, agent: string, init: DocumentInit = {}): Promise<DocumentRecord> {
   const content = init.content_json ?? EMPTY_DOC;
@@ -252,7 +305,7 @@ export async function createDocument(teamId: string, agent: string, init: Docume
     classifier_state: parseClassifierState(null),
     content_json: content,
     content_text: docText(content),
-    notes: "",
+    notes: init.notes ?? "",
     archived: false,
     doc_folder_id: null,
     created_by: agent,
@@ -267,9 +320,9 @@ export async function createDocument(teamId: string, agent: string, init: Docume
   }
   await schema();
   const { rows } = await sql`
-    INSERT INTO document (id, team_id, title, type_key, type_source, content_json, content_text, created_by, updated_by)
+    INSERT INTO document (id, team_id, title, type_key, type_source, content_json, content_text, notes, created_by, updated_by)
     VALUES (${rec.id}, ${teamId}, ${rec.title}, ${rec.type_key}, ${rec.type_key ? "user" : null},
-            ${JSON.stringify(content)}::jsonb, ${rec.content_text}, ${agent}, ${agent})
+            ${JSON.stringify(content)}::jsonb, ${rec.content_text}, ${rec.notes}, ${agent}, ${agent})
     RETURNING *`;
   return rowToRecord(rows[0]);
 }

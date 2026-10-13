@@ -24,6 +24,26 @@ export type Family = z.infer<typeof Family>;
 export const Renderer = z.union([z.literal("narrative"), z.literal("static"), z.string().regex(/^pack:[a-z0-9-]+$/, "pack:<name>")]);
 export type Renderer = z.infer<typeof Renderer>;
 
+/**
+ * Document-type icons (redesign3-spec.md §5): lucide icon names, so a type file
+ * reads the same whatever icon library renders it. src/components/type-icon.tsx
+ * maps each name to the app's Phosphor icon; add a name there when adding one
+ * here.
+ */
+export const TYPE_ICONS = [
+  "atom", "backpack", "book-marked", "brain", "briefcase", "calendar", "chart-line", "chart-scatter", "clipboard-list",
+  "code-xml", "coffee", "compass", "file-code", "file-text", "flag", "flask-conical", "globe", "graduation-cap",
+  "hand-coins", "heart", "id-card", "library", "lightbulb", "list-checks", "mail", "messages-square", "microscope",
+  "pencil", "plane", "refresh-cw", "scale", "siren", "star", "trending-up", "users", "wrench",
+] as const;
+export const TypeIcon = z.enum(TYPE_ICONS);
+export type TypeIcon = z.infer<typeof TypeIcon>;
+
+/** Document-type colours: each name is a `--type-<name>` token in globals.css (light and dark, 3:1 on cards). */
+export const TYPE_COLORS = ["teal", "cyan", "blue", "violet", "magenta", "rose", "orange", "amber", "green", "brown", "slate"] as const;
+export const TypeColor = z.enum(TYPE_COLORS);
+export type TypeColor = z.infer<typeof TypeColor>;
+
 const text = (max: number) => z.string().trim().min(1).max(max);
 const list = (maxItems: number, maxLen = 300) => z.array(text(maxLen)).max(maxItems).default([]);
 
@@ -79,6 +99,10 @@ const DocumentTypeShape = z.strictObject({
   version: z.number().int().min(1),
   title: text(120),
   family: Family,
+  /** The card and title icon; omitted (team types made before redesign 3) shows the family's default. */
+  icon: TypeIcon.optional(),
+  /** The icon's colour token; omitted shows the family's default. */
+  color: TypeColor.optional(),
   /** 2–3 sentences; the classifier reads this. */
   summary: text(1000),
   /** Phrases and cues the classifier looks for. */
@@ -141,11 +165,34 @@ export type SectionSummary = Pick<SectionSpec, "key" | "heading" | "level" | "or
 
 /** The client-safe projection returned by GET /api/document-types. Sections are sorted by `order`. */
 export type DocumentTypeSummary = Pick<DocumentTypeDefinition, "key" | "version" | "title" | "family" | "summary" | "aliases"> & {
+  /** Always set: the definition's icon and colour, else the family default (FAMILY_LOOK). */
+  icon: TypeIcon;
+  color: TypeColor;
   origin: TypeOrigin;
   enabled: boolean;
   overridden: boolean;
   sections: SectionSummary[];
 };
+
+/** The icon and colour a type without its own shows, by family. */
+export const FAMILY_LOOK: Record<Family, { icon: TypeIcon; color: TypeColor }> = {
+  grant: { icon: "hand-coins", color: "green" },
+  business: { icon: "briefcase", color: "blue" },
+  academic: { icon: "graduation-cap", color: "violet" },
+  technical: { icon: "code-xml", color: "teal" },
+  policy: { icon: "scale", color: "slate" },
+  clinical: { icon: "heart", color: "rose" },
+  career: { icon: "id-card", color: "orange" },
+  legal: { icon: "scale", color: "brown" },
+  general: { icon: "file-text", color: "slate" },
+  other: { icon: "file-text", color: "slate" },
+};
+
+/** A definition's icon and colour, falling back to its family's. */
+export function typeLook(d: Pick<DocumentTypeDefinition, "family" | "icon" | "color">): { icon: TypeIcon; color: TypeColor } {
+  const fallback = FAMILY_LOOK[d.family];
+  return { icon: d.icon ?? fallback.icon, color: d.color ?? fallback.color };
+}
 
 export function sortedSections<T extends { order: number }>(sections: T[]): T[] {
   return [...sections].sort((a, b) => a.order - b.order);
@@ -160,6 +207,7 @@ export function toTypeSummary(e: CatalogEntry): DocumentTypeSummary {
     family: d.family,
     summary: d.summary,
     aliases: d.aliases,
+    ...typeLook(d),
     origin: e.origin,
     enabled: e.enabled,
     overridden: e.overridden,

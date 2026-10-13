@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Funder Progress Report",
   "family": "grant",
+  "icon": "trending-up",
+  "color": "green",
   "summary": "An annual, interim or final progress report to a funder on an awarded grant: accomplishments compared with the award's objectives, products, participants, impact, and changes or problems with their reasons and plans. Federal awards follow 2 CFR 200.329 and the agency's form, such as the NIH or NSF RPPR; foundations set their own formats.",
   "signals": [
     "progress report",

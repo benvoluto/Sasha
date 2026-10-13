@@ -1,9 +1,13 @@
 "use client";
 
-// The header's Share & Export dialog (redesign2-spec.md §3.3). Share: who can
-// see the document, the team it belongs to, and its link to copy. Export:
-// Markdown, Word and PDF downloads (use-export.ts); the dialog stays open
-// after a download and says what was saved.
+// The Share & Export dialog, opened from the top right of the editor card
+// (editor-header.tsx; redesign3-spec.md §10). Share: who can see the document,
+// the team it belongs to, and its link to copy. Export: Markdown, Word and PDF
+// downloads (use-export.ts); the dialog stays open after a download and says
+// what was saved.
+//
+// The team switch stays here although the overview's user menu has one too:
+// the editor has no avatar, so this is the editor's way to change teams.
 //
 // Teams: Clerk's OrganizationSwitcher opens its popover and its Create / Manage
 // modals in portals outside this dialog, where Radix's modal focus trap and

@@ -37,7 +37,7 @@ export type StartFromPromptRequest = z.infer<typeof StartFromPromptRequest>;
 /**
  * 200 response. `typeKey` is null when no enabled type fits well enough
  * (freeform, or the best candidate under TELL_ME_MIN_CONFIDENCE): the editor
- * then opens the Document Gallery so the person picks one. Errors are
+ * then opens the Doc Gallery so the person picks one. Errors are
  * { error } with 400 / 404 / 503 / 502, or the 429 RateLimitedBody.
  */
 export type StartFromPromptResponse = {

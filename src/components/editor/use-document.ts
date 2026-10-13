@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TypeSource } from "@/lib/classifier/contract";
 import type { PMNode } from "@/lib/documents/sections";
+import { notifyDocumentSaved } from "./document-saved";
 
 export type DocState = {
   id: string | null;
@@ -183,6 +184,8 @@ export function useDocument(initialId: string | null) {
         }
         failures.current = 0;
         saved = true;
+        // Even after unmount: the overview the person went back to refetches its cards.
+        notifyDocumentSaved(d.id);
         setError(null);
         setStatus(Object.keys(pending.current).length ? "saving" : "saved");
       } catch (e) {
@@ -279,7 +282,8 @@ export function useDocument(initialId: string | null) {
 
   // Leaving the editor inside the app: stop the timers and send what's unsaved.
   // That save finishes in the background and, with the hook unmounted, neither
-  // moves the URL nor schedules anything further.
+  // moves the URL nor schedules anything further; notifyDocumentSaved tells the
+  // overview when it lands.
   useEffect(() => {
     mounted.current = true;
     return () => {

@@ -29,17 +29,17 @@ export const test = base.extend<{ consoleErrors: string[] }>({
 /** The editor's ProseMirror surface. */
 export const editorOf = (page: Page) => page.locator('.ProseMirror[aria-label="Document"]');
 
-/** Opens a blank document and waits until the editor takes input. */
+/** Opens a blank document (/new) and waits until the editor takes input. */
 export async function openNewDocument(page: Page) {
-  await page.goto("/");
+  await page.goto("/new");
   await expect(editorOf(page)).toBeVisible();
   await expect(editorOf(page)).toHaveAttribute("contenteditable", "true");
-  await expect(saveStatus(page)).toHaveText("Not saved yet");
+  await expect(saveStatus(page)).toContainText("Not saved yet");
   await settle(page);
 }
 
-/** The header's save status line. */
-export const saveStatus = (page: Page) => page.locator("header [role=status]:not(.sr-only)").first();
+/** The toolbar row's save status (save-status.tsx; its visible text reads "Saved 3 min ago", so check it with toContainText). */
+export const saveStatus = (page: Page) => page.locator("[data-save-status]");
 
 type TipTapNode = { type: string; attrs?: Record<string, unknown>; text?: string; marks?: Array<{ type: string; attrs?: Record<string, unknown> }>; content?: TipTapNode[] };
 export const para = (...content: TipTapNode[]): TipTapNode => ({ type: "paragraph", content });
@@ -54,10 +54,32 @@ export const citation = (sourceId = "00000000-0000-4000-8000-000000000001") => (
 });
 
 /** Creates a document through the API and returns its id. */
-export async function createDocument(request: APIRequestContext, body: { title: string; content?: TipTapNode[]; type_key?: string | null }): Promise<string> {
-  const res = await request.post("/api/documents", { data: { title: body.title, type_key: body.type_key ?? null, content_json: { type: "doc", content: body.content ?? [para(text("Body text."))] } } });
+export async function createDocument(request: APIRequestContext, body: { title: string; content?: TipTapNode[]; type_key?: string | null; notes?: string }): Promise<string> {
+  const res = await request.post("/api/documents", {
+    data: { title: body.title, type_key: body.type_key ?? null, content_json: { type: "doc", content: body.content ?? [para(text("Body text."))] }, ...(body.notes !== undefined ? { notes: body.notes } : {}) },
+  });
   expect(res.status(), await res.text()).toBe(201);
   return (await res.json()).document.id as string;
+}
+
+/** PATCHes a document through the API (title, notes, archived, doc_folder_id, content_json…). */
+export async function patchDocument(request: APIRequestContext, id: string, patch: Record<string, unknown>) {
+  const res = await request.patch(`/api/documents/${id}`, { data: patch });
+  expect(res.status(), await res.text()).toBe(200);
+}
+
+/** Creates a document folder through the API and returns its id. */
+export async function createFolder(request: APIRequestContext, name: string): Promise<string> {
+  const res = await request.post("/api/document-folders", { data: { name } });
+  expect(res.status(), await res.text()).toBe(201);
+  return (await res.json()).folder.id as string;
+}
+
+/** Creates a standalone note through the API (redesign3-spec.md §7) and returns its id. */
+export async function createNote(request: APIRequestContext, body: string): Promise<string> {
+  const res = await request.post("/api/notes", { data: { body } });
+  expect(res.status(), await res.text()).toBe(201);
+  return (await res.json()).note.id as string;
 }
 
 /** Opens a saved document and waits for its body. */
@@ -80,20 +102,31 @@ export async function settle(page: Page) {
 }
 
 export type ModalTab = "Notes" | "Sources" | "Data" | "Suggestions" | "Workflows";
-export type HeaderControl = "Sources" | "Document Gallery" | "Share & Export";
+export type PanelName = "Agents" | "Outline";
 
-/**
- * One of the header's three dialog buttons (redesign2-spec.md §1). Found by
- * its text rather than its role, so it can still be read while its dialog is
- * open (Radix hides the page from the accessibility tree meanwhile). Document
- * Gallery's text gains ", suggestion ready" while the classifier has one.
- */
-export const headerButton = (page: Page, name: HeaderControl) =>
-  page.locator("header button[aria-haspopup='dialog']").filter({ hasText: name === "Document Gallery" ? /^Document Gallery/ : new RegExp(`^${name}$`) });
+/** The editor's right-hand button stack (redesign3-spec.md §13): the Sources pill, then Agents and Outline. */
+export const panelGroup = (page: Page) => page.getByRole("group", { name: "Document panels" });
 
-/** Opens the document modal from the header's Sources button, then shows `tab` (Sources opens on its own tab). */
+/** The Sources pill at the top of the stack; it opens the document modal on Sources. */
+export const sourcesButton = (page: Page) => panelGroup(page).getByRole("button", { name: "Sources", exact: true });
+
+/** The closed Agents or Outline button in the stack (it gives way to its card while the panel is open). */
+export const panelButton = (page: Page, name: PanelName) => panelGroup(page).getByRole("button", { name, exact: true });
+
+/** The open Agents or Outline card (its <aside>/region carries the panel's name). */
+export const panelRegion = (page: Page, name: PanelName) => page.getByRole("complementary", { name, exact: true }).or(page.getByRole("region", { name, exact: true })).first();
+
+/** Opens the Agents or Outline panel from its button; focus moves to the card's heading. Returns the card. */
+export async function openPanel(page: Page, name: PanelName): Promise<Locator> {
+  await panelButton(page, name).click();
+  const card = panelRegion(page, name);
+  await expect(card).toBeVisible();
+  return card;
+}
+
+/** Opens the document modal from the Sources pill, then shows `tab` (Sources opens on its own tab). */
 export async function openModal(page: Page, tab: ModalTab = "Notes"): Promise<Locator> {
-  await page.locator("header").getByRole("button", { name: "Sources", exact: true }).click();
+  await sourcesButton(page).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   const tabButton = dialog.getByRole("tab", { name: tab, exact: true });
@@ -102,39 +135,86 @@ export async function openModal(page: Page, tab: ModalTab = "Notes"): Promise<Lo
   return dialog;
 }
 
-/** Opens the Document Gallery from the header and waits for the dialog. */
+/** Opens the editor's Doc Gallery from the Outline panel's "See all document types" (opening the panel first) and waits for the dialog. */
 export async function openGallery(page: Page): Promise<Locator> {
-  await page.locator("header").getByRole("button", { name: /^Document Gallery/ }).click();
-  const dialog = page.getByRole("dialog", { name: "Document Gallery" });
+  if (!(await panelRegion(page, "Outline").isVisible())) await openPanel(page, "Outline");
+  await panelRegion(page, "Outline").getByRole("button", { name: "See all document types" }).click();
+  const dialog = page.getByRole("dialog", { name: "Doc Gallery" });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
-/** Opens the Share & Export dialog from the header and waits for it. */
+/** Opens the Share & Export dialog from the editor header and waits for it. */
 export async function openShareExport(page: Page): Promise<Locator> {
-  await page.locator("header").getByRole("button", { name: "Share & Export", exact: true }).click();
+  await page.getByRole("button", { name: "Share & Export", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Share & Export" });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
-/** A floating button at the bottom right ("Document panels"). It is gone while its card shows. */
-export const fab = (page: Page, name: "Outline" | "Tools") => page.getByRole("group", { name: "Document panels" }).getByRole("button", { name, exact: true });
-
-/** The right column's slot that holds a card (right-column-model.ts OUTLINE_SLOT_ID / TOOLS_SLOT_ID). */
-export const cardSlot = (page: Page, name: "Outline" | "Tools") => page.locator(name === "Outline" ? "#editor-outline-slot" : "#editor-tools-slot");
-
-/** Opens the Outline or Tools card from its floating button; returns the card (its <aside>). */
-export async function openCard(page: Page, name: "Outline" | "Tools"): Promise<Locator> {
-  await fab(page, name).click();
-  const card = cardSlot(page, name).getByRole("complementary", { name, exact: true });
-  await expect(card).toBeVisible();
-  await expect(fab(page, name)).toHaveCount(0);
-  return card;
-}
-
 /** The empty document's helper beside the dog (redesign2-spec.md §5). */
 export const helperOf = (page: Page) => page.getByRole("region", { name: "Getting started" });
+
+/** The overview's tablist (Documents / Notes). */
+export const overviewTabs = (page: Page) => page.getByRole("tablist", { name: "Overview" });
+
+/** Opens the documents overview (redesign3-spec.md §2) at `path` ("/", "/?tab=notes", "/?folder=<id>", "/?view=archived") and waits for it. */
+export async function openOverview(page: Page, path = "/") {
+  await page.goto(path);
+  await expect(overviewTabs(page)).toBeVisible();
+  await settle(page);
+}
+
+/** Escapes a string for a RegExp. */
+export const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The overview card that shows `text` (its title, or its subtitle for an
+ * untitled one): the innermost element in <main> holding that text and a
+ * card's "Actions for …" menu button.
+ */
+export const overviewCard = (page: Page, text: string) =>
+  page.locator("#main-content *").filter({ hasText: text }).filter({ has: page.getByRole("button", { name: /^Actions for (?!folder )/ }) }).last();
+
+/** A card's "⋯" menu button. */
+export const cardMenuButton = (page: Page, title: string) => page.getByRole("button", { name: `Actions for ${title}`, exact: true });
+
+/** A folder tile: a button named "<name>, <n> documents". */
+export const folderTile = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${escapeRe(name)}, \\d+ documents?$`) });
+
+/** Opens the user menu ("Account menu") and returns the menu. */
+export async function openUserMenu(page: Page): Promise<Locator> {
+  const menu = page.getByRole("menu");
+  // A menu that is still closing (after picking an item) would swallow the click.
+  await expect(menu).toHaveCount(0);
+  await expect(async () => {
+    if (!(await menu.isVisible())) await page.getByRole("button", { name: "Account menu" }).click();
+    await expect(menu).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  return menu;
+}
+
+/** Presses Tab until `target` has focus (at most `max` presses), as a keyboard user would. */
+export async function tabTo(page: Page, target: Locator, { max = 60, back = false } = {}) {
+  for (let i = 0; i < max; i++) {
+    if (await target.evaluate((el: Element) => el === document.activeElement || el.contains(document.activeElement)).catch(() => false)) return;
+    await page.keyboard.press(back ? "Shift+Tab" : "Tab");
+  }
+  await expect(target, `reached by ${back ? "Shift+Tab" : "Tab"} within ${max} presses`).toBeFocused();
+}
+
+/** True when focus is on `target` or inside it. */
+export const focusWithin = (target: Locator) => target.evaluate((el: Element) => el === document.activeElement || el.contains(document.activeElement));
+
+/** Tabs `presses` times forwards, then backwards, checking that focus never leaves `dialog` (a focus trap). */
+export async function expectFocusTrapped(page: Page, dialog: Locator, presses = 25) {
+  for (const key of ["Tab", "Shift+Tab"]) {
+    for (let i = 0; i < presses; i++) {
+      await page.keyboard.press(key);
+      expect(await focusWithin(dialog), `focus stays in the dialog after ${i + 1} × ${key}`).toBe(true);
+    }
+  }
+}
 
 /** The element that has focus matches :focus-visible (the keyboard focus ring would show). */
 export async function expectFocusVisible(page: Page, expected?: Locator) {
@@ -191,6 +271,8 @@ const FAILING = new Set(["serious", "critical"]);
  * violation (rule, impact, targets, help URL) and fails on serious/critical ones.
  */
 export async function expectNoA11yViolations(page: Page, testInfo: TestInfo, screen: string, include?: string) {
+  // The scheme under test is the one on the page (next-themes follows the emulated colour scheme).
+  if (testInfo.project.name === "dark") await expect(page.locator("html")).toHaveClass(/\bdark\b/);
   // Let transitions and late renders settle so axe doesn't read half-faded colours.
   await page.waitForTimeout(400);
   // @axe-core/playwright types its page against the hoisted playwright-core

@@ -185,3 +185,32 @@ export function missingSectionInsertPos(sections: SectionSummary[], key: string,
   }
   return docEnd;
 }
+
+// --- The Document Type select (redesign3-spec.md §15) ---------------------------------------
+
+/**
+ * What choosing in the Outline card's type select does: nothing (the current
+ * type again), say why not (tell me is locked), go freeform ("No type", the
+ * empty value), apply the outline at once (an empty editor), or ask with the
+ * inline "Change to <Type>" prompt (Apply outline / Restructure / Just set
+ * type / Cancel).
+ */
+export type TypeChange = "none" | "locked" | "no_type" | "apply" | "prompt";
+
+export function typeChangeAction({ value, currentKey, editorEmpty, locked }: { value: string; currentKey: string | null; editorEmpty: boolean; locked: boolean }): TypeChange {
+  if (value === (currentKey ?? "")) return "none";
+  if (locked) return "locked";
+  if (!value) return "no_type";
+  return editorEmpty ? "apply" : "prompt";
+}
+
+/**
+ * The classifier hint's "Use it": the same flow as the select, except that a
+ * document that already has a type restructures (chipApplyAction: the drift
+ * case maps the text onto the new outline rather than only tagging headings).
+ */
+export function suggestionUseAction({ typeKey, editorEmpty, locked }: { typeKey: string | null; editorEmpty: boolean; locked: boolean }): "locked" | "apply" | "restructure" | "prompt" {
+  if (locked) return "locked";
+  if (editorEmpty) return "apply";
+  return typeKey ? "restructure" : "prompt";
+}

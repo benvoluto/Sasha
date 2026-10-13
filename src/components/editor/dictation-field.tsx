@@ -136,7 +136,7 @@ export function DictationField({
               type="button"
               onClick={onFinish}
               aria-label="Finish dictation"
-              className="flex items-center gap-1 rounded-full bg-[var(--doc-accent)] px-2.5 py-1 text-xs font-medium text-[var(--doc-on-accent)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--doc-ink)]"
+              className="flex min-h-11 items-center gap-1 rounded-full bg-[var(--doc-accent)] px-3 py-1 text-xs sm:min-h-0 sm:px-2.5 font-medium text-[var(--doc-on-accent)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--doc-ink)]"
             >
               <Check className="h-3.5 w-3.5" /> Finish
             </button>
@@ -144,7 +144,7 @@ export function DictationField({
               type="button"
               onClick={onCancel}
               aria-label="Cancel dictation"
-              className="flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]"
+              className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2 py-1 text-xs font-medium sm:min-h-0 sm:min-w-0 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -157,7 +157,7 @@ export function DictationField({
               title="Dictate"
               disabled={micDisabled}
               onClick={onStart}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-accent)] disabled:opacity-40"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full sm:h-8 sm:w-8 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-accent)] disabled:opacity-40"
             >
               <MicrophoneIcon className="h-5 w-5" />
             </button>

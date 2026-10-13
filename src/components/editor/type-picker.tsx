@@ -1,14 +1,17 @@
 "use client";
 
-// Choosing a document type: the gallery of every type (the editor's Document
-// Gallery, document-gallery-dialog.tsx, and the documents panel's "New from a
-// type"), "Save outline as type…", and creating a new document of a type.
+// Choosing a document type: the gallery of every type (the Doc Gallery, from
+// the editor's document-gallery-dialog.tsx and the overview's
+// doc-gallery-dialog.tsx), "Save outline as type…", and creating a new
+// document of a type.
 // Types come from GET /api/document-types (the team's enabled types: catalog
 // files, team edits and team-made types).
 
 import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
-import { Loader2, Search } from "@/components/icons";
+import { Loader2, Search, TypesIcon } from "@/components/icons";
+import { TypeIcon } from "@/components/type-icon";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FAMILIES, type DocumentTypeSummary, type Family } from "@/catalog/schema";
 import { ensureTypes, getTypesState, loadTypes, REVALIDATE_MS, SERVER_STATE, subscribeTypes } from "./document-types-store";
@@ -147,7 +150,7 @@ export function TypeGallery({
   onChoose: (t: DocumentTypeSummary) => Promise<string | void> | string | void;
   /** Where focus goes on close when the opener is gone. A control still on the page gets focus back itself. */
   returnFocusRef?: RefObject<HTMLElement | null>;
-  /** Shown above the search (the Document Gallery's current type and suggestion). */
+  /** Shown above the search (the Doc Gallery's current type and suggestion). */
   top?: ReactNode;
   /** Runs first on close; calling preventDefault skips the return focus (another dialog is taking over). */
   onCloseAutoFocus?: (e: Event) => void;
@@ -253,7 +256,7 @@ export function TypeGallery({
                     }`}
                   >
                     <span className="flex items-center gap-2 font-medium">
-                      {working === t.key && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {working === t.key ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <TypeIcon icon={t.icon} color={t.color} className="h-5 w-5" />}
                       {t.title}
                       {t.origin === "team" && <span className="rounded-full bg-[var(--doc-accent-soft)] px-1.5 text-[11px] font-semibold text-[var(--doc-accent)]">Team</span>}
                       {t.key === current && <span className="rounded-full bg-[var(--doc-accent)] px-1.5 text-[11px] font-semibold text-[var(--doc-on-accent)]">Current</span>}
@@ -270,6 +273,14 @@ export function TypeGallery({
               </div>
             </section>
           ))}
+        </div>
+        <div className="border-t border-[var(--doc-line)] px-6 py-2">
+          <Link
+            href="/catalog"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm font-medium text-[var(--doc-accent)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--doc-accent)] sm:min-h-9"
+          >
+            <TypesIcon className="h-4 w-4" aria-hidden /> Manage types / Learn from an example
+          </Link>
         </div>
       </DialogContent>
     </Dialog>
@@ -290,7 +301,7 @@ export function SaveOutlineDialog({
   defaultTitle: string;
   /** Resolves to an error message, or null when saved. */
   onSave: (title: string) => Promise<string | null>;
-  /** Where focus goes on close when its opener is gone (it opens from the Document Gallery, which closes first). */
+  /** Where focus goes on close when its opener is gone (it opens from the Doc Gallery, which closes first). */
   returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const [title, setTitle] = useState(defaultTitle);

@@ -214,7 +214,16 @@ export function SourcesPanel({
   return (
     <Wrapper aria-label={bare ? undefined : "Sources"} className="flex h-full min-h-0 flex-col">
       {!bare && <PanelHeader title="Sources" onClose={onClose} />}
-      <div className={`flex items-center justify-between gap-2 pb-3 ${bare ? "px-6" : "px-5"}`}>
+      {/* Redesign 3 (§16): the team's whole library is one prominent step away, above "Add". */}
+      <div className={`pb-3 ${bare ? "px-4 sm:px-6" : "px-5"}`}>
+        <Link
+          href="/library"
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[var(--action)] px-4 text-[15px] font-semibold text-[var(--action)] hover:bg-[var(--action-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] sm:min-h-10"
+        >
+          <LibraryIcon className="h-5 w-5" aria-hidden /> Open the full library
+        </Link>
+      </div>
+      <div className={`flex items-center gap-2 pb-3 ${bare ? "px-6" : "px-5"}`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="flex items-center gap-1.5 rounded-md bg-[var(--doc-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--doc-on-accent)]">
@@ -228,9 +237,6 @@ export function SourcesPanel({
             <DropdownMenuItem onSelect={() => setPickerOpen(true)}>From the library…</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Link href="/library" className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]">
-          <LibraryIcon className="h-4 w-4" /> Library
-        </Link>
       </div>
 
       <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto pb-6 ${bare ? "px-6" : "px-5"}`}>

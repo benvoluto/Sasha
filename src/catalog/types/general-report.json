@@ -3,6 +3,8 @@
   "version": 1,
   "title": "General report",
   "family": "general",
+  "icon": "file-text",
+  "color": "slate",
   "summary": "A clear, well-organized report for a general professional audience that states its purpose, gives the background, presents findings from the sources, interprets them and recommends next steps. Use it when no more specific document type fits.",
   "signals": [
     "report",

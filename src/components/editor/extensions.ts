@@ -182,6 +182,9 @@ export const DataTable = Table.extend({
 });
 
 // --- Section dividers ---------------------------------------------------------
+// Line, (+), trash, line above each top-level section (redesign3-spec.md §12);
+// the look lives in globals.css (.section-divider). Deleting is one undoable
+// transaction; document-screen takes the snapshot and shows the Undo notice.
 
 export type SectionDividerHandlers = {
   /** Called before a section is removed (take a snapshot, show an undo notice). */
@@ -247,7 +250,7 @@ function button(label: string, title: string, svgPath: string, onClick: () => vo
   b.className = "section-divider-btn";
   b.title = title;
   b.setAttribute("aria-label", title);
-  b.innerHTML = `<svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true"><path d="${svgPath}" fill="currentColor"/></svg><span class="sr-only">${label}</span>`;
+  b.innerHTML = `<svg viewBox="0 0 256 256" width="22" height="22" aria-hidden="true"><path d="${svgPath}" fill="currentColor"/></svg><span class="sr-only">${label}</span>`;
   // mousedown would move the selection into the widget; keep the editor's.
   b.addEventListener("mousedown", (e) => e.preventDefault());
   b.addEventListener("click", (e) => {

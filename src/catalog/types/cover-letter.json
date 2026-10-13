@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Cover Letter",
   "family": "career",
+  "icon": "mail",
+  "color": "blue",
   "summary": "A one-page letter that accompanies a resume for one specific job. It says which role the candidate is applying for, answers two to four of the employer's top requirements with specific examples from the candidate's history, gives a real reason for wanting this employer, and closes with a request to talk.",
   "signals": [
     "cover letter",

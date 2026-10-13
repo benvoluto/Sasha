@@ -3,6 +3,8 @@
   "version": 1,
   "title": "NIH Specific Aims and Research Strategy",
   "family": "grant",
+  "icon": "microscope",
+  "color": "cyan",
   "summary": "The scientific core of an NIH research grant application (R01, R21 and similar): a one-page Specific Aims page followed by a Research Strategy with Significance, Innovation and Approach sub-sections, plus a Progress Report for renewals. It argues that a stated problem matters, that the proposed work is new, and that the aims, whether hypothesis-testing or objective-driven, can be achieved rigorously by this team in the time requested.",
   "signals": [
     "Specific Aims",

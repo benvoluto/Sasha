@@ -43,7 +43,7 @@ export type UseTellMeOptions = {
   types: DocumentTypeSummary[];
   /** POST /versions with a reason (document-screen's snapshot). */
   snapshot: (reason: string) => Promise<void>;
-  /** No type fitted the prompt: open the Document Gallery; choosing a type there calls continueWithType. */
+  /** No type fitted the prompt: open the Doc Gallery; choosing a type there calls continueWithType. */
   onNeedType: () => void;
 };
 

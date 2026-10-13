@@ -82,6 +82,17 @@ describe("GET /api/documents?folder=", () => {
     expect(rows[0].doc_folder_id).toBe(f.folder.id);
   });
 
+  it("takes a limit from 1 to 500", async () => {
+    for (let i = 0; i < 3; i++) await createDocument("org:a", "ann");
+    expect(await ids("?limit=2")).toHaveLength(2);
+    expect(await ids("?folder=root&limit=500")).toHaveLength(3);
+    for (const bad of ["0", "501", "x", "1.5", ""]) {
+      const res = await list(`?limit=${bad}`);
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Invalid limit." });
+    }
+  });
+
   it("400s an invalid folder", async () => {
     const res = await list("?folder=nope");
     expect(res.status).toBe(400);

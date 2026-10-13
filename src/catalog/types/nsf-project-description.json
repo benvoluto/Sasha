@@ -3,6 +3,8 @@
   "version": 1,
   "title": "NSF Project Description, Broader Impacts and Data Management and Sharing Plan",
   "family": "grant",
+  "icon": "atom",
+  "color": "cyan",
   "summary": "The core of a U.S. National Science Foundation proposal: a Project Description of 15 pages or fewer with objectives, relation to current knowledge, the plan of work, a separate Broader Impacts section and, when required, Results from Prior NSF Support, plus the Data Management and Sharing Plan (DMSP) built in Research.gov. Reviewers judge it on Intellectual Merit and Broader Impacts.",
   "signals": [
     "Project Description",

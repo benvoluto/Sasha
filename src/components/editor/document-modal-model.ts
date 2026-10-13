@@ -37,3 +37,22 @@ export function modalReturnTarget<T extends { isConnected: boolean; nodeName: st
   for (const el of [opener, fallback]) if (el?.isConnected && el.nodeName !== "BODY") return el;
   return null;
 }
+
+/**
+ * What a deep link to the editor opens (redesign3-spec.md §1): `?run=<id>`
+ * the Workflows tab on that run, `?notes=1` the Notes tab, anything else
+ * nothing. A run wins when both are there. `strip` is the query to put back in
+ * the address (both parameters dropped, the rest kept), so a reload doesn't
+ * open the dialog again.
+ */
+export function deepLinkOpen(search: string, params: { notes: string; run: string }): { open: { tab: "notes" } | { tab: "workflows"; runId: string } | null; strip: string | null } {
+  const q = new URLSearchParams(search);
+  const runId = q.get(params.run)?.trim();
+  const notes = q.get(params.notes);
+  if (!q.has(params.run) && !q.has(params.notes)) return { open: null, strip: null };
+  q.delete(params.run);
+  q.delete(params.notes);
+  const rest = q.toString();
+  const open = runId ? ({ tab: "workflows", runId } as const) : notes === "1" ? ({ tab: "notes" } as const) : null;
+  return { open, strip: rest ? `?${rest}` : "" };
+}

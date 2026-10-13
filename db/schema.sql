@@ -175,6 +175,20 @@ CREATE TABLE IF NOT EXISTS document (
 );
 CREATE INDEX IF NOT EXISTS document_team_updated_idx ON document (team_id, archived, updated_at DESC);
 
+-- Standalone notes (src/lib/notes/store.ts owns this; redesign3-spec.md §7): notes
+-- that belong to no document. The title is the body's first line, derived on read.
+-- "Start a document" copies the body into document.notes and deletes the row.
+CREATE TABLE IF NOT EXISTS note (
+  id                 UUID PRIMARY KEY,
+  team_id            TEXT NOT NULL,
+  body               TEXT NOT NULL DEFAULT '',
+  created_by         TEXT NOT NULL,
+  updated_by         TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS note_team_updated_idx ON note (team_id, updated_at DESC);
+
 -- Per-section metadata; the section text lives in document.content_json.
 CREATE TABLE IF NOT EXISTS document_section (
   document_id        UUID NOT NULL REFERENCES document(id) ON DELETE CASCADE,

@@ -1,33 +1,92 @@
-import { cardSlot, citation, createDocument, editorOf, expect, expectFocusVisible, fab, headerButton, openDocument, openNewDocument, para, saveStatus, test, text, uid, type Locator, type Page } from "./fixtures";
+import {
+  citation,
+  createDocument,
+  createNote,
+  editorOf,
+  expect,
+  expectFocusTrapped,
+  expectFocusVisible,
+  focusWithin,
+  openDocument,
+  openNewDocument,
+  openOverview,
+  overviewTabs,
+  panelButton,
+  panelRegion,
+  para,
+  saveStatus,
+  sourcesButton,
+  tabTo,
+  test,
+  text,
+  uid,
+} from "./fixtures";
 
-/** Presses Tab until `target` has focus (at most `max` presses), as a keyboard user would. */
-async function tabTo(page: Page, target: Locator, { max = 60, back = false } = {}) {
-  for (let i = 0; i < max; i++) {
-    if (await target.evaluate((el: Element) => el === document.activeElement || el.contains(document.activeElement)).catch(() => false)) return;
-    await page.keyboard.press(back ? "Shift+Tab" : "Tab");
+test("keyboard only on the overview: skip link, the tablist's arrow keys, and Select mode's Escape", async ({ page, request }) => {
+  await createDocument(request, { title: uid("Keyboard overview") });
+  await openOverview(page);
+
+  // The skip link is the page's first stop and lands on the main region.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Skip to main content" });
+  await expectFocusVisible(page, skip);
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+
+  // One tab stop for the tablist (roving tabindex); the arrows move and select.
+  const tabs = overviewTabs(page);
+  const documents = tabs.getByRole("tab", { name: "Documents" });
+  const notes = tabs.getByRole("tab", { name: "Notes" });
+  await expect(documents).toHaveAttribute("aria-selected", "true");
+  await expect(notes).toHaveAttribute("tabindex", "-1");
+  await tabTo(page, documents, { back: true });
+  await expectFocusVisible(page, documents);
+  await page.keyboard.press("ArrowRight");
+  await expect(notes).toBeFocused();
+  await expect(notes).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Notes" })).toBeVisible();
+  await expect(page).toHaveURL(/[?&]tab=notes/);
+  await page.keyboard.press("ArrowLeft");
+  await expect(documents).toBeFocused();
+  await expect(documents).toHaveAttribute("aria-selected", "true");
+  for (const tab of [documents, notes]) {
+    const panel = await tab.getAttribute("aria-controls");
+    expect(panel, "each tab names its tabpanel").toBeTruthy();
   }
-  await expect(target, `reached by ${back ? "Shift+Tab" : "Tab"} within ${max} presses`).toBeFocused();
-}
 
-/** True when focus is on `target` or inside it. */
-const focusWithin = (target: Locator) => target.evaluate((el: Element) => el === document.activeElement || el.contains(document.activeElement));
+  // Select mode: Enter turns it on, Escape leaves and focus returns to Select.
+  const select = page.getByRole("button", { name: "Select", exact: true });
+  await tabTo(page, select);
+  await page.keyboard.press("Enter");
+  await expect(select).toHaveAttribute("aria-pressed", "true");
+  const bar = page.getByRole("toolbar", { name: "Selected documents" });
+  await expect(bar).toBeVisible();
+  const box = page.getByRole("checkbox", { name: /^Select / }).first();
+  await tabTo(page, box);
+  await page.keyboard.press("Space");
+  await expect(box).toBeChecked();
+  await expect(bar.getByText("1 selected")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(bar).toBeHidden();
+  await expect(select).toHaveAttribute("aria-pressed", "false");
+  await expectFocusVisible(page, select);
+});
 
-test("keyboard only: skip link, write a document, and open and close the floating panels", async ({ page }) => {
+test("keyboard only in the editor: skip link, write a document, and open and close the panels", async ({ page }) => {
   await openNewDocument(page);
 
   // A new document opens with the caret in the editor, and it stays there once
-  // the page has settled (the App Router's focus on the segment used to land on
-  // <main> and take it). The skip link is the page's first stop, so Shift+Tab
-  // walks back to it past the header and the rail. It shows on focus and lands
-  // on the main region.
+  // the page has settled. The skip link is the page's first stop, so Shift+Tab
+  // walks back to it past the header.
   await expect(editorOf(page)).toBeFocused();
   await page.waitForTimeout(1500);
   await expect(editorOf(page)).toBeFocused();
   const skip = page.getByRole("link", { name: "Skip to main content" });
   await tabTo(page, skip, { max: 40, back: true });
-  await expect(page.locator("body :is(a, button, input, [tabindex]:not([tabindex='-1']))").first()).toHaveText("Skip to main content");
+  await expect(page.locator("body :is(a, button, input, select, [tabindex]:not([tabindex='-1']))").first()).toHaveText("Skip to main content");
   await expectFocusVisible(page, skip);
-  await expect(skip).toBeInViewport();
   await page.keyboard.press("Enter");
   await expect(page.locator("#main-content")).toBeFocused();
 
@@ -38,61 +97,48 @@ test("keyboard only: skip link, write a document, and open and close the floatin
   await page.keyboard.type(uid("Keyboard smoke"));
   await tabTo(page, editorOf(page));
   await page.keyboard.type("Typed without a mouse.");
-  await expect(saveStatus(page)).toHaveText("Saved");
+  await expect(saveStatus(page)).toContainText("Saved");
 
-  // The floating buttons follow the editor in tab order (ProseMirror doesn't trap Tab).
-  // The group holds only Outline and Tools (Sources moved to the header), and they
-  // only open: a button hides while its card shows, so neither is a toggle.
-  const group = page.getByRole("group", { name: "Document panels" });
-  await expect(group.getByRole("button")).toHaveText(["Outline", "Tools"]);
-  for (const name of ["Outline", "Tools"] as const) await expect(fab(page, name)).not.toHaveAttribute("aria-pressed");
-
-  // Enter opens the card and moves focus into its slot; the next Tab reaches the
-  // card's close button, and closing it brings the button back with focus on it.
-  for (const name of ["Outline", "Tools"] as const) {
-    const button = fab(page, name);
+  // Enter on a panel button opens its card with focus on the card's heading;
+  // the card's close button puts the button back, focused.
+  for (const name of ["Agents", "Outline"] as const) {
+    const button = panelButton(page, name);
     await tabTo(page, button);
     await expectFocusVisible(page, button);
+    await expect(button).toHaveAttribute("aria-expanded", "false");
     await page.keyboard.press("Enter");
-    await expect(button).toHaveCount(0);
-    const slot = cardSlot(page, name);
-    await expect(page.locator("#editor-right-column")).toBeVisible();
-    await expect.poll(() => focusWithin(slot)).toBe(true);
-    const close = slot.getByRole("button", { name: `Close ${name.toLowerCase()}`, exact: true });
+    const card = panelRegion(page, name);
+    await expect(card).toBeVisible();
+    await expect(card.getByRole("heading", { name, exact: true })).toBeFocused();
+    const close = card.getByRole("button", { name: `Close ${name.toLowerCase()}`, exact: true });
     await tabTo(page, close, { max: 3 });
     await expectFocusVisible(page, close);
     await page.keyboard.press("Enter");
-    await expect(slot).toHaveCount(0);
-    await expectFocusVisible(page, button);
+    await expect(card).toHaveCount(0);
+    await expectFocusVisible(page, panelButton(page, name));
   }
 
-  // As a drawer over the text (a narrower window), Escape inside it closes it and both buttons come back.
+  // As a drawer over the text (a narrower window), Escape closes it and focus returns to its button.
   await page.setViewportSize({ width: 1000, height: 800 });
-  const outline = fab(page, "Outline");
-  await tabTo(page, outline);
+  const outline = panelButton(page, "Outline");
+  await tabTo(page, outline, { back: true });
   await page.keyboard.press("Enter");
-  const column = page.locator("#editor-right-column");
-  await expect(column).toBeVisible();
-  await expect.poll(() => focusWithin(cardSlot(page, "Outline"))).toBe(true);
+  await expect(panelRegion(page, "Outline").getByRole("heading", { name: "Outline", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(column).toBeHidden();
-  await expect(fab(page, "Outline")).toBeVisible();
-  await expect(fab(page, "Tools")).toBeVisible();
-  // Focus lands somewhere useful: back in the editor, or on the Outline button.
-  await expect.poll(async () => (await focusWithin(editorOf(page))) || (await focusWithin(fab(page, "Outline")))).toBe(true);
+  await expect(panelRegion(page, "Outline")).toHaveCount(0);
+  await expect(panelButton(page, "Outline")).toBeFocused();
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  // Sources lives in the header now; the modal opens on its Sources tab and Escape hands focus back.
-  const sources = page.locator("header").getByRole("button", { name: "Sources", exact: true });
-  await tabTo(page, sources, { back: true });
-  await expectFocusVisible(page, sources);
+  // The Sources pill opens the modal on its Sources tab, and Escape hands focus back.
+  await tabTo(page, sourcesButton(page), { back: true });
+  await expectFocusVisible(page, sourcesButton(page));
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("tab", { name: "Sources" })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  await expectFocusVisible(page, headerButton(page, "Sources"));
+  await expectFocusVisible(page, sourcesButton(page));
 });
 
 test("keyboard only: Alt+Enter in a cited sentence opens its source details; Escape closes them", async ({ page, request }) => {
@@ -120,30 +166,49 @@ test("keyboard only: Alt+Enter in a cited sentence opens its source details; Esc
   await expect(editorOf(page)).toBeFocused();
 });
 
-test("keyboard only: the Document Gallery hands focus back to whichever control opened it", async ({ page }) => {
+test("keyboard only: the Outline's “See all document types” opens the Doc Gallery, which traps focus and returns it", async ({ page }) => {
   await openNewDocument(page);
-  const gallery = page.getByRole("dialog", { name: "Document Gallery" });
-
-  // From the header button (its name gains ", suggestion ready" while the classifier has one).
-  const button = page.locator("header").getByRole("button", { name: /^Document Gallery/ });
-  await tabTo(page, button, { back: true });
-  await expectFocusVisible(page, button);
-  await page.keyboard.press("Enter");
-  await expect(gallery).toBeVisible();
-  await expect(headerButton(page, "Document Gallery")).toHaveAttribute("aria-expanded", "true");
-  await page.keyboard.press("Escape");
-  await expect(gallery).toBeHidden();
-  await expectFocusVisible(page, headerButton(page, "Document Gallery"));
-
-  // From the Outline card's "Choose a type": that button is still on the page after Escape, so it gets focus back.
-  const outline = fab(page, "Outline");
+  const outline = panelButton(page, "Outline");
   await tabTo(page, outline);
   await page.keyboard.press("Enter");
-  const choose = cardSlot(page, "Outline").getByRole("button", { name: "Choose a type" });
-  await tabTo(page, choose, { max: 10 });
+  const seeAll = panelRegion(page, "Outline").getByRole("button", { name: "See all document types" });
+  await tabTo(page, seeAll, { max: 10 });
+  await expectFocusVisible(page, seeAll);
   await page.keyboard.press("Enter");
+  const gallery = page.getByRole("dialog", { name: "Doc Gallery" });
   await expect(gallery).toBeVisible();
+  await expect.poll(() => focusWithin(gallery)).toBe(true);
+  await expectFocusTrapped(page, gallery);
   await page.keyboard.press("Escape");
   await expect(gallery).toBeHidden();
-  await expect(choose).toBeFocused();
+  await expectFocusVisible(page, seeAll);
+});
+
+test("keyboard only: the overview's Doc Gallery traps focus and returns it", async ({ page }) => {
+  await openOverview(page);
+  const button = page.getByRole("button", { name: "Doc Gallery" });
+  await tabTo(page, button);
+  await page.keyboard.press("Enter");
+  const gallery = page.getByRole("dialog", { name: "Doc Gallery" });
+  await expect(gallery).toBeVisible();
+  await expectFocusTrapped(page, gallery);
+  await page.keyboard.press("Escape");
+  await expect(gallery).toBeHidden();
+  await expectFocusVisible(page, button);
+});
+
+test("keyboard only: the note dialog traps focus and returns it to its card", async ({ page, request }) => {
+  const title = uid("Keyboard note");
+  await createNote(request, `${title}\nA body to tab past.`);
+  await openOverview(page, "/?tab=notes");
+  const card = page.getByRole("tabpanel", { name: "Notes" }).getByRole("button", { name: title });
+  await tabTo(page, card, { max: 200 });
+  await expectFocusVisible(page, card);
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Note" });
+  await expect(dialog).toBeVisible();
+  await expectFocusTrapped(page, dialog, 15);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expectFocusVisible(page, card);
 });

@@ -7,9 +7,13 @@
 // came back after its section changed holds Claude's result in its actions),
 // so nothing replaces it: sticky notices stack above the passing one until each
 // is acted on or dismissed.
+//
+// They sit at the bottom centre of the space right of Sasha (DOG_WIDTH), and on
+// phones above the editor's row of panel buttons (right-column.tsx).
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { X } from "@/components/icons";
+import { DOG_WIDTH } from "@/components/shell/dog";
 
 export type NoticeAction = { label: string; run: () => void };
 
@@ -68,7 +72,10 @@ export function NoticeStack({ notices, onDismiss }: { notices: NoticeState; onDi
   const shown = [...notices.decisions, ...(notices.passing ? [notices.passing] : [])];
   if (!shown.length) return null;
   return (
-    <div className="fixed bottom-[calc(1.5rem+var(--fab-clearance,0px)+env(safe-area-inset-bottom,0px))] left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
+    <div
+      style={{ "--dog-w": `${DOG_WIDTH}px` } as CSSProperties}
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-50 flex flex-col items-center gap-2 px-4 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:left-[var(--dog-w)] [&>*]:pointer-events-auto"
+    >
       {shown.map((n) => (
         <NoticeToast key={n.id} notice={n} onDismiss={() => onDismiss(n.id)} />
       ))}
