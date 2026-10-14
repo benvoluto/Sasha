@@ -41,9 +41,10 @@ export type EmptyHelperProps = {
 /** The character count appears past this many characters. */
 const COUNT_FROM = 1500;
 
-// Inline-block, not flex, so each link sits on the sentence's baseline.
+// Inline-block, not flex, so each link sits on the sentence's baseline; nowrap
+// keeps a link and its icon together when the sentence wraps.
 const LINK =
-  "inline-block rounded py-0 font-semibold text-[var(--helper-link)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--helper-link)]";
+  "inline-block whitespace-nowrap rounded font-semibold text-[var(--helper-link)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--helper-link)]";
 const CARD = "rounded-2xl border border-[var(--doc-line)] bg-[var(--editor-bg)] p-3 text-[15px] text-[var(--doc-ink)] shadow-lg outline-none";
 const PRIMARY =
   "inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--action)] px-3.5 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] disabled:opacity-60 sm:min-h-9 dark:text-[var(--editor-bg)]";
@@ -347,7 +348,7 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
     );
   } else {
     body = (
-      <p className="text-[15px] leading-snug text-[var(--helper-ink)] sm:text-[19px]">
+      <p className="text-[15px] leading-relaxed text-[var(--helper-ink)] sm:text-[19px]">
         Start writing,{" "}
         <button type="button" onClick={onUploadSources} className={LINK}>
           <UploadFileIcon className="mr-1 inline-block h-[1.1em] w-[1.1em] align-[-0.2em]" aria-hidden="true" />
@@ -358,8 +359,8 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
           document type
           <CaretUpDown className="ml-1 inline-block h-[1em] w-[1em] align-[-0.15em]" aria-hidden="true" />
         </button>{" "}
-        {/* The mockup's line break; on phones the text wraps where it must. */}
-        <br className="hidden sm:inline" />
+        {/* The mockup's line break, where the first line fits; narrower, the text wraps where it must. */}
+        <br className="hidden md:inline" />
         or just{" "}
         <button ref={tellMeRef} type="button" onClick={() => setFormOpen(true)} className={LINK}>
           tell me
@@ -369,9 +370,12 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
     );
   }
 
-  // Fixed at the bottom left just past Sasha (DOG_WIDTH), at most 28rem wide
-  // and never past the window's right edge. On phones it sits above the row of
-  // panel buttons instead (Sasha is smaller there and the row fills the bottom
+  // Fixed at the bottom left just past Sasha (DOG_WIDTH), inside the editor
+  // card: the card stops 24px above the window's bottom from sm and 40px from
+  // lg (editor-frame.tsx), so the helper sits 1.25rem above that. At most 42rem
+  // wide (the mockup's first line fits from md) and never past the card's right
+  // edge. On phones the card fills the screen and the helper sits above the row
+  // of panel buttons (Sasha is smaller there and the row fills the bottom
   // right). It is under the drawer and sheet, and only its content takes
   // pointer events, so the text beside it stays clickable.
   return (
@@ -379,7 +383,7 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
       ref={sectionRef}
       aria-label="Getting started"
       style={style}
-      className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-4 z-[17] flex flex-col items-start sm:bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:left-[var(--dog-w)] [&>*]:pointer-events-auto [&>*]:max-w-[calc(100vw-2rem)] sm:[&>*]:max-w-[min(28rem,calc(100vw-var(--dog-w)-16px))]"
+      className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-4 z-[17] flex flex-col items-start sm:bottom-[calc(2.75rem+env(safe-area-inset-bottom,0px))] sm:left-[var(--dog-w)] lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] [&>*]:pointer-events-auto [&>*]:max-w-[calc(100vw-2rem)] sm:[&>*]:max-w-[min(42rem,calc(100vw-var(--dog-w)-3rem))] lg:[&>*]:max-w-[min(42rem,calc(100vw-var(--dog-w)-5rem))]"
     >
       {body}
     </section>
