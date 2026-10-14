@@ -43,7 +43,7 @@ const COUNT_FROM = 1500;
 
 // Inline-block, not flex, so each link sits on the sentence's baseline.
 const LINK =
-  "inline-block rounded py-1 font-semibold text-[var(--helper-link)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--helper-link)]";
+  "inline-block rounded py-0 font-semibold text-[var(--helper-link)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--helper-link)]";
 const CARD = "rounded-2xl border border-[var(--doc-line)] bg-[var(--editor-bg)] p-3 text-[15px] text-[var(--doc-ink)] shadow-lg outline-none";
 const PRIMARY =
   "inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--action)] px-3.5 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] disabled:opacity-60 sm:min-h-9 dark:text-[var(--editor-bg)]";
@@ -379,7 +379,7 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
       ref={sectionRef}
       aria-label="Getting started"
       style={style}
-      className="pointer-events-none fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-4 z-[17] flex flex-col items-start sm:bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:left-[var(--dog-w)] [&>*]:pointer-events-auto [&>*]:max-w-[calc(100vw-2rem)] sm:[&>*]:max-w-[min(28rem,calc(100vw-var(--dog-w)-16px))]"
+      className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-4 z-[17] flex flex-col items-start sm:bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:left-[var(--dog-w)] [&>*]:pointer-events-auto [&>*]:max-w-[calc(100vw-2rem)] sm:[&>*]:max-w-[min(28rem,calc(100vw-var(--dog-w)-16px))]"
     >
       {body}
     </section>
