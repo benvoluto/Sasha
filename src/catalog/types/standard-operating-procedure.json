@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Standard Operating Procedure (SOP)",
   "family": "technical",
+  "icon": "clipboard-list",
+  "color": "brown",
   "summary": "A controlled document that tells trained staff exactly how to carry out a routine technical or laboratory operation the same way every time, following the EPA QA/G-6 technical SOP structure. It sets out scope, method summary, safety and cautions, personnel, equipment, numbered procedure steps, records, and quality control so results are consistent, defensible and auditable.",
   "signals": [
     "standard operating procedure",

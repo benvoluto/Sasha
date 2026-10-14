@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Foundation Letter of Inquiry",
   "family": "grant",
+  "icon": "hand-coins",
+  "color": "green",
   "summary": "A short letter of inquiry (LOI), or the general proposal that follows it, asking a private or community foundation to consider funding a project. It states the ask up front, the need, the project, the expected outcomes, the timeline and why the organization is the right one, matched to the funder's published priorities and eligibility rules.",
   "signals": [
     "letter of inquiry",

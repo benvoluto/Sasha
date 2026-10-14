@@ -4,6 +4,8 @@
     "version": 1,
     "title": "Business Plan",
     "family": "business",
+    "icon": "chart-line",
+    "color": "green",
     "summary": "A traditional business plan that describes a company, its market, its products or services, how it will sell them, who runs it and how it will be financed, ending in financial projections. It follows the U.S. Small Business Administration's traditional plan structure and is written for lenders, investors, partners and the owners themselves.",
     "signals": [
       "business plan",
@@ -398,6 +400,8 @@
     "version": 1,
     "title": "Cover Letter",
     "family": "career",
+    "icon": "mail",
+    "color": "blue",
     "summary": "A one-page letter that accompanies a resume for one specific job. It says which role the candidate is applying for, answers two to four of the employer's top requirements with specific examples from the candidate's history, gives a real reason for wanting this employer, and closes with a request to talk.",
     "signals": [
       "cover letter",
@@ -620,6 +624,8 @@
     "version": 2,
     "title": "Design Doc / RFC",
     "family": "technical",
+    "icon": "file-code",
+    "color": "teal",
     "summary": "A technical design document or request for comments (RFC) that proposes how to build or change a software system, before the work starts. It states the problem and goals, describes the proposed design in enough detail for peers to review, compares the alternatives, and covers security, rollout, testing and open risks so reviewers can approve, push back or decide.",
     "signals": [
       "design doc",
@@ -1012,6 +1018,8 @@
     "version": 1,
     "title": "Explanation (Diátaxis)",
     "family": "technical",
+    "icon": "lightbulb",
+    "color": "amber",
     "summary": "A discursive piece that deepens understanding of a topic: why something is the way it is, its context and history, the design decisions and trade-offs behind it, the alternatives considered, and how it connects to related ideas. Read away from the keyboard rather than while doing a task; it contains no step-by-step instructions or reference tables. Follows the explanation form of the Diátaxis documentation framework.",
     "signals": [
       "About …",
@@ -1271,6 +1279,8 @@
     "version": 1,
     "title": "How-to guide (Diátaxis)",
     "family": "technical",
+    "icon": "wrench",
+    "color": "teal",
     "summary": "A goal-oriented guide that walks an already-competent reader through the steps needed to get a specific real-world task done, such as configuring, deploying or troubleshooting something. It contains actions, not lessons: explanation and full reference detail are linked rather than included. Follows the how-to guide form of the Diátaxis documentation framework.",
     "signals": [
       "How to …",
@@ -1530,6 +1540,8 @@
     "version": 1,
     "title": "Reference (Diátaxis)",
     "family": "technical",
+    "icon": "book-marked",
+    "color": "slate",
     "summary": "Technical reference that describes a product's machinery (API endpoints, commands, options, configuration keys, schemas) for a reader who looks things up while working. Each entry follows the same pattern: name, syntax, parameters with types and defaults, return values, errors. It describes and does not instruct or explain. Follows the reference form of the Diátaxis documentation framework.",
     "signals": [
       "API reference",
@@ -1769,6 +1781,8 @@
     "version": 1,
     "title": "Tutorial (Diátaxis)",
     "family": "technical",
+    "icon": "graduation-cap",
+    "color": "violet",
     "summary": "A learning-oriented lesson in which a beginner, guided step by step, builds or does something concrete and gains skill and confidence through the doing rather than through explanation. Every step produces a visible result, the route is fixed and known to work, and explanation is kept to a minimum with links for later. Follows the tutorial form of the Diátaxis documentation framework.",
     "signals": [
       "tutorial",
@@ -2033,6 +2047,8 @@
     "version": 1,
     "title": "Functional Behavior Assessment and Behavior Intervention Plan",
     "family": "clinical",
+    "icon": "heart",
+    "color": "rose",
     "summary": "A functional behavior assessment and the behavior intervention plan built on it, for a school team: the target behavior defined in observable terms, indirect and direct data such as antecedent-behavior-consequence records, a hypothesized function supported by that data, and interventions matched to the function (antecedent strategies, a replacement behavior, responses), with a baseline and a progress-monitoring plan. Drafted for the team, including the parent.",
     "signals": [
       "functional behavior assessment",
@@ -2336,6 +2352,8 @@
     "version": 2,
     "title": "Full and Individual Evaluation",
     "family": "clinical",
+    "icon": "brain",
+    "color": "magenta",
     "summary": "A school psychoeducational evaluation report for a multidisciplinary team: background, reason for referral, the assessments given, and results across every area related to the suspected disability, with the exclusionary factors and the evidence the team weighs when it decides eligibility, without stating that decision. Initial or re-evaluation under IDEA.",
     "signals": [
       "Full and Individual Evaluation",
@@ -2869,6 +2887,8 @@
     "version": 1,
     "title": "Foundation Letter of Inquiry",
     "family": "grant",
+    "icon": "hand-coins",
+    "color": "green",
     "summary": "A short letter of inquiry (LOI), or the general proposal that follows it, asking a private or community foundation to consider funding a project. It states the ask up front, the need, the project, the expected outcomes, the timeline and why the organization is the right one, matched to the funder's published priorities and eligibility rules.",
     "signals": [
       "letter of inquiry",
@@ -3176,6 +3196,8 @@
     "version": 1,
     "title": "Funder Progress Report",
     "family": "grant",
+    "icon": "trending-up",
+    "color": "green",
     "summary": "An annual, interim or final progress report to a funder on an awarded grant: accomplishments compared with the award's objectives, products, participants, impact, and changes or problems with their reasons and plans. Federal awards follow 2 CFR 200.329 and the agency's form, such as the NIH or NSF RPPR; foundations set their own formats.",
     "signals": [
       "progress report",
@@ -3478,6 +3500,8 @@
     "version": 1,
     "title": "General report",
     "family": "general",
+    "icon": "file-text",
+    "color": "slate",
     "summary": "A clear, well-organized report for a general professional audience that states its purpose, gives the background, presents findings from the sources, interprets them and recommends next steps. Use it when no more specific document type fits.",
     "signals": [
       "report",
@@ -3629,6 +3653,8 @@
     "version": 1,
     "title": "Individualized Education Program (IEP) draft",
     "family": "clinical",
+    "icon": "backpack",
+    "color": "orange",
     "summary": "A draft individualized education program prepared for the IEP team meeting: present levels of performance, measurable annual goals with baselines, how progress is measured and reported, services with start date, frequency, location and duration, participation with peers, assessment accommodations and, where due, transition planning. The team, including the parent, adopts or changes it.",
     "signals": [
       "Individualized Education Program",
@@ -4005,6 +4031,8 @@
     "version": 1,
     "title": "Incident Postmortem",
     "family": "technical",
+    "icon": "siren",
+    "color": "rose",
     "summary": "A blameless review written after a service incident: what happened and its impact, a sourced timeline with detection, mitigation and resolution times, the contributing causes in the system and process, how detection and response went, and action items each with an owner, a due date and the cause it addresses. Written to learn and prevent recurrence, not to assign blame.",
     "signals": [
       "postmortem",
@@ -4329,6 +4357,8 @@
     "version": 1,
     "title": "Literature Review",
     "family": "academic",
+    "icon": "library",
+    "color": "brown",
     "summary": "A review that synthesizes published research on a stated question: narrative, scoping or systematic. It defines the question and scope, explains how sources were found and chosen, organizes the evidence by theme or argument, names agreements, contradictions and gaps, and draws conclusions the cited sources support. Systematic reviews also report search, screening and appraisal (PRISMA 2020).",
     "signals": [
       "literature review",
@@ -4580,6 +4610,8 @@
     "version": 1,
     "title": "NIH Specific Aims and Research Strategy",
     "family": "grant",
+    "icon": "microscope",
+    "color": "cyan",
     "summary": "The scientific core of an NIH research grant application (R01, R21 and similar): a one-page Specific Aims page followed by a Research Strategy with Significance, Innovation and Approach sub-sections, plus a Progress Report for renewals. It argues that a stated problem matters, that the proposed work is new, and that the aims, whether hypothesis-testing or objective-driven, can be achieved rigorously by this team in the time requested.",
     "signals": [
       "Specific Aims",
@@ -4906,6 +4938,8 @@
     "version": 1,
     "title": "NSF Project Description, Broader Impacts and Data Management and Sharing Plan",
     "family": "grant",
+    "icon": "atom",
+    "color": "cyan",
     "summary": "The core of a U.S. National Science Foundation proposal: a Project Description of 15 pages or fewer with objectives, relation to current knowledge, the plan of work, a separate Broader Impacts section and, when required, Results from Prior NSF Support, plus the Data Management and Sharing Plan (DMSP) built in Research.gov. Reviewers judge it on Intellectual Merit and Broader Impacts.",
     "signals": [
       "Project Description",
@@ -5248,6 +5282,8 @@
     "version": 1,
     "title": "Policy decision memo",
     "family": "policy",
+    "icon": "scale",
+    "color": "slate",
     "summary": "A short internal memo that asks a senior decision-maker to make one specific decision, or to approve a recommendation. It puts the decision and the recommendation first, then gives the background, the problem, two to four options with their trade-offs, and the next steps. It is written in plain language so a busy reader can act on the first paragraph alone.",
     "signals": [
       "decision memo",
@@ -5597,6 +5633,8 @@
     "version": 1,
     "title": "Product Requirements Document (PRD)",
     "family": "business",
+    "icon": "list-checks",
+    "color": "blue",
     "summary": "A product requirements document defines a problem worth solving, who has it, and what a product or feature must do to solve it, before design and engineering commit to a solution. It sets goals and non-goals, prioritised functional and non-functional requirements, success metrics and a release scope, so product, design, engineering and stakeholders can agree on what will be built and how success will be judged.",
     "signals": [
       "PRD",
@@ -5994,6 +6032,8 @@
     "version": 1,
     "title": "Proposal",
     "family": "business",
+    "icon": "flask-conical",
+    "color": "cyan",
     "summary": "A proposal asks a decision-maker or funder to approve a piece of work: it summarizes the request, explains why it is needed, sets objectives, and describes the approach, timeline, budget and how success will be judged. Use it for internal project proposals, partnership pitches and small funding requests that do not follow a funder's own template.",
     "signals": [
       "proposal",
@@ -6223,6 +6263,8 @@
     "version": 1,
     "title": "Review of Existing Evaluation Data (Reevaluation)",
     "family": "clinical",
+    "icon": "refresh-cw",
+    "color": "violet",
     "summary": "A review of existing evaluation data (REED) for a student with a disability who is due for or has requested a reevaluation. It summarizes the existing data, sets it against the questions the team must answer about continued eligibility, present levels, continued need and changes to services, and proposes whether additional assessment is needed and in which areas, for the team, including the parent, to decide.",
     "signals": [
       "Review of Existing Evaluation Data",
@@ -6521,6 +6563,8 @@
     "version": 1,
     "title": "Research Report (IMRaD)",
     "family": "academic",
+    "icon": "chart-scatter",
+    "color": "teal",
     "summary": "An empirical research report in the Introduction, Methods, Results and Discussion (IMRaD) structure used by journal articles, theses chapters, lab reports and technical study reports. It states a question or hypothesis, describes how data were collected and analysed in enough detail to replicate, reports findings without interpretation, and then interprets them against prior work and their limitations.",
     "signals": [
       "IMRaD",
@@ -6848,6 +6892,8 @@
     "version": 1,
     "title": "Response to Reviewers",
     "family": "academic",
+    "icon": "messages-square",
+    "color": "blue",
     "summary": "A point-by-point response to peer review of a manuscript, or the Introduction to a resubmitted grant application. It summarizes the main changes, then answers every reviewer and editor comment with the change made and where, or a reasoned, evidence-based rebuttal.",
     "signals": [
       "response to reviewers",
@@ -7119,6 +7165,8 @@
     "version": 1,
     "title": "Resume or CV",
     "family": "career",
+    "icon": "id-card",
+    "color": "orange",
     "summary": "A resume tailored to one job, or an academic curriculum vitae: contact details, a short profile, experience with measurable results, education, skills and, for a CV, publications, grants and teaching. Every fact comes from the candidate's master resume or work history.",
     "signals": [
       "resume",
@@ -7397,6 +7445,8 @@
     "version": 1,
     "title": "Standard Operating Procedure (SOP)",
     "family": "technical",
+    "icon": "clipboard-list",
+    "color": "brown",
     "summary": "A controlled document that tells trained staff exactly how to carry out a routine technical or laboratory operation the same way every time, following the EPA QA/G-6 technical SOP structure. It sets out scope, method summary, safety and cautions, personnel, equipment, numbered procedure steps, records, and quality control so results are consistent, defensible and auditable.",
     "signals": [
       "standard operating procedure",
@@ -7854,6 +7904,8 @@
     "version": 1,
     "title": "Strategy Memo",
     "family": "business",
+    "icon": "compass",
+    "color": "violet",
     "summary": "A memo that proposes or reviews a strategy for a business, unit or program. It diagnoses the critical challenge from evidence, sets a guiding policy that says what the organization will and will not do, and lays out coordinated actions with owners, resources and timing, with alternatives weighed and the strongest objections answered.",
     "signals": [
       "strategy memo",

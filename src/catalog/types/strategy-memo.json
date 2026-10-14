@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Strategy Memo",
   "family": "business",
+  "icon": "compass",
+  "color": "violet",
   "summary": "A memo that proposes or reviews a strategy for a business, unit or program. It diagnoses the critical challenge from evidence, sets a guiding policy that says what the organization will and will not do, and lays out coordinated actions with owners, resources and timing, with alternatives weighed and the strongest objections answered.",
   "signals": [
     "strategy memo",

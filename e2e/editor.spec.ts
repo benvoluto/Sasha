@@ -8,8 +8,8 @@ test("a new document saves its title and body, survives a reload, and undoes typ
   const editor = editorOf(page);
   await editor.click();
   await page.keyboard.type("The first paragraph of the smoke test.");
-  await expect(saveStatus(page)).toHaveText("Saved");
-  // The first save gives the document an address.
+  await expect(saveStatus(page)).toContainText("Saved");
+  // The first save swaps /new for the document's address.
   await expect(page).toHaveURL(/\/d\/[0-9a-f-]{36}$/);
 
   await page.reload();
@@ -29,7 +29,7 @@ test("a new document saves its title and body, survives a reload, and undoes typ
   await page.keyboard.press("ControlOrMeta+z");
   await expect(editorOf(page)).not.toContainText("Added later.");
   await expect(editorOf(page)).toContainText("The first paragraph of the smoke test.");
-  await expect(saveStatus(page)).toHaveText("Saved");
+  await expect(saveStatus(page)).toContainText("Saved");
 });
 
 test("on a phone the section actions button is a 44px touch target and the heading line keeps its height", async ({ page }) => {

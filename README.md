@@ -1,7 +1,7 @@
 # Sasha
 
-A general document-authoring app. It opens to a blank document, keeps a
-switchable list of documents, treats uploads as a shared **source library**,
+A general document-authoring app. It opens to an overview of documents,
+folders and notes, treats uploads as a shared **source library**,
 extracts tabular **data**, and uses a catalog of **document types** (outlines
 and rubrics) to scaffold, classify, check and restructure writing.
 
@@ -23,7 +23,9 @@ type); and Phase 7: verified citations, the rubric check and Markdown, Word and
 PDF export; and Phase 8: 26 document types with workflows and dated requirement
 sets, learning a type and workflow from examples, and a ClawHub draft importer;
 and Phase 9: per-user rate limits on model routes, a usage and cost page,
-Playwright smoke tests and accessibility checks. All planned phases are built.
+Playwright smoke tests and accessibility checks. All planned phases are built,
+followed by the resume tailor step and the redesign 3 layout (documents and
+notes overview, Activity, the editor's Sources/Agents/Outline stack).
 Per-type workflow specs are in
 `docs/workflows-by-document-type.md`. See
 `docs/PLAN.md` §12.

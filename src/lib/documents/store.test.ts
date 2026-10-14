@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDocFolder } from "./folder-store";
-import { bulkDocuments, createDocument, deleteDocument, getDocument, listDocuments, listVersions, resetMemoryStore, snapshotVersion, updateDocument } from "./store";
+import { bulkDocuments, createDocument, deleteDocument, DOCUMENT_NOTES_PREVIEW, getDocument, listDocumentNotes, listDocuments, listVersions, resetMemoryStore, snapshotVersion, updateDocument } from "./store";
 
 const body = (text: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
@@ -122,5 +122,23 @@ describe("document store (in memory)", () => {
     expect(await bulkDocuments("t", "bob", { action: "delete", ids: [a.id, other.id] })).toEqual({ done: [a.id], missing: [other.id] });
     expect(await getDocument("t", a.id)).toBeNull();
     expect(await getDocument("u", other.id)).not.toBeNull();
+  });
+
+  it("lists non-archived documents with notes, newest first, matching notes or title", async () => {
+    const a = await createDocument("t", "ann", { title: "Grant", notes: "Budget 50% of costs" });
+    await createDocument("t", "ann", { title: "Blank notes", notes: "  \n " });
+    const archived = await createDocument("t", "ann", { title: "Old", notes: "kept" });
+    await updateDocument("t", archived.id, "ann", { archived: true });
+    await createDocument("u", "zed", { title: "Theirs", notes: "Budget" });
+    const b = await createDocument("t", "ann", { title: "Long", notes: "x".repeat(DOCUMENT_NOTES_PREVIEW + 50) });
+
+    const all = await listDocumentNotes("t");
+    expect(all.map((d) => d.id)).toEqual([b.id, a.id]);
+    expect(all[0].notes).toHaveLength(DOCUMENT_NOTES_PREVIEW);
+    expect(all[1]).toEqual({ id: a.id, title: "Grant", type_key: null, notes: "Budget 50% of costs", updated_at: a.updated_at });
+    expect((await listDocumentNotes("t", { query: "budget" })).map((d) => d.id)).toEqual([a.id]);
+    expect((await listDocumentNotes("t", { query: "LONG" })).map((d) => d.id)).toEqual([b.id]);
+    expect(await listDocumentNotes("t", { query: "nothing" })).toEqual([]);
+    expect(await listDocumentNotes("t", { limit: 1 })).toHaveLength(1);
   });
 });

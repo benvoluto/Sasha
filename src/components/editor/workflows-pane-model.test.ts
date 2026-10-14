@@ -31,6 +31,8 @@ import {
   runStatusText,
   scoreText,
   shouldAutoContinue,
+  runHomeHref,
+  runInteractive,
   autoContinueWait,
   signatureText,
   startBlocker,
@@ -596,5 +598,21 @@ describe("line-by-line changes (resume Tailor step)", () => {
 
   it("lists line headings among a change's headings", () => {
     expect(changeHeadings(change)).toEqual(["Experience"]);
+  });
+});
+
+describe("runInteractive", () => {
+  const run = { id: "run-1", status: "awaiting_review" as const, document_id: "doc-a" };
+  it("acts on the document's own live run", () => {
+    expect(runInteractive(run, "doc-a", false)).toBe(true);
+  });
+  it("is read-only from history, when superseded, and in another document", () => {
+    expect(runInteractive(run, "doc-a", true)).toBe(false);
+    expect(runInteractive({ ...run, status: "superseded" }, "doc-a", false)).toBe(false);
+    expect(runInteractive(run, "doc-b", false)).toBe(false);
+    expect(runInteractive(run, null, false)).toBe(false);
+  });
+  it("links to the run in its own document", () => {
+    expect(runHomeHref(run)).toBe("/d/doc-a?run=run-1");
   });
 });

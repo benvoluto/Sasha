@@ -988,6 +988,38 @@ The rail and the formatting toolbar are unchanged.
   its done state, in light and dark. The stubs answer `classify.prompt` with General report at 0.9 and
   give `rewrite.selection` and `rewrite.section` their own sentences, so a spec can tell them apart.
 
+**2026-10-12: redesign 3 (user mockups `docs/documents.png`, `docs/editor.png`).** Supersedes the
+rail, the documents panel and redesign 2's header.
+- `/` is the documents overview (`src/components/overview/`); `/new` makes a blank document and the
+  editor's back button returns to `/`. Header: search, the Documents/Notes tabs, Doc Gallery, Select,
+  New, Activity and the user menu (Usage, Document types, team switch, sign out). There is no rail:
+  the library opens from the Sources modal ("Open the full library"), the workflows page from the
+  Agents card's "See all", `/catalog` from the gallery footer and the user menu.
+- Cards: every catalog type has an `icon` and `color` (schema fields, all 26 types; `type-icon.tsx`),
+  a dashed page when untyped; the subtitle is `lead`, the first text block outside the headings
+  (`card-text.ts` leadText, mirrored in SQL in `listDocuments`), else the excerpt's first line.
+  Folder tiles sit below the cards; a folder's documents leave the main grid and the folder opens in
+  place. Select gives checkboxes and a bar (Move to folder, Archive, Delete).
+- Notes tab: standalone notes (`note` table, `src/lib/notes`, `/api/notes`, dictation) plus every
+  document's notes. "Start a document" moves a note into a new document's notes (claimed atomically,
+  so a double click makes one document).
+- Doc Gallery from the overview creates a document of the chosen type with its outline, in the open
+  folder. Activity (`/activity`, `GET /api/activity`): workflow runs ("Needs you" for runs waiting on
+  review) and recently created or edited documents.
+- Editor: a white card with back, the type icon and title, and Share & Export; the toolbar gains a
+  paragraph-style picker and "Saved N min ago" (`save-status*`); section dividers add and delete
+  sections (undoable). The right column is a stack of Sources, Agents and Outline: each closed panel
+  is its button in place, and both start closed. Sources stays in view while the cards scroll.
+  Agents (formerly Tools): rewrite chips, Run workflow (the type's and the general workflows, with
+  progress) and See all, Draft/Check/Section notes, and the custom request bar at the bottom. Outline:
+  the type dropdown (a change asks Apply outline / Restructure / Just set type), See all opens the
+  gallery, the classifier's suggestion shows as a hint, then the section rows.
+- The empty-state helper stays; its "document type" link opens Outline on the type dropdown.
+- Decision: "Activity" was left open by the user; it is the runs and documents feed above.
+- e2e: `overview.spec.ts`, `notes.spec.ts`, `redesign3.spec.ts` replace `redesign.spec.ts`; axe
+  covers the overview states, Activity, the user menu, the gallery and the editor stack, light and
+  dark.
+
 ---
 
 ## Sources

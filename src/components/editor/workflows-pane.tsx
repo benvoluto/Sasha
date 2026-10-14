@@ -66,6 +66,8 @@ import {
   pendingChanges,
   pollDelay,
   requirementLabel,
+  runHomeHref,
+  runInteractive,
   runPlan,
   runStatusText,
   scoreText,
@@ -470,6 +472,7 @@ function RunHistory({ runs, onOpen }: { runs: RunBrief[]; onOpen: (r: RunBrief) 
 // --- A run ------------------------------------------------------------------------------
 
 function RunView({
+  documentId,
   runId,
   readOnly,
   onBack,
@@ -577,7 +580,7 @@ function RunView({
   // (autoContinue), which re-arms this; a 429 holds off until Retry-After.
   useEffect(() => {
     if (!run) return;
-    if (!readOnly && shouldAutoContinue(run, autoContinued.get(run.id) ?? 0)) {
+    if (runInteractive(run, documentId, readOnly) && shouldAutoContinue(run, autoContinued.get(run.id) ?? 0)) {
       const hold = autoHoldUntil - Date.now();
       if (hold > 0) {
         const t = window.setTimeout(() => setAutoHoldUntil(0), hold);
@@ -590,7 +593,7 @@ function RunView({
     if (delay === null) return;
     const t = window.setTimeout(() => void fetchRun(), delay);
     return () => window.clearTimeout(t);
-  }, [run, failures, readOnly, autoHoldUntil, fetchRun, autoContinue]);
+  }, [run, failures, readOnly, documentId, autoHoldUntil, fetchRun, autoContinue]);
 
   const post = async <T,>(path: string, json: T, fallback: string): Promise<string | null> => {
     try {
@@ -624,7 +627,9 @@ function RunView({
     );
   }
 
-  const interactive = !readOnly && run.status !== "superseded";
+  const interactive = runInteractive(run, documentId, readOnly);
+  // Opened from a ?run= link that names another document's run: shown, never acted on here.
+  const elsewhere = run.document_id !== documentId;
   const steps = stepRows(run);
   const waiting = waitingCheckpoints(run);
   const decided = Object.keys(run.checkpoints ?? {}).filter((id) => !waiting.some((w) => w.id === id));
@@ -641,7 +646,7 @@ function RunView({
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="min-w-0 break-words text-base font-semibold">{run.workflow_name}</h3>
           <StatusChip status={run.status} />
-          {readOnly && <span className={`${chip} ${TONE.quiet}`}>Read only</span>}
+          {(readOnly || elsewhere) && <span className={`${chip} ${TONE.quiet}`}>Read only</span>}
         </div>
         <p className="text-xs text-[var(--doc-muted)]">
           Started by {run.requested_by}, {formatWhen(run.created_at)}
@@ -652,6 +657,16 @@ function RunView({
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {error}
+        </p>
+      )}
+
+      {elsewhere && (
+        <p className="rounded-xl bg-[var(--doc-accent-soft)] px-3 py-2 text-sm">
+          This run belongs to another document, so it can&apos;t change this one.{" "}
+          {/* A full load, so that document's editor opens with the run (the deep link is read as it mounts). */}
+          <a href={runHomeHref(run)} className="font-medium underline underline-offset-2">
+            Open it in its document
+          </a>
         </p>
       )}
 

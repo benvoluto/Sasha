@@ -3,6 +3,8 @@
   "version": 2,
   "title": "Full and Individual Evaluation",
   "family": "clinical",
+  "icon": "brain",
+  "color": "magenta",
   "summary": "A school psychoeducational evaluation report for a multidisciplinary team: background, reason for referral, the assessments given, and results across every area related to the suspected disability, with the exclusionary factors and the evidence the team weighs when it decides eligibility, without stating that decision. Initial or re-evaluation under IDEA.",
   "signals": [
     "Full and Individual Evaluation",

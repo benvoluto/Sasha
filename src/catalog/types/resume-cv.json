@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Resume or CV",
   "family": "career",
+  "icon": "id-card",
+  "color": "orange",
   "summary": "A resume tailored to one job, or an academic curriculum vitae: contact details, a short profile, experience with measurable results, education, skills and, for a CV, publications, grants and teaching. Every fact comes from the candidate's master resume or work history.",
   "signals": [
     "resume",

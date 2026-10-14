@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Research Report (IMRaD)",
   "family": "academic",
+  "icon": "chart-scatter",
+  "color": "teal",
   "summary": "An empirical research report in the Introduction, Methods, Results and Discussion (IMRaD) structure used by journal articles, theses chapters, lab reports and technical study reports. It states a question or hypothesis, describes how data were collected and analysed in enough detail to replicate, reports findings without interpretation, and then interprets them against prior work and their limitations.",
   "signals": [
     "IMRaD",

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Schema } from "@tiptap/pm/model";
 import type { SectionSummary } from "@/catalog/schema";
 import type { OutlineStatusResponse } from "@/lib/sections/contract";
-import { buildOutline, missingSectionInsertPos, readHeadings, rowDisplayStatus, type LiveHeading } from "./outline-model";
+import { buildOutline, missingSectionInsertPos, readHeadings, rowDisplayStatus, suggestionUseAction, typeChangeAction, type LiveHeading } from "./outline-model";
 
 const schema = new Schema({
   nodes: {
@@ -145,5 +145,35 @@ describe("rowDisplayStatus", () => {
   it("passes done and missing through", () => {
     expect(rowDisplayStatus({ status: "done", elements: [] })).toBe("done");
     expect(rowDisplayStatus({ status: "missing", elements: [el("missing")] })).toBe("missing");
+  });
+});
+
+describe("typeChangeAction", () => {
+  const base = { currentKey: "proposal", editorEmpty: false, locked: false };
+
+  it("does nothing when the current type is chosen again", () => {
+    expect(typeChangeAction({ ...base, value: "proposal" })).toBe("none");
+    expect(typeChangeAction({ ...base, currentKey: null, value: "" })).toBe("none");
+  });
+
+  it("says why not while tell me is locked", () => {
+    expect(typeChangeAction({ ...base, value: "iep", locked: true })).toBe("locked");
+    expect(typeChangeAction({ ...base, value: "", locked: true })).toBe("locked");
+  });
+
+  it("goes freeform on No type, applies at once in an empty editor, and asks otherwise", () => {
+    expect(typeChangeAction({ ...base, value: "" })).toBe("no_type");
+    expect(typeChangeAction({ ...base, value: "iep", editorEmpty: true })).toBe("apply");
+    expect(typeChangeAction({ ...base, value: "iep" })).toBe("prompt");
+    expect(typeChangeAction({ ...base, currentKey: null, value: "iep" })).toBe("prompt");
+  });
+});
+
+describe("suggestionUseAction", () => {
+  it("applies in an empty editor, restructures a typed document, and asks on an untyped one with text", () => {
+    expect(suggestionUseAction({ typeKey: null, editorEmpty: true, locked: false })).toBe("apply");
+    expect(suggestionUseAction({ typeKey: "proposal", editorEmpty: false, locked: false })).toBe("restructure");
+    expect(suggestionUseAction({ typeKey: null, editorEmpty: false, locked: false })).toBe("prompt");
+    expect(suggestionUseAction({ typeKey: null, editorEmpty: false, locked: true })).toBe("locked");
   });
 });

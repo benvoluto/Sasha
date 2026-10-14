@@ -1,28 +1,27 @@
 "use client";
 
-// The editing screen: the first thing a person sees, inside the app frame
-// (rail and documents panel, src/components/shell). A header with the title,
-// save status and three buttons (redesign2-spec.md §1): Sources opens the
-// document modal (Notes / Sources / Data / Suggestions / Workflows), Document
-// Gallery the type gallery with the classifier's suggestion, Share & Export the
-// sharing and download dialog. Then a sticky formatting toolbar; the document
-// on a plain white page; a right column of floating Tools and Outline cards
-// (right-column.tsx) opened from the floating buttons; the empty-state helper
+// The editing screen (redesign3-spec.md §10–15): a white card on the cream
+// page (EditorFrame) with Sasha beside it (the app shell's Dog). The header
+// has the back button, the type icon and title, and Share & Export; then a
+// sticky formatting toolbar ending in the save status; the document; and the
+// right column (right-column.tsx): the Sources pill, which opens the document
+// modal (Notes / Sources / Data / Suggestions / Workflows), then the Agents
+// and Outline cards, each a button until opened. The empty-state helper sits
 // beside Sasha. Each heading has a gutter button that opens the section's
 // actions (draft, rewrite, notes). Changes a workflow run proposes are applied
-// here, in the editor, as one undo step (apply-workflow-change.ts).
+// here, in the editor, as one undo step (apply-workflow-change.ts). The deep
+// links ?notes=1 and ?run=<id> open the modal on Notes or on that run.
 
 import { EditorContent, useEditor } from "@tiptap/react";
-import { useSetAtom } from "jotai";
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { GalleryIcon, HeaderSourcesIcon, Loader2, ShareExportIcon } from "@/components/icons";
-import { activeDocumentAtom } from "@/components/shell/active-document";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type RefObject } from "react";
+import { Loader2 } from "@/components/icons";
 import type { LinkedSource } from "@/components/sources/shared";
 import { outlineDoc } from "@/catalog/outline";
 import type { DocumentTypeSummary } from "@/catalog/schema";
 import type { TableSnapshot } from "@/lib/data/contract";
 import { tableSnapshotNodes } from "@/lib/data/snapshot";
+import { OPEN_NOTES_PARAM, OPEN_RUN_PARAM } from "@/lib/documents/card-text";
 import type { PMNode } from "@/lib/documents/sections";
 import type { SaveOutlineAsTypeResponse, SectionListResponse } from "@/lib/sections/contract";
 import type { ProposedChange } from "@/lib/workflow/contract";
@@ -34,130 +33,69 @@ import { CitationLayer } from "./citation-layer";
 import { suggestionAnnouncement } from "./classifier-chip";
 import { DocumentGalleryDialog } from "./document-gallery-dialog";
 import { DocumentModal } from "./document-modal";
-import type { DocumentModalTab } from "./document-modal-model";
+import { deepLinkOpen, type DocumentModalTab } from "./document-modal-model";
+import { EditorFrame } from "./editor-frame";
+import { EditorHeader } from "./editor-header";
 import { EditorToolbar } from "./editor-toolbar";
 import { documentExtensions, newSectionId, sectionIdsOnLoad } from "./extensions";
-import { FloatingActions } from "./floating-actions";
 import { NoticeStack, useNotices, type Notice } from "./notice";
-import { goToHeading, OutlinePanel } from "./outline-panel";
+import { goToHeading, OUTLINE_TYPE_SELECT_ID, OutlinePanel } from "./outline-panel";
 import { SectionMenu, type SectionMenuTarget } from "./section-menu";
 import { SectionNotesPanel, useCaretSectionId } from "./section-notes-panel";
 import { RightColumn } from "./right-column";
 import {
+  browserStorage,
   CLOSED_COLUMN,
-  closeLower,
-  closeOutline,
   columnCloseFocus,
-  isColumnOpen,
-  openCheck,
-  openNotes,
-  openOutline,
-  openTools,
-  OUTLINE_SLOT_ID,
+  columnReducer,
+  openFocusId,
+  overlaysText,
+  panelsOf,
+  readPanels,
   rightColumnMode,
-  TOOLS_SLOT_ID,
+  writePanels,
+  type ColumnAction,
   type ColumnSlot,
   type RightColumnMode,
-  type RightColumnState,
 } from "./right-column-model";
 import { EmptyHelper } from "./empty-helper";
+import { SaveStatus } from "./save-status";
 import { ToolsPanel } from "./side-panels";
 import { sectionBodyRange } from "./tracked-range";
 import { ShareExportDialog } from "./share-export-dialog";
 import { findType, SaveOutlineDialog, useDocumentTypes } from "./type-picker";
 import { useClassifier } from "./use-classifier";
-import { useDocument, type SaveStatus } from "./use-document";
+import { useDocument, type SaveStatus as SaveStatusValue } from "./use-document";
 import { useOutlineStatus } from "./use-outline-status";
 import { TELL_ME_CHOOSING_LOCK, TELL_ME_LOCK, useTellMe } from "./use-tell-me";
 import { busyAnnouncement, useSectionGeneration } from "./use-section-generation";
 import { linkedSourcesKey, useSuggestionsRefresh } from "./use-suggestions-refresh";
+import type { WorkflowsView } from "./workflows-pane";
 import { chipApplyAction, restructurePrefill, type WorkflowsPrefill } from "./workflows-pane-model";
-
-/**
- * One of the header's three green buttons: icon and label once the header is
- * wide enough for all three labels and a title (a container query on the
- * header, so an open documents panel counts too), else only the 44px icon (the
- * label stays its name).
- */
-function HeaderButton({
-  ref,
-  label,
-  icon: Icon,
-  expanded,
-  onClick,
-  dot = false,
-}: {
-  ref: RefObject<HTMLButtonElement | null>;
-  label: string;
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  /** Its dialog is open. */
-  expanded: boolean;
-  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  /** A suggestion is waiting (the Document Gallery's classifier suggestion). */
-  dot?: boolean;
-}) {
-  return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={onClick}
-      aria-haspopup="dialog"
-      aria-expanded={expanded}
-      // A hover name for when the header is too narrow for the labels.
-      title={label}
-      className="relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2.5 rounded-xl px-2 text-[18px] font-medium text-[var(--go)] hover:bg-[var(--go-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--go)] aria-expanded:bg-[var(--go-soft)] sm:min-h-9 sm:px-2.5"
-    >
-      <Icon className="h-7 w-7 shrink-0" aria-hidden />
-      <span className="sr-only @min-[60rem]:not-sr-only">{label}</span>
-      {dot && (
-        <>
-          <span aria-hidden className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--go)]" />
-          <span className="sr-only">, suggestion ready</span>
-        </>
-      )}
-    </button>
-  );
-}
-
-function StatusText({ status, error, isNew }: { status: SaveStatus; error: string | null; isNew: boolean }) {
-  const text =
-    status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status === "error" ? (error ?? "Not saved") : status === "conflict" ? "Not saved" : isNew ? "Not saved yet" : "";
-  return (
-    <span role="status" aria-live="polite" className={`text-xs ${status === "error" || status === "conflict" ? "text-[var(--alert-danger-ink)]" : "text-[var(--doc-muted)]"}`}>
-      {status === "saving" && <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />}
-      {text}
-    </span>
-  );
-}
 
 export function DocumentScreen({ documentId }: { documentId: string | null }) {
   const { doc, loading, notFound, status, error, conflict, change, flush, isSaved, resolveConflict } = useDocument(documentId);
   const catalog = useDocumentTypes();
 
-  // The app frame's documents panel shows which document is open, with its live title.
-  const setActiveDocument = useSetAtom(activeDocumentAtom);
-  const activeId = doc.id || null;
-  useEffect(() => {
-    setActiveDocument({ id: activeId, title: doc.title });
-  }, [setActiveDocument, activeId, doc.title]);
-  useEffect(() => () => setActiveDocument(null), [setActiveDocument]);
-
   if (notFound) {
     return (
-      <Shell>
-        <div className="mx-auto max-w-md py-24 text-center">
+      <EditorFrame>
+        <div className="mx-auto max-w-md px-4 py-24 text-center">
           <h1 className="text-2xl font-semibold">Document not found</h1>
           <p className="mt-2 text-[var(--doc-muted)]">It may have been deleted, or it belongs to a team you are not signed in to.</p>
-          <Link href="/" className="mt-6 inline-block rounded-full bg-[var(--doc-accent)] px-5 py-2 font-semibold text-[var(--doc-on-accent)]">
-            Start a new document
+          <Link
+            href="/"
+            className="mt-6 inline-flex min-h-11 items-center rounded-full bg-[var(--action)] px-5 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] sm:min-h-9 dark:text-[var(--editor-bg)]"
+          >
+            Back to documents
           </Link>
         </div>
-      </Shell>
+      </EditorFrame>
     );
   }
 
   return (
-    <Shell>
+    <EditorFrame>
       {loading || !(doc.content_json || !documentId) ? (
         <div className="flex items-center justify-center gap-2 py-32 text-[var(--doc-muted)]">
           <Loader2 className="h-5 w-5 animate-spin" /> Opening document…
@@ -177,24 +115,7 @@ export function DocumentScreen({ documentId }: { documentId: string | null }) {
           resolveConflict={resolveConflict}
         />
       )}
-    </Shell>
-  );
-}
-
-/**
- * The page's one <main>: the skip link's target (layout.tsx), so it takes
- * focus but draws no outline. It sits inside a plain <div> on purpose: the App
- * Router calls focus() on a segment's first DOM node when it applies a router
- * update (a refresh, say), and a focusable <main> there took focus out of the
- * editor about a second after a new document opened. A <div> ignores it.
- */
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="doc-screen doc-editor min-h-dvh">
-      <main id="main-content" tabIndex={-1} className="min-h-dvh outline-none">
-        {children}
-      </main>
-    </div>
+    </EditorFrame>
   );
 }
 
@@ -202,7 +123,7 @@ type WorkspaceProps = {
   initial: PMNode | null;
   doc: ReturnType<typeof useDocument>["doc"];
   catalog: ReturnType<typeof useDocumentTypes>;
-  status: SaveStatus;
+  status: SaveStatusValue;
   error: string | null;
   conflict: boolean;
   change: ReturnType<typeof useDocument>["change"];
@@ -213,19 +134,19 @@ type WorkspaceProps = {
 
 /**
  * Where the right column goes (rightColumnMode), from the body row's width and
- * the viewport's, plus the body row's left edge for the phone sheet. Also
- * publishes the sticky toolbar's height as --toolbar-h on the row, so the
- * in-flow column sticks just under it, and --column-top for its height.
+ * the viewport's. Also publishes the sticky toolbar's height as --toolbar-h on
+ * the row, so the in-flow column sticks just under it, and --column-top (the
+ * row's top, never above the toolbar) for the column's height and the drawer's
+ * top.
  */
 function useColumnLayout(rowRef: RefObject<HTMLDivElement | null>, toolbarRef: RefObject<HTMLDivElement | null>) {
-  const [layout, setLayout] = useState<{ mode: RightColumnMode; left: number }>({ mode: "inline", left: 0 });
+  const [mode, setMode] = useState<RightColumnMode>("inline");
   useLayoutEffect(() => {
     const row = rowRef.current;
     if (!row) return;
     // --column-top: where the sticky column's top is right now (below the
     // header until the page scrolls, then under the toolbar), so its height
-    // ends at the viewport's bottom and its last controls clear the floating
-    // buttons instead of running off-screen.
+    // ends at the viewport's bottom and its last controls stay reachable.
     let toolbar = 0;
     const placeTop = () => {
       const top = Math.max(toolbar, Math.round(row.getBoundingClientRect().top));
@@ -240,12 +161,10 @@ function useColumnLayout(rowRef: RefObject<HTMLDivElement | null>, toolbarRef: R
       });
     };
     const measure = () => {
-      const rect = row.getBoundingClientRect();
       toolbar = Math.round(toolbarRef.current?.getBoundingClientRect().height ?? 0);
       row.style.setProperty("--toolbar-h", `${toolbar}px`);
       placeTop();
-      const next = { mode: rightColumnMode(rect.width, window.innerWidth), left: Math.max(0, Math.round(rect.left)) };
-      setLayout((prev) => (prev.mode === next.mode && prev.left === next.left ? prev : next));
+      setMode(rightColumnMode(row.getBoundingClientRect().width, window.innerWidth));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -263,7 +182,7 @@ function useColumnLayout(rowRef: RefObject<HTMLDivElement | null>, toolbarRef: R
       window.cancelAnimationFrame(frame);
     };
   }, [rowRef, toolbarRef]);
-  return layout;
+  return mode;
 }
 
 /** The section notes saved for each section of the document (for the outline's notes marker). */
@@ -287,18 +206,25 @@ function useSectionNotes(documentId: string | null) {
 function Workspace({ initial, doc, catalog, status, error, conflict, change, flush, isSaved, resolveConflict }: WorkspaceProps) {
   const types = catalog.types;
   const currentType = findType(types, doc.type_key);
-  // The right column: the outline on top, Tools or Section notes below (right-column-model.ts).
-  const [column, setColumn] = useState<RightColumnState>(CLOSED_COLUMN);
+  // The right column: Agents (or Section notes, or Check) above the outline (right-column-model.ts).
+  const [column, dispatchColumn] = useReducer(columnReducer, CLOSED_COLUMN);
+  const columnRef = useRef(column);
+  columnRef.current = column;
   // The document modal (Notes / Sources / Data / Suggestions / Workflows), and the control that opened it.
   const [modalTab, setModalTab] = useState<DocumentModalTab | null>(null);
   // "upload sources" from the helper: the Sources tab opens on its upload area.
   const [sourcesMode, setSourcesMode] = useState<"upload" | null>(null);
-  // The suggestion's "Restructure…": the Workflows tab opens on the restructure workflow with the type chosen.
+  // A workflow that needs a form (the restructure workflow from the type change, or one picked in Agents): the Workflows tab opens on it.
   const [workflowsPrefill, setWorkflowsPrefill] = useState<WorkflowsPrefill | null>(null);
+  // "Open run" in Agents and the ?run= deep link: the Workflows tab opens on that run.
+  const [workflowsView, setWorkflowsView] = useState<WorkflowsView | null>(null);
+  // The run started from the Agents card's picker; kept here so its progress outlasts the card closing.
+  const [agentRun, setAgentRun] = useState<string | null>(null);
   const sourcesButtonRef = useRef<HTMLButtonElement>(null);
-  const galleryButtonRef = useRef<HTMLButtonElement>(null);
+  // The Outline card's "See all" pill: the Doc Gallery's focus goes back to it.
+  const seeAllRef = useRef<HTMLButtonElement>(null);
   const shareButtonRef = useRef<HTMLButtonElement>(null);
-  // Focus goes back here when the modal closes, else to the Sources button (DocumentModal openerRef).
+  // Focus goes back here when the modal closes, else to the Sources pill (DocumentModal openerRef).
   const modalOpenerRef = useRef<HTMLElement | null>(null);
   const openModal = (tab: DocumentModalTab, opener: Element | null = document.activeElement, mode: "upload" | null = null) => {
     modalOpenerRef.current = opener instanceof HTMLElement ? opener : null;
@@ -306,10 +232,10 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     setModalTab(tab);
   };
   const outlineButtonRef = useRef<HTMLButtonElement>(null);
-  const toolsButtonRef = useRef<HTMLButtonElement>(null);
+  const agentsButtonRef = useRef<HTMLButtonElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const layout = useColumnLayout(rowRef, toolbarRef);
+  const columnMode = useColumnLayout(rowRef, toolbarRef);
   // Passing notices replace each other; a pending decision (a sticky notice) stays until it is made.
   const { notices, notify, dismiss: dismissNotice } = useNotices();
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
@@ -317,7 +243,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const [menu, setMenu] = useState<SectionMenuTarget | null>(null);
   /** The rubric Check panel's subject (the whole document, or a section from its gutter menu). */
   const [checkTarget, setCheckTarget] = useState<CheckTarget | null>(null);
-  /** The Document Gallery (header button, helper, outline card's "Choose a type", tell-me's onNeedType). */
+  /** The Doc Gallery (the Outline card's "See all", tell-me's onNeedType). */
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [saveTypeOpen, setSaveTypeOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -492,12 +418,24 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
     });
   }, []);
 
-  /** The suggestion's "Restructure…" (and its Apply on a typed document): the restructure workflow, to this type. */
+  /**
+   * The restructure workflow, to this type: the Outline card's "Restructure"
+   * and its suggestion on a typed document, and the Doc Gallery's
+   * "Restructure…". Focus comes back to the control that asked (the type
+   * select), or to the "See all" pill when that was inside the closing gallery.
+   */
   const openRestructure = (key: string) => {
     if (drafting) return lockedNotice();
     setWorkflowsPrefill(restructurePrefill(key));
-    // Opened from inside the Document Gallery, which closes: focus comes back to its header button.
-    openModal("workflows", galleryButtonRef.current);
+    const active = document.activeElement;
+    openModal("workflows", active && !active.closest('[role="dialog"]') ? active : (seeAllRef.current ?? document.getElementById(OUTLINE_TYPE_SELECT_ID)));
+  };
+
+  /** "Just set type": the type changes and the text stays as it is. */
+  const justSetType = (t: DocumentTypeSummary) => {
+    if (drafting) return lockedNotice();
+    change({ type_key: t.key, type_source: "user" });
+    notify({ text: `Type set to ${t.title}.` });
   };
 
   const saveOutlineAsType = async (title: string): Promise<string | null> => {
@@ -535,7 +473,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
   const openCheckFor = (sectionId: string | null) => {
     const nonce = Date.now();
     setCheckTarget(sectionId ? { scope: "section", sectionId, nonce } : { scope: "document", nonce });
-    setColumn(openCheck);
+    dispatchColumn({ type: "check" });
   };
 
   const openNotesFor = (sectionId: string) => {
@@ -543,7 +481,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       const s = sectionBodyRange(editor.state.doc, sectionId);
       if (s) goToHeading(editor, s.headingPos);
     }
-    setColumn(openNotes);
+    dispatchColumn({ type: "notes" });
   };
 
   const setLink = () => {
@@ -555,23 +493,50 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
 
   const [helperOn, setHelperOn] = useState(false);
 
-  // A panel closed from its own X unmounts the focused button: hand focus to the
-  // floating button that reopens it (Tools for Section notes too), or to the
-  // editor if that button isn't there, rather than letting it drop to <body>.
-  const closeColumnPanel = (slot: ColumnSlot) => {
-    setColumn(slot === "outline" ? closeOutline : closeLower);
-    const ref = columnCloseFocus(slot) === "outline" ? outlineButtonRef : toolsButtonRef;
+  // The panels the person opens and closes are remembered for this document
+  // (a new one has no id yet, so it isn't); restored once, as it opens, and
+  // only where they sit beside the text: in the drawer or sheet they would
+  // open over the document, modal, before the person has touched anything.
+  const columnChange = (action: ColumnAction) => {
+    dispatchColumn(action);
+    writePanels(browserStorage(), docIdRef.current, panelsOf(columnReducer(columnRef.current, action)));
+  };
+  useEffect(() => {
+    const row = rowRef.current;
+    const stored = readPanels(browserStorage(), docIdRef.current);
+    if (stored && row && rightColumnMode(row.getBoundingClientRect().width, window.innerWidth) === "inline") dispatchColumn({ type: "restore", panels: stored });
+  }, []);
+
+  // The deep links (redesign3-spec.md §1): ?notes=1 opens the modal on Notes,
+  // ?run=<id> on that run in Workflows. Read once as the document opens, then
+  // dropped from the address so a reload or Back doesn't open the dialog again.
+  // With no opener, focus goes to the Sources pill when the dialog closes.
+  useEffect(() => {
+    const { open, strip } = deepLinkOpen(window.location.search, { notes: OPEN_NOTES_PARAM, run: OPEN_RUN_PARAM });
+    if (open?.tab === "workflows") setWorkflowsView({ kind: "run", runId: open.runId, readOnly: false });
+    if (open) openModal(open.tab, null);
+    if (strip !== null) window.history.replaceState(window.history.state, "", `${window.location.pathname}${strip}${window.location.hash}`);
+  }, []);
+
+  /** Focus a stack button once it has rendered in place of its card, else the editor. */
+  const focusButton = (which: "outline" | "agents") =>
     requestAnimationFrame(() => {
-      const button = ref.current;
+      const button = (which === "outline" ? outlineButtonRef : agentsButtonRef).current;
       if (button?.isConnected) button.focus();
       else editor?.commands.focus();
     });
+
+  // A card closed from its own X unmounts the focused button: hand focus to the
+  // button that now stands in its place (Agents for Section notes and Check too).
+  const closeColumnPanel = (slot: ColumnSlot) => {
+    columnChange({ type: "close", slot });
+    focusButton(columnCloseFocus(slot));
   };
 
-  // A floating button hides once its card opens: move focus into the card so it isn't lost.
-  const openColumnPanel = (slot: ColumnSlot) => {
-    setColumn(slot === "outline" ? openOutline : openTools);
-    requestAnimationFrame(() => document.getElementById(slot === "outline" ? OUTLINE_SLOT_ID : TOOLS_SLOT_ID)?.focus());
+  // The button gives way to its card: move focus to the card's heading. `focusId` instead focuses a control in it.
+  const openColumnPanel = (slot: ColumnSlot, focusId = openFocusId(slot)) => {
+    columnChange({ type: "open", slot });
+    requestAnimationFrame(() => document.getElementById(focusId)?.focus());
   };
 
   const outlinePanel =
@@ -579,16 +544,25 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       <OutlinePanel
         editor={editor}
         type={currentType}
+        typeKey={doc.type_key}
+        types={types}
         status={outlineStatus.status}
         statusError={outlineStatus.error}
         notes={sectionNotes.notes}
-        onChooseType={() => setGalleryOpen(true)}
         onClose={() => closeColumnPanel("outline")}
         currentSectionId={caretSection}
         locked={lockReason}
+        onSeeAll={() => setGalleryOpen(true)}
+        seeAllRef={seeAllRef}
+        onApplyType={(t, source) => void chooseType(t, source)}
+        onNoType={() => void chooseType(null)}
+        onRestructure={openRestructure}
+        onJustSetType={justSetType}
+        suggestion={classifier.suggestion}
+        onDismissSuggestion={(key) => void classifier.dismiss(key)}
       />
     ) : null;
-  const lowerPanel = !editor ? null : column.lower === "tools" ? (
+  const lowerPanel = !editor ? null : column.lower === "agents" ? (
     <ToolsPanel
       editor={editor}
       documentId={doc.id}
@@ -601,6 +575,16 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       onClose={() => closeColumnPanel("lower")}
       onCheckDocument={() => openCheckFor(null)}
       onSectionNotes={() => caretSection && openNotesFor(caretSection)}
+      runId={agentRun}
+      onRunIdChange={setAgentRun}
+      onWorkflowForm={(w) => {
+        setWorkflowsPrefill({ workflowKey: w.key, targetType: null });
+        openModal("workflows");
+      }}
+      onOpenRun={(runId) => {
+        setWorkflowsView({ kind: "run", runId, readOnly: false });
+        openModal("workflows");
+      }}
     />
   ) : column.lower === "check" && checkTarget ? (
     <CheckPanel
@@ -628,30 +612,8 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
 
   return (
     <>
-      <header className="@container flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 pb-2 pt-6 sm:flex-nowrap sm:px-12 sm:pt-8">
-        <div className="flex min-w-0 basis-full flex-wrap items-center gap-x-4 gap-y-1 sm:flex-1 sm:basis-auto">
-          {/* The page heading for screen readers; the title field shows it visually. */}
-          <h1 className="sr-only">{doc.title.trim() || "Untitled document"}</h1>
-          <label htmlFor="doc-title" className="sr-only">
-            Document title
-          </label>
-          <input
-            id="doc-title"
-            value={doc.title}
-            onChange={(e) => change({ title: e.target.value })}
-            placeholder="Untitled document"
-            style={{ fieldSizing: "content" } as React.CSSProperties}
-            className="min-w-[10ch] max-w-full rounded-md bg-transparent text-[28px] font-medium tracking-tight text-[var(--ink)] outline-none placeholder:text-[var(--doc-muted)] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--action)] sm:text-[32px]"
-          />
-          <StatusText status={status} error={error} isNew={!doc.id} />
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 @min-[60rem]:gap-6">
-          <HeaderButton ref={sourcesButtonRef} label="Sources" icon={HeaderSourcesIcon} expanded={modalTab !== null} onClick={(e) => openModal("sources", e.currentTarget)} />
-          <HeaderButton ref={galleryButtonRef} label="Document Gallery" icon={GalleryIcon} expanded={galleryOpen} onClick={() => setGalleryOpen(true)} dot={!!classifier.suggestion} />
-          <HeaderButton ref={shareButtonRef} label="Share & Export" icon={ShareExportIcon} expanded={shareOpen} onClick={() => setShareOpen(true)} />
-        </div>
-      </header>
-      {/* The classifier's suggestion waits in the Document Gallery; say so when one arrives. */}
+      <EditorHeader title={doc.title} onTitleChange={(title) => change({ title })} type={currentType} shareOpen={shareOpen} onShare={() => setShareOpen(true)} shareButtonRef={shareButtonRef} />
+      {/* The classifier's suggestion waits in the Outline card and the Doc Gallery; say so when one arrives. */}
       <span role="status" aria-live="polite" className="sr-only">
         {suggestionAnnouncement(classifier.suggestion)}
       </span>
@@ -669,7 +631,10 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
       )}
 
       <div ref={toolbarRef} className="sticky top-0 z-[15] bg-[var(--editor-bg)]/95 backdrop-blur">
-        <div className="overflow-x-auto px-5 py-3 sm:px-12">{editor && <EditorToolbar editor={editor} onLink={setLink} locked={drafting} />}</div>
+        {/* relative: the toolbar's sr-only and absolutely placed bits stay inside this scroller instead of widening the page. */}
+        <div className="relative overflow-x-auto px-4 py-3 sm:px-12">
+          {editor && <EditorToolbar editor={editor} onLink={setLink} locked={drafting} trailing={<SaveStatus status={status} error={error} isNew={!doc.id} savedAt={doc.updated_at} />} />}
+        </div>
         {linkDraft !== null && editor && (
           <form
             onSubmit={(e) => {
@@ -689,7 +654,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
               value={linkDraft}
               onChange={(e) => setLinkDraft(e.target.value)}
               onKeyDown={(e) => {
-                // Esc cancels the link form (and doesn't reach the docs panel).
+                // Esc cancels the link form (and doesn't reach the panels or dialogs).
                 if (e.key === "Escape") {
                   e.preventDefault();
                   e.stopPropagation();
@@ -713,30 +678,31 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           container query: a query container can become the containing block of
           the fixed drawer/sheet in some engines. */}
       <div ref={rowRef} className="flex min-h-[70vh]">
-        <div className="min-w-0 flex-1 px-5 pb-32 pt-6 sm:px-12">
+        <div className="min-w-0 flex-1 px-4 pb-32 pt-6 sm:px-12">
           <div className={`max-w-[64rem] ${helperOn ? "doc-helper-on" : ""}`}>
             <EditorContent editor={editor} />
             {editor && <CitationLayer editor={editor} documentId={doc.id || null} sourcesKey={sourcesKey} savedAt={doc.updated_at} />}
           </div>
         </div>
         <RightColumn
-          mode={layout.mode}
-          sheetLeft={layout.left}
-          tools={lowerPanel}
+          mode={columnMode}
+          lower={lowerPanel}
           outline={outlinePanel}
+          onOpen={(slot) => openColumnPanel(slot)}
           onDismiss={() => {
-            setColumn(CLOSED_COLUMN);
-            // Esc in the drawer or sheet: back to a pill once it has rendered, else the editor.
-            requestAnimationFrame(() => {
-              const pill = outlineButtonRef.current ?? toolsButtonRef.current;
-              if (pill?.isConnected) pill.focus();
-              else editor?.commands.focus();
-            });
+            // Esc or the scrim in the drawer or sheet: back to the button of the card that was on top.
+            const back = columnRef.current.lower ? "agents" : "outline";
+            columnChange({ type: "close_all" });
+            focusButton(back);
           }}
+          onSources={() => openModal("sources", sourcesButtonRef.current)}
+          sourcesOpen={modalTab !== null}
+          sourcesRef={sourcesButtonRef}
+          agentsRef={agentsButtonRef}
+          outlineRef={outlineButtonRef}
         />
       </div>
 
-      {/* Before the pills: the helper sits to their left on the same line, so it comes first in Tab order. */}
       {editor && (
         <EmptyHelper
           editor={editor}
@@ -744,20 +710,12 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
           typeKey={doc.type_key}
           tellMe={tellMe}
           onUploadSources={() => openModal("sources", document.activeElement, "upload")}
-          onChooseType={() => setGalleryOpen(true)}
-          leftEdge={layout.left}
-          covered={layout.mode !== "inline" && isColumnOpen(column)}
+          onChooseType={() => openColumnPanel("outline", OUTLINE_TYPE_SELECT_ID)}
+          onOpenGallery={() => setGalleryOpen(true)}
+          covered={overlaysText(columnMode, column)}
           onVisibleChange={setHelperOn}
         />
       )}
-      <FloatingActions
-        outlineRef={outlineButtonRef}
-        toolsRef={toolsButtonRef}
-        showOutline={!column.outline}
-        showTools={column.lower === null}
-        onOutline={() => openColumnPanel("outline")}
-        onTools={() => openColumnPanel("lower")}
-      />
       <DocumentModal
         tab={modalTab}
         onTabChange={(t) => {
@@ -785,6 +743,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         onJumpToSection={jumpToSection}
         workflowsPrefill={workflowsPrefill}
         onWorkflowsPrefillDone={() => setWorkflowsPrefill(null)}
+        workflowsViewRequest={workflowsView}
         onLearnedType={async (key) => {
           // The type was just saved: load it into the picker before choosing it.
           await catalog.reload();
@@ -825,7 +784,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         error={catalog.error}
         typeKey={doc.type_key}
         current={currentType}
-        returnFocusRef={galleryButtonRef}
+        returnFocusRef={seeAllRef}
         onFocusDocument={() => {
           // Back to the caret the choice left (chooseType's). Its focus() ran while the dialog's trap held
           // focus, so the browser caret is stale; an unchanged selection isn't redrawn, so step away and back.
@@ -862,7 +821,7 @@ function Workspace({ initial, doc, catalog, status, error, conflict, change, flu
         onRestructure={openRestructure}
         onDismissSuggestion={(key) => void classifier.dismiss(key)}
       />
-      <SaveOutlineDialog open={saveTypeOpen} onOpenChange={setSaveTypeOpen} defaultTitle={doc.title} onSave={saveOutlineAsType} returnFocusRef={galleryButtonRef} />
+      <SaveOutlineDialog open={saveTypeOpen} onOpenChange={setSaveTypeOpen} defaultTitle={doc.title} onSave={saveOutlineAsType} returnFocusRef={seeAllRef} />
       <ShareExportDialog open={shareOpen} onOpenChange={setShareOpen} documentId={doc.id || null} title={doc.title} ensureSaved={ensureSaved} notify={notify} returnFocusRef={shareButtonRef} />
 
       <NoticeStack notices={notices} onDismiss={dismissNotice} />

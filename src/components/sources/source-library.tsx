@@ -29,7 +29,7 @@ import {
   X,
 } from "@/components/icons";
 import { canHaveTables } from "@/components/editor/data-pane-model";
-import { AccountButton } from "@/components/shell/account-button";
+import { PageHeader } from "@/components/shell/page-header";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AddNoteForm,
@@ -188,27 +188,7 @@ export function SourceLibrary() {
 
   return (
     <div className="doc-screen min-h-screen bg-[var(--doc-bg)] text-[var(--doc-ink)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 pb-6 pt-6 sm:px-10 sm:pt-8">
-        <div className="flex min-w-0 items-center gap-5">
-          <Link href="/" className="text-[22px] font-semibold tracking-tight">
-            Sasha
-          </Link>
-          <nav aria-label="Sections" className="flex items-center gap-1 text-[15px] font-medium">
-            <Link href="/" className="rounded-full px-3 py-1.5 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]">
-              Write
-            </Link>
-            <span aria-current="page" className="rounded-full bg-[var(--doc-surface)] px-3 py-1.5 text-[var(--doc-accent)] shadow-sm">
-              Sources
-            </span>
-            <Link href="/workflows" className="rounded-full px-3 py-1.5 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]">
-              Workflows
-            </Link>
-          </nav>
-        </div>
-        <div className="grid h-11 w-11 place-items-center">
-          <AccountButton />
-        </div>
-      </header>
+      <PageHeader title="Library" />
 
       <main id="main-content" tabIndex={-1} className="mx-2 mb-10 grid outline-none min-h-[75vh] overflow-hidden rounded-2xl bg-[var(--doc-surface)] shadow-[0_1px_3px_rgba(16,24,40,0.06),0_8px_24px_rgba(16,24,40,0.05)] sm:mx-10 md:grid-cols-[15rem_1fr] xl:grid-cols-[16rem_1fr_auto]">
         <FolderTree
@@ -228,10 +208,10 @@ export function SourceLibrary() {
         <section aria-label={heading} className="min-w-0 border-t border-[var(--doc-line)] md:border-l md:border-t-0">
           <div className="space-y-3 border-b border-[var(--doc-line)] px-4 py-4 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
+              <h2 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
                 {currentFolder?.document_id ? <FileText className="h-5 w-5 shrink-0 text-[var(--doc-muted)]" /> : <FolderOpen className="h-5 w-5 shrink-0 text-[var(--doc-muted)]" />}
                 <span className="truncate">{heading}</span>
-              </h1>
+              </h2>
               <div className="flex flex-wrap items-center gap-1.5">
                 {currentFolder?.document_id && (
                   <Link href={`/d/${currentFolder.document_id}`} className="rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--doc-accent)] hover:bg-[var(--doc-accent-soft)]">

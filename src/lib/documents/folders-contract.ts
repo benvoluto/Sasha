@@ -40,6 +40,8 @@ export type DocumentListItem = {
   title: string;
   type_key: string | null;
   excerpt: string;
+  /** The first text block outside the headings (card-text.ts leadText); older clients may lack it. */
+  lead?: string;
   archived: boolean;
   doc_folder_id: string | null;
   created_by: string;

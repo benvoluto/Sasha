@@ -35,9 +35,18 @@ export const REWRITE_PRESETS: Record<string, RewritePreset> = {
   strengths: {
     label: "Lead with strengths",
     chipLabel: "strengths",
-    toolsLabel: "Strength-based",
+    toolsLabel: "Lead with strengths",
     instruction: "Reframe to foreground strengths and positives where the sources support it, while retaining all concerns and data. Do not omit findings.",
     lessInstruction: "Reframe to foreground the problems and risks and the evidence for them, while retaining the documented strengths. Do not omit findings.",
+  },
+  // Redesign 3: the Agents card's "Strong language" chip (the mockup's label).
+  // Assertive wording, not the strengths framing above.
+  strong: {
+    label: "Strong language",
+    chipLabel: "strong",
+    toolsLabel: "Strong language",
+    instruction: "Rewrite with confident, direct wording: active voice, precise verbs, no hedging or filler. Keep every fact, figure, qualification the sources require, and citation intact.",
+    lessInstruction: "Rewrite with more measured, cautious wording: soften absolute claims and add the qualifications the evidence supports. Keep every fact, figure, and citation intact.",
   },
   summarize: {
     label: "Summarize",
@@ -59,4 +68,4 @@ export const REWRITE_PRESET_ORDER = ["concise", "plain_language", "strengths", "
 export const REWRITE_CHIP_ORDER = ["concise", "plain_language", "strengths", "summarize"] as const;
 
 /** The Tools card's "Rewrite as…" chips, in their 2×2 order (always the "more" direction). */
-export const TOOLS_PRESETS = ["concise", "plain_language", "strengths", "expand"] as const;
+export const TOOLS_PRESETS = ["concise", "plain_language", "strong", "expand"] as const;

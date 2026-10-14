@@ -6,10 +6,9 @@
 // and a CSV download of the same range. Costs are estimates from list prices,
 // and the page says so next to every total.
 
-import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Download, Loader2 } from "@/components/icons";
-import { AccountButton } from "@/components/shell/account-button";
+import { PageHeader } from "@/components/shell/page-header";
 import { UsageDay, USAGE_MAX_DAYS, type UsageResponse, type UsageTotals } from "@/lib/usage/contract";
 import { UsageChart } from "./usage-chart";
 import {
@@ -29,7 +28,6 @@ import {
   type ChartMetric,
 } from "./usage-model";
 
-const navLink = "rounded-full px-3 py-1.5 text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] hover:text-[var(--doc-ink)]";
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--doc-accent)]";
 const toggle = `inline-flex min-h-11 items-center rounded-md border border-[var(--doc-line)] px-3 text-sm font-medium text-[var(--doc-muted)] hover:bg-[var(--doc-accent-soft)] aria-pressed:border-[var(--doc-accent)] aria-pressed:bg-[var(--doc-accent-soft)] aria-pressed:text-[var(--doc-ink)] sm:min-h-8 ${focusRing}`;
 // Field boundary at 3:1 (WCAG 1.4.11), like every other text field.
@@ -84,27 +82,7 @@ export function UsageDashboard() {
 
   return (
     <div className="doc-screen min-h-screen bg-[var(--doc-bg)] text-[var(--doc-ink)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 pb-6 pt-6 sm:px-10 sm:pt-8">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
-          <Link href="/" className="text-[22px] font-semibold tracking-tight">
-            Sasha
-          </Link>
-          <nav aria-label="Sections" className="flex flex-wrap items-center gap-1 text-[15px] font-medium">
-            <Link href="/" className={navLink}>
-              Write
-            </Link>
-            <Link href="/library" className={navLink}>
-              Sources
-            </Link>
-            <span aria-current="page" className="rounded-full bg-[var(--doc-surface)] px-3 py-1.5 text-[var(--doc-accent)] shadow-sm">
-              Usage
-            </span>
-          </nav>
-        </div>
-        <div className="grid h-11 w-11 place-items-center">
-          <AccountButton />
-        </div>
-      </header>
+      <PageHeader title="Usage" />
 
       <main
         id="main-content"
@@ -113,7 +91,6 @@ export function UsageDashboard() {
       >
         <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-[var(--doc-line)] px-4 py-4 sm:px-6">
           <div className="min-w-0 flex-1 basis-56">
-            <h1 className="text-lg font-semibold">Usage</h1>
             <p className="text-sm text-[var(--doc-muted)]">Your team&rsquo;s model calls, tokens and estimated cost. Days are in UTC.</p>
           </div>
           <div className="flex flex-wrap items-end gap-3">

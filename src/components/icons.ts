@@ -107,7 +107,6 @@ export {
   ArrowUUpRight as Redo2,
   Highlighter,
   Code,
-  TextT,
   Quotes,
   Minus,
   Eraser,
@@ -120,7 +119,6 @@ export {
   ClipboardText as OutlineIcon,
   ListChecks as SourcesIcon,
   Copy,
-  Files as DocsIcon,
 
   // sections, outline, dictation
   Microphone as MicrophoneIcon,
@@ -161,10 +159,9 @@ export {
   Tag,
   UserCheck,
 
-  // app chrome (rail, documents panel, floating buttons): layout pass
+  // app chrome (overview, Select mode, folders, document panels): layout pass
   Lasso as SelectIcon,
   FilePlus as NewDocIcon,
-  FolderSimple as DocFolderIcon,
   FolderSimplePlus as NewDocFolderIcon,
   ArrowSquareRight as MoveToFolderIcon,
   CheckSquare,
@@ -173,12 +170,19 @@ export {
   BookOpenText as SourcesBookIcon,
   ArrowBendUpRight as ShareArrowIcon,
 
-  // editor redesign 2 (redesign2-spec.md §3): header buttons, Tools card, empty-state helper
-  Tray as HeaderSourcesIcon,
+  // editor redesign 2 (redesign2-spec.md §3): Doc Gallery, Agents card, empty-state helper
   PenNib as GalleryIcon,
-  ShareFat as ShareExportIcon,
   FileArrowUp as UploadFileIcon,
   ChatText as CustomRequestIcon,
+
+  // redesign 3 (redesign3-spec.md §6): overview header, user menu, Activity, notes, Agents/Outline
+  Pulse as ActivityIcon,
+  Users as TeamIcon,
+  Notebook as NotesTabIcon,
+  ArrowsClockwise as RunWorkflowIcon,
+  FilePlus as StartDocumentIcon,
+  CheckCircle as SectionDoneIcon,
+  ArrowBendUpRight as ShareExportArrowIcon,
 
   // primitives used by the shadcn ui/ components
   Circle as CircleIcon,

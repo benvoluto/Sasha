@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOCUMENT_MODAL_TABS, escapeAction, isDocumentModalTab, modalReturnTarget, modalTitle, TAB_LABELS } from "./document-modal-model";
+import { deepLinkOpen, DOCUMENT_MODAL_TABS, escapeAction, isDocumentModalTab, modalReturnTarget, modalTitle, TAB_LABELS } from "./document-modal-model";
 
 describe("document modal tabs", () => {
   it("lists Notes, Sources, Data, Suggestions and Workflows in order, each with a label", () => {
@@ -44,5 +44,24 @@ describe("modalReturnTarget", () => {
   it("gives up when neither is on the page", () => {
     expect(modalReturnTarget(el("BUTTON", false), el("BUTTON", false))).toBeNull();
     expect(modalReturnTarget(null, null)).toBeNull();
+  });
+});
+
+describe("deepLinkOpen", () => {
+  const params = { notes: "notes", run: "run" };
+
+  it("opens Notes on ?notes=1 and a run on ?run=<id>, keeping the rest of the query", () => {
+    expect(deepLinkOpen("?notes=1", params)).toEqual({ open: { tab: "notes" }, strip: "" });
+    expect(deepLinkOpen("?run=r1&x=2", params)).toEqual({ open: { tab: "workflows", runId: "r1" }, strip: "?x=2" });
+  });
+
+  it("prefers the run when both are there", () => {
+    expect(deepLinkOpen("?notes=1&run=r1", params).open).toEqual({ tab: "workflows", runId: "r1" });
+  });
+
+  it("drops a parameter it can't use, and leaves an address without them alone", () => {
+    expect(deepLinkOpen("?notes=0&run=", params)).toEqual({ open: null, strip: "" });
+    expect(deepLinkOpen("?x=1", params)).toEqual({ open: null, strip: null });
+    expect(deepLinkOpen("", params)).toEqual({ open: null, strip: null });
   });
 });

@@ -12,6 +12,8 @@ const t = (key: string, family: DocumentTypeSummary["family"], title = key, alia
   family,
   summary: "",
   aliases,
+  icon: "file-text",
+  color: "slate",
   origin: "file",
   enabled: true,
   overridden: false,
@@ -46,8 +48,8 @@ describe("classifier suggestion", () => {
     expect(article("Proposal")).toBe("a");
     expect(article(" Incident report")).toBe("an");
   });
-  it("announces a new suggestion and points to the Document Gallery", () => {
-    expect(suggestionAnnouncement(suggestion("Grant proposal"))).toBe("Sasha suggests a Grant proposal outline. Open the Document Gallery to apply it.");
+  it("announces a new suggestion and points to the Outline", () => {
+    expect(suggestionAnnouncement(suggestion("Grant proposal"))).toBe("Sasha suggests a Grant proposal outline. Open the Outline to use it.");
     expect(suggestionAnnouncement(suggestion("Executive summary"))).toMatch(/^Sasha suggests an Executive summary outline\./);
     expect(suggestionAnnouncement(null)).toBe("");
   });

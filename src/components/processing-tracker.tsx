@@ -8,10 +8,14 @@
 // sources being read and removes each job once all of its sources have settled —
 // the user never has to dismiss it, and never has to guess whether an upload is
 // still working.
+//
+// It sits at the bottom right, never wider than the space right of Sasha
+// (DOG_WIDTH), and on phones above the editor's row of panel buttons.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Loader2, X } from "@/components/icons";
+import { DOG_WIDTH } from "@/components/shell/dog";
 import { JOB_SLOW_AFTER_MS, jobOutcome, readJobs, removeJob, subscribeJobs, trackedSourceIds, type JobOutcome, type ProcessingJob } from "@/lib/processing-jobs";
 
 const POLL_MS = 4000;
@@ -90,7 +94,11 @@ export function ProcessingTracker() {
     files.length > 0 ? `${files.length} file${files.length === 1 ? "" : "s"}: ${files.slice(0, 2).join(", ")}${files.length > 2 ? "…" : ""}` : "";
 
   return (
-    <div className="pointer-events-none fixed bottom-[calc(var(--fab-clearance,0px)+1rem)] right-4 z-[60] flex w-[min(92vw,22rem)] flex-col gap-2" aria-live="polite">
+    <div
+      style={{ "--dog-w": `${DOG_WIDTH}px` } as CSSProperties}
+      className="pointer-events-none fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-4 z-[60] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 sm:bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:w-[min(22rem,calc(100vw-var(--dog-w)-2rem))]"
+      aria-live="polite"
+    >
       {jobs.map((job) => {
         const slow = now - job.startedAt > JOB_SLOW_AFTER_MS;
         return (

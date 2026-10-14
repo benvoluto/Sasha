@@ -11,7 +11,9 @@
 // keys in .env are overridden with fakes (@next/env never replaces a variable
 // that is already set), so a call that misses a stub fails instead of spending.
 // It builds into .next-e2e (gitignored) so it can run beside a normal `npm run
-// dev`. The first compile of each route is slow; timeouts allow for it.
+// dev`; another PLAYWRIGHT_PORT builds into .next-e2e-<port>, so two runs can
+// each have their own server and in-memory store. The first compile of each
+// route is slow; timeouts allow for it.
 //
 // Browser: the installed Google Chrome when there is one, else Playwright's
 // own Chromium (`npx playwright install chromium` once).
@@ -21,10 +23,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = Number(process.env.PLAYWRIGHT_PORT || 3107);
 const BASE_URL = `http://localhost:${PORT}`;
+const DIST_DIR = PORT === 3107 ? ".next-e2e" : `.next-e2e-${PORT}`;
 const chrome = existsSync("/Applications/Google Chrome.app") ? { channel: "chrome" } : {};
 
 /** Specs that click through flows run once, in light; the axe scan runs in both schemes. */
-const FUNCTIONAL = /(editor|modal|upload|export|keyboard|redesign)\.spec\.ts$/;
+const FUNCTIONAL = /(editor|modal|upload|export|keyboard|redesign3|overview|notes)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "e2e",
@@ -60,7 +63,7 @@ export default defineConfig({
     stdout: "ignore",
     stderr: "pipe",
     env: {
-      SASHA_NEXT_DIST_DIR: ".next-e2e",
+      SASHA_NEXT_DIST_DIR: DIST_DIR,
       SASHA_DEV_AUTH_BYPASS: "1",
       SASHA_E2E_STUB_MODELS: "1",
       SASHA_E2E_STUB_BLOB: "1",

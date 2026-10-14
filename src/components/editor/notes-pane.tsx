@@ -8,6 +8,10 @@
 // and shows the notes plus the words so far; nothing is saved until Finish (or
 // an unexpected end, or the pane closing), and Cancel puts the notes back. No
 // audio is kept: only text reaches onChange.
+//
+// The overview's note dialog (src/components/notes/note-dialog.tsx) reuses it
+// for a standalone note, with its own id, label, placeholder and hint, saved
+// through use-note-save instead of the document's queue.
 
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Loader2 } from "@/components/icons";
@@ -19,7 +23,14 @@ import type { SaveStatus } from "./use-document";
 export const NOTES_PLACEHOLDER = "Anything about this document: who it's for, what it must cover, facts to work in. Dictate or type.";
 
 /** What the document modal needs from the pane: Esc cancels a running dictation instead of closing. */
-export type NotesPaneHandle = { dictating: () => boolean; cancelDictation: () => void };
+export type NotesPaneHandle = {
+  dictating: () => boolean;
+  cancelDictation: () => void;
+  /** Keep a running dictation's words now (onChange runs before this returns); a no-op otherwise. The note dialog calls it before saving on close. */
+  finishDictation: () => void;
+};
+
+const DOCUMENT_NOTES_HINT = "Saved with the document; Claude reads them when suggesting a type and sources.";
 
 /** The status line's save text. The save status is the document's (notes share its queue). */
 export function notesSaveText(status: SaveStatus, error: string | null): string {
@@ -47,6 +58,11 @@ export function NotesPane({
   saveStatus,
   saveError = null,
   controlRef,
+  id = "document-notes",
+  label = "Notes",
+  placeholder = NOTES_PLACEHOLDER,
+  hint = DOCUMENT_NOTES_HINT,
+  autoFocus = false,
 }: {
   notes: string;
   onChange: (notes: string) => void;
@@ -54,6 +70,15 @@ export function NotesPane({
   /** The save error's text, shown when saveStatus is "error". */
   saveError?: string | null;
   controlRef?: Ref<NotesPaneHandle>;
+  /** The textarea's id (one per page). */
+  id?: string;
+  /** The field's accessible name. */
+  label?: string;
+  placeholder?: string;
+  /** The line under the field, before the dictation note. */
+  hint?: string;
+  /** Put the caret at the end of the text on mount. */
+  autoFocus?: boolean;
 }) {
   const { supported, listening, transcript, error: micError, start, stop } = useSpeechToText();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -126,7 +151,21 @@ export function NotesPane({
     if (cancel() !== null) placeCaret(caret);
   }, [cancel]);
 
-  useImperativeHandle(controlRef, () => ({ dictating: () => dictation.current !== null, cancelDictation }), [cancelDictation]);
+  useImperativeHandle(
+    controlRef,
+    () => ({ dictating: () => dictation.current !== null, cancelDictation, finishDictation: () => void commit(true) }),
+    [cancelDictation, commit],
+  );
+
+  // Mount only: the caret goes after the text, ready to keep writing.
+  const autoFocusRef = useRef(autoFocus);
+  useEffect(() => {
+    if (!autoFocusRef.current) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, []);
 
   // Recognition stopped by itself (a permanent error, the short-run guard, the
   // native shell ending it): keep what was said, as Finish would.
@@ -169,11 +208,11 @@ export function NotesPane({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4 sm:px-6 sm:pb-6">
       <DictationField
-        id="document-notes"
-        label="Notes"
+        id={id}
+        label={label}
         value={shown}
         onChange={(text) => onChange(capNotes(text))}
-        placeholder={active ? "Listening…" : NOTES_PLACEHOLDER}
+        placeholder={active ? "Listening…" : placeholder}
         readOnly={!!active}
         // Finish / Cancel from the moment the mic is pressed, so a start that never takes can still be closed.
         listening={listening || !!active}
@@ -189,7 +228,7 @@ export function NotesPane({
       />
       {micError && <p className="text-sm text-red-600 dark:text-red-400">{dictationError(micError)}</p>}
       <p className="text-xs text-[var(--doc-muted)]">
-        Saved with the document; Claude reads them when suggesting a type and sources.
+        {hint}
         {supported ? " Dictation uses your browser's speech recognition; Sasha keeps no audio." : ""}
       </p>
     </div>

@@ -112,7 +112,7 @@ export function CheckPanel({ editor, target, ensureSaved, run, busy, onJumpToSec
   resultRef.current = result;
   const seq = useRef(0);
 
-  // Opened from a button that this panel replaced (Tools' Check document), focus
+  // Opened from a button that this panel replaced (Agents' Check document), focus
   // would drop to <body>: start it at the panel's title instead. After a frame,
   // so a menu that restores focus to its trigger keeps it.
   const titleRef = useRef<HTMLParagraphElement>(null);

@@ -3,6 +3,8 @@
   "version": 2,
   "title": "Design Doc / RFC",
   "family": "technical",
+  "icon": "file-code",
+  "color": "teal",
   "summary": "A technical design document or request for comments (RFC) that proposes how to build or change a software system, before the work starts. It states the problem and goals, describes the proposed design in enough detail for peers to review, compares the alternatives, and covers security, rollout, testing and open risks so reviewers can approve, push back or decide.",
   "signals": [
     "design doc",

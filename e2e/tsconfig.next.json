@@ -3,9 +3,22 @@
   "compilerOptions": {
     "baseUrl": "..",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["../next-env.d.ts", "../**/*.ts", "../**/*.tsx", ".next-e2e/types/**/*.ts", "../.next-e2e/types/**/*.ts"],
-  "exclude": ["../node_modules", "../poc", "../agent"]
+  "include": [
+    "../**/*.ts",
+    "../**/*.tsx",
+    "../.next-e2e/types/**/*.ts",
+    "../next-env.d.ts",
+    ".next-e2e/types/**/*.ts",
+    ".next-e2e-3199/types/**/*.ts"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../poc",
+    "../agent"
+  ]
 }

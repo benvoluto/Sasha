@@ -1,8 +1,10 @@
 "use client";
 
-// The document modal (PLAN §6.2), opened from the header's Sources button (on
-// Sources; Notes is its own tab), or from the empty-state helper's "upload
-// sources" (on Sources, upload area open; redesign2-spec.md §3.1): one dialog
+// The document modal (PLAN §6.2), opened from the right column's Sources pill
+// (on Sources; Notes is its own tab), from the empty-state helper's "upload
+// sources" (on Sources, upload area open; redesign2-spec.md §3.1), from the
+// Agents card's workflow picker and from the deep links ?notes=1 and ?run=
+// (redesign3-spec.md §1, on Notes or on a run in Workflows): one dialog
 // with a tab per pane. Each pane mounts only while its tab is active, so it
 // loads fresh and stops polling when hidden. Radix traps focus while it is
 // open; closing puts focus back on the control that opened it.
@@ -57,6 +59,7 @@ export function DocumentModal({
   onJumpToSection,
   workflowsPrefill = null,
   onWorkflowsPrefillDone,
+  workflowsViewRequest = null,
   onLearnedType,
 }: {
   /** The open tab, or null when the dialog is closed. */
@@ -73,7 +76,7 @@ export function DocumentModal({
   saveError?: string | null;
   /** Saves pending changes (creating the document if needed) and returns its id. */
   ensureSaved: () => Promise<string | null>;
-  /** Where focus goes on close when the opener is gone (the header's Sources button). */
+  /** Where focus goes on close when the opener is gone (the right column's Sources pill). */
   returnFocusRef?: RefObject<HTMLElement | null>;
   /** The control that opened the dialog, recorded at open; focus goes back to it on close while it is on the page. */
   openerRef?: RefObject<HTMLElement | null>;
@@ -92,6 +95,12 @@ export function DocumentModal({
   /** Opened from the classifier chip's "Restructure…": that workflow with its target type chosen. */
   workflowsPrefill?: WorkflowsPrefill | null;
   onWorkflowsPrefillDone?: () => void;
+  /**
+   * Show this view in the Workflows tab ("Open run" / "Review" in the Agents
+   * card, the ?run= deep link). Each request is a new object, so asking for the
+   * same run again still opens it after the person went back to the list.
+   */
+  workflowsViewRequest?: WorkflowsView | null;
   /** After "Learn a type from these examples" saves: use the new type for this document (the editor sets type_key). */
   onLearnedType?: (typeKey: string) => void;
 }) {
@@ -106,7 +115,7 @@ export function DocumentModal({
   // unmounts with its tab (and with the dialog, on a jump to a section), so they
   // live here: checking a finding's passage and coming back finds both as they
   // were. Unlike the hand-overs they outlast a close, but not the document.
-  const [workflowsView, setWorkflowsView] = useState<WorkflowsView>({ kind: "list" });
+  const [workflowsView, setWorkflowsView] = useState<WorkflowsView>(workflowsViewRequest ?? { kind: "list" });
   const [checkpointDrafts, setCheckpointDrafts] = useState<Record<string, CheckpointDraft>>({});
   // Lines applied in the editor whose record failed: coming back must offer "Record result", not apply them again.
   const [appliedLines, setAppliedLines] = useState<Record<string, AppliedLines>>({});
@@ -123,6 +132,11 @@ export function DocumentModal({
       setCheckpointDrafts({});
       setAppliedLines({});
     }
+  }
+  const [viewRequest, setViewRequest] = useState(workflowsViewRequest);
+  if (viewRequest !== workflowsViewRequest) {
+    setViewRequest(workflowsViewRequest);
+    if (workflowsViewRequest) setWorkflowsView(workflowsViewRequest);
   }
   // The parent can close the dialog without close() ("Insert table" does): the
   // hand-overs still end with it, so they don't come back the next time it opens.

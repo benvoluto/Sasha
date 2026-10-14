@@ -1,11 +1,11 @@
 "use client";
 
-// The editor's Document Gallery (redesign2-spec.md §3.2): every type the team
-// can use, with the document's own state on top — its current type, "No type
-// (freeform)", "Save outline as type…" and the classifier's suggestion
-// (ClassifierSuggestion). Opened from the header button, the empty-state
-// helper's "document type", the outline card's "Choose a type", and the tell-me
-// flow when it couldn't pick a type. The grid is TypeGallery's.
+// The editor's Doc Gallery (redesign2-spec.md §3.2, retitled in redesign 3):
+// every type the team can use, with the document's own state on top — its
+// current type, "No type (freeform)", "Save outline as type…" and the
+// classifier's suggestion (ClassifierSuggestion). Opened from the Outline
+// card's "See all" pill, and from the tell-me flow when it couldn't pick a
+// type. The grid is TypeGallery's.
 
 import { useRef, type RefObject } from "react";
 import type { DocumentTypeSummary } from "@/catalog/schema";
@@ -58,7 +58,7 @@ export function DocumentGalleryDialog({
   /** "Restructure…": the dialog closes first, then the Workflows tab opens. */
   onRestructure: (key: string) => void;
   onDismissSuggestion: (key: string) => void;
-  /** The header's Document Gallery button: focus goes there when the opener is gone. */
+  /** Where focus goes when the opener is gone (the Outline card's "See all" pill, else its type select). */
   returnFocusRef?: RefObject<HTMLElement | null>;
   /** After a close that changed the type (a card, Apply, No type): focus the document instead of the opener. */
   onFocusDocument?: () => void;
@@ -124,7 +124,7 @@ export function DocumentGalleryDialog({
       loading={loading}
       error={error}
       current={current?.key ?? null}
-      title="Document Gallery"
+      title="Doc Gallery"
       description="Each type gives the document an outline and tells Sasha how to write each section."
       top={top}
       returnFocusRef={returnFocusRef}

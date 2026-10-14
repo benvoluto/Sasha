@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Literature Review",
   "family": "academic",
+  "icon": "library",
+  "color": "brown",
   "summary": "A review that synthesizes published research on a stated question: narrative, scoping or systematic. It defines the question and scope, explains how sources were found and chosen, organizes the evidence by theme or argument, names agreements, contradictions and gaps, and draws conclusions the cited sources support. Systematic reviews also report search, screening and appraisal (PRISMA 2020).",
   "signals": [
     "literature review",

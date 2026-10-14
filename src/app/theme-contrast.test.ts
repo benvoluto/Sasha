@@ -1,5 +1,5 @@
 // Guards the palettes in globals.css against WCAG AA regressions, in both
-// themes: every text/background pairing the shell, editor chrome, document
+// themes: every text/background pairing the overview, editor chrome, document
 // screen and its alerts actually render must reach 4.5:1 (all of it is under
 // the "large text" size), and focus rings and field borders 3:1 (non-text,
 // WCAG 1.4.11). --doc-line is left out on purpose: it only draws decorative
@@ -71,18 +71,11 @@ function contrast(a: string, b: string): number {
 
 /** [text token, background token, where it shows]. */
 const PAIRS: [string, string, string][] = [
-  ["--go", "--go-soft", "floating button label"],
-  ["--go", "--go-soft-strong", "pressed/hovered floating button label"],
-  ["--go", "--editor-bg", "Share button label"],
-  ["--panel-head", "--panel-bg", "panel section headers"],
-  ["--panel-ink", "--panel-bg", "panel rows"],
-  ["--panel-ink", "--panel-hover", "hovered panel rows"],
-  ["--panel-muted", "--panel-bg", "panel secondary text"],
-  ["--panel-muted", "--panel-hover", "search placeholder / hovered secondary text"],
-  ["--panel-ink", "--panel-select", "pressed Archived filter"],
-  ["--panel-head", "--panel-badge-bg", "Active badge"],
-  ["--action", "--editor-bg", "toolbar and type picker"],
-  ["--action", "--panel-bg", "panel Select / New actions"],
+  ["--go", "--go-soft", "green chips, notices and hovered rows"],
+  ["--go", "--go-soft-strong", "active modal tab, pressed green controls"],
+  ["--go", "--editor-bg", "green labels and links on the editor page"],
+  ["--action", "--editor-bg", "toolbar, Share & Export and type picker"],
+  ["--action", "--action-soft", "hovered or pressed toolbar buttons, Share & Export, back button"],
 ];
 
 describe.each([
@@ -99,7 +92,7 @@ describe.each([
 /** Document screen and alerts: [text token, background token, where it shows]. */
 const DOC_TEXT: [string, string, string][] = [
   ["--ink", "--editor-bg", "document body and title"],
-  ["--doc-muted", "--editor-bg", "save status, title placeholder"],
+  ["--doc-muted", "--editor-bg", "save status, title placeholder, section divider icons"],
   ["--doc-muted", "--doc-surface", "secondary text in cards and panels"],
   ["--doc-muted", "--doc-bg", "library and catalog header links"],
   ["--doc-ink", "--doc-surface", "library and catalog text"],
@@ -128,6 +121,19 @@ const DOC_TEXT: [string, string, string][] = [
   ["--tools-bg", "--tools-ink", "Custom request Rewrite button"],
   ["--helper-ink", "--editor-bg", "empty-state helper text"],
   ["--helper-link", "--editor-bg", "empty-state helper links"],
+  // Redesign 3 (redesign3-spec.md §3): the overview, folders, the Sources pill, the blue Outline card.
+  ["--card-title", "--card-bg", "document card titles"],
+  ["--card-sub", "--card-bg", "document card first lines"],
+  ["--card-untitled", "--card-bg", "Untitled on a card"],
+  ["--card-untitled", "--editor-bg", "search placeholder"],
+  ["--tab-active-ink", "--tab-active-bg", "active Documents / Notes pill"],
+  ["--tab-ink", "--page-bg", "inactive tab and Doc Gallery"],
+  ["--action", "--page-bg", "Select / New / Activity in the overview header"],
+  ["--folder-ink", "--folder-bg", "folder names"],
+  ["--folder-badge-ink", "--folder-badge-bg", "folder count badge"],
+  ["--sources-ink", "--sources-bg", "Sources pill"],
+  ["--action", "--back-bg", "back button chevron"],
+  ["--card-title", "--page-bg", "overview headings on the page"],
 ];
 
 /** Non-text (3:1): [indicator token, background token, where it shows]. */
@@ -136,9 +142,10 @@ const NON_TEXT: [string, string, string][] = [
   ["--doc-field-line", "--editor-bg", "text field borders on the editor page"],
   ["--doc-accent", "--doc-surface", "focus rings in cards and dialogs"],
   ["--doc-accent", "--editor-bg", "focus rings on the editor page"],
-  ["--action", "--editor-bg", "toolbar and title focus outline"],
-  ["--go", "--editor-bg", "Notes / Share / floating button focus outline"],
-  ["--panel-head", "--panel-bg", "documents panel focus outline"],
+  ["--action", "--editor-bg", "toolbar, title and divider focus outline"],
+  ["--doc-field-line", "--action-soft", "paragraph-style picker border while hovered or open"],
+  ["--action", "--back-bg", "back button focus outline"],
+  ["--go", "--editor-bg", "green focus outlines (modal tabs, workflow cards)"],
   ["--ring", "--background", "focus rings on shared UI controls"],
   ["--ring", "--popover", "focus rings inside popovers and menus"],
   ["--tools-focus", "--tools-bg", "focus rings inside the Tools card"],
@@ -149,6 +156,20 @@ const NON_TEXT: [string, string, string][] = [
   ["--outline-ink", "--outline-hover", "Required tag and Choose a type borders on a hovered row"],
   ["--outline-ink", "--outline-card-bg", "focus rings inside the Outline card"],
   ["--helper-link", "--editor-bg", "helper link focus outline"],
+  ["--action", "--page-bg", "focus rings on the overview"],
+  ["--tab-ink", "--page-bg", "search field border and focus on the overview"],
+  ["--folder-ink", "--folder-bg", "focus ring and drop highlight on a folder tile"],
+  ["--sources-ink", "--sources-bg", "Sources pill focus outline"],
+  ["--sources-ink", "--editor-bg", "Sources pill focus ring on the editor card"],
+  ["--tools-ring", "--editor-bg", "closed Agents pill focus ring on the editor card"],
+  ["--outline-ink", "--editor-bg", "closed Outline pill focus ring on the editor card"],
+  ...["teal", "cyan", "blue", "violet", "magenta", "rose", "orange", "amber", "green", "brown", "slate", "untyped"].flatMap(
+    (c): [string, string, string][] => [
+      [`--type-${c}`, "--card-bg", `${c} type icon on a card`],
+      [`--type-${c}`, "--editor-bg", `${c} type icon beside the title`],
+      [`--type-${c}`, "--outline-card-bg", `${c} type icon in the Outline card`],
+    ],
+  ),
 ];
 
 describe.each([

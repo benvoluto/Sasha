@@ -1,8 +1,13 @@
-import { DocumentScreen } from "@/components/editor/document-screen";
+import { Suspense } from "react";
+import { Overview } from "@/components/overview/overview";
 
-// The app opens on a blank document. "New" in the document switcher links here
-// with a fresh `n`, which remounts the editor for another new document.
-export default async function Home({ searchParams }: { searchParams: Promise<{ n?: string }> }) {
-  const { n } = await searchParams;
-  return <DocumentScreen key={n ?? "home"} documentId={null} />;
+// The documents overview (redesign3-spec.md §2): the team's documents, folders
+// and notes. It reads its tab and view from the address (useSearchParams), so
+// it renders inside Suspense. A new blank document is /new.
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-[var(--page-bg)]" />}>
+      <Overview />
+    </Suspense>
+  );
 }

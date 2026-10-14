@@ -1,7 +1,7 @@
 "use client";
 
 // The empty-state helper beside Sasha at the bottom left of the editing
-// screen (redesign2-spec.md §5): "Start writing, [upload sources], choose a
+// screen (redesign2-spec.md §5; placed past DOG_WIDTH since redesign 3): "Start writing, [upload sources], choose a
 // [document type ⌃⌄] or just [tell me] what doc you'd like to create…", the
 // "tell me" prompt form, and the tell-me progress and result. It dismisses
 // itself once the first paragraph is written or the dog is clicked
@@ -12,6 +12,7 @@ import type { Editor } from "@tiptap/react";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { AlertCircle, CaretUpDown, Loader2, UploadFileIcon } from "@/components/icons";
+import { DOG_WIDTH } from "@/components/shell/dog";
 import { dogActionAtom } from "@/components/shell/dog-action";
 import { TELL_ME_PROMPT_MAX, TELL_ME_PROMPT_MIN } from "@/lib/tell-me/contract";
 import { hasText, helperVisible, readHelperDismissed, shouldDismiss, writeHelperDismissed } from "./helper-model";
@@ -27,10 +28,10 @@ export type EmptyHelperProps = {
   tellMe: TellMe;
   /** "upload sources": the document modal on its Sources tab, in upload mode. */
   onUploadSources: () => void;
-  /** "document type": the Document Gallery. */
+  /** "document type": the Outline panel, focused on its type select. */
   onChooseType: () => void;
-  /** The editor area's left edge in viewport pixels (useColumnLayout's `left`): the helper is fixed at the bottom, just past it. */
-  leftEdge: number;
+  /** "Choose a type" after tell me found none: the Doc Gallery, where the choice goes on drafting (continueWithType). */
+  onOpenGallery: () => void;
   /** The right column is open over the text (drawer or sheet): the tips step aside, and the cards sit under its panels. */
   covered?: boolean;
   /** Whether the helper is showing, so the screen can hide the editor's own empty placeholder (.doc-helper-on). */
@@ -40,9 +41,10 @@ export type EmptyHelperProps = {
 /** The character count appears past this many characters. */
 const COUNT_FROM = 1500;
 
-// Inline-block, not flex, so each link sits on the sentence's baseline.
+// Inline-block, not flex, so each link sits on the sentence's baseline; nowrap
+// keeps a link and its icon together when the sentence wraps.
 const LINK =
-  "inline-block rounded py-0 font-semibold text-[var(--helper-link)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--helper-link)]";
+  "inline-block whitespace-nowrap rounded font-semibold text-[var(--helper-link)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--helper-link)]";
 const CARD = "rounded-2xl border border-[var(--doc-line)] bg-[var(--editor-bg)] p-3 text-[15px] text-[var(--doc-ink)] shadow-lg outline-none";
 const PRIMARY =
   "inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--action)] px-3.5 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--action)] disabled:opacity-60 sm:min-h-9 dark:text-[var(--editor-bg)]";
@@ -51,7 +53,7 @@ const SECONDARY =
 
 const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
-export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSources, onChooseType, leftEdge, covered = false, onVisibleChange }: EmptyHelperProps) {
+export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSources, onChooseType, onOpenGallery, covered = false, onVisibleChange }: EmptyHelperProps) {
   const { state } = tellMe;
   const phase = state.phase;
 
@@ -190,7 +192,7 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
 
   if (!rendered) return null;
 
-  const style = { "--helper-left": `${leftEdge}px` } as CSSProperties;
+  const style = { "--dog-w": `${DOG_WIDTH}px` } as CSSProperties;
   const typeName = tellMe.typeTitle ?? "the document";
 
   let body: ReactNode;
@@ -284,7 +286,7 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
       <div ref={cardRef} tabIndex={-1} className={CARD}>
         <p>Sasha couldn&apos;t tell which type fits. Choose one and Sasha will draft it.</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" onClick={onChooseType} className={PRIMARY}>
+          <button type="button" onClick={onOpenGallery} className={PRIMARY}>
             Choose a type
           </button>
           <button type="button" onClick={finish} className={SECONDARY}>
@@ -346,7 +348,7 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
     );
   } else {
     body = (
-      <p className="text-[15px] leading-snug text-[var(--helper-ink)] sm:text-[19px]">
+      <p className="text-[15px] leading-relaxed text-[var(--helper-ink)] sm:text-[19px]">
         Start writing,{" "}
         <button type="button" onClick={onUploadSources} className={LINK}>
           <UploadFileIcon className="mr-1 inline-block h-[1.1em] w-[1.1em] align-[-0.2em]" aria-hidden="true" />
@@ -357,8 +359,8 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
           document type
           <CaretUpDown className="ml-1 inline-block h-[1em] w-[1em] align-[-0.15em]" aria-hidden="true" />
         </button>{" "}
-        {/* The mockup's line break; on phones the text wraps where it must. */}
-        <br className="hidden sm:inline" />
+        {/* The mockup's line break, where the first line fits; narrower, the text wraps where it must. */}
+        <br className="hidden md:inline" />
         or just{" "}
         <button ref={tellMeRef} type="button" onClick={() => setFormOpen(true)} className={LINK}>
           tell me
@@ -368,21 +370,20 @@ export function EmptyHelper({ editor, documentId, typeKey, tellMe, onUploadSourc
     );
   }
 
-  // The section spans from just past the editor's left edge to the floating
-  // buttons, so its content wraps short of them whatever their width
-  // (--fab-width, published by floating-actions.tsx). The tips share the
-  // buttons' line; a card (the form, progress, results) is taller and sits above
-  // them (--fab-clearance). It is under the drawer and sheet (z-18), and only
-  // its content takes pointer events, so the text beside it stays clickable.
-  const place = tips
-    ? "bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] right-[calc(var(--fab-width,0px)+1.5rem)] sm:right-[calc(var(--fab-width,0px)+2rem)]"
-    : "bottom-[calc(max(1.25rem,var(--fab-clearance,0px))+env(safe-area-inset-bottom,0px))] right-4 sm:right-8";
+  // Fixed at the bottom left just past Sasha (DOG_WIDTH), inside the editor
+  // card: the card stops 24px above the window's bottom from sm and 40px from
+  // lg (editor-frame.tsx), so the helper sits 1.25rem above that. At most 42rem
+  // wide (the mockup's first line fits from md) and never past the card's right
+  // edge. On phones the card fills the screen and the helper sits above the row
+  // of panel buttons (Sasha is smaller there and the row fills the bottom
+  // right). It is under the drawer and sheet, and only its content takes
+  // pointer events, so the text beside it stays clickable.
   return (
     <section
       ref={sectionRef}
       aria-label="Getting started"
       style={style}
-      className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-4 z-[17] flex flex-col items-start sm:bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:left-[var(--dog-w)] [&>*]:pointer-events-auto [&>*]:max-w-[calc(100vw-2rem)] sm:[&>*]:max-w-[min(28rem,calc(100vw-var(--dog-w)-16px))]"
+      className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-4 z-[17] flex flex-col items-start sm:bottom-[calc(2.75rem+env(safe-area-inset-bottom,0px))] sm:left-[var(--dog-w)] lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] [&>*]:pointer-events-auto [&>*]:max-w-[calc(100vw-2rem)] sm:[&>*]:max-w-[min(42rem,calc(100vw-var(--dog-w)-3rem))] lg:[&>*]:max-w-[min(42rem,calc(100vw-var(--dog-w)-5rem))]"
     >
       {body}
     </section>

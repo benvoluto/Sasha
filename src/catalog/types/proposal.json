@@ -3,6 +3,8 @@
   "version": 1,
   "title": "Proposal",
   "family": "business",
+  "icon": "flask-conical",
+  "color": "cyan",
   "summary": "A proposal asks a decision-maker or funder to approve a piece of work: it summarizes the request, explains why it is needed, sets objectives, and describes the approach, timeline, budget and how success will be judged. Use it for internal project proposals, partnership pitches and small funding requests that do not follow a funder's own template.",
   "signals": [
     "proposal",
